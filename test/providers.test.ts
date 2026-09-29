@@ -146,6 +146,20 @@ test('providers API: list / add / keys / use / delete', async (t) => {
       assert.equal(keys.find((k) => k.id === keyIds[1])!.active, false);
     });
 
+    await t.test('list flags the in-use provider and describes the current one', async () => {
+      const { data } = await req('/api/providers');
+      const rows = data.providers as Array<Record<string, unknown>>;
+      assert.equal(rows[0]!.inUse, true, 'saved provider actually in use is flagged');
+      const active = data.active as Record<string, unknown>;
+      assert.equal(active.type, 'openai');
+      assert.equal(active.baseUrl, 'https://openrouter.ai/api/v1');
+      assert.equal(active.label, 'OpenRouter');
+      assert.equal(active.matchedId, provId);
+      assert.match(String(active.maskedKey), /…/, 'current key shown masked');
+      assert.ok(String(active.maskedKey).endsWith('3456'), 'tail of the current key visible');
+      assert.ok(!JSON.stringify(data).includes('abcdef123456'), 'raw key never in the list response');
+    });
+
     await t.test('delete one key, then the whole provider', async () => {
       assert.equal((await req(`/api/providers/${provId}/keys/${keyIds[1]}`, 'DELETE')).status, 200);
       const after = (await req(`/api/providers/${provId}`)).data.provider as { keys: unknown[] };
@@ -154,6 +168,27 @@ test('providers API: list / add / keys / use / delete', async (t) => {
       assert.equal((await req(`/api/providers/${provId}`)).status, 404);
       const list = (await req('/api/providers')).data.providers as unknown[];
       assert.equal(list.length, 0);
+    });
+
+    await t.test('a provider set outside the page (CLI / onboard) still shows as active', async () => {
+      // simulate what the terminal does: termcrab onboard / config set provider.*
+      config.provider = { ...config.provider, type: 'openai', baseUrl: 'https://api.groq.com/openai/v1', apiKey: 'sk-cli-1234567890', model: 'llama-3.1-70b' };
+      const first = await req('/api/providers');
+      const active1 = first.data.active as Record<string, unknown>;
+      assert.equal(active1.label, 'Groq');
+      assert.equal(active1.baseUrl, 'https://api.groq.com/openai/v1');
+      assert.equal(active1.model, 'llama-3.1-70b');
+      assert.equal(active1.matchedId, null, 'nothing saved yet');
+      assert.equal((first.data.providers as unknown[]).length, 0);
+      // saving the same endpoint from the page syncs the list with reality
+      const created = await req('/api/providers', 'POST', { name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1' });
+      const pid2 = (created.data.provider as Record<string, unknown>).id;
+      const second = await req('/api/providers');
+      const rows = second.data.providers as Array<Record<string, unknown>>;
+      assert.equal(rows[0]!.inUse, true, 'matching endpoint flips to in use');
+      assert.equal((second.data.active as Record<string, unknown>).matchedId, pid2);
+      // tidy: back to the offline demo
+      config.provider = { ...config.provider, type: 'mock', baseUrl: '', apiKey: '', model: 'mock-1' };
     });
   } finally {
     await handle.stop();

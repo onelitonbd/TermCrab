@@ -338,6 +338,8 @@
   .provTx .pu { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .provMeta { color: var(--muted); font-size: 12.5px; flex-shrink: 0; }
   .provChev { color: var(--muted); flex-shrink: 0; font-size: 18px; line-height: 1; }
+  .provStatic { cursor: default; }
+  .provStatic:hover { background: var(--card); border-color: var(--line); }
   .keyRow { cursor: default; }
   .keyRow .kn { font-weight: 600; color: var(--strong); font-size: 14.5px; }
   .keyRow .kv { color: var(--muted); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; margin-top: 2px; }
@@ -2081,9 +2083,25 @@
       const d = await api('/api/providers');
       const list = d.providers || [];
       box.innerHTML = '';
-      if (!list.length) {
-        box.innerHTML = '<div class="nx">No providers yet — tap the + to add one.</div>';
-        return;
+      // The provider the system is using right now — even when it was added
+      // from the terminal (onboard / config set), it always shows up here.
+      if (d.active && !list.some((p) => p.inUse)) {
+        const row = document.createElement('div');
+        row.className = 'provRow provStatic';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'pn';
+        n.textContent = d.active.label;
+        const u = document.createElement('div');
+        u.className = 'pu';
+        u.textContent = (d.active.baseUrl || 'offline — no key needed') + (d.active.model ? ' · ' + d.active.model : '');
+        tx.append(n, u);
+        const badge = document.createElement('span');
+        badge.className = 'inUse';
+        badge.textContent = 'in use';
+        row.append(tx, badge);
+        box.appendChild(row);
       }
       for (const p of list) {
         const row = document.createElement('div');
@@ -2097,15 +2115,30 @@
         u.className = 'pu';
         u.textContent = p.baseUrl;
         tx.append(n, u);
-        const meta = document.createElement('span');
-        meta.className = 'provMeta';
-        meta.textContent = p.keyCount + (p.keyCount === 1 ? ' key' : ' keys');
+        row.append(tx);
+        if (p.inUse) {
+          const badge = document.createElement('span');
+          badge.className = 'inUse';
+          badge.textContent = 'in use';
+          row.append(badge);
+        } else {
+          const meta = document.createElement('span');
+          meta.className = 'provMeta';
+          meta.textContent = p.keyCount + (p.keyCount === 1 ? ' key' : ' keys');
+          row.append(meta);
+        }
         const chev = document.createElement('span');
         chev.className = 'provChev';
         chev.textContent = '›';
-        row.append(tx, meta, chev);
+        row.append(chev);
         row.onclick = () => openKeys(p.id, p.name);
         box.appendChild(row);
+      }
+      if (!list.length) {
+        const hint = document.createElement('div');
+        hint.className = 'nx';
+        hint.textContent = 'No saved providers yet — tap the + to add one.';
+        box.appendChild(hint);
       }
     } catch (e) {
       box.innerHTML = '';

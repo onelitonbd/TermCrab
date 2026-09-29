@@ -112,6 +112,68 @@ function providerView(p: ProviderEntry) {
   return { id: p.id, name: p.name, baseUrl: p.baseUrl, created: p.created, keyCount: p.keys.length };
 }
 
+/** Resolved base url of the provider currently wired into the gateway. */
+function activeBaseUrl(cfg: Config["provider"]): string {
+  if (cfg.type === "mock") return "";
+  if (cfg.baseUrl) return cfg.baseUrl.replace(/\/+$/, "");
+  if (cfg.type === "anthropic") return "https://api.anthropic.com";
+  return "https://api.openai.com/v1";
+}
+
+/** Human name for the current provider (known hosts get their brand name). */
+function activeLabel(cfg: Config["provider"], baseUrl: string): string {
+  if (cfg.type === "mock") return "Offline demo";
+  let host = "";
+  try { host = new URL(baseUrl).host; } catch { /* ignore */ }
+  const known: Record<string, string> = {
+    "api.openai.com": "OpenAI",
+    "openrouter.ai": "OpenRouter",
+    "api.groq.com": "Groq",
+    "api.deepseek.com": "DeepSeek",
+    "api.anthropic.com": "Anthropic",
+    "127.0.0.1:11434": "Ollama (local)",
+    "localhost:11434": "Ollama (local)",
+  };
+  if (host && known[host]) return known[host]!;
+  if (host) return host;
+  return cfg.type;
+}
+
+/**
+ * The providers list, always in sync with the LIVE config: saved rows are
+ * flagged when they are the endpoint in use, plus an `active` block that
+ * describes whatever the gateway is using right now — even when it was set
+ * outside this page (termcrab onboard / config set from a terminal).
+ */
+function providersListView(cfg: Config) {
+  const activeBase = activeBaseUrl(cfg.provider);
+  const activeKey = cfg.provider.apiKey || "";
+  const views = cfg.providers.map((p) => ({ ...providerView(p), inUse: false }));
+  const matched: number[] = [];
+  if (activeBase && cfg.provider.type !== "mock") {
+    cfg.providers.forEach((p, i) => {
+      if (p.baseUrl === activeBase && activeKey && p.keys.some((k) => k.key === activeKey)) matched.push(i);
+    });
+    if (!matched.length) {
+      cfg.providers.forEach((p, i) => {
+        if (p.baseUrl === activeBase) matched.push(i);
+      });
+    }
+  }
+  for (const i of matched) views[i]!.inUse = true;
+  return {
+    providers: views,
+    active: {
+      type: cfg.provider.type,
+      label: activeLabel(cfg.provider, activeBase),
+      baseUrl: activeBase,
+      model: cfg.provider.model || "",
+      maskedKey: activeKey ? maskApiKey(activeKey) : "",
+      matchedId: matched.length ? cfg.providers[matched[0]!]!.id : null,
+    },
+  };
+}
+
 function keyView(k: { id: string; name: string; key: string; created: number }, activeKey: string) {
   return { id: k.id, name: k.name, created: k.created, masked: maskApiKey(k.key), active: !!activeKey && k.key === activeKey };
 }
@@ -673,7 +735,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         // ---- Providers: saved OpenAI-compatible endpoints + API keys ----
         if (pathname === '/api/providers' && req.method === 'GET') {
-          json(res, 200, { providers: config.providers.map(providerView) });
+          json(res, 200, providersListView(config));
           return;
         }
         if (pathname === '/api/providers' && req.method === 'POST') {

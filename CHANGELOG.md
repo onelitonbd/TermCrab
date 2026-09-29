@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0 — 2026-09-30 (Providers stay in sync)
+
+- The Providers list now always shows what the system is actually using: saved providers get an "in use" badge, and when the current provider was set outside the page (from the terminal — onboard, config set) it still appears at the top with the badge, named after its service (OpenAI, OpenRouter, Groq, Ollama…).
+- Matching is exact: same address plus same key when a key is saved; same address alone when the key came from the terminal.
+- Deleting the saved entry never breaks the live connection — the current provider simply reverts to its always-visible top row.
+- The list refreshes every time the page opens, so it can never show a stale state.
+
 ## 0.17.0 — 2026-09-30 (Composer + Providers)
 
 - The message box is now a rounded two-layer composer: your text on top, rounded icon buttons below — attach (text files), stop (end a reply mid-way), send.

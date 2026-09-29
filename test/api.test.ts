@@ -240,6 +240,8 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('id="modal"'), 'popup modal replaces the wizard');
       assert.ok(!html.includes('id="wiz"'), 'old setup wizard removed');
       assert.ok(!html.includes('wizOpen'), 'old wizard opener removed');
+      assert.ok(html.includes('provStatic'), 'current-provider row for CLI/onboard setups');
+      assert.ok(html.includes("p.inUse"), 'in-use flag rendered on saved providers');
     });
 
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
