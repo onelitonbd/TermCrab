@@ -319,6 +319,26 @@ export async function runDoctor(): Promise<Check[]> {
     /* optional */
   }
 
+  // Offline file transcription (whisper.cpp) — optional, spike #11.
+  try {
+    const { findWhisperBin, findWhisperModel } = await import('./whisper.js');
+    const wb = findWhisperBin();
+    const wm = findWhisperModel();
+    checks.push(
+      wb && wm
+        ? { id: 'whisper', label: 'file transcription (whisper)', status: 'ok', detail: `engine + model ready (${path.basename(wm)})` }
+        : {
+            id: 'whisper',
+            label: 'file transcription (whisper)',
+            status: 'info',
+            detail: !wb ? 'engine not installed (optional)' : 'engine found, no model yet',
+            fix: 'termcrab transcribe — error message has the full install steps',
+          },
+    );
+  } catch {
+    /* optional */
+  }
+
   // Voice input (dictation) — used by the web panel 🎤 button.
   const sttOk = await execExists('termux-speech-to-text');
   checks.push(

@@ -94,6 +94,7 @@ termcrab skills         list / show / import / new skills (OpenClaw-style SKILL.
 termcrab sessions       ls / export <id> / rename / purge --older-than N (chat history)
 termcrab agents         ls / new <name> --template brief|teacher|researcher
 termcrab embeddings     status / setup — smart memory search (optional, offline-capable)
+termcrab transcribe <f> audio file → text, offline (optional whisper.cpp)
 termcrab import openclaw  bring an old OpenClaw setup across (preview first)
 termcrab memory         show / search memory (hybrid lexical + semantic when enabled)
 termcrab boot install   auto-start on device boot (Termux:Boot)
@@ -261,6 +262,11 @@ OpenClaw research that inspired it: [OPENCLAW_REPORT.md](OPENCLAW_REPORT.md)
 - Constant-time token checks; all `/api/*` routes (except health) require auth
 - Telegram allowlist required; file tools are root-bounded; `exec` can be disabled
 - Read [SECURITY.md](SECURITY.md) before exposing anything to a network
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — tests, house rules, and the one-time
+CI enablement step.
 
 ## Development
 

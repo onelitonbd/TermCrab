@@ -30,6 +30,7 @@ import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
 import { SessionStore } from './agent/sessions.js';
 import { scaffoldSkill, scaffoldAgent, isSoulTemplate, SOUL_TEMPLATES } from './skills/scaffold.js';
 import { embeddingsStatus, embeddingsSetup } from './agent/embed-setup.js';
+import { transcribeFile } from './mobile/whisper.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
@@ -55,6 +56,7 @@ Everyday extras:
   termcrab sessions [ls|export|purge|rename]  manage chats: save one as text, clean old ones
   termcrab agents new <name> --template brief|teacher|researcher   starter personality
   termcrab embeddings [status|setup] smart memory search (optional, offline-capable)
+  termcrab transcribe <file>          turn a voice recording into text (offline, needs whisper.cpp)
   termcrab import openclaw [--apply] bring your old OpenClaw setup over (preview first!)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
   termcrab heartbeat                 run one self-check right now
@@ -773,6 +775,26 @@ export async function main(argv: string[]): Promise<void> {
       }
       console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
       process.exitCode = 1;
+      return;
+    }
+
+    case 'transcribe': {
+      const file = rest.find((a) => !a.startsWith('--'));
+      if (!file) {
+        console.error('usage: termcrab transcribe <audio-file> [--model <ggml-model>]');
+        process.exitCode = 1;
+        return;
+      }
+      const mIdx = rest.indexOf('--model');
+      console.log(`🎙️ transcribing ${file} (offline) ...`);
+      const r = await transcribeFile(file, { model: mIdx >= 0 ? rest[mIdx + 1] : undefined });
+      if (r.ok) {
+        console.log(`\n${r.text}`);
+        console.log(`\n(${((r.ms ?? 0) / 1000).toFixed(1)}s · ${path.basename(r.model ?? 'model')})`);
+      } else {
+        console.error(`❌ ${r.error}`);
+        process.exitCode = 1;
+      }
       return;
     }
 

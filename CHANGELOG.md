@@ -2,6 +2,34 @@
 
 # Changelog
 
+## 0.8.0 — 2026-09-29 (Voice memos & verdicts)
+
+Closes the v0.5 P2 spike round: one keeper shipped, three honest verdicts.
+
+### Added
+- **`termcrab transcribe <file>`** — turn a voice recording into text, fully
+  offline, via whisper.cpp if you have it (spike #11 keeper). Measured: 10.5 s
+  sample → word-perfect text in 1.1 s (~9× realtime, tiny model). Auto-finds
+  the engine (`whisper-cli` on PATH or `~/whisper.cpp/build/bin`) and model
+  (`~/models/ggml-*.bin`, tiny preferred; `--model` to point anywhere).
+  Missing pieces → exact install steps, never a stack trace
+- Doctor: **file transcription (whisper)** check (engine+model / what's missing)
+- `voice` skill: knows `termcrab transcribe` for audio-file requests
+
+### Docs
+- **CONTRIBUTING.md** — house rules + the ONE-TIME human step to enable CI
+  (bot tokens can't push workflow files; prefilled link included)
+- **docs/SPIKES.md** — all four P2 verdicts with evidence: whisper ✅ shipped,
+  wake word ❌ killed (onnxruntime ≈300 MB + no phone to measure battery),
+  Signal ⏸️ still deferred (policy/ban risk, not packaging), CI 🔶 one click away
+- Roadmap (docs/V05.md): P0 ✅ P1 ✅ P2 decided
+
+### Tests
+- 156/156 (4 new: model preference + friendly errors + fake-engine behavior +
+  live JFK transcription where the engine exists)
+
+# Changelog
+
 ## 0.7.0 — 2026-09-29 (The nice-to-haves)
 
 Completes the v0.5 P1 block ("oh, nice") — five quality-of-life upgrades.
