@@ -1,17 +1,28 @@
 # Changelog
 
-## Unreleased (v0.5 build — P0 #0 in progress)
+## 0.4.2 — 2026-09-29 (Made for humans)
+
+Plain-language pass over **both** interfaces — built for the owner first, coders later.
 
 ### Added
-- **Web control parity (phase 1+2)** — everything controllable from the CLI is now
-  reachable in the control UI:
-  - `GET/POST /api/config` (secrets masked; masked value = keep), `POST /api/doctor`,
-    `GET /api/status`, `POST /api/memory/search|remember`, `PUT /api/memory` (editor),
-    `GET /api/skills/:name` + `POST /api/skills/import`, agents `POST/GET/PUT /api/agents[/:name]`,
-    `POST /api/say`, `GET/POST /api/boot[/install]`
-  - UI panels: ⚙️ Settings, 🩺 Doctor, 🧠 Memory (search/remember/edit), 👥 Agents
-    (create/edit SOUL/active-for-chat selector), 📚 Skills (import/view), 🔊 Voice & boot
-- First live-server test suite (`test/api.test.ts`, 12 assertions groups)
+- **`termcrab status`** — one-screen, plain-English overview: brain, web panel, chat apps,
+  memory facts, self-check schedule, dream times ("last: Tue 11:16 · next: Wed 11:16"),
+  battery, agents — plus pointers to the two commands worth running next
+- **"How this works (start here)" panel** in the web UI — live status strip (awake · brain ·
+  facts · next dream) + a human explanation of every panel
+- **Plain-English Settings** — every config key shows a human name and one-line explanation
+  (technical key shown underneath: transparency, no hidden magic)
+- **Friendly event messages** — dream/check-in skips now read as sentences
+  ("already dreamed recently — next attempt in about 24h" instead of a raw code)
+- **Web control parity (phase 1+2)** — every CLI control reachable from the UI:
+  `GET/POST /api/config` (secrets masked), `POST /api/doctor`, `GET /api/status`,
+  memory search/remember/edit, skills show/import, agents CRUD + active-for-chat,
+  `POST /api/say`, `GET/POST /api/boot[/install]` — 11 routes + 6 panels + live-server tests
+- **`termcrab help` rewritten** in plain words: "Start here (the 5 commands most people
+  ever need)" first, examples in human sentences
+
+### Tests
+- 101/101 (new: status report suite + first live-server API suite)
 
 ## 0.4.1 — 2026-09-29 (Embeddings taste-tested)
 

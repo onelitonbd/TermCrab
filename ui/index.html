@@ -136,6 +136,23 @@
 <div id="typing"></div>
 
 <div id="rack">
+<details class="panel" id="helpPanel" open>
+  <summary>❓ How this works (start here)</summary>
+  <div class="pBody">
+    <div class="pRow" id="liveStatus">loading status…</div>
+    <div class="nx" style="line-height:1.7">
+      🦀 <b>This is your crab.</b> Chat with it in the box below — it answers and does things on your machine.<br>
+      ⚙️ <b>Settings</b> — everything you can change, named in plain words (the technical key is shown underneath — nothing is hidden).<br>
+      🩺 <b>Doctor</b> — checks everything and explains how to fix problems.<br>
+      🧠 <b>Memory</b> — what your crab remembers. Search it, add to it, or edit the file directly.<br>
+      👥 <b>Agents</b> — helper personalities (e.g. one that answers very briefly). Pick who you're talking to in the bar below.<br>
+      📚 <b>Skills</b> — extra abilities you can install from a folder or a git repository.<br>
+      🔊 <b>Voice &amp; boot</b> — make it speak; start it automatically when the phone boots.<br>
+      ⏲️ <b>Cron</b> — repeating jobs (like "every weekday at 8am"). 🫀 = check in now · 💤 = dream (learn) now.
+    </div>
+  </div>
+</details>
+
 <details id="cronPanel" class="panel">
   <summary>⏲️ Cron jobs</summary>
   <div id="cronList"><div class="nx">loading…</div></div>
@@ -320,13 +337,14 @@
       addMsg('sys', `⏲️ cron ${ev.name}: ${(ev.preview || '').slice(0, 200)}`);
     });
     es.addEventListener('heartbeat', (e) => {
-      addMsg('sys', '🫀 heartbeat: ' + JSON.parse(e.data).reason);
+      const ev = JSON.parse(e.data);
+      addMsg('sys', '🫀 ' + (ev.ran ? 'check-in: ' + (ev.reason || 'done') : 'check-in skipped: ' + humanReason(ev.reason)));
     });
     es.addEventListener('dream', (e) => {
       const ev = JSON.parse(e.data);
       addMsg('sys', ev.ran
-        ? `💤 dream: consolidated ${ev.facts ?? 0} fact(s) into memory (${ev.reason || ''})`
-        : `💤 dream skipped: ${ev.reason || ''}`);
+        ? `💤 dream done: learned ${ev.facts ?? 0} new fact${(ev.facts ?? 0) === 1 ? '' : 's'} (${ev.reason || ''})`
+        : `💤 dream skipped: ${humanReason(ev.reason)}`);
     });
     es.onerror = () => { /* auto-reconnects */ };
   }
@@ -406,11 +424,13 @@
     } catch (e) { addMsg('sys', 'reset failed: ' + e.message); }
   };
   $('btnHb').onclick = async () => {
-    addMsg('sys', '🫀 running heartbeat…');
+    addMsg('sys', '🫀 checking in…');
     try {
       const r = await api('/api/heartbeat', { method: 'POST' });
-      addMsg('sys', r.ran ? 'heartbeat done: ' + (r.output || '').slice(0, 500) : 'heartbeat skipped: ' + r.reason);
-    } catch (e) { addMsg('sys', 'heartbeat failed: ' + e.message); }
+      addMsg('sys', r.ran
+        ? '🫀 check-in done: ' + (r.output || '').slice(0, 500)
+        : '🫀 check-in skipped: ' + humanReason(r.reason));
+    } catch (e) { addMsg('sys', 'check-in failed: ' + e.message); }
   };
   $('btnDream').onclick = async () => {
     addMsg('sys', '💤 dream started — consolidating sessions into long-term memory…');
@@ -491,6 +511,72 @@
     'channels.telegram.token', 'channels.telegram.allowedUserIds',
     'channels.whatsapp.enabled', 'channels.whatsapp.allowedJids',
   ];
+  // Plain-English labels: every setting says what it IS in human words.
+  const CFG_LABELS = {
+    'agent.name': ['Assistant name', 'How your crab introduces itself'],
+    'provider.type': ['AI brain type', 'anthropic = Claude · openai = ChatGPT & friends · mock = offline demo'],
+    'provider.model': ['Brain model', 'Which model to use (e.g. gpt-4o-mini)'],
+    'provider.baseUrl': ['Brain address', 'Where to reach the AI service'],
+    'provider.apiKey': ['Brain password (API key)', 'Secret key from your AI provider'],
+    'localProvider.enabled': ['On-device brain', 'Use a local model for small tasks (cheaper + private)'],
+    'localProvider.baseUrl': ['On-device brain address', 'Your local model server (e.g. http://127.0.0.1:8080/v1)'],
+    'localProvider.model': ['On-device brain model', 'Model name your local server provides'],
+    'dream.enabled': ['Night learning (dreaming)', 'Let the crab turn recent chats into long-term memory while idle'],
+    'dream.everyHours': ['Learn again after (hours)', 'How many hours between learning sessions'],
+    'heartbeat.enabled': ['Self-check-ins', 'Let the crab act on its own on a schedule'],
+    'heartbeat.minutes': ['Check-in every (minutes)', 'How often it checks in'],
+    'heartbeat.pauseBelow': ['Pause below battery %', 'Stop check-ins to save battery under this level'],
+    'memory.embeddings': ['Smarter search', 'Search by meaning, not just words (needs optional install)'],
+    'gateway.token': ['Web panel password', 'What this page asks for when you open it'],
+    'channels.telegram.token': ['Telegram connection', 'Bot token from @BotFather — leave empty if unused'],
+    'channels.telegram.allowedUserIds': ['Telegram allowed people', 'Who may talk to your bot — empty means nobody'],
+    'channels.whatsapp.enabled': ['WhatsApp connection', 'Turn on WhatsApp (needs: npm install baileys)'],
+    'channels.whatsapp.allowedJids': ['WhatsApp allowed chats', 'Who may talk to it — empty means off'],
+  };
+
+  // Turn system reasons into sentences a person can read.
+  function humanReason(r) {
+    if (!r) return '';
+    const m = String(r).match(/next dream in ~(\d+)m/);
+    if (m) {
+      const n = Number(m[1]);
+      return n >= 60
+        ? `already dreamed recently — next attempt in about ${Math.round(n / 60)}h`
+        : `already dreamed recently — next attempt in about ${n}m`;
+    }
+    if (/disabled/.test(r)) return 'dreaming is switched off (Settings → Night learning)';
+    if (/sleepless/i.test(r)) return 'waiting for better battery — ' + String(r).replace(/^sleepless:\s*/i, '');
+    if (/no new sessions/i.test(r)) return 'nothing new since the last dream';
+    if (/nothing to consolidate/i.test(r)) return 'no conversations to learn from yet';
+    if (/below pause/i.test(r)) return 'battery too low — ' + r;
+    return String(r);
+  }
+
+  async function refreshLiveStatus() {
+    try {
+      const s = await api('/api/status');
+      const parts = ['🟢 awake', 'brain: ' + s.provider];
+      if (s.memory) parts.push(`memory: ${s.memory.facts ?? 0} fact${(s.memory.facts ?? 0) === 1 ? '' : 's'}`);
+      if (s.heartbeat) {
+        parts.push(s.heartbeat.enabled
+          ? `self-check every ${s.heartbeat.minutes}m`
+          : 'self-checks off');
+      }
+      if (s.dream) {
+        if (!s.dream.enabled) parts.push('dreaming off');
+        else if (s.dream.lastDreamAt) {
+          const next = s.dream.lastDreamAt + s.dream.everyHours * 3600000;
+          parts.push(next <= Date.now() ? '💤 dream due' : `💤 dream ~${new Date(next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+        } else parts.push(`💤 learns every ${s.dream.everyHours}h while idle`);
+      }
+      const ag = (s.agents || []).length;
+      if (ag) parts.push(`${ag} agent${ag === 1 ? '' : 's'}`);
+      $('liveStatus').textContent = parts.join(' · ');
+    } catch {
+      $('liveStatus').textContent = 'status unavailable (check the gateway)';
+    }
+  }
+  $('helpPanel').addEventListener('toggle', () => { if ($('helpPanel').open) refreshLiveStatus(); });
 
   async function refreshCfg() {
     try {
@@ -499,12 +585,27 @@
       const rows = $('cfgRows');
       rows.innerHTML = '';
       for (const key of CFG_KEYS) {
-        const row = document.createElement('div'); row.className = 'pRow';
-        const k = document.createElement('span'); k.className = 'k'; k.textContent = key;
-        const inp = document.createElement('input'); inp.type = 'text';
+        const meta = CFG_LABELS[key] || [key, ''];
+        const row = document.createElement('div');
+        row.className = 'pRow';
+        row.style.flexDirection = 'column';
+        row.style.alignItems = 'stretch';
+        row.style.gap = '4px';
+        row.title = meta[1];
+        const line1 = document.createElement('div');
+        line1.style.display = 'flex';
+        line1.style.gap = '8px';
+        line1.style.alignItems = 'center';
+        const k = document.createElement('span');
+        k.className = 'k';
+        k.textContent = meta[0];
+        const inp = document.createElement('input');
+        inp.type = 'text';
         const cur = getCfg(data.config, key);
         inp.value = typeof cur === 'object' && cur !== null ? JSON.stringify(cur) : String(cur ?? '');
-        const btn = document.createElement('button'); btn.className = 'ghost'; btn.textContent = 'Save';
+        const btn = document.createElement('button');
+        btn.className = 'ghost';
+        btn.textContent = 'Save';
         btn.onclick = async () => {
           btn.disabled = true;
           try {
@@ -513,12 +614,16 @@
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ key, value: inp.value }),
             });
-            addMsg('sys', r.unchanged ? `⚙️ ${key}: kept (masked)` : `⚙️ ${key} saved`);
+            addMsg('sys', r.unchanged ? `⚙️ ${meta[0]}: kept as-is (masked)` : `⚙️ ${meta[0]} saved`);
             refreshCfg();
-          } catch (e) { addMsg('sys', `${key} failed: ` + e.message); }
+          } catch (e) { addMsg('sys', `${meta[0]} failed: ` + e.message); }
           finally { btn.disabled = false; }
         };
-        row.append(k, inp, btn);
+        line1.append(k, inp, btn);
+        const line2 = document.createElement('div');
+        line2.className = 'nx';
+        line2.textContent = meta[1] ? `${key} — ${meta[1]}` : key;
+        row.append(line1, line2);
         rows.appendChild(row);
       }
     } catch (e) {
@@ -776,6 +881,7 @@
       await api('/api/skills'); // validates token
       hideOverlay();
       refreshHealth(); setInterval(refreshHealth, 15000);
+      refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
       refreshSessions();
       refreshAgents();

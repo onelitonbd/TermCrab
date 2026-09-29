@@ -24,6 +24,7 @@ function loadState(): DreamState {
   }
   return {};
 }
+export { loadState as readDreamState };
 
 function saveState(s: DreamState): void {
   ensureLayout();

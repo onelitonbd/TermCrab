@@ -18,6 +18,7 @@ import { speak } from './mobile/tts.js';
 import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
+import { statusReport } from './agent/status.js';
 import { resolveProvider } from './providers/index.js';
 import { MemoryStore } from './agent/memory.js';
 import { SkillStore } from './skills/loader.js';
@@ -26,31 +27,35 @@ import { SessionStore } from './agent/sessions.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
 
-const HELP = `🦀 TermCrab - the always-on AI agent that lives in your Termux
+const HELP = `🦀 TermCrab — your personal AI assistant that runs on your own device.
 
-Usage: termcrab <command> [options]
+Everything stays yours: the chats, the memory files, the settings.
 
-Commands:
-  onboard [--provider p --model m --api-key k --base-url u --telegram-token t --allow-user ids --name n --no-exec --non-interactive]
-  gateway [--host h --port p]        Run the gateway (HTTP API + SSE + channels)
-  supervisor                         Run gateway with auto-restart watchdog
-  agent [message...] [--as <agent>] [--session s] [--tier local]
-                           Chat one-shot or interactive REPL (/as <name>, /agents inside)
-  say <text>               Speak text aloud (termux-tts-speak / espeak / say ...)
-  doctor [--json]                    Diagnose the installation
-  heartbeat                          Run one proactive heartbeat tick now
-  dream [--force]                    Sleep on it: consolidate chat history into memory
-  wake [--keyword <word>]            Voice loop: say the keyword, then your command
-  skills [list|show <name>|import <path|git-url> [--force]]
-  memory [show|search <query>]       Inspect memory files (hybrid lexical + vector)
-  cron [ls|add --schedule s --prompt p [--name n] [--critical]|rm <id>|on <id>|off <id>|run <id>]
-  boot [install|status]              Termux:Boot auto-start management
-  config [path|get <k>|set <k> <v>|list]
-  version                            Print version
-  help                               This help
+Start here (the 5 commands most people ever need):
+  termcrab status           plain-English overview: brain, memory, schedule, battery
+  termcrab agent "ask..."   talk to your assistant (no message = open a chat session)
+  termcrab gateway          start the web control panel (open the printed address in a browser)
+  termcrab dream            "sleep on it" — turn today's chats into long-term memory
+  termcrab doctor           health check: tells you what's broken and exactly how to fix it
+
+Everyday extras:
+  termcrab agent "msg" --as <name>   talk to a named agent (workspace/agents/<name>/SOUL.md)
+  termcrab agent "msg" --tier local  run this one task on your own local model, if set up
+  termcrab say <text>                speak text aloud
+  termcrab wake                      voice mode: say the keyword, then say your command
+  termcrab memory [show|search ...]  look inside memory
+  termcrab skills [list|import ...]  add extra abilities (skill folders, git repos)
+  termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
+  termcrab heartbeat                 run one self-check right now
+  termcrab boot [install|status]     start automatically when the phone boots
+  termcrab config [get|set|list]     change settings (same settings live in the web panel)
+  termcrab supervisor                start the gateway with auto-restart (always-on mode)
+  termcrab onboard                   first-time setup wizard
+      options: --provider p --model m --api-key k --base-url u --telegram-token t
+               --allow-user ids --name n --no-exec --non-interactive
+  termcrab version | help
 
 Examples:
-  termcrab onboard --non-interactive --provider anthropic --model claude-sonnet-4-5 --api-key sk-ant-...
   termcrab agent "what can you do?"
   termcrab config set channels.telegram.allowedUserIds [123456789]
 `;
@@ -180,8 +185,10 @@ export async function main(argv: string[]): Promise<void> {
         host: values.host,
         port: values.port ? Number(values.port) : undefined,
       });
-      const label = `${config.gateway.host}:${handle.port}`;
-      log.info(`gateway listening on http://${label}/  (provider: ${providerLabel(config)})`);
+      const boundHost = values.host ?? config.gateway.host;
+      const openHost = boundHost === '0.0.0.0' || boundHost === '::' ? 'localhost' : boundHost;
+      log.info(`gateway listening on http://${openHost}:${handle.port}/  (provider: ${providerLabel(config)})`);
+      if (openHost !== boundHost) log.info('openable from other devices on this network (use this machine\'s IP address)');
       log.info(`control UI token: ${config.gateway.token}`);
       log.info('press Ctrl+C to stop');
 
@@ -461,6 +468,12 @@ export async function main(argv: string[]): Promise<void> {
       }
       console.error(`unknown cron subcommand: ${sub}`);
       process.exitCode = 1;
+      return;
+    }
+
+    case 'status': {
+      const config = loadConfig();
+      console.log(await statusReport(config));
       return;
     }
 

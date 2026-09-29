@@ -74,6 +74,7 @@ Then open the control UI at `http://127.0.0.1:7788/` (token printed by
 ## CLI
 
 ```
+termcrab status         plain-English overview: brain, memory, schedule, battery
 termcrab onboard        setup wizard (provider, model, telegram, name)
 termcrab gateway        run the gateway (HTTP API + SSE + channels + heartbeat + cron)
 termcrab supervisor     run the gateway with auto-restart watchdog

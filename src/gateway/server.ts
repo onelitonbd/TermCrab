@@ -19,7 +19,8 @@ import { AgentCtx, runTurn, providerLabel } from '../agent/loop.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
 import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
-import { runDream, startDreamScheduler } from '../agent/dream.js';
+import { runDream, startDreamScheduler, readDreamState } from '../agent/dream.js';
+import { countMemoryFacts } from '../agent/status.js';
 import { resolveProvider } from '../providers/index.js';
 import { SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
@@ -565,13 +566,22 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             version: version(),
             provider: providerLabel(config),
             channels: { telegram: Boolean(telegram), whatsapp: Boolean(whatsapp) },
-            dream: { enabled: config.dream.enabled, everyHours: config.dream.everyHours },
+            dream: {
+              enabled: config.dream.enabled,
+              everyHours: config.dream.everyHours,
+              lastDreamAt: readDreamState().lastDreamAt ?? null,
+            },
+            heartbeat: {
+              enabled: config.heartbeat.enabled,
+              minutes: config.heartbeat.minutes,
+              pauseBelow: config.heartbeat.pauseBelow,
+            },
             local: {
               enabled: config.localProvider.enabled,
               model: config.localProvider.model,
               baseUrl: config.localProvider.baseUrl,
             },
-            memory: { ...memory.stats(), index: memory.indexStats() },
+            memory: { ...memory.stats(), index: memory.indexStats(), facts: countMemoryFacts() },
             agents: listAgents(),
             configPath: configPath(),
             termux: isTermux(),
