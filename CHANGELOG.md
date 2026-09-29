@@ -2,6 +2,31 @@
 
 # Changelog
 
+## 0.13.0 — 2026-09-29 (Every screen has its own address)
+
+The control panel now works like a real multi-page app: each screen, and
+each conversation, lives at its own URL you can bookmark, share, or put in
+a browser's back/forward history.
+
+### Page routes
+- `/` or `/chat` — the chat screen (main conversation)
+- `/status` — health, doctor, updates
+- `/memory` — search, facts, dream history
+- `/tools` — schedules, saved chats, voice, skills
+- `/settings` — settings and agents
+- `/chat/<conversation-id>` — opens that exact conversation
+  (e.g. `/chat/web:main`)
+- Switching tabs or opening a conversation updates the address bar;
+  browser back/forward walks through screens and chats; a fresh load of
+  any address lands on the right screen
+- Server change: any unknown page address serves the panel (single-file
+  UI routes on the client); unknown `/api/*` paths stay JSON 404 and
+  non-GET stays plain 404
+- Tests: 157 total (156 pass, 1 environment skip), including live checks
+  that all six page routes return the panel and API 404s stay JSON
+
+# Changelog
+
 ## 0.12.0 — 2026-09-29 (Three-dot menu, current-chat in the top bar)
 
 Top bar cleaned up per its owner's instructions.

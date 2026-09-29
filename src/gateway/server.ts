@@ -911,6 +911,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
+      // Page routes: /settings, /status, /memory, /tools, /chat/<id>, ...
+      // all serve the single-file control UI, which routes client-side.
+      if (req.method === 'GET') {
+        serveFile(res, path.join(uiDir(), 'index.html'));
+        return;
+      }
       res.writeHead(404, { 'content-type': 'text/plain' }).end('not found');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

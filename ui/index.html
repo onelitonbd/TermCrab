@@ -877,7 +877,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $('log');
-  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null };
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, pendingSession: null };
   const currentSession = () => $('session').value || 'web:main';
 
   function addMsg(cls, text) {
@@ -1010,7 +1010,7 @@
     try {
       const data = await api('/api/sessions');
       const sel = $('session');
-      const keep = sel.value || 'web:main';
+      const keep = state.pendingSession || sel.value || 'web:main';
       const opts = [];
       const seen = new Set();
       for (const s of data.sessions || []) {
@@ -1028,6 +1028,11 @@
       state.sessions = data.sessions || [];
       renderHistory(state.sessions);
       updateChatLabel();
+      if (state.pendingSession) {
+        const want = state.pendingSession;
+        state.pendingSession = null;
+        if (sel.value === want) loadSession(want);
+      }
     } catch { /* non-fatal */ }
   }
 
@@ -1080,6 +1085,7 @@
   $('session').addEventListener('change', () => {
     loadSession($('session').value);
     renderHistory(state.sessions);
+    pushRoute(pathForView('chat'));
   });
 
   // ---- Cron management ----
@@ -1733,6 +1739,7 @@
       addMsg('sys', `Renamed "${sel}" to "${to}"`);
       switchView('chat');
       $('session').value = to;
+      pushRoute(pathForView('chat'));
       refreshSessions(); refreshSessPanel();
     } catch (e) { addMsg('sys', 'rename failed: ' + e.message); }
   };
@@ -1786,11 +1793,45 @@
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'chat') log.scrollTop = log.scrollHeight;
+    pushRoute(pathForView(name));
   }
   document.querySelectorAll('.nav [data-goto]').forEach((b) => {
     b.onclick = () => switchView(b.dataset.goto);
   });
-  switchView('chat');
+  // ---- Page routes: /status /memory /tools /settings /chat/<id> ----
+  let applyingRoute = false;
+  function pathForView(name) {
+    if (name !== 'chat') return '/' + name;
+    const id = state.pendingSession || currentSession();
+    return !id || id === 'web:main' ? '/' : '/chat/' + encodeURIComponent(id);
+  }
+  function pushRoute(target) {
+    if (!applyingRoute && location.pathname !== target) history.pushState(null, '', target);
+  }
+  function routeTo(path) {
+    applyingRoute = true;
+    try {
+      const chat = path.match(/^\/chat\/(.+)$/);
+      if (chat) {
+        let id = chat[1];
+        try { id = decodeURIComponent(id); } catch { /* keep raw */ }
+        state.pendingSession = id;
+        switchView('chat');
+      } else if (path === '/' || path === '/chat' || path === '/index.html') {
+        switchView('chat');
+      } else {
+        const v = path.replace(/^\//, '');
+        switchView(VIEWS.includes(v) ? v : 'chat');
+      }
+    } finally {
+      applyingRoute = false;
+    }
+  }
+  window.addEventListener('popstate', () => {
+    routeTo(location.pathname);
+    if (state.pendingSession) refreshSessions();
+  });
+  routeTo(location.pathname);
 
   // ---- Sidebar drawer + chat history ----
   function closeNav() {

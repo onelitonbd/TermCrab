@@ -186,6 +186,22 @@ test('web control parity API', async (t) => {
       assert.equal(typeof b.data.termux, 'boolean');
     });
 
+    await t.test('page routes serve the control UI (SPA fallback)', async () => {
+      for (const p of ['/', '/settings', '/status', '/memory', '/tools', '/chat']) {
+        const res = await fetch(base + p);
+        assert.equal(res.status, 200, p);
+        const html = await res.text();
+        assert.match(html, /<title>TermCrab<\/title>/, p);
+      }
+      // unknown API paths stay JSON 404 — never HTML
+      const api404 = await fetch(base + '/api/nope', { headers: { authorization: 'Bearer test-token' } });
+      assert.equal(api404.status, 404);
+      assert.match(api404.headers.get('content-type') || '', /json/);
+      // unknown non-GET stays plain 404
+      const post404 = await fetch(base + '/settings', { method: 'POST' });
+      assert.equal(post404.status, 404);
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');
