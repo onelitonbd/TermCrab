@@ -3,25 +3,37 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#12302f" />
+<meta name="theme-color" content="#0e1015" />
 <title>TermCrab</title>
 <style>
-  :root {
-    color-scheme: light;
-    --mist: #eef2f0;
-    --enamel: #ffffff;
-    --inset: #f6f8f7;
-    --ink: #12302f;
-    --ink-2: #5c6b69;
-    --tide: #0e6a5f;
-    --tide-deep: #0a544b;
-    --line: #d7dedc;
-    --alert: #a63a2e;
-    --pass: #2e7d4f;
-    --warn: #8a6a1f;
-    --r-s: 10px;
-    --r-m: 14px;
-    --r-l: 20px;
+:root {
+    color-scheme: dark;
+    /* OpenClaw control-UI token family (their ui/docs/design-system/color-tokens.md) */
+    --bg: #0e1015;
+    --bg-accent: #13151b;
+    --elevated: #191c24;
+    --card: #161920;
+    --fill: #1f2330;
+    --line: #1e2028;
+    --line-strong: #2e3040;
+    --line-hover: #3e4050;
+    --text: #bcbcc0;
+    --strong: #f4f4f5;
+    --muted: #8b8b94;
+    --accent: #ff5c5c;
+    --accent-hover: #ff7070;
+    --primary: #d13c3c;
+    --teal: #14b8a6;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --destructive: #d32f2f;
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+    --ring: 0 0 0 2px var(--bg), 0 0 0 3px rgba(255, 92, 92, 0.8);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -30,8 +42,8 @@
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    background: var(--mist);
-    color: var(--ink);
+    background: var(--bg);
+    color: var(--text);
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
@@ -42,22 +54,24 @@
   }
   [hidden] { display: none !important; }
 
-  /* ---- station plate (the one bold element) ---- */
+  /* ---- gateway topbar (OpenClaw shell: 58 px mobile chrome) ---- */
   header {
-    background: var(--ink);
-    color: #f2f7f5;
-    padding: 12px 16px 13px;
+    background: var(--bg-accent);
+    color: var(--strong);
+    padding: 10px 14px;
+    min-height: 58px;
     display: flex;
     align-items: center;
     gap: 11px;
     flex-shrink: 0;
+    border-bottom: 1px solid var(--line);
   }
   header svg { flex-shrink: 0; }
   .plate { min-width: 0; flex: 1; }
-  .plate h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .plate h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; color: var(--strong); }
   #health {
     font-size: 12px;
-    color: #9db8b3;
+    color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -67,12 +81,12 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
-    color: #c3d5d1;
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 999px;
+    color: var(--muted);
+    background: var(--fill);
+    border: 1px solid var(--line-strong);
+    border-radius: 9999px;
     padding: 5px 11px 5px 9px;
     white-space: nowrap;
   }
@@ -81,10 +95,10 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #7d948f;
+    background: var(--muted);
   }
-  #pill.ok { color: #eafff4; border-color: rgba(120, 220, 170, 0.35); }
-  #pill.ok::before { background: #49c78a; box-shadow: 0 0 0 3px rgba(73, 199, 138, 0.18); }
+  #pill.ok { color: var(--strong); border-color: rgba(34, 197, 94, 0.4); }
+  #pill.ok::before { background: var(--ok); box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
 
   /* ---- screens ---- */
   #views { flex: 1; min-height: 0; }
@@ -101,20 +115,20 @@
     gap: 6px;
     align-items: center;
     padding: 9px 10px;
-    background: var(--enamel);
+    background: var(--bg-accent);
     border-bottom: 1px solid var(--line);
     flex-wrap: wrap;
     flex-shrink: 0;
   }
   #chatBar .sp { flex: 1; }
-  #chatBar button { min-height: 34px; padding: 0 11px; font-size: 12.5px; border-radius: var(--r-s); }
+  #chatBar button { min-height: 34px; padding: 0 11px; font-size: 12.5px; border-radius: var(--r-sm); }
   #session, #agentSel {
     height: 34px;
     max-width: 34%;
-    background: var(--inset);
-    color: var(--ink);
-    border: 1px solid var(--line);
-    border-radius: var(--r-s);
+    background: var(--fill);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
     padding: 0 6px;
     font-size: 13px;
     min-width: 0;
@@ -140,20 +154,22 @@
   }
   .msg.user {
     align-self: flex-end;
-    background: var(--ink);
-    color: #f2f7f5;
+    background: rgba(255, 92, 92, 0.12);
+    border: 1px solid rgba(255, 92, 92, 0.3);
+    color: var(--strong);
     border-radius: 16px 16px 5px 16px;
   }
   .msg.bot {
     align-self: flex-start;
-    background: var(--enamel);
+    background: var(--card);
     border: 1px solid var(--line);
+    color: var(--text);
     border-radius: 16px 16px 16px 5px;
   }
   .msg.sys {
     align-self: center;
     text-align: center;
-    color: var(--ink-2);
+    color: var(--muted);
     font-size: 12.5px;
     background: transparent;
     max-width: 92%;
@@ -161,21 +177,21 @@
   .msg.welcome {
     align-self: stretch;
     max-width: 100%;
-    background: var(--enamel);
+    background: var(--card);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--tide);
-    border-radius: 6px var(--r-m) var(--r-m) 6px;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px var(--r-lg) var(--r-lg) 4px;
     text-align: left;
-    color: var(--ink);
+    color: var(--text);
     font-size: 14px;
   }
-  .tools { align-self: flex-start; color: var(--ink-2); font-size: 12.5px; padding: 0 4px; }
-  .err { color: var(--alert) !important; }
+  .tools { align-self: flex-start; color: var(--muted); font-size: 12.5px; padding: 0 4px; }
+  .err { color: var(--danger) !important; }
   #typing {
     min-height: 20px;
     padding: 0 14px 4px;
     font-size: 12.5px;
-    color: var(--ink-2);
+    color: var(--muted);
     flex-shrink: 0;
   }
 
@@ -184,7 +200,7 @@
     display: none;
     gap: 8px;
     padding: 9px 10px 10px;
-    background: var(--enamel);
+    background: var(--card);
     border-top: 1px solid var(--line);
     align-items: flex-end;
     flex-shrink: 0;
@@ -195,71 +211,77 @@
     resize: none;
     min-height: 46px;
     max-height: 132px;
-    border-radius: var(--r-m);
-    background: var(--inset);
-    border: 1px solid var(--line);
-    color: var(--ink);
+    border-radius: var(--r-lg);
+    background: var(--fill);
+    border: 1px solid var(--line-strong);
+    color: var(--strong);
     padding: 12px 13px;
     font-size: 16px;
     line-height: 1.4;
     outline: none;
   }
-  #composer textarea:focus { border-color: var(--tide); background: var(--enamel); }
+  #composer textarea:focus { border-color: var(--line-hover); box-shadow: var(--ring); }
   #send {
-    background: var(--tide);
-    color: #fff;
+    background: var(--primary);
+    color: #fafafa;
     font-weight: 600;
     border: 0;
-    border-radius: var(--r-m);
+    border-radius: var(--r-lg);
     padding: 0 18px;
     min-height: 46px;
     font-size: 15px;
     cursor: pointer;
   }
-  #send:active { background: var(--tide-deep); }
+  #send:active { background: var(--accent); color: #1a0b0b; }
 
   /* ---- controls ---- */
   button {
-    background: var(--tide);
-    color: #fff;
+    background: var(--primary);
+    color: #fafafa;
     font-weight: 600;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--r-md);
     padding: 0 15px;
     min-height: 44px;
     cursor: pointer;
     font-size: 14.5px;
     font-family: inherit;
   }
+  button:hover { background: var(--accent); color: #1a0b0b; }
   button.ghost {
-    background: var(--enamel);
-    color: var(--ink);
-    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line-strong);
     font-weight: 500;
   }
-  button.ghost:active { background: var(--inset); }
+  button.ghost:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
   button:disabled { opacity: 0.5; cursor: default; }
-  button.danger { color: var(--alert); }
-  :focus-visible { outline: 2px solid var(--tide); outline-offset: 2px; }
-  header :focus-visible, body[data-view] .rail button.on:focus-visible { outline-color: #8fd8cd; }
+  button:disabled:hover { background: var(--primary); color: #fafafa; }
+  button.ghost:disabled:hover { background: transparent; color: var(--text); }
+  button.danger { color: var(--danger); }
+  button.danger:hover { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
+  :focus-visible { outline: none; box-shadow: var(--ring); }
+  header :focus-visible, .rail button.on:focus-visible { box-shadow: 0 0 0 2px var(--bg-accent), 0 0 0 3px rgba(255, 112, 112, 0.9); }
 
   input[type="text"], input[type="password"], input[type="search"], select, textarea {
     font-size: 16px;
     font-family: inherit;
-    color: var(--ink);
-    background: var(--enamel);
-    border: 1px solid var(--line);
-    border-radius: var(--r-s);
+    color: var(--strong);
+    background: var(--fill);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
     padding: 10px 11px;
     min-width: 0;
   }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--tide); }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--line-hover); box-shadow: var(--ring); }
+  select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 26px; }
 
   /* ---- panels ---- */
   details.panel {
-    background: var(--enamel);
+    background: var(--card);
     border: 1px solid var(--line);
-    border-radius: var(--r-m);
+    border-radius: var(--r-lg);
     margin-bottom: 10px;
     overflow: hidden;
   }
@@ -269,6 +291,7 @@
     padding: 14px 15px;
     font-size: 15px;
     font-weight: 600;
+    color: var(--strong);
     letter-spacing: -0.01em;
     user-select: none;
     display: flex;
@@ -282,8 +305,8 @@
     content: "";
     width: 7px;
     height: 7px;
-    border-right: 1.8px solid var(--ink-2);
-    border-bottom: 1.8px solid var(--ink-2);
+    border-right: 1.8px solid var(--muted);
+    border-bottom: 1.8px solid var(--muted);
     transform: rotate(45deg);
     transition: transform 0.15s ease;
     flex-shrink: 0;
@@ -291,6 +314,7 @@
   }
   details.panel[open] > summary { border-bottom: 1px solid var(--line); }
   details.panel[open] > summary::after { transform: rotate(-135deg); margin-top: -4px; }
+  details.panel > summary:hover { background: rgba(255, 255, 255, 0.02); }
   .pBody { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; }
   #cronList, #cronForm { padding-left: 14px; padding-right: 14px; }
   #cronList { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
@@ -300,39 +324,39 @@
   #cronForm input[name="prompt"] { flex: 1; min-width: 150px; }
 
   .pRow {
-    background: var(--inset);
+    background: var(--bg-accent);
     border: 1px solid var(--line);
-    border-radius: var(--r-s);
+    border-radius: var(--r-md);
     padding: 9px 10px;
     display: flex;
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
   }
-  .pRow .k { font-weight: 600; font-size: 13.5px; min-width: 150px; flex-shrink: 0; }
-  .pRow .nx, .nx { color: var(--ink-2); font-size: 12.5px; line-height: 1.45; }
+  .pRow .k { font-weight: 600; font-size: 13.5px; min-width: 150px; flex-shrink: 0; color: var(--strong); }
+  .pRow .nx, .nx { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
   .pRow .sp, .sp { flex: 1; }
   .pRow.stack { flex-direction: column; align-items: stretch; gap: 5px; }
   .pRow.stack .line { display: flex; gap: 7px; align-items: center; }
   .pRow.stack .line input { flex: 1; }
-  .pRow button, .pBody button { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+  .pRow button, .pBody button { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: var(--r-sm); }
   .pBody > input[type="text"], .pBody > input[type="search"] { width: 100%; }
   .pBar { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
   .pBar input[type="text"], .pBar input[type="search"] { flex: 1; }
-  .pNote { color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
+  .pNote { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
   .pBody textarea {
     width: 100%;
     min-height: 110px;
     max-height: 300px;
-    background: var(--inset);
+    background: var(--fill);
     font-size: 13.5px;
     line-height: 1.55;
     resize: vertical;
   }
   .pBody pre {
-    background: var(--inset);
+    background: var(--fill);
     border: 1px solid var(--line);
-    border-radius: var(--r-s);
+    border-radius: var(--r-md);
     padding: 10px 11px;
     overflow-x: auto;
     white-space: pre-wrap;
@@ -340,14 +364,15 @@
     max-height: 260px;
     overflow-y: auto;
     margin: 0;
+    color: var(--text);
   }
-  .how { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--ink-2); }
-  .how b { color: var(--ink); }
+  .how { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+  .how b { color: var(--strong); }
 
   .cronRow, .sessRow {
-    background: var(--inset);
+    background: var(--bg-accent);
     border: 1px solid var(--line);
-    border-radius: var(--r-s);
+    border-radius: var(--r-md);
     padding: 9px 10px;
     display: flex;
     gap: 8px;
@@ -355,55 +380,44 @@
     flex-wrap: wrap;
     font-size: 13px;
   }
-  .cronRow .nm, .sessRow .id { font-weight: 600; }
-  .cronRow .sc { font-variant-numeric: tabular-nums; color: var(--tide); font-weight: 600; font-size: 12.5px; }
-  .cronRow .nx, .sessRow .meta { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
-  .cronRow button, .sessRow button { min-height: 34px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
+  .cronRow .nm, .sessRow .id { font-weight: 600; color: var(--strong); }
+  .cronRow .sc { font-variant-numeric: tabular-nums; color: var(--teal); font-weight: 600; font-size: 12.5px; }
+  .cronRow .nx, .sessRow .meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .cronRow button, .sessRow button { min-height: 34px; padding: 0 10px; font-size: 12.5px; border-radius: var(--r-sm); }
   .cronRow.off { opacity: 0.55; }
   .hit {
-    background: var(--inset);
+    background: var(--bg-accent);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--tide);
-    border-radius: 4px var(--r-s) var(--r-s) 4px;
+    border-left: 3px solid var(--accent);
+    border-radius: 3px var(--r-md) var(--r-md) 3px;
     padding: 8px 10px;
     font-size: 13px;
     margin-bottom: 7px;
   }
-  .hit .f { color: var(--tide); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+  .hit .f { color: var(--accent); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
   .dreamRow {
-    background: var(--inset);
+    background: var(--bg-accent);
     border: 1px solid var(--line);
-    border-radius: var(--r-s);
+    border-radius: var(--r-md);
     padding: 8px 10px;
     font-size: 13px;
     line-height: 1.5;
     margin-bottom: 7px;
   }
-  .dreamRow .d { color: var(--tide); font-weight: 600; font-size: 12px; margin-right: 8px; font-variant-numeric: tabular-nums; }
-  .st { font-size: 11.5px; font-weight: 700; border-radius: 5px; padding: 2px 7px; flex-shrink: 0; }
-  .doc-ok { color: var(--pass); background: rgba(46, 125, 79, 0.1); }
-  .doc-warn { color: var(--warn); background: rgba(138, 106, 31, 0.1); }
-  .doc-fail { color: var(--alert); background: rgba(166, 58, 46, 0.1); }
-  .doc-info { color: var(--ink-2); background: rgba(92, 107, 105, 0.1); }
-  .okc { color: var(--pass); } .warnc { color: var(--warn); } .failc { color: var(--alert); } .infoc { color: var(--ink-2); }
+  .dreamRow .d { color: var(--teal); font-weight: 600; font-size: 12px; margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .st { font-size: 11.5px; font-weight: 700; border-radius: var(--r-sm); padding: 2px 7px; flex-shrink: 0; }
+  .doc-ok { color: var(--ok); background: rgba(34, 197, 94, 0.1); }
+  .doc-warn { color: var(--warn); background: rgba(245, 158, 11, 0.1); }
+  .doc-fail { color: var(--danger); background: rgba(248, 113, 113, 0.1); }
+  .doc-info { color: var(--info); background: rgba(96, 165, 250, 0.1); }
+  .okc { color: var(--ok); } .warnc { color: var(--warn); } .failc { color: var(--danger); } .infoc { color: var(--muted); }
   .hidden { display: none !important; }
 
-  /* settings rows: label / input / save must wrap on narrow screens */
-  .pRow > div:first-child {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-    width: 100%;
-  }
-  .pRow > div:first-child input { flex: 1 1 130px; min-width: 0; }
-  .pRow > div:first-child button { flex-shrink: 0; }
-
-  /* ---- bottom rail ---- */
+  /* ---- bottom rail (mobile stand-in for the OpenClaw sidebar) ---- */
   .rail {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    background: var(--enamel);
+    background: var(--bg-accent);
     border-top: 1px solid var(--line);
     flex-shrink: 0;
     padding-bottom: env(safe-area-inset-bottom);
@@ -412,7 +426,7 @@
     background: transparent;
     border: 0;
     border-radius: 0;
-    color: var(--ink-2);
+    color: var(--muted);
     font-size: 11.5px;
     font-weight: 600;
     min-height: 54px;
@@ -420,7 +434,7 @@
     letter-spacing: -0.01em;
     position: relative;
   }
-  .rail button.on { color: var(--ink); }
+  .rail button.on { color: var(--strong); }
   .rail button.on::before {
     content: "";
     position: absolute;
@@ -429,15 +443,17 @@
     right: 22%;
     height: 3px;
     border-radius: 0 0 3px 3px;
-    background: var(--tide);
+    background: var(--accent);
   }
-  .rail button:active { background: var(--inset); }
+  .rail button:hover { color: var(--text); }
+  .rail button.on:hover { color: var(--strong); }
+  .rail button:active { background: var(--fill); }
 
   /* ---- sheets (token gate + wizard) ---- */
   #overlay, #wiz {
     position: fixed;
     inset: 0;
-    background: rgba(18, 48, 47, 0.55);
+    background: rgba(5, 7, 10, 0.78);
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -446,22 +462,23 @@
     animation: fade 0.15s ease-out;
   }
   #overlay .card, #wiz .card {
-    background: var(--enamel);
-    border-radius: var(--r-l) var(--r-l) 0 0;
+    background: var(--elevated);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
     padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
     width: 100%;
     max-width: 640px;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--line-strong);
   }
-  #overlay h2 { margin: 6px 0 4px; font-size: 20px; letter-spacing: -0.01em; }
-  #overlay p, #wiz p { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
+  #overlay h2 { margin: 6px 0 4px; font-size: 20px; letter-spacing: -0.01em; color: var(--strong); }
+  #overlay p, #wiz p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
   #overlay input, #wiz input, #wiz select { width: 100%; margin: 12px 0; }
   #overlay button { width: 100%; min-height: 48px; }
   #wiz .card { max-height: 92vh; overflow-y: auto; }
-  #wiz h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; }
+  #wiz h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; color: var(--strong); }
   #wiz label.pNote { display: block; margin: 4px 0; }
   #wiz .pBar { margin-top: 14px; }
   #wiz .pBar .sp { flex: 1; }
+  #wiz #wizErr { color: var(--danger) !important; }
 
   @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -478,14 +495,14 @@
 <body>
 <header>
   <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-    <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#f2f7f5" stroke-width="1.7"/>
-    <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M3.2 7.4 6.6 9.6" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round"/>
-    <path d="M22.5 15.5 26 12.5 27.5 8.8" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M28.8 7.4 25.4 9.6" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round"/>
-    <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#f2f7f5" stroke-width="1.6" stroke-linecap="round"/>
-    <circle cx="13.5" cy="16.5" r="1.1" fill="#f2f7f5"/>
-    <circle cx="18.5" cy="16.5" r="1.1" fill="#f2f7f5"/>
+    <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#ff5c5c" stroke-width="1.7"/>
+    <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M3.2 7.4 6.6 9.6" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M22.5 15.5 26 12.5 27.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28.8 7.4 25.4 9.6" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#ff5c5c" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="13.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
+    <circle cx="18.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
   </svg>
   <div class="plate">
     <h1>TermCrab</h1>
@@ -700,7 +717,7 @@
         <button id="wizFinish" class="hidden">Finish</button>
         <button id="wizCancel" class="ghost">Close</button>
       </div>
-      <div class="pNote" id="wizErr" style="color:var(--alert)"></div>
+      <div class="pNote" id="wizErr" style="color:var(--danger)"></div>
     </div>
   </div>
 </div>
@@ -708,11 +725,11 @@
 <div id="overlay">
   <div class="card">
     <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#12302f" stroke-width="1.7"/>
-      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#12302f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#12302f" stroke-width="1.6" stroke-linecap="round"/>
-      <circle cx="13.5" cy="16.5" r="1.1" fill="#12302f"/>
-      <circle cx="18.5" cy="16.5" r="1.1" fill="#12302f"/>
+      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#ff5c5c" stroke-width="1.7"/>
+      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#ff5c5c" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="13.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
+      <circle cx="18.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
     </svg>
     <h2>TermCrab</h2>
     <p>Paste the gateway token (printed in the terminal, or run <code>termcrab config get gateway.token</code>).</p>

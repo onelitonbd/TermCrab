@@ -2,6 +2,35 @@
 
 # Changelog
 
+## 0.10.0 — 2026-09-29 (OpenClaw look, TermCrab soul)
+
+Reskinned the control panel to the OpenClaw Control UI's own design system,
+pulled from their published `ui/docs/design-system/color-tokens.md` — exact
+tokens, not eyeballing. Structure stays TermCrab's mobile shell; the visual
+language is now the one OpenClaw users know.
+
+### Look (OpenClaw token family, dark)
+- Page `#0e1015`, nav chrome `#13151b`, cards `#161920`, elevated sheets
+  `#191c24`, fills `#1f2330`; borders `#1e2028` / `#2e3040`
+- Text `#bcbcc0` body, `#f4f4f5` strong, `#8b8b94` muted (their AA-audited set)
+- Coral accent `#ff5c5c` for focus rings and the active tab indicator;
+  filled actions `#d13c3c` (their primary, AA on white ink); teal `#14b8a6`
+  for schedules and dream dates
+- Semantic chips: ok `#22c55e`, warn `#f59e0b`, fail `#f87171`,
+  info `#60a5fa` (doctor results)
+- Their spacing/radius scales (4-40 px, 6/10/14/20) and their focus-ring
+  recipe; 58 px top bar per their mobile layout rules
+- Health pill mirrors their gateway "Health OK" indicator (green dot)
+- Crab line art follows the coral brand color
+- Still: zero emojis, bottom tab rail, bottom sheets, 16 px inputs,
+  reduced-motion honored — 0.9.0 structure untouched
+
+### Tests
+- 156 total, 155 pass, 1 environment skip; served page scanned: zero emojis,
+  no undefined CSS variables, JS syntax check clean
+
+# Changelog
+
 ## 0.9.0 — 2026-09-29 (Mobile control panel, redesigned)
 
 The web panel was rebuilt as a phone-first interface, following Anthropic's
