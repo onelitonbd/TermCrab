@@ -33,6 +33,9 @@ import { parseAgentPrefix } from '../channels/telegram.js';
 import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
+import { WakeService } from './wake-service.js';
+import { normalizeProvider, seedWorkspace } from '../onboard.js';
+import { DEFAULT_MODEL_HINTS, generateToken } from '../core/config.js';
 import { listenOnce } from '../mobile/stt.js';
 import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
@@ -207,6 +210,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const agent: AgentCtx = { config, memory, skills, sessions, localProvider };
+
+  // ---- Wake loop (voice or typed), visible to the panel over SSE ----
+  const wake = new WakeService({
+    onCommand: async (text: string) => {
+      const reply = await runTurn(agent, {
+        sessionId: 'wake:main',
+        userMessage: text,
+        channel: 'voice',
+        onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+      });
+      return reply.trim();
+    },
+    speak: async (text: string) => {
+      const r = await speak(text);
+      if (!r.ok) log.debug('wake tts unavailable:', r.error ?? '');
+    },
+    emit: (ev) => bus.emit(ev as unknown as BusEvent),
+  });
 
   // ---- Telegram (optional) ----
   let telegram: TelegramChannel | null = null;
@@ -748,6 +769,85 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        if (req.method === 'GET' && pathname === '/api/wake') {
+          json(res, 200, wake.status());
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/wake/start') {
+          const body = await readJsonBody(req);
+          const r = await wake.start(typeof body?.keyword === 'string' && body.keyword.trim() ? body.keyword.trim() : undefined);
+          json(res, 200, r);
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/wake/stop') {
+          json(res, 200, wake.stop());
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/wake/feed') {
+          const body = await readJsonBody(req);
+          const text = typeof body?.text === 'string' ? body.text.trim() : '';
+          if (!text) { json(res, 400, { error: 'say something first (text is required)' }); return; }
+          json(res, 200, wake.feed(text));
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/update') {
+          // Manual "check for updates" button — never auto-updates.
+          const r = await checkForUpdate(version());
+          if (r.ok && r.updateAvailable) {
+            bus.emit({ type: 'update', latest: r.latest, current: r.current, url: r.url });
+          }
+          json(res, 200, r);
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/onboard') {
+          // Web setup wizard: apply in one shot, same fields as `termcrab onboard`.
+          const body = await readJsonBody(req);
+          if (body && typeof body.provider === 'string') {
+            config.provider.type = normalizeProvider(body.provider);
+            if (config.provider.type === 'mock') {
+              config.provider = { type: 'mock', model: DEFAULT_MODEL_HINTS.mock || 'mock-1' };
+            } else {
+              if (typeof body.apiKey === 'string' && body.apiKey.trim()) config.provider.apiKey = body.apiKey.trim();
+              if (typeof body.baseUrl === 'string' && body.baseUrl.trim()) config.provider.baseUrl = body.baseUrl.trim();
+              if (typeof body.model === 'string' && body.model.trim()) {
+                config.provider.model = body.model.trim();
+              } else if (!config.provider.model || config.provider.model === 'mock-1') {
+                config.provider.model = DEFAULT_MODEL_HINTS[config.provider.type] || config.provider.model;
+              }
+            }
+          }
+          if (body && typeof body.name === 'string' && body.name.trim()) config.agent.name = body.name.trim().slice(0, 40);
+          if (body && typeof body.allowExec === 'boolean') config.agent.allowExec = body.allowExec;
+          if (body && typeof body.port === 'string' && /^\d+$/.test(body.port.trim())) {
+            const n = Number(body.port.trim());
+            if (n > 0 && n < 65536) config.gateway.port = n;
+          }
+          if (body && typeof body.telegramToken === 'string' && body.telegramToken.trim()) {
+            const ids = Array.isArray(body.telegramUsers)
+              ? body.telegramUsers.map((u: unknown) => Number(u)).filter((n: number) => Number.isFinite(n) && n > 0)
+              : [];
+            config.channels.telegram = {
+              token: body.telegramToken.trim(),
+              allowedUserIds: ids,
+              ...(config.channels.telegram?.notifyChatId ? { notifyChatId: config.channels.telegram.notifyChatId } : {}),
+            };
+          }
+          if (!config.gateway.token) config.gateway.token = generateToken();
+          saveConfig(config);
+          seedWorkspace(config.agent.name);
+          json(res, 200, {
+            ok: true,
+            setupNeeded: config.provider.type === 'mock' || !config.provider.apiKey,
+            providerType: config.provider.type,
+            model: config.provider.model,
+            name: config.agent.name,
+            path: configPath(),
+          });
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/boot') {
           json(res, 200, { ...bootStatus(), termux: isTermux() });
           return;
@@ -786,6 +886,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       stopHeartbeat();
       stopCron();
       stopDream();
+      wake.stop();
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();
       if (whatsapp) await whatsapp.stop();

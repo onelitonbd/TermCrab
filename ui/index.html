@@ -118,6 +118,18 @@
     padding: 12px; border-radius: 10px; font: inherit; margin: 12px 0;
   }
   #overlay p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
+  #wiz {
+    position: fixed; inset: 0; background: rgba(5,8,12,.92); display: flex;
+    align-items: center; justify-content: center; padding: 20px; z-index: 21;
+  }
+  #wiz .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; width: min(460px, 100%); }
+  #wiz h3 { color: var(--text); font-size: 16px; }
+  #wiz p { color: var(--muted); font-size: 13.5px; margin: 4px 0 10px; }
+  #wiz input, #wiz select {
+    width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    padding: 11px 12px; border-radius: 10px; font: inherit; margin: 6px 0; box-sizing: border-box;
+  }
+  #wiz select { height: 44px; }
   .hidden { display: none !important; }
   #typing { color: var(--muted); font-size: 13px; padding: 0 16px 6px; min-height: 18px; font-style: italic; }
 </style>
@@ -140,6 +152,11 @@
   <summary>❓ How this works (start here)</summary>
   <div class="pBody">
     <div class="pRow" id="liveStatus">loading status…</div>
+    <div class="pBar">
+      <button id="wizOpen" class="ghost">🧙‍♂️ Setup wizard</button>
+      <button id="updCheck" class="ghost">⬆️ Check for updates</button>
+      <span class="pNote" id="updInfo"></span>
+    </div>
     <div class="nx" style="line-height:1.7">
       🦀 <b>This is your crab.</b> Chat with it in the box below — it answers and does things on your machine.<br>
       ⚙️ <b>Settings</b> — everything you can change, named in plain words (the technical key is shown underneath — nothing is hidden).<br>
@@ -241,7 +258,16 @@
       <span class="pNote" id="bootInfo">boot: …</span>
       <button id="bootInstall" class="ghost">🚀 Install boot script</button>
     </div>
-    <div class="pNote">Wake loop (<code>termcrab wake</code>) stays CLI/phase-3 — it needs the mic STT session.</div>
+    <div class="pBar">
+      <button id="wakeStart" class="ghost">👂 Start wake loop</button>
+      <button id="wakeStop" class="ghost hidden">⏹ Stop wake loop</button>
+      <span class="pNote" id="wakeInfo">wake: off</span>
+    </div>
+    <div class="pBar">
+      <input type="text" id="wakeTxt" placeholder='type a wake command, e.g. "crab what time is it"' />
+      <button id="wakeGo" class="ghost">🎙 Try it</button>
+    </div>
+    <div class="pNote">The wake loop hears the keyword ("crab" by default), then your command in the next breath. Typed commands work too — no mic needed.</div>
   </div>
 </details>
 </div>
@@ -256,6 +282,50 @@
   </div>
   <textarea id="input" rows="1" placeholder="Tell your crab what to do…"></textarea>
   <button id="send">Send</button>
+</div>
+
+<div id="wiz" class="hidden">
+  <div class="card">
+    <div id="wizBody">
+      <div class="wizStep" data-step="1">
+        <h3 style="margin:0 0 4px">1/3 · Pick your AI brain</h3>
+        <p>This is who your crab talks to. You can change it any time in Settings.</p>
+        <select id="wizProvider">
+          <option value="anthropic">Anthropic Claude (needs an API key)</option>
+          <option value="openai">OpenAI / OpenRouter / Groq / Ollama (needs a key or local server)</option>
+          <option value="mock">Offline demo (no key — it does not really think)</option>
+        </select>
+        <input type="password" id="wizKey" placeholder="API key (leave empty for the offline demo)" autocomplete="off" />
+        <input type="text" id="wizModel" placeholder="Model (we'll fill in a good default)" />
+        <input type="text" id="wizBase" placeholder="Advanced: custom address (leave empty if unsure)" />
+      </div>
+      <div class="wizStep hidden" data-step="2">
+        <h3 style="margin:0 0 4px">2/3 · Name your crab</h3>
+        <p>It lives on your own device. You pick the name and how much it may do.</p>
+        <input type="text" id="wizName" placeholder="Name (e.g. Crabby)" maxlength="40" />
+        <label class="pNote" style="display:block;margin:6px 0"><input type="checkbox" id="wizExec" style="vertical-align:middle" /> let it run commands on this device (recommended)</label>
+        <input type="text" id="wizPort" placeholder="Panel port (default 7788)" inputmode="numeric" />
+      </div>
+      <div class="wizStep hidden" data-step="3">
+        <h3 style="margin:0 0 4px">3/3 · Telegram (optional)</h3>
+        <p>Talk to your crab from Telegram. Skip it now — you can add it later in Settings.</p>
+        <input type="password" id="wizTgToken" placeholder="Bot token from @BotFather (empty to skip)" autocomplete="off" />
+        <input type="text" id="wizTgUsers" placeholder="Your Telegram user id, comma separated" />
+      </div>
+      <div class="wizStep hidden" data-step="done">
+        <h3 style="margin:0 0 4px">✅ All set</h3>
+        <p id="wizDoneMsg">Saved. Say hello in the chat box — your crab is listening.</p>
+      </div>
+      <div class="pBar" style="margin-top:10px">
+        <button id="wizBack" class="ghost">← Back</button>
+        <span class="sp" style="flex:1"></span>
+        <button id="wizNext">Next →</button>
+        <button id="wizFinish" class="hidden">Finish</button>
+        <button id="wizCancel" class="ghost">✕ Close</button>
+      </div>
+      <div class="pNote" id="wizErr" style="color:var(--danger)"></div>
+    </div>
+  </div>
 </div>
 
 <div id="overlay">
@@ -353,6 +423,18 @@
     es.addEventListener('update', (e) => {
       const ev = JSON.parse(e.data);
       addMsg('sys', `⬆️ a newer TermCrab exists: v${ev.latest} (you have v${ev.current}) — run: git pull && npm install -g .`);
+      const ui = $('updInfo');
+      if (ui) ui.textContent = `v${ev.latest} available`;
+    });
+    es.addEventListener('wake', (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.state === 'started') { addMsg('sys', `👂 wake loop on — say "${ev.keyword}", then your command`); refreshWake(); }
+      else if (ev.state === 'stopped') { addMsg('sys', '👂 wake loop stopped'); refreshWake(); }
+      else if (ev.state === 'wake') addMsg('sys', `👂 keyword heard — waiting for your command…`);
+      else if (ev.state === 'command') addMsg('sys', `🎙️ heard: "${ev.text}"`);
+      else if (ev.state === 'reply') addMsg('bot', ev.reply || '(no reply)');
+      else if (ev.state === 'error') addMsg('sys', '⚠️ wake: ' + (ev.error || 'unknown problem'));
+      refreshWake();
     });
     es.onerror = () => { /* auto-reconnects */ };
   }
@@ -900,6 +982,132 @@
   };
   $('voicePanel').addEventListener('toggle', () => { if ($('voicePanel').open) refreshBoot(); });
 
+  // ---- Wake loop (phase 3) ----
+  async function refreshWake() {
+    const info = $('wakeInfo');
+    if (!info) return;
+    try {
+      const w = await api('/api/wake');
+      info.textContent = w.running
+        ? `wake: on · keyword "${w.keyword}" · ${w.commands} command(s)`
+        : (w.micReady ? 'wake: listening…' : 'wake: off');
+      $('wakeStart').classList.toggle('hidden', w.running);
+      $('wakeStop').classList.toggle('hidden', !w.running);
+    } catch (e) { info.textContent = 'wake: ' + e.message; }
+  }
+  $('wakeStart').onclick = async () => {
+    $('wakeStart').disabled = true;
+    try {
+      const r = await api('/api/wake/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      if (!r.ok) addMsg('sys', '👂 ' + r.error); // success is announced by the wake SSE event
+    } catch (e) { addMsg('sys', 'wake failed: ' + e.message); }
+    finally { $('wakeStart').disabled = false; refreshWake(); }
+  };
+  $('wakeStop').onclick = async () => {
+    try { await api('/api/wake/stop', { method: 'POST' }); }
+    catch (e) { addMsg('sys', 'stop failed: ' + e.message); }
+    refreshWake();
+  };
+  $('wakeGo').onclick = async () => {
+    const t = $('wakeTxt').value.trim();
+    if (!t) return;
+    $('wakeTxt').value = '';
+    addMsg('user', t);
+    try {
+      const r = await api('/api/wake/feed', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      });
+      if (r.state === 'idle') addMsg('sys', '(keyword not heard — say the keyword first, then the command)');
+      else if (r.state === 'wake') addMsg('sys', '👂 keyword heard — now say your command');
+    } catch (e) { addMsg('sys', 'wake feed failed: ' + e.message); }
+  };
+  $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
+  $('voicePanel').addEventListener('toggle', () => { if ($('voicePanel').open) refreshWake(); });
+
+  // ---- Setup wizard (phase 3) ----
+  let wizStep = 1;
+  function wizShow(n) {
+    wizStep = n;
+    for (const el of document.querySelectorAll('#wiz .wizStep')) {
+      el.classList.toggle('hidden', el.dataset.step !== String(n));
+    }
+    $('wizBack').classList.toggle('hidden', n === 1 || n === 'done');
+    $('wizNext').classList.toggle('hidden', n === 3 || n === 'done');
+    $('wizFinish').classList.toggle('hidden', n !== 3);
+    $('wizErr').textContent = '';
+  }
+  function wizOpen() {
+    $('wiz').classList.remove('hidden');
+    wizShow(1);
+    // Prefill from current config where possible.
+    api('/api/config').then(({ config }) => {
+      const pv = config.provider || {};
+      if (pv.type && pv.type !== 'mock') $('wizProvider').value = pv.type;
+      if (pv.model && pv.model !== 'mock-1') $('wizModel').value = pv.model;
+      if (config.agent && config.agent.name) $('wizName').value = config.agent.name;
+      if (config.agent && typeof config.agent.allowExec === 'boolean') $('wizExec').checked = config.agent.allowExec;
+      if (config.gateway && config.gateway.port) $('wizPort').value = String(config.gateway.port);
+    }).catch(() => { /* prefill is best-effort */ });
+  }
+  $('wizOpen').onclick = wizOpen;
+  $('wizCancel').onclick = () => $('wiz').classList.add('hidden');
+  $('wizBack').onclick = () => { if (wizStep > 1) wizShow(wizStep - 1); };
+  $('wizNext').onclick = () => {
+    if (wizStep === 1) {
+      const pv = $('wizProvider').value;
+      const key = $('wizKey').value.trim();
+      if (pv !== 'mock' && !key) {
+        // allow continuing without a key (some local setups) but warn gently
+        if (!confirm('No API key entered — continue anyway? (You can add it later in Settings.)')) return;
+      }
+    }
+    if (wizStep === 2 && !$('wizName').value.trim() && !confirm('No name yet — call it Crabby?')) return;
+    wizShow(wizStep + 1);
+  };
+  $('wizFinish').onclick = async () => {
+    $('wizFinish').disabled = true;
+    try {
+      const users = $('wizTgUsers').value.split(',').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n > 0);
+      const body = {
+        provider: $('wizProvider').value,
+        apiKey: $('wizKey').value.trim(),
+        model: $('wizModel').value.trim(),
+        baseUrl: $('wizBase').value.trim(),
+        name: $('wizName').value.trim() || 'Crabby',
+        allowExec: $('wizExec').checked,
+        port: $('wizPort').value.trim(),
+        telegramToken: $('wizTgToken').value.trim(),
+        telegramUsers: users,
+      };
+      const r = await api('/api/onboard', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      wizShow('done');
+      $('wizDoneMsg').textContent = r.setupNeeded
+        ? 'Saved — but no real brain yet. Paste an API key in Settings, then say hello.'
+        : `Saved. Your crab (${r.name} · ${r.model}) is ready — say hello in the chat box.`;
+      refreshHealth(); refreshLiveStatus();
+    } catch (e) { $('wizErr').textContent = 'save failed: ' + e.message; }
+    finally { $('wizFinish').disabled = false; }
+  };
+
+  // ---- Update button (phase 3) ----
+  $('updCheck').onclick = async () => {
+    $('updCheck').disabled = true;
+    $('updInfo').textContent = 'checking…';
+    try {
+      const r = await api('/api/update', { method: 'POST' });
+      if (!r.ok) { $('updInfo').textContent = 'could not check: ' + (r.error || 'offline?'); }
+      else if (r.updateAvailable) {
+        $('updInfo').textContent = `v${r.latest} available (you have v${r.current})`;
+        addMsg('sys', `⬆️ a newer TermCrab exists: v${r.latest} (you have v${r.current}) — run: git pull && npm install -g .`);
+      } else { $('updInfo').textContent = `you're on the latest (v${r.current})`; addMsg('sys', `✅ you're on the latest version (v${r.current})`); }
+    } catch (e) { $('updInfo').textContent = 'check failed: ' + e.message; }
+    finally { $('updCheck').disabled = false; }
+  };
+
   async function bootstrap() {
     if (!state.token) { showOverlay(); return; }
     try {
@@ -929,7 +1137,12 @@
           b.style.marginTop = '8px';
           b.textContent = '👉 Open Settings';
           b.onclick = () => { $('cfgPanel').open = true; $('cfgPanel').scrollIntoView({ behavior: 'smooth' }); };
-          w.append(t, b);
+          const wz = document.createElement('button');
+          wz.className = 'ghost';
+          wz.style.cssText = 'margin-top:8px;margin-left:8px';
+          wz.textContent = '🧙‍♂️ Or use the setup wizard';
+          wz.onclick = wizOpen;
+          w.append(t, b, wz);
           log.insertBefore(w, log.firstChild);
           log.scrollTop = 0;
         }

@@ -1,5 +1,30 @@
 # Changelog
 
+# Changelog
+
+## 0.6.0 — 2026-09-29 (You're in the driver's seat)
+
+Completes web control parity (P0 #0, phase 3): every CLI control now has a
+button in the panel.
+
+### Added
+- **Wake loop in the panel** — 👂 Start/Stop from *Voice & boot*; live events
+  (keyword heard → command → reply) stream into the chat as they happen.
+  No mic? Type the command in the box — same state machine, no Termux needed.
+  (`GET/POST /api/wake/start|stop|feed`, service runs inside the gateway)
+- **Setup wizard** — 🧙‍♂️ three plain-language steps (brain → name → telegram)
+  in the panel; applies everything `termcrab onboard` does, seeds the
+  workspace, never echoes your API key back. Reachable from the welcome card
+  and the start-here panel.
+- **"Check for updates" button** — ⬆️ in the start-here panel: asks GitHub,
+  reports "you're on the latest (vX)" or the upgrade command. Still never
+  auto-updates. (`POST /api/update`)
+
+### Tests
+- 128/128 (new phase-3 suite: wake state machine over HTTP with reply event
+  on the bus, friendly no-mic answers, idempotent stop, update shape,
+  wizard apply/persist/mask + mock reset)
+
 ## 0.5.0 — 2026-09-29 (Bring your old setup)
 
 ### Added

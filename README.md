@@ -69,7 +69,10 @@ node dist/src/bin/termcrab.js agent "hello!"        # works fully offline (mock 
 ```
 
 Then open the control UI at `http://127.0.0.1:7788/` (token printed by
-`termcrab config get gateway.token`).
+`termcrab config get gateway.token`). First time? The **setup wizard** (3
+plain-language steps) gets your brain, name, and Telegram connected without
+touching a file — and the panel has an **⬆️ Check for updates** button and the
+**👂 wake loop** (start it, or type commands when you have no mic).
 
 ## CLI
 

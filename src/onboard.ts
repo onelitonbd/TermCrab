@@ -136,7 +136,7 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
   }
 }
 
-function normalizeProvider(raw: string): Config['provider']['type'] {
+export function normalizeProvider(raw: string): Config['provider']['type'] {
   const v = raw.trim().toLowerCase();
   if (['anthropic', 'claude'].includes(v)) return 'anthropic';
   if (['mock', 'demo', 'offline'].includes(v)) return 'mock';
