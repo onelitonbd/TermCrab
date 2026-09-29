@@ -3,323 +3,669 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0b0f14" />
-<title>TermCrab Control</title>
+<meta name="theme-color" content="#12302f" />
+<title>TermCrab</title>
 <style>
   :root {
-    --bg: #0b0f14; --panel: #121821; --panel2: #1a2230; --line: #26303f;
-    --text: #e6edf3; --muted: #8b98a9; --accent: #ff7a45; --accent2: #35c4a3;
-    --user: #1f3b52; --bot: #182233; --danger: #ff5f56; --ok: #3ddc84;
+    color-scheme: light;
+    --mist: #eef2f0;
+    --enamel: #ffffff;
+    --inset: #f6f8f7;
+    --ink: #12302f;
+    --ink-2: #5c6b69;
+    --tide: #0e6a5f;
+    --tide-deep: #0a544b;
+    --line: #d7dedc;
+    --alert: #a63a2e;
+    --pass: #2e7d4f;
+    --warn: #8a6a1f;
+    --r-s: 10px;
+    --r-m: 14px;
+    --r-l: 20px;
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; }
+  html, body { margin: 0; height: 100%; }
   body {
-    background: var(--bg); color: var(--text); display: flex; flex-direction: column;
-    font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--mist);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    max-width: 640px;
+    margin: 0 auto;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
   }
+  [hidden] { display: none !important; }
+
+  /* ---- station plate (the one bold element) ---- */
   header {
-    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
-    background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5;
+    background: var(--ink);
+    color: #f2f7f5;
+    padding: 12px 16px 13px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex-shrink: 0;
   }
-  .logo { font-size: 22px; }
-  h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: .3px; }
-  .sub { color: var(--muted); font-size: 12px; }
-  .pill {
-    margin-left: auto; font-size: 12px; background: var(--panel2); border: 1px solid var(--line);
-    padding: 4px 10px; border-radius: 999px; color: var(--muted); white-space: nowrap;
+  header svg { flex-shrink: 0; }
+  .plate { min-width: 0; flex: 1; }
+  .plate h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  #health {
+    font-size: 12px;
+    color: #9db8b3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
   }
-  .pill.ok { color: var(--ok); border-color: #1d4d36; }
+  #pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #c3d5d1;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    padding: 5px 11px 5px 9px;
+    white-space: nowrap;
+  }
+  #pill::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #7d948f;
+  }
+  #pill.ok { color: #eafff4; border-color: rgba(120, 220, 170, 0.35); }
+  #pill.ok::before { background: #49c78a; box-shadow: 0 0 0 3px rgba(73, 199, 138, 0.18); }
+
+  /* ---- screens ---- */
+  #views { flex: 1; min-height: 0; }
+  .view {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 12px 18px;
+  }
+  #view-chat:not([hidden]) { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+
+  #chatBar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 9px 10px;
+    background: var(--enamel);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  #chatBar .sp { flex: 1; }
+  #chatBar button { min-height: 34px; padding: 0 11px; font-size: 12.5px; border-radius: var(--r-s); }
+  #session, #agentSel {
+    height: 34px;
+    max-width: 34%;
+    background: var(--inset);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    padding: 0 6px;
+    font-size: 13px;
+    min-width: 0;
+  }
+
   #log {
-    flex: 1; overflow-y: auto; padding: 16px 14px 8px; display: flex; flex-direction: column; gap: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 12px 6px;
     scroll-behavior: smooth;
   }
-  .msg { max-width: min(760px, 94%); padding: 10px 13px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; }
-  .msg.user { align-self: flex-end; background: var(--user); border: 1px solid #2b567a; border-bottom-right-radius: 4px; }
-  .msg.bot  { align-self: flex-start; background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-  .msg.sys  { align-self: center; background: transparent; color: var(--muted); font-size: 12.5px; border: 1px dashed var(--line); }
-  .tools { color: var(--accent); font-size: 12.5px; align-self: flex-start; padding: 2px 6px; }
-  .err { color: var(--danger); }
+  .msg {
+    max-width: min(46ch, 88%);
+    padding: 9px 13px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    font-size: 15px;
+    animation: settle 0.18s ease-out;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--ink);
+    color: #f2f7f5;
+    border-radius: 16px 16px 5px 16px;
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--enamel);
+    border: 1px solid var(--line);
+    border-radius: 16px 16px 16px 5px;
+  }
+  .msg.sys {
+    align-self: center;
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    background: transparent;
+    max-width: 92%;
+  }
+  .msg.welcome {
+    align-self: stretch;
+    max-width: 100%;
+    background: var(--enamel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--tide);
+    border-radius: 6px var(--r-m) var(--r-m) 6px;
+    text-align: left;
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .tools { align-self: flex-start; color: var(--ink-2); font-size: 12.5px; padding: 0 4px; }
+  .err { color: var(--alert) !important; }
+  #typing {
+    min-height: 20px;
+    padding: 0 14px 4px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    flex-shrink: 0;
+  }
+
+  /* ---- composer ---- */
   #composer {
-    display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    background: var(--panel); border-top: 1px solid var(--line); align-items: flex-end;
+    display: none;
+    gap: 8px;
+    padding: 9px 10px 10px;
+    background: var(--enamel);
+    border-top: 1px solid var(--line);
+    align-items: flex-end;
+    flex-shrink: 0;
   }
-  textarea {
-    flex: 1; resize: none; min-height: 44px; max-height: 140px; border-radius: 12px;
-    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    padding: 11px 13px; font: inherit; outline: none;
+  body[data-view="chat"] #composer { display: flex; }
+  #composer textarea {
+    flex: 1;
+    resize: none;
+    min-height: 46px;
+    max-height: 132px;
+    border-radius: var(--r-m);
+    background: var(--inset);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 12px 13px;
+    font-size: 16px;
+    line-height: 1.4;
+    outline: none;
   }
-  textarea:focus { border-color: var(--accent); }
+  #composer textarea:focus { border-color: var(--tide); background: var(--enamel); }
+  #send {
+    background: var(--tide);
+    color: #fff;
+    font-weight: 600;
+    border: 0;
+    border-radius: var(--r-m);
+    padding: 0 18px;
+    min-height: 46px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  #send:active { background: var(--tide-deep); }
+
+  /* ---- controls ---- */
   button {
-    background: var(--accent); color: #14100e; font-weight: 700; border: 0; border-radius: 12px;
-    padding: 0 16px; min-height: 44px; cursor: pointer; font-size: 14px;
+    background: var(--tide);
+    color: #fff;
+    font-weight: 600;
+    border: 0;
+    border-radius: 12px;
+    padding: 0 15px;
+    min-height: 44px;
+    cursor: pointer;
+    font-size: 14.5px;
+    font-family: inherit;
   }
-  button.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--line); font-weight: 500; }
-  button:disabled { opacity: .55; cursor: default; }
-  #actions { display: flex; gap: 6px; align-items: center; }
-  #session, #agentSel {
-    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 10px; max-width: 130px; height: 44px; padding: 0 6px; font-size: 12.5px;
+  button.ghost {
+    background: var(--enamel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    font-weight: 500;
   }
-  #agentSel { max-width: 110px; }
-  #rack { background: var(--panel); border-top: 1px solid var(--line); font-size: 13px; max-height: 42vh; overflow-y: auto; }
-  #rack .panel summary, #cronPanel summary { padding: 9px 14px; cursor: pointer; color: var(--muted); user-select: none; }
-  #rack .panel[open] summary, #cronPanel[open] summary { color: var(--text); }
-  .pBody { padding: 0 14px 10px; display: flex; flex-direction: column; gap: 6px; }
-  .pRow { display: flex; gap: 8px; align-items: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; flex-wrap: wrap; }
-  .pRow .k { font-family: ui-monospace, monospace; font-size: 12px; color: var(--accent2); min-width: 190px; }
-  .pRow .nx { color: var(--muted); font-size: 11.5px; }
-  .pRow .sp { flex: 1; }
-  .pRow button, .pBody button { min-height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
-  .pBody input[type="text"], .pBody input:not([type]), .pBody input[type="search"] {
-    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 8px; padding: 8px 10px; font-size: 13px; min-width: 0; flex: 1;
+  button.ghost:active { background: var(--inset); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.danger { color: var(--alert); }
+  :focus-visible { outline: 2px solid var(--tide); outline-offset: 2px; }
+  header :focus-visible, body[data-view] .rail button.on:focus-visible { outline-color: #8fd8cd; }
+
+  input[type="text"], input[type="password"], input[type="search"], select, textarea {
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--enamel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    padding: 10px 11px;
+    min-width: 0;
   }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--tide); }
+
+  /* ---- panels ---- */
+  details.panel {
+    background: var(--enamel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-m);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  details.panel > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 15px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 48px;
+  }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-right: 1.8px solid var(--ink-2);
+    border-bottom: 1.8px solid var(--ink-2);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+    margin-right: 3px;
+  }
+  details.panel[open] > summary { border-bottom: 1px solid var(--line); }
+  details.panel[open] > summary::after { transform: rotate(-135deg); margin-top: -4px; }
+  .pBody { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; }
+  #cronList, #cronForm { padding-left: 14px; padding-right: 14px; }
+  #cronList { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
+  #cronForm { display: flex; gap: 7px; flex-wrap: wrap; padding-bottom: 14px; }
+  #cronForm input[name="name"] { width: 110px; flex-shrink: 0; }
+  #cronForm input[name="schedule"] { width: 128px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  #cronForm input[name="prompt"] { flex: 1; min-width: 150px; }
+
+  .pRow {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    padding: 9px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .pRow .k { font-weight: 600; font-size: 13.5px; min-width: 150px; flex-shrink: 0; }
+  .pRow .nx, .nx { color: var(--ink-2); font-size: 12.5px; line-height: 1.45; }
+  .pRow .sp, .sp { flex: 1; }
+  .pRow.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+  .pRow.stack .line { display: flex; gap: 7px; align-items: center; }
+  .pRow.stack .line input { flex: 1; }
+  .pRow button, .pBody button { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+  .pBody > input[type="text"], .pBody > input[type="search"] { width: 100%; }
+  .pBar { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .pBar input[type="text"], .pBar input[type="search"] { flex: 1; }
+  .pNote { color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
   .pBody textarea {
-    min-height: 90px; max-height: 220px; border-radius: 10px; background: var(--panel2);
-    border: 1px solid var(--line); color: var(--text); padding: 9px 11px; font: 12.5px/1.45 ui-monospace, monospace;
+    width: 100%;
+    min-height: 110px;
+    max-height: 300px;
+    background: var(--inset);
+    font-size: 13.5px;
+    line-height: 1.55;
+    resize: vertical;
   }
-  .pBody pre { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; overflow-x: auto; white-space: pre-wrap; font-size: 12px; max-height: 220px; overflow-y: auto; }
-  .pBar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .okc { color: var(--ok); } .warnc { color: #ffb020; } .failc { color: var(--danger); } .infoc { color: var(--muted); }
-  .hit { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
-  .hit .f { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }
-  .pNote { color: var(--muted); font-size: 11.5px; }
-  #cronPanel { background: var(--panel); border-top: 1px solid var(--line); font-size: 13px; }
-  #cronPanel summary { padding: 9px 14px; cursor: pointer; color: var(--muted); user-select: none; }
-  #cronPanel[open] summary { color: var(--text); }
-  #cronList { padding: 0 14px 6px; display: flex; flex-direction: column; gap: 6px; }
-  .cronRow {
-    display: flex; gap: 8px; align-items: center; background: var(--panel2);
-    border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; flex-wrap: wrap;
+  .pBody pre {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    padding: 10px 11px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-size: 12.5px;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
   }
-  .cronRow .nm { font-weight: 600; }
-  .cronRow .sc { font-family: ui-monospace, monospace; color: var(--accent2); font-size: 12px; }
-  .cronRow .nx { color: var(--muted); font-size: 11.5px; }
-  .cronRow .sp { flex: 1; }
-  .cronRow button { min-height: 30px; padding: 0 9px; font-size: 12.5px; border-radius: 8px; }
-  .cronRow.off { opacity: .55; }
-  #cronForm { display: flex; gap: 6px; padding: 4px 14px 12px; flex-wrap: wrap; }
-  #cronForm input {
-    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 8px; padding: 8px 10px; font-size: 13px; min-width: 0;
+  .how { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--ink-2); }
+  .how b { color: var(--ink); }
+
+  .cronRow, .sessRow {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    padding: 9px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 13px;
   }
-  #cronForm input[name=name] { width: 110px; }
-  #cronForm input[name=schedule] { width: 130px; font-family: ui-monospace, monospace; }
-  #cronForm input[name=prompt] { flex: 1; min-width: 160px; }
-  #cronForm button { min-height: 34px; }
-  #overlay {
-    position: fixed; inset: 0; background: rgba(5,8,12,.92); display: flex; align-items: center;
-    justify-content: center; padding: 20px; z-index: 20;
+  .cronRow .nm, .sessRow .id { font-weight: 600; }
+  .cronRow .sc { font-variant-numeric: tabular-nums; color: var(--tide); font-weight: 600; font-size: 12.5px; }
+  .cronRow .nx, .sessRow .meta { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .cronRow button, .sessRow button { min-height: 34px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
+  .cronRow.off { opacity: 0.55; }
+  .hit {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--tide);
+    border-radius: 4px var(--r-s) var(--r-s) 4px;
+    padding: 8px 10px;
+    font-size: 13px;
+    margin-bottom: 7px;
   }
-  #overlay .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; width: min(420px, 100%); }
-  #overlay input {
-    width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    padding: 12px; border-radius: 10px; font: inherit; margin: 12px 0;
+  .hit .f { color: var(--tide); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+  .dreamRow {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 7px;
   }
-  #overlay p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
-  #wiz {
-    position: fixed; inset: 0; background: rgba(5,8,12,.92); display: flex;
-    align-items: center; justify-content: center; padding: 20px; z-index: 21;
-  }
-  #wiz .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; width: min(460px, 100%); }
-  #wiz h3 { color: var(--text); font-size: 16px; }
-  #wiz p { color: var(--muted); font-size: 13.5px; margin: 4px 0 10px; }
-  #wiz input, #wiz select {
-    width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
-    padding: 11px 12px; border-radius: 10px; font: inherit; margin: 6px 0; box-sizing: border-box;
-  }
-  #wiz select { height: 44px; }
-  .pBody select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; font-size: 12.5px; }
-  .sessRow { display: flex; gap: 8px; align-items: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; flex-wrap: wrap; font-size: 12.5px; }
-  .sessRow .id { font-family: ui-monospace, monospace; color: var(--accent2); }
-  .sessRow .meta { color: var(--muted); font-size: 11.5px; }
-  .sessRow .sp { flex: 1; }
-  .dreamRow { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; }
-  .dreamRow .d { color: var(--accent2); font-family: ui-monospace, monospace; font-size: 11px; margin-right: 8px; }
+  .dreamRow .d { color: var(--tide); font-weight: 600; font-size: 12px; margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .st { font-size: 11.5px; font-weight: 700; border-radius: 5px; padding: 2px 7px; flex-shrink: 0; }
+  .doc-ok { color: var(--pass); background: rgba(46, 125, 79, 0.1); }
+  .doc-warn { color: var(--warn); background: rgba(138, 106, 31, 0.1); }
+  .doc-fail { color: var(--alert); background: rgba(166, 58, 46, 0.1); }
+  .doc-info { color: var(--ink-2); background: rgba(92, 107, 105, 0.1); }
+  .okc { color: var(--pass); } .warnc { color: var(--warn); } .failc { color: var(--alert); } .infoc { color: var(--ink-2); }
   .hidden { display: none !important; }
-  #typing { color: var(--muted); font-size: 13px; padding: 0 16px 6px; min-height: 18px; font-style: italic; }
+
+  /* settings rows: label / input / save must wrap on narrow screens */
+  .pRow > div:first-child {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .pRow > div:first-child input { flex: 1 1 130px; min-width: 0; }
+  .pRow > div:first-child button { flex-shrink: 0; }
+
+  /* ---- bottom rail ---- */
+  .rail {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: var(--enamel);
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .rail button {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: var(--ink-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    min-height: 54px;
+    padding: 6px 2px 7px;
+    letter-spacing: -0.01em;
+    position: relative;
+  }
+  .rail button.on { color: var(--ink); }
+  .rail button.on::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 22%;
+    right: 22%;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--tide);
+  }
+  .rail button:active { background: var(--inset); }
+
+  /* ---- sheets (token gate + wizard) ---- */
+  #overlay, #wiz {
+    position: fixed;
+    inset: 0;
+    background: rgba(18, 48, 47, 0.55);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 20;
+    padding: 0;
+    animation: fade 0.15s ease-out;
+  }
+  #overlay .card, #wiz .card {
+    background: var(--enamel);
+    border-radius: var(--r-l) var(--r-l) 0 0;
+    padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 640px;
+    border-top: 1px solid var(--line);
+  }
+  #overlay h2 { margin: 6px 0 4px; font-size: 20px; letter-spacing: -0.01em; }
+  #overlay p, #wiz p { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
+  #overlay input, #wiz input, #wiz select { width: 100%; margin: 12px 0; }
+  #overlay button { width: 100%; min-height: 48px; }
+  #wiz .card { max-height: 92vh; overflow-y: auto; }
+  #wiz h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; }
+  #wiz label.pNote { display: block; margin: 4px 0; }
+  #wiz .pBar { margin-top: 14px; }
+  #wiz .pBar .sp { flex: 1; }
+
+  @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    #log { scroll-behavior: auto; }
+    .msg, #overlay, #wiz, details.panel > summary::after { animation: none; transition: none; }
+  }
+  @media (max-width: 380px) {
+    #chatBar button { padding: 0 8px; }
+    .pRow .k { min-width: 110px; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <span class="logo">🦀</span>
-  <div>
+  <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#f2f7f5" stroke-width="1.7"/>
+    <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M3.2 7.4 6.6 9.6" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M22.5 15.5 26 12.5 27.5 8.8" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28.8 7.4 25.4 9.6" stroke="#f2f7f5" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#f2f7f5" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="13.5" cy="16.5" r="1.1" fill="#f2f7f5"/>
+    <circle cx="18.5" cy="16.5" r="1.1" fill="#f2f7f5"/>
+  </svg>
+  <div class="plate">
     <h1>TermCrab</h1>
-    <div class="sub" id="health">connecting…</div>
+    <div id="health">connecting…</div>
   </div>
-  <span class="pill" id="pill">offline</span>
+  <span id="pill">offline</span>
 </header>
 
-<div id="log"></div>
-<div id="typing"></div>
-
-<div id="rack">
-<details class="panel" id="helpPanel" open>
-  <summary>❓ How this works (start here)</summary>
-  <div class="pBody">
-    <div class="pRow" id="liveStatus">loading status…</div>
-    <div class="pBar">
-      <button id="wizOpen" class="ghost">🧙‍♂️ Setup wizard</button>
-      <button id="updCheck" class="ghost">⬆️ Check for updates</button>
-      <span class="pNote" id="updInfo"></span>
-    </div>
-    <div class="nx" style="line-height:1.7">
-      🦀 <b>This is your crab.</b> Chat with it in the box below — it answers and does things on your machine.<br>
-      ⚙️ <b>Settings</b> — everything you can change, named in plain words (the technical key is shown underneath — nothing is hidden).<br>
-      🩺 <b>Doctor</b> — checks everything and explains how to fix problems.<br>
-      🧠 <b>Memory</b> — what your crab remembers. Search it, add to it, or edit the file directly.<br>
-      👥 <b>Agents</b> — helper personalities (e.g. one that answers very briefly). Pick who you're talking to in the bar below.<br>
-      📚 <b>Skills</b> — extra abilities you can install from a folder or a git repository.<br>
-      🗂️ <b>Chats</b> — every conversation with its size; save one as a text file, rename it, or clear out old ones.<br>
-      🔊 <b>Voice &amp; boot</b> — make it speak; start it automatically when the phone boots.<br>
-      ⏲️ <b>Cron</b> — repeating jobs (like "every weekday at 8am"). 🫀 = check in now · 💤 = dream (learn) now.
-    </div>
-  </div>
-</details>
-
-<details id="cronPanel" class="panel">
-  <summary>⏲️ Cron jobs</summary>
-  <div id="cronList"><div class="nx">loading…</div></div>
-  <form id="cronForm">
-    <input name="name" placeholder="name" maxlength="40" />
-    <input name="schedule" placeholder="0 8 * * *" required title="5-field cron or @daily" />
-    <input name="prompt" placeholder="what should the agent do?" required />
-    <button type="submit">Add</button>
-  </form>
-</details>
-
-<details class="panel" id="cfgPanel">
-  <summary>⚙️ Settings (config)</summary>
-  <div class="pBody">
-    <div class="pNote" id="cfgPath">loading…</div>
-    <div id="cfgRows"><div class="nx">loading…</div></div>
-    <div class="pNote">Secrets are masked ••• — type a new value to replace, leave masked to keep.</div>
-  </div>
-</details>
-
-<details class="panel" id="docPanel">
-  <summary>🩺 Doctor</summary>
-  <div class="pBody">
-    <div class="pBar"><button id="docRun">Run checks</button><span class="pNote" id="docTime"></span></div>
-    <div id="docList"><div class="nx">not run yet</div></div>
-  </div>
-</details>
-
-<details class="panel" id="memPanel">
-  <summary>🧠 Memory</summary>
-  <div class="pBody">
-    <div class="pBar">
-      <input type="search" id="memQ" placeholder="semantic search… (e.g. which editor do I like)" />
-      <button id="memSearch" class="ghost">🔎 Search</button>
-      <span class="pNote" id="memStats"></span>
-    </div>
-    <div id="memHits"></div>
-    <div class="pBar">
-      <input type="text" id="memFact" placeholder="remember a fact…" />
-      <button id="memRemember" class="ghost">➕ Remember</button>
-    </div>
-    <textarea id="memEdit" placeholder="MEMORY.md — full editable content"></textarea>
-    <div class="pBar"><button id="memSave" class="ghost">💾 Save MEMORY.md</button><span class="pNote">plain file on disk — edit it here or in any editor</span></div>
-    <div class="pBar"><span class="k">💤 dream history</span><span class="pNote" id="dreamInfo">loading…</span></div>
-    <div id="dreamList"></div>
-  </div>
-</details>
-
-<details class="panel" id="agPanel">
-  <summary>👥 Agents</summary>
-  <div class="pBody">
-    <div id="agList"><div class="nx">loading…</div></div>
-    <div class="pBar">
-      <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
-      <select id="agTemplate" title="starter personality">
-        <option value="">starter: blank</option>
-        <option value="brief">starter: brief</option>
-        <option value="teacher">starter: teacher</option>
-        <option value="researcher">starter: researcher</option>
-      </select>
-      <button id="agCreate">➕ Create</button>
-    </div>
-    <div class="pNote" id="agEditName"></div>
-    <textarea id="agSoul" placeholder="SOUL.md — select an agent to edit its personality"></textarea>
-    <div class="pBar"><button id="agSave" class="ghost">💾 Save SOUL</button></div>
-  </div>
-</details>
-
-<details class="panel" id="skPanel">
-  <summary>📚 Skills</summary>
-  <div class="pBody">
-    <div id="skList"><div class="nx">loading…</div></div>
-    <div class="pBar">
-      <input type="text" id="skSrc" placeholder="import from folder path or git url" />
-      <label class="pNote"><input type="checkbox" id="skForce" style="vertical-align:middle" /> force</label>
-      <button id="skImport">⬇️ Import</button>
-    </div>
-    <pre id="skView" class="hidden"></pre>
-  </div>
-</details>
-
-<details class="panel" id="chatPanel">
-  <summary>🗂️ Chats (sessions)</summary>
-  <div class="pBody">
-    <div id="sessList"><div class="nx">loading…</div></div>
-    <div class="pBar">
-      <button id="sessExport" class="ghost">📥 Export selected chat</button>
-      <button id="sessRename" class="ghost">✏️ Rename</button>
+<main id="views">
+  <section class="view" id="view-chat">
+    <div id="chatBar">
+      <select id="agentSel" title="active agent"><option value="">default</option></select>
+      <select id="session" title="session"><option value="web:main">main</option></select>
       <span class="sp"></span>
-      <input type="text" id="purgeDays" placeholder="days" style="max-width:70px" value="30" />
-      <button id="sessPurge" class="ghost">🧹 Clean old</button>
+      <button class="ghost" id="btnNew" title="Reset this chat">Reset</button>
+      <button class="ghost" id="btnHb" title="Run a check-in now">Check in</button>
+      <button class="ghost" id="btnDream" title="Learn from chats now">Dream</button>
     </div>
-    <div class="pNote">Export saves the selected chat as readable text. "Clean old" deletes chats older than N days to free space.</div>
-  </div>
-</details>
+    <div id="log"></div>
+    <div id="typing"></div>
+  </section>
 
-<details class="panel" id="voicePanel">
-  <summary>🔊 Voice & boot</summary>
-  <div class="pBody">
-    <div class="pBar">
-      <input type="text" id="sayTxt" placeholder="speak this text aloud (TTS chain)…" />
-      <button id="sayGo" class="ghost">🔊 Say</button>
-    </div>
-    <div class="pBar">
-      <button id="listenGo" class="ghost">🎤 Listen (dictate)</button>
-      <span class="pNote">tap → speak → words land in the chat box (needs Termux:API)</span>
-    </div>
-    <div class="pBar">
-      <span class="pNote" id="bootInfo">boot: …</span>
-      <button id="bootInstall" class="ghost">🚀 Install boot script</button>
-    </div>
-    <div class="pBar">
-      <button id="wakeStart" class="ghost">👂 Start wake loop</button>
-      <button id="wakeStop" class="ghost hidden">⏹ Stop wake loop</button>
-      <span class="pNote" id="wakeInfo">wake: off</span>
-    </div>
-    <div class="pBar">
-      <input type="text" id="wakeTxt" placeholder='type a wake command, e.g. "crab what time is it"' />
-      <button id="wakeGo" class="ghost">🎙 Try it</button>
-    </div>
-    <div class="pNote">The wake loop hears the keyword ("crab" by default), then your command in the next breath. Typed commands work too — no mic needed.</div>
-  </div>
-</details>
-</div>
+  <section class="view" id="view-status" hidden>
+    <details class="panel" id="helpPanel" data-primary open>
+      <summary>Start here</summary>
+      <div class="pBody">
+        <div class="pRow" id="liveStatus">loading status…</div>
+        <div class="pBar">
+          <button id="wizOpen" class="ghost">Setup wizard</button>
+          <button id="updCheck" class="ghost">Check for updates</button>
+          <span class="pNote" id="updInfo"></span>
+        </div>
+        <p class="how"><b>This is your crab.</b> Chat with it — it answers and does things on this device. The tabs along the bottom: <b>Status</b> is this screen (health and fixes), <b>Memory</b> is what it remembers, <b>Tools</b> holds schedules, skills, voice and saved chats, <b>Settings</b> holds everything you can change, named in plain words.</p>
+      </div>
+    </details>
+    <details class="panel" id="docPanel">
+      <summary>Doctor</summary>
+      <div class="pBody">
+        <div class="pBar"><button id="docRun">Run checks</button><span class="pNote" id="docTime"></span></div>
+        <div id="docList"><div class="nx">not run yet</div></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="view" id="view-memory" hidden>
+    <details class="panel" id="memPanel" data-primary open>
+      <summary>Memory</summary>
+      <div class="pBody">
+        <div class="pBar">
+          <input type="search" id="memQ" placeholder="search memory (e.g. which editor do I like)" />
+          <button id="memSearch" class="ghost">Search</button>
+          <span class="pNote" id="memStats"></span>
+        </div>
+        <div id="memHits"></div>
+        <div class="pBar">
+          <input type="text" id="memFact" placeholder="remember a fact…" />
+          <button id="memRemember" class="ghost">Remember</button>
+        </div>
+        <textarea id="memEdit" placeholder="MEMORY.md — the full file, editable here or anywhere"></textarea>
+        <div class="pBar"><button id="memSave" class="ghost">Save memory file</button><span class="pNote">plain file on disk — nothing hidden</span></div>
+        <div class="pBar"><span class="pNote" id="dreamInfo">loading…</span></div>
+        <div id="dreamList"></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="view" id="view-tools" hidden>
+    <details class="panel" id="cronPanel">
+      <summary>Scheduled jobs</summary>
+      <div id="cronList"><div class="nx">loading…</div></div>
+      <form id="cronForm">
+        <input name="name" placeholder="name" maxlength="40" />
+        <input name="schedule" placeholder="0 8 * * *" required title="5-field cron or @daily" />
+        <input name="prompt" placeholder="what should the agent do?" required />
+        <button type="submit">Add</button>
+      </form>
+    </details>
+    <details class="panel" id="chatPanel">
+      <summary>Saved chats</summary>
+      <div class="pBody">
+        <div id="sessList"><div class="nx">loading…</div></div>
+        <div class="pBar">
+          <button id="sessExport" class="ghost">Export selected</button>
+          <button id="sessRename" class="ghost">Rename</button>
+          <input type="text" id="purgeDays" placeholder="days" style="max-width:74px" value="30" />
+          <button id="sessPurge" class="ghost danger">Clean old</button>
+        </div>
+        <div class="pNote">Export saves the selected chat as a text file. "Clean old" deletes chats older than N days to free space.</div>
+      </div>
+    </details>
+    <details class="panel" id="voicePanel">
+      <summary>Voice and boot</summary>
+      <div class="pBody">
+        <div class="pBar">
+          <input type="text" id="sayTxt" placeholder="speak this text aloud…" />
+          <button id="sayGo" class="ghost">Say it</button>
+        </div>
+        <div class="pBar">
+          <button id="listenGo" class="ghost">Dictate</button>
+          <span class="pNote">tap, speak, and the words land in the chat box (needs Termux:API)</span>
+        </div>
+        <div class="pBar">
+          <span class="pNote" id="bootInfo">boot: …</span>
+          <button id="bootInstall" class="ghost">Start at boot</button>
+        </div>
+        <div class="pBar">
+          <button id="wakeStart" class="ghost">Start wake loop</button>
+          <button id="wakeStop" class="ghost hidden">Stop wake loop</button>
+          <span class="pNote" id="wakeInfo">wake: off</span>
+        </div>
+        <div class="pBar">
+          <input type="text" id="wakeTxt" placeholder='type a wake command, e.g. "crab what time is it"' />
+          <button id="wakeGo" class="ghost">Try it</button>
+        </div>
+        <div class="pNote">The wake loop hears the keyword ("crab" by default), then your command in the next breath. Typed commands work too — no mic needed.</div>
+      </div>
+    </details>
+    <details class="panel" id="skPanel">
+      <summary>Skills</summary>
+      <div class="pBody">
+        <div id="skList"><div class="nx">loading…</div></div>
+        <div class="pBar">
+          <input type="text" id="skSrc" placeholder="import from folder path or git url" />
+          <label class="pNote"><input type="checkbox" id="skForce" style="vertical-align:middle" /> force</label>
+          <button id="skImport">Import</button>
+        </div>
+        <pre id="skView" class="hidden"></pre>
+      </div>
+    </details>
+  </section>
+
+  <section class="view" id="view-settings" hidden>
+    <details class="panel" id="cfgPanel" data-primary>
+      <summary>Settings</summary>
+      <div class="pBody">
+        <div class="pNote" id="cfgPath">loading…</div>
+        <div id="cfgRows"><div class="nx">loading…</div></div>
+        <div class="pNote">Secrets are masked with dots — type a new value to replace, leave masked to keep.</div>
+      </div>
+    </details>
+    <details class="panel" id="agPanel">
+      <summary>Agents</summary>
+      <div class="pBody">
+        <div id="agList"><div class="nx">loading…</div></div>
+        <div class="pBar">
+          <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
+          <select id="agTemplate" title="starter personality">
+            <option value="">starter: blank</option>
+            <option value="brief">starter: brief</option>
+            <option value="teacher">starter: teacher</option>
+            <option value="researcher">starter: researcher</option>
+          </select>
+          <button id="agCreate">Create</button>
+        </div>
+        <div class="pNote" id="agEditName"></div>
+        <textarea id="agSoul" placeholder="SOUL.md — select an agent to edit its personality"></textarea>
+        <div class="pBar"><button id="agSave" class="ghost">Save personality</button></div>
+      </div>
+    </details>
+  </section>
+</main>
 
 <div id="composer">
-  <div id="actions">
-    <select id="agentSel" title="active agent"><option value="">default</option></select>
-    <select id="session" title="session"><option value="web:main">main</option></select>
-    <button class="ghost" id="btnNew" title="Reset session">🧹</button>
-    <button class="ghost" id="btnHb" title="Run heartbeat now">🫀</button>
-    <button class="ghost" id="btnDream" title="Dream now (consolidate memory)">💤</button>
-  </div>
   <textarea id="input" rows="1" placeholder="Tell your crab what to do…"></textarea>
   <button id="send">Send</button>
 </div>
+
+<nav class="rail" aria-label="Main">
+  <button data-goto="chat" class="on" aria-current="page">Chat</button>
+  <button data-goto="status">Status</button>
+  <button data-goto="memory">Memory</button>
+  <button data-goto="tools">Tools</button>
+  <button data-goto="settings">Settings</button>
+</nav>
 
 <div id="wiz" class="hidden">
   <div class="card">
     <div id="wizBody">
       <div class="wizStep" data-step="1">
-        <h3 style="margin:0 0 4px">1/3 · Pick your AI brain</h3>
+        <h3>Step 1 of 3: Pick your AI brain</h3>
         <p>This is who your crab talks to. You can change it any time in Settings.</p>
         <select id="wizProvider">
           <option value="anthropic">Anthropic Claude (needs an API key)</option>
@@ -331,41 +677,47 @@
         <input type="text" id="wizBase" placeholder="Advanced: custom address (leave empty if unsure)" />
       </div>
       <div class="wizStep hidden" data-step="2">
-        <h3 style="margin:0 0 4px">2/3 · Name your crab</h3>
+        <h3>Step 2 of 3: Name your crab</h3>
         <p>It lives on your own device. You pick the name and how much it may do.</p>
         <input type="text" id="wizName" placeholder="Name (e.g. Crabby)" maxlength="40" />
         <label class="pNote" style="display:block;margin:6px 0"><input type="checkbox" id="wizExec" style="vertical-align:middle" /> let it run commands on this device (recommended)</label>
         <input type="text" id="wizPort" placeholder="Panel port (default 7788)" inputmode="numeric" />
       </div>
       <div class="wizStep hidden" data-step="3">
-        <h3 style="margin:0 0 4px">3/3 · Telegram (optional)</h3>
+        <h3>Step 3 of 3: Telegram (optional)</h3>
         <p>Talk to your crab from Telegram. Skip it now — you can add it later in Settings.</p>
         <input type="password" id="wizTgToken" placeholder="Bot token from @BotFather (empty to skip)" autocomplete="off" />
         <input type="text" id="wizTgUsers" placeholder="Your Telegram user id, comma separated" />
       </div>
       <div class="wizStep hidden" data-step="done">
-        <h3 style="margin:0 0 4px">✅ All set</h3>
+        <h3>All set</h3>
         <p id="wizDoneMsg">Saved. Say hello in the chat box — your crab is listening.</p>
       </div>
       <div class="pBar" style="margin-top:10px">
-        <button id="wizBack" class="ghost">← Back</button>
-        <span class="sp" style="flex:1"></span>
-        <button id="wizNext">Next →</button>
+        <button id="wizBack" class="ghost">Back</button>
+        <span class="sp"></span>
+        <button id="wizNext">Next</button>
         <button id="wizFinish" class="hidden">Finish</button>
-        <button id="wizCancel" class="ghost">✕ Close</button>
+        <button id="wizCancel" class="ghost">Close</button>
       </div>
-      <div class="pNote" id="wizErr" style="color:var(--danger)"></div>
+      <div class="pNote" id="wizErr" style="color:var(--alert)"></div>
     </div>
   </div>
 </div>
 
 <div id="overlay">
   <div class="card">
-    <div style="font-size:30px">🦀</div>
-    <h2 style="margin:8px 0 2px">TermCrab Control</h2>
-    <p>Paste the gateway token (printed in the terminal, or <code>termcrab config get gateway.token</code>).</p>
+    <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#12302f" stroke-width="1.7"/>
+      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#12302f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#12302f" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="13.5" cy="16.5" r="1.1" fill="#12302f"/>
+      <circle cx="18.5" cy="16.5" r="1.1" fill="#12302f"/>
+    </svg>
+    <h2>TermCrab</h2>
+    <p>Paste the gateway token (printed in the terminal, or run <code>termcrab config get gateway.token</code>).</p>
     <input id="token" type="password" placeholder="gateway token" autocomplete="off" />
-    <button id="connect" style="width:100%">Connect</button>
+    <button id="connect">Connect</button>
     <p id="authErr" class="err"></p>
   </div>
 </div>
@@ -422,13 +774,13 @@
       const ev = JSON.parse(e.data);
       const div = document.createElement('div');
       div.className = 'tools';
-      div.textContent = '⚡ ' + ev.name + (ev.args && ev.args.command ? `(${String(ev.args.command).slice(0,80)})` : '');
+      div.textContent = ev.name + (ev.args && ev.args.command ? `(${String(ev.args.command).slice(0,80)})` : '');
       log.appendChild(div); log.scrollTop = log.scrollHeight;
     });
     es.addEventListener('tool:end', (e) => {
       const ev = JSON.parse(e.data);
       const last = [...log.querySelectorAll('.tools')].pop();
-      if (last) last.textContent += ev.ok ? ' ✓' : ' ✗';
+      if (last) last.textContent += ev.ok ? ' — done' : ' — failed';
     });
     es.addEventListener('delta', (e) => {
       const ev = JSON.parse(e.data);
@@ -439,32 +791,32 @@
     });
     es.addEventListener('cron', (e) => {
       const ev = JSON.parse(e.data);
-      addMsg('sys', `⏲️ cron ${ev.name}: ${(ev.preview || '').slice(0, 200)}`);
+      addMsg('sys', `Schedule ${ev.name}: ${(ev.preview || '').slice(0, 200)}`);
     });
     es.addEventListener('heartbeat', (e) => {
       const ev = JSON.parse(e.data);
-      addMsg('sys', '🫀 ' + (ev.ran ? 'check-in: ' + (ev.reason || 'done') : 'check-in skipped: ' + humanReason(ev.reason)));
+      addMsg('sys', ev.ran ? 'Check-in: ' + (ev.reason || 'done') : 'Check-in skipped: ' + humanReason(ev.reason));
     });
     es.addEventListener('dream', (e) => {
       const ev = JSON.parse(e.data);
       addMsg('sys', ev.ran
-        ? `💤 dream done: learned ${ev.facts ?? 0} new fact${(ev.facts ?? 0) === 1 ? '' : 's'} (${ev.reason || ''})`
-        : `💤 dream skipped: ${humanReason(ev.reason)}`);
+        ? `Dream done: learned ${ev.facts ?? 0} new fact${(ev.facts ?? 0) === 1 ? '' : 's'} (${ev.reason || ''})`
+        : `Dream skipped: ${humanReason(ev.reason)}`);
     });
     es.addEventListener('update', (e) => {
       const ev = JSON.parse(e.data);
-      addMsg('sys', `⬆️ a newer TermCrab exists: v${ev.latest} (you have v${ev.current}) — run: git pull && npm install -g .`);
+      addMsg('sys', `A newer TermCrab exists: v${ev.latest} (you have v${ev.current}). Run: git pull && npm install -g .`);
       const ui = $('updInfo');
       if (ui) ui.textContent = `v${ev.latest} available`;
     });
     es.addEventListener('wake', (e) => {
       const ev = JSON.parse(e.data);
-      if (ev.state === 'started') { addMsg('sys', `👂 wake loop on — say "${ev.keyword}", then your command`); refreshWake(); }
-      else if (ev.state === 'stopped') { addMsg('sys', '👂 wake loop stopped'); refreshWake(); }
-      else if (ev.state === 'wake') addMsg('sys', `👂 keyword heard — waiting for your command…`);
-      else if (ev.state === 'command') addMsg('sys', `🎙️ heard: "${ev.text}"`);
+      if (ev.state === 'started') { addMsg('sys', `Wake loop on — say "${ev.keyword}", then your command`); refreshWake(); }
+      else if (ev.state === 'stopped') { addMsg('sys', 'Wake loop stopped'); refreshWake(); }
+      else if (ev.state === 'wake') addMsg('sys', `Keyword heard — waiting for your command…`);
+      else if (ev.state === 'command') addMsg('sys', `Heard: "${ev.text}"`);
       else if (ev.state === 'reply') addMsg('bot', ev.reply || '(no reply)');
-      else if (ev.state === 'error') addMsg('sys', '⚠️ wake: ' + (ev.error || 'unknown problem'));
+      else if (ev.state === 'error') addMsg('sys', 'Wake problem: ' + (ev.error || 'unknown problem'));
       refreshWake();
     });
     es.onerror = () => { /* auto-reconnects */ };
@@ -486,7 +838,7 @@
       if (state.live) state.live.textContent = res.text || state.live.textContent || '(empty reply)';
     } catch (err) {
       if (state.live) {
-        state.live.textContent = '⚠️ ' + err.message;
+        state.live.textContent = err.message;
         state.live.classList.add('err');
       }
     } finally {
@@ -545,19 +897,19 @@
     } catch (e) { addMsg('sys', 'reset failed: ' + e.message); }
   };
   $('btnHb').onclick = async () => {
-    addMsg('sys', '🫀 checking in…');
+    addMsg('sys', 'Checking in…');
     try {
       const r = await api('/api/heartbeat', { method: 'POST' });
       addMsg('sys', r.ran
-        ? '🫀 check-in done: ' + (r.output || '').slice(0, 500)
-        : '🫀 check-in skipped: ' + humanReason(r.reason));
+        ? 'Check-in done: ' + (r.output || '').slice(0, 500)
+        : 'Check-in skipped: ' + humanReason(r.reason));
     } catch (e) { addMsg('sys', 'check-in failed: ' + e.message); }
   };
   $('btnDream').onclick = async () => {
-    addMsg('sys', '💤 dream started — consolidating sessions into long-term memory…');
+    addMsg('sys', 'Dream started — consolidating chats into long-term memory…');
     try {
       await api('/api/dream', { method: 'POST' });
-      addMsg('sys', '💤 dreaming in the background (result appears above when done)');
+      addMsg('sys', 'Dreaming in the background (result appears above when done)');
     } catch (e) { addMsg('sys', 'dream failed: ' + e.message); }
   };
 
@@ -582,11 +934,11 @@
         const nx = document.createElement('span'); nx.className = 'nx';
         nx.textContent = c.nextRun ? 'next ' + new Date(c.nextRun).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'no next run';
         const sp = document.createElement('span'); sp.className = 'sp';
-        const toggle = document.createElement('button'); toggle.className = 'ghost'; toggle.textContent = c.enabled ? '⏸' : '▶';
+        const toggle = document.createElement('button'); toggle.className = 'ghost'; toggle.textContent = c.enabled ? 'Pause' : 'Resume';
         toggle.onclick = async () => { await api(`/api/crons/${c.id}/${c.enabled ? 'disable' : 'enable'}`, { method: 'POST' }); refreshCrons(); };
-        const run = document.createElement('button'); run.className = 'ghost'; run.textContent = '⚡'; run.title = 'run now';
-        run.onclick = async () => { run.disabled = true; addMsg('sys', `⏲️ running "${c.name}"…`); try { const r = await api(`/api/crons/${c.id}/run`, { method: 'POST' }); addMsg('bot', r.output || '(no output)'); } catch (e) { addMsg('sys', 'cron run failed: ' + e.message); } finally { run.disabled = false; } };
-        const del = document.createElement('button'); del.className = 'ghost'; del.textContent = '🗑';
+        const run = document.createElement('button'); run.className = 'ghost'; run.textContent = 'Run';
+        run.onclick = async () => { run.disabled = true; addMsg('sys', `Running "${c.name}"…`); switchView('chat'); try { const r = await api(`/api/crons/${c.id}/run`, { method: 'POST' }); addMsg('bot', r.output || '(no output)'); } catch (e) { addMsg('sys', 'cron run failed: ' + e.message); } finally { run.disabled = false; } };
+        const del = document.createElement('button'); del.className = 'ghost'; del.textContent = 'Delete';
         del.onclick = async () => { await api(`/api/crons/${c.id}`, { method: 'DELETE' }); refreshCrons(); };
         row.append(nm, sc, nx, sp, toggle, run, del);
         list.appendChild(row);
@@ -621,7 +973,7 @@
   $('cronPanel').addEventListener('toggle', () => { if ($('cronPanel').open) refreshCrons(); });
 
   // ---- Web control parity panels (v0.5 P0 #0) ----
-  const DOC_ICON = { ok: '✅', warn: '⚠️', fail: '❌', info: 'ℹ️' };
+  const DOC_ICON = { ok: 'pass', warn: 'warn', fail: 'fail', info: 'note' };
   const getCfg = (o, dotted) => dotted.split('.').reduce((acc, k) => (acc && typeof acc === 'object' ? acc[k] : undefined), o);
   const CFG_KEYS = [
     'agent.name', 'provider.type', 'provider.model', 'provider.baseUrl', 'provider.apiKey',
@@ -667,7 +1019,7 @@
         ? `already dreamed recently — next attempt in about ${Math.round(n / 60)}h`
         : `already dreamed recently — next attempt in about ${n}m`;
     }
-    if (/disabled/.test(r)) return 'dreaming is switched off (Settings → Night learning)';
+    if (/disabled/.test(r)) return 'dreaming is switched off (Settings tab, Night learning)';
     if (/sleepless/i.test(r)) return 'waiting for better battery — ' + String(r).replace(/^sleepless:\s*/i, '');
     if (/no new sessions/i.test(r)) return 'nothing new since the last dream';
     if (/nothing to consolidate/i.test(r)) return 'no conversations to learn from yet';
@@ -678,7 +1030,7 @@
   async function refreshLiveStatus() {
     try {
       const s = await api('/api/status');
-      const parts = ['🟢 awake', 'brain: ' + s.provider];
+      const parts = ['Awake', 'brain: ' + s.provider];
       if (s.memory) parts.push(`memory: ${s.memory.facts ?? 0} fact${(s.memory.facts ?? 0) === 1 ? '' : 's'}`);
       if (s.heartbeat) {
         parts.push(s.heartbeat.enabled
@@ -689,8 +1041,8 @@
         if (!s.dream.enabled) parts.push('dreaming off');
         else if (s.dream.lastDreamAt) {
           const next = s.dream.lastDreamAt + s.dream.everyHours * 3600000;
-          parts.push(next <= Date.now() ? '💤 dream due' : `💤 dream ~${new Date(next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
-        } else parts.push(`💤 learns every ${s.dream.everyHours}h while idle`);
+          parts.push(next <= Date.now() ? 'dream due' : `dream ~${new Date(next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+        } else parts.push(`learns every ${s.dream.everyHours}h while idle`);
       }
       const ag = (s.agents || []).length;
       if (ag) parts.push(`${ag} agent${ag === 1 ? '' : 's'}`);
@@ -737,7 +1089,7 @@
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ key, value: inp.value }),
             });
-            addMsg('sys', r.unchanged ? `⚙️ ${meta[0]}: kept as-is (masked)` : `⚙️ ${meta[0]} saved`);
+            addMsg('sys', r.unchanged ? `${meta[0]}: kept as-is (masked)` : `${meta[0]} saved`);
             refreshCfg();
           } catch (e) { addMsg('sys', `${meta[0]} failed: ` + e.message); }
           finally { btn.disabled = false; }
@@ -770,7 +1122,7 @@
       list.innerHTML = '';
       for (const c of r.checks || []) {
         const row = document.createElement('div'); row.className = 'pRow';
-        const ic = document.createElement('span'); ic.textContent = DOC_ICON[c.status] || '•';
+        const ic = document.createElement('span'); ic.className = 'st doc-' + c.status; ic.textContent = DOC_ICON[c.status] || 'note';
         const lb = document.createElement('span'); lb.textContent = c.label;
         const det = document.createElement('span'); det.className = 'nx';
         det.textContent = (c.detail || '') + (c.fix ? ' — fix: ' + c.fix : '');
@@ -787,7 +1139,7 @@
       const d = await api('/api/dreams');
       $('dreamInfo').textContent = d.lastDreamAt
         ? 'last: ' + new Date(d.lastDreamAt).toLocaleString()
-        : 'no dreams yet — 💤 button runs one';
+        : 'no dreams yet — the Dream button runs one';
       const list = $('dreamList');
       list.innerHTML = '';
       if (!d.history || !d.history.length) {
@@ -851,7 +1203,7 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ fact }),
       });
-      addMsg('sys', '🧠 ' + r.result);
+      addMsg('sys', 'Memory: ' + r.result);
       if (r.ok) $('memFact').value = '';
       refreshMem();
     } catch (e) { addMsg('sys', 'remember failed: ' + e.message); }
@@ -863,7 +1215,7 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content: $('memEdit').value }),
       });
-      addMsg('sys', `🧠 MEMORY.md saved (${r.stats.memoryBytes}B)`);
+      addMsg('sys', `MEMORY.md saved (${r.stats.memoryBytes}B)`);
       refreshMem();
     } catch (e) { addMsg('sys', 'save failed: ' + e.message); }
   };
@@ -883,7 +1235,7 @@
         const row = document.createElement('div'); row.className = 'pRow';
         const n = document.createElement('span'); n.className = 'k'; n.textContent = '@' + nm;
         const sp = document.createElement('span'); sp.className = 'sp';
-        const edit = document.createElement('button'); edit.className = 'ghost'; edit.textContent = '✏️ Edit';
+        const edit = document.createElement('button'); edit.className = 'ghost'; edit.textContent = 'Edit';
         edit.onclick = async () => {
           try {
             const a = await api('/api/agents/' + nm);
@@ -892,10 +1244,11 @@
             $('agSave').dataset.name = nm;
           } catch (e) { addMsg('sys', 'load agent failed: ' + e.message); }
         };
-        const use = document.createElement('button'); use.className = 'ghost'; use.textContent = '💬 Chat';
+        const use = document.createElement('button'); use.className = 'ghost'; use.textContent = 'Talk to';
         use.onclick = () => {
           $('agentSel').value = nm;
           addMsg('sys', 'chatting as @' + nm);
+          switchView('chat');
         };
         row.append(n, sp, edit, use);
         list.appendChild(row);
@@ -922,21 +1275,21 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name, template: tpl }),
       });
-      addMsg('sys', '👥 created @' + r.name);
+      addMsg('sys', 'Created @' + r.name);
       $('agNew').value = '';
       refreshAgents();
     } catch (e) { addMsg('sys', 'create failed: ' + e.message); }
   };
   $('agSave').onclick = async () => {
     const nm = $('agSave').dataset.name;
-    if (!nm) { addMsg('sys', 'pick an agent with ✏️ Edit first'); return; }
+    if (!nm) { addMsg('sys', 'Choose an agent with Edit first'); return; }
     try {
       await api('/api/agents/' + nm, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ soul: $('agSoul').value }),
       });
-      addMsg('sys', '👥 @' + nm + ' SOUL saved');
+      addMsg('sys', 'Personality saved for @' + nm);
     } catch (e) { addMsg('sys', 'save failed: ' + e.message); }
   };
 
@@ -958,7 +1311,7 @@
         const o = document.createElement('span'); o.className = 'nx';
         o.textContent = s.origin + (s.description ? ' · ' + String(s.description).slice(0, 60) : '');
         const sp = document.createElement('span'); sp.className = 'sp';
-        const view = document.createElement('button'); view.className = 'ghost'; view.textContent = '👁';
+        const view = document.createElement('button'); view.className = 'ghost'; view.textContent = 'View';
         view.onclick = async () => {
           try {
             const sk = await api('/api/skills/' + s.name);
@@ -990,7 +1343,7 @@
         body: JSON.stringify({ source: src, force: $('skForce').checked }),
       });
       const done = (r.results || []).map((x) => `${x.action}: ${x.name}`).join(', ') || 'nothing';
-      addMsg('sys', '📚 import → ' + done);
+      addMsg('sys', 'Import: ' + done);
       $('skSrc').value = '';
       refreshSkills();
     } catch (e) { addMsg('sys', 'import failed: ' + e.message); }
@@ -1007,21 +1360,22 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ text: t }),
       });
-      addMsg('sys', r.ok ? '🔊 spoke via ' + r.backend : '🔇 tts: ' + (r.error || 'failed'));
+      addMsg('sys', r.ok ? 'Spoke via ' + r.backend : 'Voice: ' + (r.error || 'failed'));
     } catch (e) { addMsg('sys', 'say failed: ' + e.message); }
     finally { $('sayGo').disabled = false; }
   };
   $('listenGo').onclick = async () => {
     $('listenGo').disabled = true;
-    addMsg('sys', '🎤 listening — speak now…');
+    addMsg('sys', 'Listening — speak now…');
     try {
       const r = await api('/api/listen', { method: 'POST' });
       if (r.ok && r.text) {
         $('input').value = ($('input').value ? $('input').value + ' ' : '') + r.text;
-        addMsg('sys', '🎤 heard: "' + r.text + '" — press Send');
+        addMsg('sys', 'Heard: "' + r.text + '" — press Send');
+        switchView('chat');
         $('input').focus();
       } else {
-        addMsg('sys', '🎤 ' + (r.error || 'did not hear anything'));
+        addMsg('sys', r.error || 'did not hear anything');
       }
     } catch (e) { addMsg('sys', 'listen failed: ' + e.message); }
     finally { $('listenGo').disabled = false; }
@@ -1035,7 +1389,7 @@
   $('bootInstall').onclick = async () => {
     try {
       const r = await api('/api/boot/install', { method: 'POST' });
-      addMsg('sys', `🚀 boot script ${r.ok ? 'created' : 'updated'}: ${r.path}`);
+      addMsg('sys', `Boot script ${r.ok ? 'created' : 'updated'}: ${r.path}`);
       refreshBoot();
     } catch (e) { addMsg('sys', 'boot install failed: ' + e.message); }
   };
@@ -1058,7 +1412,7 @@
     $('wakeStart').disabled = true;
     try {
       const r = await api('/api/wake/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-      if (!r.ok) addMsg('sys', '👂 ' + r.error); // success is announced by the wake SSE event
+      if (!r.ok) addMsg('sys', r.error); // success is announced by the wake SSE event
     } catch (e) { addMsg('sys', 'wake failed: ' + e.message); }
     finally { $('wakeStart').disabled = false; refreshWake(); }
   };
@@ -1072,13 +1426,14 @@
     if (!t) return;
     $('wakeTxt').value = '';
     addMsg('user', t);
+    switchView('chat');
     try {
       const r = await api('/api/wake/feed', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ text: t }),
       });
       if (r.state === 'idle') addMsg('sys', '(keyword not heard — say the keyword first, then the command)');
-      else if (r.state === 'wake') addMsg('sys', '👂 keyword heard — now say your command');
+      else if (r.state === 'wake') addMsg('sys', 'Keyword heard — now say your command');
     } catch (e) { addMsg('sys', 'wake feed failed: ' + e.message); }
   };
   $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
@@ -1176,7 +1531,7 @@
         const sp = document.createElement('span'); sp.className = 'sp';
         const load = document.createElement('button');
         load.className = 'ghost'; load.textContent = 'Open';
-        load.onclick = () => { $('session').value = s.id; loadSession(s.id); };
+        load.onclick = () => { $('session').value = s.id; loadSession(s.id); switchView('chat'); };
         row.append(id, meta, sp, load);
         box.appendChild(row);
       }
@@ -1185,7 +1540,7 @@
   $('chatPanel').addEventListener('toggle', () => { if ($('chatPanel').open) refreshSessPanel(); });
   $('sessExport').onclick = async () => {
     const sel = $('session').value;
-    if (!sel) { addMsg('sys', 'pick a chat in the bar below first'); return; }
+    if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
     try {
       const r = await api('/api/sessions/' + encodeURIComponent(sel) + '/export');
       const blob = new Blob([r.markdown], { type: 'text/markdown' });
@@ -1194,12 +1549,13 @@
       a.download = sel.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.md';
       a.click();
       URL.revokeObjectURL(a.href);
-      addMsg('sys', `📥 exported "${sel}" as Markdown`);
+      addMsg('sys', `Exported "${sel}" as Markdown`);
+      switchView('chat');
     } catch (e) { addMsg('sys', 'export failed: ' + e.message); }
   };
   $('sessRename').onclick = async () => {
     const sel = $('session').value;
-    if (!sel) { addMsg('sys', 'pick a chat in the bar below first'); return; }
+    if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
     const to = prompt('New name for "' + sel + '":', sel);
     if (!to || to === sel) return;
     try {
@@ -1207,7 +1563,8 @@
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ to }),
       });
-      addMsg('sys', `✏️ renamed "${sel}" → "${to}"`);
+      addMsg('sys', `Renamed "${sel}" to "${to}"`);
+      switchView('chat');
       $('session').value = to;
       refreshSessions(); refreshSessPanel();
     } catch (e) { addMsg('sys', 'rename failed: ' + e.message); }
@@ -1220,7 +1577,8 @@
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ olderThanDays: days }),
       });
-      addMsg('sys', `🧹 removed ${r.removed} old chat(s), freed ${Math.round((r.freedBytes || 0) / 1024)} KB`);
+      addMsg('sys', `Removed ${r.removed} old chat(s), freed ${Math.round((r.freedBytes || 0) / 1024)} KB`);
+      switchView('chat');
       refreshSessions(); refreshSessPanel();
     } catch (e) { addMsg('sys', 'clean failed: ' + e.message); }
   };
@@ -1234,13 +1592,38 @@
       if (!r.ok) { $('updInfo').textContent = 'could not check: ' + (r.error || 'offline?'); }
       else if (r.updateAvailable) {
         $('updInfo').textContent = `v${r.latest} available (you have v${r.current})`;
-        addMsg('sys', `⬆️ a newer TermCrab exists: v${r.latest} (you have v${r.current}) — run: git pull && npm install -g .`);
-      } else { $('updInfo').textContent = `you're on the latest (v${r.current})`; addMsg('sys', `✅ you're on the latest version (v${r.current})`); }
+        addMsg('sys', `A newer TermCrab exists: v${r.latest} (you have v${r.current}). Run: git pull && npm install -g .`);
+      } else { $('updInfo').textContent = `you're on the latest (v${r.current})`; addMsg('sys', `You're on the latest version (v${r.current})`); }
     } catch (e) { $('updInfo').textContent = 'check failed: ' + e.message; }
     finally { $('updCheck').disabled = false; }
   };
 
-  async function bootstrap() {
+  
+  // ---- Tab shell (mobile) ----
+  const VIEWS = ['chat', 'status', 'memory', 'tools', 'settings'];
+  function switchView(name) {
+    if (!VIEWS.includes(name)) name = 'chat';
+    document.body.dataset.view = name;
+    for (const v of VIEWS) {
+      const sec = document.getElementById('view-' + v);
+      if (sec) sec.hidden = v !== name;
+      const btn = document.querySelector('.rail [data-goto="' + v + '"]');
+      if (btn) {
+        btn.classList.toggle('on', v === name);
+        btn.setAttribute('aria-current', v === name ? 'page' : 'false');
+      }
+    }
+    const primary = document.querySelector('#view-' + name + ' details[data-primary]');
+    if (primary && !primary.open) primary.open = true;
+    if (name === 'memory') { refreshMem(); refreshDreams(); }
+    if (name === 'chat') log.scrollTop = log.scrollHeight;
+  }
+  document.querySelectorAll('.rail [data-goto]').forEach((b) => {
+    b.onclick = () => switchView(b.dataset.goto);
+  });
+  switchView('chat');
+
+async function bootstrap() {
     if (!state.token) { showOverlay(); return; }
     try {
       await api('/api/skills'); // validates token
@@ -1260,19 +1643,19 @@
           w.style.maxWidth = 'min(520px, 94%)';
           const t = document.createElement('div');
           t.textContent =
-            `👋 Welcome! v${s.version} is running. Two steps to wake your crab:\n` +
-            `1) Pick your AI brain — open ⚙️ Settings below, choose "AI brain type" and paste your password (API key).\n` +
+            `Welcome — v${s.version} is running. Two steps to wake your crab:\n` +
+            `1) Pick your AI brain: open the Settings tab, choose "AI brain type" and paste your password (API key).\n` +
             `2) Say hello in the chat box.\n` +
             `(Brain "mock" is only an offline demo — it doesn't think.)`;
           const b = document.createElement('button');
           b.className = 'ghost';
           b.style.marginTop = '8px';
-          b.textContent = '👉 Open Settings';
-          b.onclick = () => { $('cfgPanel').open = true; $('cfgPanel').scrollIntoView({ behavior: 'smooth' }); };
+          b.textContent = 'Open Settings';
+          b.onclick = () => { switchView('settings'); $('cfgPanel').open = true; };
           const wz = document.createElement('button');
           wz.className = 'ghost';
           wz.style.cssText = 'margin-top:8px;margin-left:8px';
-          wz.textContent = '🧙‍♂️ Or use the setup wizard';
+          wz.textContent = 'Or use the setup wizard';
           wz.onclick = wizOpen;
           w.append(t, b, wz);
           log.insertBefore(w, log.firstChild);

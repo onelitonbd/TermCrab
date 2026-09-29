@@ -2,6 +2,42 @@
 
 # Changelog
 
+## 0.9.0 — 2026-09-29 (Mobile control panel, redesigned)
+
+The web panel was rebuilt as a phone-first interface, following Anthropic's
+frontend-design guidance (distinctive, not templated) and one hard rule from
+its owner: **no emojis anywhere**.
+
+### Redesigned
+- **Bottom tab navigation** — Chat · Status · Memory · Tools · Settings; one
+  screen at a time, all controls in the thumb zone, 44-48 px targets,
+  safe-area aware (notch/bottom-bar friendly)
+- **New look** — light "shore station" theme: cool mist base, deep sea-ink
+  station-plate header with live status, one sea-green accent; sentence-case
+  copy throughout, hairline structure instead of floating cards
+- **Chat screen** — agent + chat pickers and Reset / Check in / Dream live in
+  a top row; composer sits right above the tab bar; messages use ink (you)
+  vs enamel (crab) bubbles
+- **Sheets** — token gate and setup wizard slide up from the bottom like
+  native mobile sheets
+- **No emojis** — every icon-emoji in buttons, status lines and messages was
+  replaced with plain words; doctor results use colored pass/warn/fail chips;
+  the crab logo is now clean line art (SVG)
+- Actions started in Tools (dictate, wake command, run job, export, rename,
+  clean old) jump to the Chat screen so you see the result
+- Focus-visible outlines, reduced-motion respected, 16 px inputs (no mobile
+  keyboard zoom), single-file UI with zero dependencies (unchanged)
+
+### Fixed along the way
+- Settings rows wrap correctly on narrow phones (no horizontal scrolling)
+
+### Tests
+- 156 total, 155 pass, 1 skipped (live whisper check — engine assets absent in
+  this environment); UI verified by ID-wiring check, JS syntax check, emoji
+  scan of the served page, and all panel endpoints returning 200
+
+# Changelog
+
 ## 0.8.0 — 2026-09-29 (Voice memos & verdicts)
 
 Closes the v0.5 P2 spike round: one keeper shipped, three honest verdicts.
