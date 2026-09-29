@@ -41,13 +41,13 @@
     height: 100vh;
     height: 100dvh;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     background: var(--bg);
     color: var(--text);
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
-    max-width: 640px;
+    max-width: 1080px;
     margin: 0 auto;
     border-left: 1px solid var(--line);
     border-right: 1px solid var(--line);
@@ -261,7 +261,7 @@
   button.danger { color: var(--danger); }
   button.danger:hover { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
   :focus-visible { outline: none; box-shadow: var(--ring); }
-  header :focus-visible, .rail button.on:focus-visible { box-shadow: 0 0 0 2px var(--bg-accent), 0 0 0 3px rgba(255, 112, 112, 0.9); }
+  header :focus-visible, .nav button.on:focus-visible { box-shadow: 0 0 0 2px var(--bg-accent), 0 0 0 3px rgba(255, 112, 112, 0.9); }
 
   input[type="text"], input[type="password"], input[type="search"], select, textarea {
     font-size: 16px;
@@ -413,41 +413,149 @@
   .okc { color: var(--ok); } .warnc { color: var(--warn); } .failc { color: var(--danger); } .infoc { color: var(--muted); }
   .hidden { display: none !important; }
 
-  /* ---- bottom rail (mobile stand-in for the OpenClaw sidebar) ---- */
-  .rail {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    background: var(--bg-accent);
-    border-top: 1px solid var(--line);
+  /* ---- sidebar (OpenClaw-style left nav + chat history) ---- */
+  #side {
+    width: 264px;
     flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg-accent);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    padding: 10px 10px calc(16px + env(safe-area-inset-bottom));
+    gap: 2px;
+    -webkit-overflow-scrolling: touch;
   }
-  .rail button {
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav button {
+    position: relative;
+    display: block;
+    text-align: left;
     background: transparent;
     border: 0;
-    border-radius: 0;
     color: var(--muted);
-    font-size: 11.5px;
     font-weight: 600;
-    min-height: 54px;
-    padding: 6px 2px 7px;
-    letter-spacing: -0.01em;
-    position: relative;
+    font-size: 14px;
+    min-height: 42px;
+    padding: 0 12px 0 14px;
+    border-radius: var(--r-sm);
+    width: 100%;
   }
-  .rail button.on { color: var(--strong); }
-  .rail button.on::before {
+  .nav button.on { color: var(--strong); background: var(--fill); }
+  .nav button.on::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: 22%;
-    right: 22%;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
     background: var(--accent);
   }
-  .rail button:hover { color: var(--text); }
-  .rail button.on:hover { color: var(--strong); }
-  .rail button:active { background: var(--fill); }
+  .nav button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+  .nav button.on:hover { color: var(--strong); background: var(--fill); }
+  .sideLabel {
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 16px 8px 6px;
+    border-top: 1px solid var(--line);
+    margin-top: 10px;
+  }
+  #histList { display: flex; flex-direction: column; gap: 2px; }
+  .histRow {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 500;
+    min-height: 46px;
+    width: 100%;
+    padding: 6px 12px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+  }
+  .histRow .hid {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: inherit;
+  }
+  .histRow .hmeta {
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .histRow.on { background: var(--fill); color: var(--strong); }
+  .histRow:hover { background: rgba(255, 255, 255, 0.05); color: var(--strong); }
+  .histRow.on .hmeta { color: var(--text); }
+
+  /* ---- main column (topbar + screen + composer) ---- */
+  .main {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: 780px;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #navBtn {
+    display: none;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    color: var(--strong);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  #navBtn:hover { background: var(--fill); }
+  #navScrim { display: none; }
+  #navScrim[hidden] { display: none !important; }
+
+  @media (max-width: 719px) {
+    body { max-width: none; border-left: 0; border-right: 0; }
+    #side {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: min(300px, 84vw);
+      transform: translateX(-100%);
+      transition: transform 0.18s ease;
+      padding-top: calc(12px + env(safe-area-inset-top));
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+    }
+    body.nav-open #side { transform: none; }
+    #navBtn { display: inline-flex; }
+    #navScrim {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 10, 0.6);
+      z-index: 29;
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
+    .main { max-width: none; }
+  }
+  @media (min-width: 720px) {
+    #side { transform: none !important; }
+  }
 
   /* ---- sheets (token gate + wizard) ---- */
   #overlay, #wiz {
@@ -457,7 +565,7 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    z-index: 20;
+    z-index: 40;
     padding: 0;
     animation: fade 0.15s ease-out;
   }
@@ -493,7 +601,22 @@
 </style>
 </head>
 <body>
+<aside id="side">
+  <nav class="nav" aria-label="Sections">
+    <button data-goto="chat" class="on" aria-current="page">Chat</button>
+    <button data-goto="status">Status</button>
+    <button data-goto="memory">Memory</button>
+    <button data-goto="tools">Tools</button>
+    <button data-goto="settings">Settings</button>
+  </nav>
+  <div class="sideLabel">Chat history</div>
+  <div id="histList"><div class="nx" style="padding:4px 8px">loading…</div></div>
+</aside>
+<div class="main">
 <header>
+  <button id="navBtn" class="ghost" aria-label="Open menu" title="Menu">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
   <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
     <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#ff5c5c" stroke-width="1.7"/>
     <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -670,13 +793,8 @@
   <button id="send">Send</button>
 </div>
 
-<nav class="rail" aria-label="Main">
-  <button data-goto="chat" class="on" aria-current="page">Chat</button>
-  <button data-goto="status">Status</button>
-  <button data-goto="memory">Memory</button>
-  <button data-goto="tools">Tools</button>
-  <button data-goto="settings">Settings</button>
-</nav>
+</div>
+<div id="navScrim" hidden></div>
 
 <div id="wiz" class="hidden">
   <div class="card">
@@ -885,6 +1003,8 @@
         sel.appendChild(o);
       }
       sel.value = seen.has(keep) || keep === 'web:main' ? keep : (opts[0] ? opts[0].id : 'web:main');
+      state.sessions = data.sessions || [];
+      renderHistory(state.sessions);
     } catch { /* non-fatal */ }
   }
 
@@ -930,7 +1050,10 @@
     } catch (e) { addMsg('sys', 'dream failed: ' + e.message); }
   };
 
-  $('session').addEventListener('change', () => loadSession($('session').value));
+  $('session').addEventListener('change', () => {
+    loadSession($('session').value);
+    renderHistory(state.sessions);
+  });
 
   // ---- Cron management ----
   async function refreshCrons() {
@@ -1621,10 +1744,12 @@
   function switchView(name) {
     if (!VIEWS.includes(name)) name = 'chat';
     document.body.dataset.view = name;
+    document.body.classList.remove('nav-open');
+    $('navScrim').hidden = true;
     for (const v of VIEWS) {
       const sec = document.getElementById('view-' + v);
       if (sec) sec.hidden = v !== name;
-      const btn = document.querySelector('.rail [data-goto="' + v + '"]');
+      const btn = document.querySelector('.nav [data-goto="' + v + '"]');
       if (btn) {
         btn.classList.toggle('on', v === name);
         btn.setAttribute('aria-current', v === name ? 'page' : 'false');
@@ -1635,10 +1760,63 @@
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'chat') log.scrollTop = log.scrollHeight;
   }
-  document.querySelectorAll('.rail [data-goto]').forEach((b) => {
+  document.querySelectorAll('.nav [data-goto]').forEach((b) => {
     b.onclick = () => switchView(b.dataset.goto);
   });
   switchView('chat');
+
+  // ---- Sidebar drawer + chat history ----
+  function closeNav() {
+    document.body.classList.remove('nav-open');
+    $('navScrim').hidden = true;
+  }
+  $('navBtn').onclick = () => {
+    const open = !document.body.classList.contains('nav-open');
+    document.body.classList.toggle('nav-open', open);
+    $('navScrim').hidden = !open;
+    if (open) refreshSessions();
+  };
+  $('navScrim').onclick = closeNav;
+  function renderHistory(sessions) {
+    const box = $('histList');
+    if (!box) return;
+    box.innerHTML = '';
+    const cur = $('session').value || 'web:main';
+    const list = (sessions || [])
+      .slice()
+      .sort((a, b) => (b.modified || 0) - (a.modified || 0))
+      .slice(0, 40);
+    if (!list.length) {
+      const e = document.createElement('div');
+      e.className = 'nx';
+      e.style.padding = '4px 8px';
+      e.textContent = 'No chats yet — say hello and one will appear here.';
+      box.appendChild(e);
+      return;
+    }
+    for (const sess of list) {
+      const b = document.createElement('button');
+      b.className = 'histRow' + (sess.id === cur ? ' on' : '');
+      b.dataset.id = sess.id;
+      const id = document.createElement('span');
+      id.className = 'hid';
+      id.textContent = sess.id;
+      const meta = document.createElement('span');
+      meta.className = 'hmeta';
+      meta.textContent =
+        sess.messages +
+        ' messages · ' +
+        new Date((sess.modified || 0) * 1000).toISOString().slice(0, 10);
+      b.append(id, meta);
+      b.onclick = () => {
+        $('session').value = sess.id;
+        loadSession(sess.id);
+        switchView('chat');
+        closeNav();
+      };
+      box.appendChild(b);
+    }
+  }
 
 async function bootstrap() {
     if (!state.token) { showOverlay(); return; }

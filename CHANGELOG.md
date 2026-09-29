@@ -2,6 +2,32 @@
 
 # Changelog
 
+## 0.11.0 — 2026-09-29 (Sidebar navigation + chat history)
+
+Bottom tab bar is gone — the panel now navigates the way OpenClaw's Control
+UI does: a left sidebar, with your chat history living inside it.
+
+### Layout
+- **Left sidebar**: Chat · Status · Memory · Tools · Settings, active item
+  marked with the coral indicator (OpenClaw's active-nav treatment)
+- **Chat history section** under the nav: every conversation with message
+  count and date, newest first; tap one to open it (it loads into the chat
+  screen and the active-chat marker follows)
+- **Phones**: the sidebar becomes a slide-in drawer from the left — hamburger
+  button in the top bar, dimmed backdrop to dismiss, drawer closes when you
+  pick a destination (same pattern as OpenClaw's mobile shell)
+- Desktop: sidebar always visible; content column caps at 780 px and centers
+- Token gate and wizard sheets stack above the drawer
+- Bottom rail removed; everything else (tokens, zero emojis, zero deps)
+  unchanged
+
+### Tests
+- 156 total, 155 pass, 1 environment skip; served page verified: sidebar,
+  history renderer, drawer toggle present; bottom rail absent; zero emojis;
+  no undefined CSS variables; JS syntax clean
+
+# Changelog
+
 ## 0.10.0 — 2026-09-29 (OpenClaw look, TermCrab soul)
 
 Reskinned the control panel to the OpenClaw Control UI's own design system,
