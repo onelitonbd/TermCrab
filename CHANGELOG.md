@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.0 — 2026-09-30 (Save button + modern model icon)
+
+- The Models page now has a **Save** button: tick the models you want, then press Save — everything marked is written to the system instantly, with a confirmation that it is ready to use right away (no restart). The button shows how many changes are waiting, e.g. "Save (3)", and unticking a saved model removes it on Save too.
+- Fetch is now an outline button so Save stands out as the main action.
+- The composer's model button got a modern sparkle icon instead of the old cube.
+
 ## 0.20.1 — 2026-09-30 (Current provider shows your own name)
 
 - When the provider in use matches a saved entry, the system now displays the name you gave it on the Providers page (instead of the raw address), everywhere the current provider is shown.

@@ -266,8 +266,14 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('id="mdlFetch"'), 'fetch button for the provider catalog');
       assert.ok(html.includes('id="mdlSearch"'), 'search bar above the list');
       assert.ok(html.includes("cb.className = 'mdlTick'"), 'rounded tick box per model');
-      assert.ok(html.includes("await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m })"), 'tick saves to the backend immediately');
+      assert.ok(html.includes("await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m })"), 'save button posts ticked models to the backend');
+      assert.ok(html.includes('id="mdlSave"'), 'save button on the models page');
+      assert.ok(html.includes("$('mdlSave').onclick = saveMdl"), 'save button wired to instant save');
+      assert.ok(html.includes('let mdlMarked = new Set()'), 'ticks are staged until Save');
+      assert.ok(html.includes('ready to use right now (no restart needed)'), 'save confirms instant availability');
       assert.ok(html.includes('id="modelBtn"') && html.includes('id="modelBtnLabel"'), 'rounded model button in the composer');
+      assert.ok(html.includes('d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9'), 'modern sparkle icon on the model button');
+      assert.ok(!html.includes('M13.5 4.5 8 1.5'), 'old cube icon gone');
       assert.ok(html.includes('id="modelPick"'), 'model picker popup');
       assert.ok(html.includes("api('/api/models/use', 'POST'"), 'picking a model switches the live brain');
       assert.ok(html.includes('refreshModelBtn()'), 'composer button follows the live model');
