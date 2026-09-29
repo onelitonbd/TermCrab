@@ -15,9 +15,27 @@ export interface ProviderCfg {
   stream?: boolean;
 }
 
+export interface ProviderKeyEntry {
+  id: string;
+  name: string;
+  key: string;
+  created: number;
+}
+
+/** A saved OpenAI-compatible endpoint (name + base url) with any number of keys. */
+export interface ProviderEntry {
+  id: string;
+  name: string;
+  baseUrl: string;
+  keys: ProviderKeyEntry[];
+  created: number;
+}
+
 export interface Config {
   version: number;
   provider: ProviderCfg;
+  /** Saved providers (OpenAI-compatible). Managed from the Providers page. */
+  providers: ProviderEntry[];
   gateway: {
     host: string;
     port: number;
@@ -81,6 +99,7 @@ export function defaults(): Config {
   return {
     version: 1,
     provider: { type: 'mock', model: DEFAULT_MODEL_HINTS.mock! },
+    providers: [],
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '' },
     channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },

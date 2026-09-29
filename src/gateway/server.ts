@@ -3,7 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, cfgSet, saveConfig, configExists } from '../core/config.js';
+import { Config, ProviderEntry, cfgSet, saveConfig, configExists } from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -79,7 +79,7 @@ function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<string>
   });
 }
 
-const SECRET_LEAF_KEYS = new Set(['token', 'apiKey']);
+const SECRET_LEAF_KEYS = new Set(['token', 'apiKey', 'key']);
 
 function maskSecret(v: string): string {
   return v.length <= 4 ? '•••' : `${v.slice(0, 2)}•••${v.slice(-2)}`;
@@ -100,6 +100,29 @@ function redactConfig(cfg: Config): unknown {
     return v;
   };
   return walk(cfg);
+}
+
+/** Short, safe rendering of a stored API key (never the whole secret). */
+function maskApiKey(k: string): string {
+  if (k.length >= 8) return `${k.slice(0, 3)}…${k.slice(-4)}`;
+  return `…${k.slice(-2)}`;
+}
+
+function providerView(p: ProviderEntry) {
+  return { id: p.id, name: p.name, baseUrl: p.baseUrl, created: p.created, keyCount: p.keys.length };
+}
+
+function keyView(k: { id: string; name: string; key: string; created: number }, activeKey: string) {
+  return { id: k.id, name: k.name, created: k.created, masked: maskApiKey(k.key), active: !!activeKey && k.key === activeKey };
+}
+
+function validHttpUrl(u: string): boolean {
+  try {
+    const x = new URL(u);
+    return x.protocol === 'http:' || x.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 /** Apply one dotted config set to a LIVE config object (shared reference) + disk. */
@@ -645,6 +668,100 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           applyConfigSet(config, key, value);
           log.info(`config set via UI: ${key}`);
           json(res, 200, { ok: true, config: redactConfig(config) });
+          return;
+        }
+
+        // ---- Providers: saved OpenAI-compatible endpoints + API keys ----
+        if (pathname === '/api/providers' && req.method === 'GET') {
+          json(res, 200, { providers: config.providers.map(providerView) });
+          return;
+        }
+        if (pathname === '/api/providers' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const name = typeof body?.name === 'string' ? body.name.trim() : '';
+          const baseUrl = typeof body?.baseUrl === 'string' ? body.baseUrl.trim().replace(/\/+$/, '') : '';
+          if (!name || name.length > 40) {
+            json(res, 400, { error: 'a name is required (1-40 characters)' });
+            return;
+          }
+          if (!validHttpUrl(baseUrl)) {
+            json(res, 400, { error: 'base url must be a full http(s) address, e.g. https://api.openai.com/v1' });
+            return;
+          }
+          const created: ProviderEntry = {
+            id: 'prov_' + randomUUID().replace(/-/g, '').slice(0, 12),
+            name,
+            baseUrl,
+            keys: [],
+            created: Math.floor(Date.now() / 1000),
+          };
+          config.providers.push(created);
+          saveConfig(config);
+          log.info(`providers: added "${created.name}" (${created.baseUrl})`);
+          json(res, 200, { provider: providerView(created) });
+          return;
+        }
+
+        const provOne = pathname.match(/^\/api\/providers\/([^/]+)$/);
+        if (provOne && req.method === 'GET') {
+          const p = config.providers.find((x) => x.id === provOne[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const activeKey = config.provider.apiKey || '';
+          json(res, 200, { provider: { ...providerView(p), keys: p.keys.map((k) => keyView(k, activeKey)) } });
+          return;
+        }
+        if (provOne && req.method === 'DELETE') {
+          const idx = config.providers.findIndex((x) => x.id === provOne[1]);
+          if (idx === -1) { json(res, 404, { error: 'provider not found' }); return; }
+          const [gone] = config.providers.splice(idx, 1);
+          saveConfig(config);
+          log.info(`providers: removed "${gone?.name}"`);
+          json(res, 200, { ok: true });
+          return;
+        }
+
+        const provKeys = pathname.match(/^\/api\/providers\/([^/]+)\/keys$/);
+        if (provKeys && req.method === 'POST') {
+          const p = config.providers.find((x) => x.id === provKeys[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const body = await readJsonBody(req);
+          const name = typeof body?.name === 'string' ? body.name.trim() : '';
+          const key = typeof body?.key === 'string' ? body.key.trim() : '';
+          if (!name || name.length > 40) { json(res, 400, { error: 'a key name is required (1-40 characters)' }); return; }
+          if (!key || key.length > 512) { json(res, 400, { error: 'the API key itself is required' }); return; }
+          const entry = { id: 'key_' + randomUUID().replace(/-/g, '').slice(0, 12), name, key, created: Math.floor(Date.now() / 1000) };
+          p.keys.push(entry);
+          saveConfig(config);
+          log.info(`providers: added key "${name}" to "${p.name}"`);
+          json(res, 200, { key: keyView(entry, config.provider.apiKey || '') });
+          return;
+        }
+
+        const provKeyDel = pathname.match(/^\/api\/providers\/([^/]+)\/keys\/([^/]+)$/);
+        if (provKeyDel && req.method === 'DELETE') {
+          const p = config.providers.find((x) => x.id === provKeyDel[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const idx = p.keys.findIndex((k) => k.id === provKeyDel[2]);
+          if (idx === -1) { json(res, 404, { error: 'key not found' }); return; }
+          p.keys.splice(idx, 1);
+          saveConfig(config);
+          json(res, 200, { ok: true });
+          return;
+        }
+
+        const provUse = pathname.match(/^\/api\/providers\/([^/]+)\/keys\/([^/]+)\/use$/);
+        if (provUse && req.method === 'POST') {
+          const p = config.providers.find((x) => x.id === provUse[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const k = p.keys.find((x) => x.id === provUse[2]);
+          if (!k) { json(res, 404, { error: 'key not found' }); return; }
+          const model = config.provider.type === 'openai' && config.provider.model
+            ? config.provider.model
+            : (DEFAULT_MODEL_HINTS.openai || config.provider.model);
+          config.provider = { ...config.provider, type: 'openai', baseUrl: p.baseUrl, apiKey: k.key, model };
+          saveConfig(config);
+          log.info(`providers: now using "${p.name}" with key "${k.name}"`);
+          json(res, 200, { ok: true, using: { provider: p.name, baseUrl: p.baseUrl, key: k.name } });
           return;
         }
 

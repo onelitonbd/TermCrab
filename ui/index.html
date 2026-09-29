@@ -255,41 +255,105 @@
   /* ---- composer ---- */
   #composer {
     display: none;
-    gap: 8px;
-    padding: 9px 10px 10px;
-    background: var(--card);
+    flex-direction: column;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    background: var(--bg);
     border-top: 1px solid var(--line);
-    align-items: flex-end;
     flex-shrink: 0;
   }
   body[data-view="chat"] #composer { display: flex; }
+  /* two-layer rounded composer: message on top, rounded icon buttons below */
+  #composerBox {
+    border: 1px solid var(--line-strong);
+    border-radius: 18px;
+    background: var(--card);
+    padding: 5px 7px 7px;
+    display: flex;
+    flex-direction: column;
+  }
+  #composerBox:focus-within { border-color: var(--line-hover); box-shadow: var(--ring); }
   #composer textarea {
     flex: 1;
     resize: none;
-    min-height: 46px;
-    max-height: 132px;
-    border-radius: var(--r-lg);
-    background: var(--fill);
-    border: 1px solid var(--line-strong);
-    color: var(--strong);
-    padding: 12px 13px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 140px;
+    padding: 9px 9px 4px;
     font-size: 16px;
     line-height: 1.4;
-    outline: none;
+    color: var(--strong);
+    font-family: inherit;
   }
-  #composer textarea:focus { border-color: var(--line-hover); box-shadow: var(--ring); }
-  #send {
-    background: var(--primary);
-    color: #fafafa;
+  #composer textarea:focus { border: 0; box-shadow: none; }
+  .composerRow { display: flex; align-items: center; gap: 8px; padding: 3px 2px 0; }
+  .composerSp { flex: 1; }
+  .iconBtn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
     font-weight: 600;
-    border: 0;
-    border-radius: var(--r-lg);
-    padding: 0 18px;
-    min-height: 46px;
-    font-size: 15px;
-    cursor: pointer;
   }
-  #send:active { background: #1a7f37; color: #ffffff; }
+  .iconBtn:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
+  .iconBtn:disabled { opacity: 0.4; }
+  .iconBtn:disabled:hover { background: transparent; color: var(--text); border-color: var(--line-strong); }
+  .iconBtn.primary { background: var(--primary); border-color: transparent; color: #ffffff; }
+  .iconBtn.primary:hover { background: var(--primary-hover); color: #ffffff; }
+  .iconBtn.primary:disabled { background: var(--primary); opacity: 0.45; }
+
+  /* ---- providers page ---- */
+  .pageHead { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
+  .pageHead h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 650; color: var(--strong); letter-spacing: -0.01em; }
+  .pageHead .iconBtn { flex-shrink: 0; }
+  .pageNote { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .listCol { display: flex; flex-direction: column; gap: 8px; }
+  .provRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 12px 13px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    color: var(--text);
+    font-size: 14.5px;
+    min-height: 44px;
+  }
+  .provRow:hover { border-color: var(--line-hover); background: var(--fill); }
+  .provTx { flex: 1; min-width: 0; }
+  .provTx .pn { font-weight: 650; color: var(--strong); font-size: 15px; }
+  .provTx .pu { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .provMeta { color: var(--muted); font-size: 12.5px; flex-shrink: 0; }
+  .provChev { color: var(--muted); flex-shrink: 0; font-size: 18px; line-height: 1; }
+  .keyRow { cursor: default; }
+  .keyRow .kn { font-weight: 600; color: var(--strong); font-size: 14.5px; }
+  .keyRow .kv { color: var(--muted); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; margin-top: 2px; }
+  .keyBadges { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+  .inUse {
+    color: var(--ok);
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid var(--ok);
+    border-radius: 999px;
+    padding: 3px 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .smallBtn { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
 
   /* ---- controls ---- */
   button {
@@ -687,8 +751,8 @@
   }
   .menuBtn:hover { background: var(--fill); color: var(--strong); }
 
-  /* ---- sheets (token gate + wizard) ---- */
-  #overlay, #wiz {
+  /* ---- sheets (token gate + popup modal) ---- */
+  #overlay, #modal {
     position: fixed;
     inset: 0;
     background: rgba(5, 7, 10, 0.78);
@@ -699,7 +763,7 @@
     padding: 0;
     animation: fade 0.15s ease-out;
   }
-  #overlay .card, #wiz .card {
+  #overlay .card, #modal .card {
     background: var(--elevated);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
@@ -708,21 +772,21 @@
     border-top: 1px solid var(--line-strong);
   }
   #overlay h2 { margin: 6px 0 4px; font-size: 20px; letter-spacing: -0.01em; color: var(--strong); }
-  #overlay p, #wiz p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
-  #overlay input, #wiz input, #wiz select { width: 100%; margin: 12px 0; }
+  #overlay p, #modal p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
+  #overlay input, #modal input, #modal select { width: 100%; margin: 12px 0; }
   #overlay button { width: 100%; min-height: 48px; }
-  #wiz .card { max-height: 92vh; overflow-y: auto; }
-  #wiz h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; color: var(--strong); }
-  #wiz label.pNote { display: block; margin: 4px 0; }
-  #wiz .pBar { margin-top: 14px; }
-  #wiz .pBar .sp { flex: 1; }
-  #wiz #wizErr { color: var(--danger) !important; }
+  #modal .card { max-height: 92vh; overflow-y: auto; }
+  #modal h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; color: var(--strong); }
+  #modal label.pNote { display: block; margin: 4px 0; }
+  #modal .pBar { margin-top: 14px; }
+  #modal .pBar .sp { flex: 1; }
+  #modal #modalErr { color: var(--danger) !important; }
 
   @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) {
     #log { scroll-behavior: auto; }
-    .msg, #overlay, #wiz, details.panel > summary::after { animation: none; transition: none; }
+    .msg, #overlay, #modal, details.panel > summary::after { animation: none; transition: none; }
   }
   @media (max-width: 380px) {
     .pRow .k { min-width: 110px; }
@@ -733,6 +797,7 @@
 <aside id="side">
   <nav class="nav" aria-label="Sections">
     <button data-goto="status">Status</button>
+    <button data-goto="providers">Providers</button>
     <button data-goto="memory">Memory</button>
     <button data-goto="tools">Tools</button>
     <button data-goto="settings">Settings</button>
@@ -785,7 +850,7 @@
       <div class="pBody">
         <div class="pRow" id="liveStatus">loading status…</div>
         <div class="pBar">
-          <button id="wizOpen" class="ghost">Setup wizard</button>
+          <button id="toProviders" class="ghost">Providers</button>
           <button id="updCheck" class="ghost">Check for updates</button>
           <button id="updApply" class="ghost" title="Download the update, install it, and restart the server">Auto update</button>
           <span class="pNote" id="updInfo"></span>
@@ -800,6 +865,33 @@
         <div id="docList"><div class="nx">not run yet</div></div>
       </div>
     </details>
+  </section>
+
+  <section class="view" id="view-providers" hidden>
+    <div class="pageHead" id="provHead">
+      <button class="iconBtn" id="provBack" type="button" title="Back" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <h2>Providers</h2>
+      <button class="iconBtn" id="provAdd" type="button" title="Add provider" aria-label="Add provider">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <p class="pageNote" id="provNote">OpenAI-compatible services only (OpenAI, OpenRouter, Groq, DeepSeek, Ollama and friends). Keys stay on this device — nothing connects until you press Use on a key.</p>
+    <div id="provList" class="listCol"><div class="nx">loading…</div></div>
+    <div id="keyPage" hidden>
+      <div class="pageHead">
+        <button class="iconBtn" id="keyBack" type="button" title="Back" aria-label="Back">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <h2 id="keyPageName">Provider</h2>
+        <button class="iconBtn" id="keyAdd" type="button" title="Add API key" aria-label="Add API key">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="pageNote">Keys stay on this device. Use makes a key the one your crab talks with — you can keep several here.</p>
+      <div id="keyList" class="listCol"><div class="nx">loading…</div></div>
+    </div>
   </section>
 
   <section class="view" id="view-memory" hidden>
@@ -921,54 +1013,37 @@
 </main>
 
 <div id="composer">
-  <textarea id="input" rows="1" placeholder="Tell your crab what to do…"></textarea>
-  <button id="send">Send</button>
+  <div id="composerBox">
+    <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
+    <div class="composerRow">
+      <button id="attachBtn" class="iconBtn" type="button" title="Attach a text file" aria-label="Attach a file">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.5 2.5 0 0 1 3.5 3.5l-6 6a1.5 1.5 0 0 1-2-2l5.5-5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="composerSp"></span>
+      <button id="stopBtn" class="iconBtn" type="button" title="Stop the reply" aria-label="Stop" disabled>
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>
+      </button>
+      <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt" />
 </div>
 
 </div>
 <div id="navScrim" hidden></div>
 
-<div id="wiz" class="hidden">
+<div id="modal" class="hidden">
   <div class="card">
-    <div id="wizBody">
-      <div class="wizStep" data-step="1">
-        <h3>Step 1 of 3: Pick your AI brain</h3>
-        <p>This is who your crab talks to. You can change it any time in Settings.</p>
-        <select id="wizProvider">
-          <option value="anthropic">Anthropic Claude (needs an API key)</option>
-          <option value="openai">OpenAI / OpenRouter / Groq / Ollama (needs a key or local server)</option>
-          <option value="mock">Offline demo (no key — it does not really think)</option>
-        </select>
-        <input type="password" id="wizKey" placeholder="API key (leave empty for the offline demo)" autocomplete="off" />
-        <input type="text" id="wizModel" placeholder="Model (we'll fill in a good default)" />
-        <input type="text" id="wizBase" placeholder="Advanced: custom address (leave empty if unsure)" />
-      </div>
-      <div class="wizStep hidden" data-step="2">
-        <h3>Step 2 of 3: Name your crab</h3>
-        <p>It lives on your own device. You pick the name and how much it may do.</p>
-        <input type="text" id="wizName" placeholder="Name (e.g. Crabby)" maxlength="40" />
-        <label class="pNote" style="display:block;margin:6px 0"><input type="checkbox" id="wizExec" style="vertical-align:middle" /> let it run commands on this device (recommended)</label>
-        <input type="text" id="wizPort" placeholder="Panel port (default 7788)" inputmode="numeric" />
-      </div>
-      <div class="wizStep hidden" data-step="3">
-        <h3>Step 3 of 3: Telegram (optional)</h3>
-        <p>Talk to your crab from Telegram. Skip it now — you can add it later in Settings.</p>
-        <input type="password" id="wizTgToken" placeholder="Bot token from @BotFather (empty to skip)" autocomplete="off" />
-        <input type="text" id="wizTgUsers" placeholder="Your Telegram user id, comma separated" />
-      </div>
-      <div class="wizStep hidden" data-step="done">
-        <h3>All set</h3>
-        <p id="wizDoneMsg">Saved. Say hello in the chat box — your crab is listening.</p>
-      </div>
-      <div class="pBar" style="margin-top:10px">
-        <button id="wizBack" class="ghost">Back</button>
-        <span class="sp"></span>
-        <button id="wizNext">Next</button>
-        <button id="wizFinish" class="hidden">Finish</button>
-        <button id="wizCancel" class="ghost">Close</button>
-      </div>
-      <div class="pNote" id="wizErr" style="color:var(--danger)"></div>
+    <h3 id="modalTitle"></h3>
+    <div id="modalFields"></div>
+    <div class="pBar" style="margin-top: 14px">
+      <span class="sp"></span>
+      <button id="modalCancel" class="ghost">Cancel</button>
+      <button id="modalSave">Save</button>
     </div>
+    <div class="pNote" id="modalErr"></div>
   </div>
 </div>
 
@@ -993,7 +1068,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $('log');
-  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null };
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null, abort: null, lastView: 'chat', provFrom: 'status', provId: '' };
   const currentSession = () => $('session').value || 'web:main';
 
 
@@ -1288,25 +1363,33 @@
   async function send() {
     const text = $('input').value.trim();
     if (!text || state.busy) return;
-    state.busy = true; $('send').disabled = true;
+    state.busy = true; $('send').disabled = true; $('stopBtn').disabled = false;
+    state.abort = new AbortController();
     $('input').value = '';
     addMsg('user', text);
     state.live = addMsg('bot', '');
+    state.liveRaw = '';
     try {
       const res = await api('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
+        signal: state.abort.signal,
       });
       if (state.live) { state.liveRaw = res.text || state.liveRaw || '(empty reply)'; state.live.innerHTML = renderMarkdown(state.liveRaw); }
     } catch (err) {
-      if (state.live) {
+      if (err && (err.name === 'AbortError' || (state.abort && state.abort.signal.aborted))) {
+        if (state.live) { state.live.remove(); state.live = null; }
+        addMsg('sys', 'Stopped.');
+      } else if (state.live) {
         state.live.textContent = err.message;
         state.live.classList.add('err');
       }
     } finally {
       state.live = null;
-      state.busy = false; $('send').disabled = false;
+      state.liveRaw = '';
+      state.abort = null;
+      state.busy = false; $('send').disabled = false; $('stopBtn').disabled = true;
       log.scrollTop = log.scrollHeight;
       refreshSessions();
     }
@@ -1365,6 +1448,31 @@
   $('input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
+  $('stopBtn').onclick = () => { if (state.abort) state.abort.abort(); };
+  $('attachBtn').onclick = () => $('attachFile').click();
+  $('attachFile').onchange = async () => {
+    const f = $('attachFile').files && $('attachFile').files[0];
+    $('attachFile').value = '';
+    if (!f) return;
+    if (/^(image|audio|video)\//.test(f.type) || f.type === 'application/pdf' || f.type === 'application/zip') {
+      addMsg('sys', 'Attachments work with text files for now.');
+      return;
+    }
+    if (f.size > 200 * 1024) {
+      addMsg('sys', 'That file is too big to attach (200 KB max).');
+      return;
+    }
+    try {
+      const body = await f.text();
+      const inp = $('input');
+      const block = '\u2014 ' + f.name + ' \u2014\n' + body;
+      inp.value = inp.value ? inp.value + '\n\n' + block : block;
+      inp.focus();
+      addMsg('sys', 'Attached ' + f.name + ' — edit it or hit send.');
+    } catch {
+      addMsg('sys', 'Could not read that file.');
+    }
+  };
   $('btnNew').onclick = async () => {
     closeMenu(); switchView('chat');
     try {
@@ -1922,73 +2030,219 @@
   $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
   $('voicePanel').addEventListener('toggle', () => { if ($('voicePanel').open) refreshWake(); });
 
-  // ---- Setup wizard (phase 3) ----
-  let wizStep = 1;
-  function wizShow(n) {
-    wizStep = n;
-    for (const el of document.querySelectorAll('#wiz .wizStep')) {
-      el.classList.toggle('hidden', el.dataset.step !== String(n));
+  // ---- Modal (shared popup: add provider / add API key) ----
+  let modalOnSave = null;
+  function openModal(title, fields, onSave) {
+    $('modalTitle').textContent = title;
+    $('modalErr').textContent = '';
+    const box = $('modalFields');
+    box.innerHTML = '';
+    for (const f of fields) {
+      const i = document.createElement('input');
+      i.type = f.type || 'text';
+      i.id = 'mf_' + f.id;
+      i.placeholder = f.placeholder || '';
+      if (f.type === 'password') i.setAttribute('autocomplete', 'new-password');
+      if (f.maxlength) i.maxLength = f.maxlength;
+      box.appendChild(i);
     }
-    $('wizBack').classList.toggle('hidden', n === 1 || n === 'done');
-    $('wizNext').classList.toggle('hidden', n === 3 || n === 'done');
-    $('wizFinish').classList.toggle('hidden', n !== 3);
-    $('wizErr').textContent = '';
+    modalOnSave = onSave;
+    $('modal').classList.remove('hidden');
+    const first = box.querySelector('input');
+    if (first) setTimeout(() => first.focus(), 60);
   }
-  function wizOpen() {
-    $('wiz').classList.remove('hidden');
-    wizShow(1);
-    // Prefill from current config where possible.
-    api('/api/config').then(({ config }) => {
-      const pv = config.provider || {};
-      if (pv.type && pv.type !== 'mock') $('wizProvider').value = pv.type;
-      if (pv.model && pv.model !== 'mock-1') $('wizModel').value = pv.model;
-      if (config.agent && config.agent.name) $('wizName').value = config.agent.name;
-      if (config.agent && typeof config.agent.allowExec === 'boolean') $('wizExec').checked = config.agent.allowExec;
-      if (config.gateway && config.gateway.port) $('wizPort').value = String(config.gateway.port);
-    }).catch(() => { /* prefill is best-effort */ });
+  function closeModal() {
+    $('modal').classList.add('hidden');
+    modalOnSave = null;
   }
-  $('wizOpen').onclick = wizOpen;
-  $('wizCancel').onclick = () => $('wiz').classList.add('hidden');
-  $('wizBack').onclick = () => { if (wizStep > 1) wizShow(wizStep - 1); };
-  $('wizNext').onclick = () => {
-    if (wizStep === 1) {
-      const pv = $('wizProvider').value;
-      const key = $('wizKey').value.trim();
-      if (pv !== 'mock' && !key) {
-        // allow continuing without a key (some local setups) but warn gently
-        if (!confirm('No API key entered — continue anyway? (You can add it later in Settings.)')) return;
-      }
-    }
-    if (wizStep === 2 && !$('wizName').value.trim() && !confirm('No name yet — call it Crabby?')) return;
-    wizShow(wizStep + 1);
-  };
-  $('wizFinish').onclick = async () => {
-    $('wizFinish').disabled = true;
+  $('modalCancel').onclick = closeModal;
+  $('modalSave').onclick = async () => {
+    if (!modalOnSave) return;
+    const btn = $('modalSave');
+    btn.disabled = true;
+    $('modalErr').textContent = '';
     try {
-      const users = $('wizTgUsers').value.split(',').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n > 0);
-      const body = {
-        provider: $('wizProvider').value,
-        apiKey: $('wizKey').value.trim(),
-        model: $('wizModel').value.trim(),
-        baseUrl: $('wizBase').value.trim(),
-        name: $('wizName').value.trim() || 'Crabby',
-        allowExec: $('wizExec').checked,
-        port: $('wizPort').value.trim(),
-        telegramToken: $('wizTgToken').value.trim(),
-        telegramUsers: users,
-      };
-      const r = await api('/api/onboard', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      wizShow('done');
-      $('wizDoneMsg').textContent = r.setupNeeded
-        ? 'Saved — but no real brain yet. Paste an API key in Settings, then say hello.'
-        : `Saved. Your crab (${r.name} · ${r.model}) is ready — say hello in the chat box.`;
-      updateChatLabel(); refreshLiveStatus();
-    } catch (e) { $('wizErr').textContent = 'save failed: ' + e.message; }
-    finally { $('wizFinish').disabled = false; }
+      await modalOnSave();
+      closeModal();
+    } catch (e) {
+      $('modalErr').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+    }
   };
+
+  // ---- Providers page: OpenAI-compatible endpoints + API keys ----
+  // Everything here only runs when the page is opened — no auto start.
+  async function loadProviders() {
+    if (!state.token) return;
+    const box = $('provList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers');
+      const list = d.providers || [];
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">No providers yet — tap the + to add one.</div>';
+        return;
+      }
+      for (const p of list) {
+        const row = document.createElement('div');
+        row.className = 'provRow';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'pn';
+        n.textContent = p.name;
+        const u = document.createElement('div');
+        u.className = 'pu';
+        u.textContent = p.baseUrl;
+        tx.append(n, u);
+        const meta = document.createElement('span');
+        meta.className = 'provMeta';
+        meta.textContent = p.keyCount + (p.keyCount === 1 ? ' key' : ' keys');
+        const chev = document.createElement('span');
+        chev.className = 'provChev';
+        chev.textContent = '›';
+        row.append(tx, meta, chev);
+        row.onclick = () => openKeys(p.id, p.name);
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      const err = document.createElement('div');
+      err.className = 'nx';
+      err.textContent = 'could not load: ' + e.message;
+      box.appendChild(err);
+    }
+  }
+  function showProvidersRoot() {
+    $('provHead').hidden = false;
+    $('provNote').hidden = false;
+    $('provList').hidden = false;
+    $('keyPage').hidden = true;
+    loadProviders();
+  }
+  async function openKeys(id, name) {
+    $('provHead').hidden = true;
+    $('provNote').hidden = true;
+    $('provList').hidden = true;
+    $('keyPage').hidden = false;
+    $('keyPageName').textContent = name;
+    state.provId = id;
+    await loadKeys();
+  }
+  async function loadKeys() {
+    const box = $('keyList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers/' + encodeURIComponent(state.provId));
+      const p = d.provider;
+      $('keyPageName').textContent = p.name;
+      const list = p.keys || [];
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">No keys yet — tap the + to add one.</div>';
+        return;
+      }
+      for (const k of list) {
+        const row = document.createElement('div');
+        row.className = 'provRow keyRow';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'kn';
+        n.textContent = k.name;
+        const v = document.createElement('div');
+        v.className = 'kv';
+        v.textContent = k.masked;
+        tx.append(n, v);
+        const badges = document.createElement('div');
+        badges.className = 'keyBadges';
+        if (k.active) {
+          const b = document.createElement('span');
+          b.className = 'inUse';
+          b.textContent = 'in use';
+          badges.appendChild(b);
+        } else {
+          const use = document.createElement('button');
+          use.className = 'ghost smallBtn';
+          use.type = 'button';
+          use.textContent = 'Use';
+          use.onclick = async (e) => {
+            e.stopPropagation();
+            use.disabled = true;
+            try {
+              await api('/api/providers/' + encodeURIComponent(state.provId) + '/keys/' + encodeURIComponent(k.id) + '/use', { method: 'POST' });
+              addMsg('sys', 'Now using "' + p.name + '" with key "' + k.name + '".');
+              await loadKeys();
+              refreshLiveStatus();
+            } catch (err) {
+              addMsg('sys', 'Could not switch: ' + err.message);
+              use.disabled = false;
+            }
+          };
+          badges.appendChild(use);
+        }
+        const del = document.createElement('button');
+        del.className = 'ghost smallBtn danger';
+        del.type = 'button';
+        del.textContent = 'Delete';
+        del.onclick = async () => {
+          if (!confirm('Delete this key?')) return;
+          del.disabled = true;
+          try {
+            await api('/api/providers/' + encodeURIComponent(state.provId) + '/keys/' + encodeURIComponent(k.id), { method: 'DELETE' });
+            await loadKeys();
+          } catch (err) {
+            addMsg('sys', 'Could not delete: ' + err.message);
+            del.disabled = false;
+          }
+        };
+        badges.appendChild(del);
+        row.append(tx, badges);
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      const err = document.createElement('div');
+      err.className = 'nx';
+      err.textContent = 'could not load: ' + e.message;
+      box.appendChild(err);
+    }
+  }
+  $('toProviders').onclick = () => switchView('providers');
+  $('provBack').onclick = () => switchView(state.provFrom || 'status');
+  $('keyBack').onclick = () => showProvidersRoot();
+  $('provAdd').onclick = () => openModal('Add provider', [
+    { id: 'name', placeholder: 'Name (e.g. OpenRouter)', maxlength: 40 },
+    { id: 'url', placeholder: 'Base URL (e.g. https://openrouter.ai/api/v1)' },
+  ], async () => {
+    const name = $('mf_name').value.trim();
+    const baseUrl = $('mf_url').value.trim();
+    if (!name) throw new Error('Please enter a name.');
+    if (!/^https?:\/\/.+/.test(baseUrl)) throw new Error('The address must start with http:// or https://');
+    await api('/api/providers', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, baseUrl }),
+    });
+    await loadProviders();
+  });
+  $('keyAdd').onclick = () => openModal('Add API key', [
+    { id: 'name', placeholder: 'Key name (e.g. main key)', maxlength: 40 },
+    { id: 'key', type: 'password', placeholder: 'API key' },
+  ], async () => {
+    const name = $('mf_name').value.trim();
+    const key = $('mf_key').value.trim();
+    if (!name) throw new Error('Please give this key a name.');
+    if (!key) throw new Error('Please paste the API key.');
+    await api('/api/providers/' + encodeURIComponent(state.provId) + '/keys', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, key }),
+    });
+    await loadKeys();
+  });
 
   // ---- Chats panel (export / rename / purge) ----
   async function refreshSessPanel() {
@@ -2163,9 +2417,11 @@
 
   
   // ---- Tab shell (mobile) ----
-  const VIEWS = ['chat', 'status', 'memory', 'tools', 'settings'];
+  const VIEWS = ['chat', 'status', 'providers', 'memory', 'tools', 'settings'];
   function switchView(name) {
     if (!VIEWS.includes(name)) name = 'chat';
+    if (name === 'providers' && state.lastView !== 'providers') state.provFrom = state.lastView || 'status';
+    state.lastView = name;
     document.body.dataset.view = name;
     document.body.classList.remove('nav-open');
     $('navScrim').hidden = true;
@@ -2181,13 +2437,14 @@
     const primary = document.querySelector('#view-' + name + ' details[data-primary]');
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
+    if (name === 'providers') showProvidersRoot();
     if (name === 'chat') log.scrollTop = log.scrollHeight;
     pushRoute(pathForView(name));
   }
   document.querySelectorAll('.nav [data-goto]').forEach((b) => {
     b.onclick = () => switchView(b.dataset.goto);
   });
-  // ---- Page routes: /status /memory /tools /settings /chat/<id> ----
+  // ---- Page routes: /status /providers /memory /tools /settings /chat/<id> ----
   let applyingRoute = false;
   function pathForView(name) {
     if (name !== 'chat') return '/' + name;
@@ -2336,8 +2593,8 @@ async function bootstrap() {
           const wz = document.createElement('button');
           wz.className = 'ghost';
           wz.style.cssText = 'margin-top:8px;margin-left:8px';
-          wz.textContent = 'Or use the setup wizard';
-          wz.onclick = wizOpen;
+          wz.textContent = 'Or open the Providers page';
+          wz.onclick = () => switchView('providers');
           w.append(t, b, wz);
           log.insertBefore(w, log.firstChild);
           log.scrollTop = 0;

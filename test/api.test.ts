@@ -187,7 +187,7 @@ test('web control parity API', async (t) => {
     });
 
     await t.test('page routes serve the control UI (SPA fallback)', async () => {
-      for (const p of ['/', '/settings', '/status', '/memory', '/tools', '/chat']) {
+      for (const p of ['/', '/settings', '/status', '/providers', '/memory', '/tools', '/chat']) {
         const res = await fetch(base + p);
         assert.equal(res.status, 200, p);
         const html = await res.text();
@@ -227,6 +227,19 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes("if (cls === 'bot') div.innerHTML = renderMarkdown(text)"), 'AI replies rendered as markdown');
       assert.ok(html.includes('align-self: stretch'), 'AI replies span the full width');
       assert.ok(!html.includes('#ff5c5c'), 'old coral accent removed');
+    });
+
+    await t.test('v0.17: two-layer composer + Providers page, wizard retired', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('id="composerBox"'), 'rounded two-layer composer');
+      assert.ok(html.includes('id="stopBtn"'), 'stop icon button');
+      assert.ok(html.includes('id="attachBtn"'), 'attachment icon button');
+      assert.ok(html.includes('placeholder="Type a message'), 'message placeholder');
+      assert.ok(html.includes('data-goto="providers"'), 'sidebar Providers section');
+      assert.ok(html.includes('id="view-providers"'), 'providers view');
+      assert.ok(html.includes('id="modal"'), 'popup modal replaces the wizard');
+      assert.ok(!html.includes('id="wiz"'), 'old setup wizard removed');
+      assert.ok(!html.includes('wizOpen'), 'old wizard opener removed');
     });
 
     await t.test('listen (dictation) always answers with ok or a reason', async () => {

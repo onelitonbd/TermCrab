@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0 — 2026-09-30 (Composer + Providers)
+
+- The message box is now a rounded two-layer composer: your text on top, rounded icon buttons below — attach (text files), stop (end a reply mid-way), send.
+- New **Providers** section in the sidebar (the old setup wizard is retired into it). Only OpenAI-compatible services are supported — the other provider choices are gone.
+- Providers page: name plus back button, a + in the corner to add a provider (popup: name + base URL). Saved providers appear as a list.
+- Tapping a provider opens its keys page: the provider's name as the page title, + in the corner to add an API key (popup: key name + key). Multiple keys can live side by side.
+- Each key can be used (makes it the one the crab talks with) or deleted; keys are always shown masked and never leave the device.
+- Nothing on these pages starts or connects by itself — pages and popups only appear when you click them.
+
 ## 0.16.0 — 2026-09-30 (GitHub dark + real markdown)
 
 - The whole interface now uses GitHub's default dark theme: canvas #0d1117, hairline #30363d borders, off-white text, blue accents and links, green primary buttons — the exact palette GitHub uses.
