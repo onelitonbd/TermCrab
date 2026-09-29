@@ -52,6 +52,22 @@ export interface Config {
     /** Skip heartbeat when battery % is below this (mobile power budget). */
     pauseBelow: number;
   };
+  /** Optional local model for lightweight tasks (dreaming, summarize) - OpenAI-compatible. */
+  localProvider: {
+    enabled: boolean;
+    baseUrl: string;
+    model: string;
+    apiKey?: string;
+  };
+  /** "Dreaming": consolidate sessions/logs into long-term memory during idle windows. */
+  dream: {
+    enabled: boolean;
+    everyHours: number;
+  };
+  memory: {
+    /** Hybrid embedding search when @huggingface/transformers (or @xenova) is installed. */
+    embeddings: boolean;
+  };
   update: { checkOnStart: boolean };
 }
 
@@ -69,6 +85,14 @@ export function defaults(): Config {
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '' },
     channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },
     heartbeat: { enabled: true, minutes: 60, pauseBelow: 20 },
+    localProvider: {
+      enabled: false,
+      baseUrl: 'http://127.0.0.1:8080/v1',
+      model: '',
+      apiKey: '',
+    },
+    dream: { enabled: true, everyHours: 24 },
+    memory: { embeddings: true },
     update: { checkOnStart: false },
   };
 }

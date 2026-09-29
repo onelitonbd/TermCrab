@@ -74,13 +74,19 @@ phones as always-on servers, (3) privacy-first users who refuse cloud assistants
 - [x] Signal (signal-cli): evaluated — external daemon dependency; deferred until
       demand justifies the ops burden (documented in doctor output)
 
-### v0.3 — "Smarter crab" (weeks 4–6)
-- On-device inference tier: llama.cpp via `pkg install llama.cpp` with small
-  tool-capable models for summarize/classify; cloud for reasoning (tiered tasks)
-- Voice: `termux-speech-to-text` / `termux-tts-speak` + wake-word experiment
-- Multi-agent: named agents with separate SOUL.md + routing (`@brief` etc.)
-- Memory: embedding search (transformers.js, quantized) + "dreaming" consolidation
-  during idle/charging windows
+### v0.4 — "Smarter crab" ✅ SHIPPED (2026-09-29, this release)
+- [x] **Tiered inference** — `localProvider` config + `--tier local` / `RunOpts.tier`:
+      lightweight tasks (dreaming, drafts) route to llama.cpp/Ollama on-device,
+      automatic fallback to the cloud provider when local is off/down
+- [x] **"Dreaming" consolidation** — idle/charging-gated dream cycles distill recent
+      sessions into long-term MEMORY.md facts (`termcrab dream`, scheduler, 💤 UI button)
+- [x] **Embedding memory search** — optional `@huggingface/transformers` extension,
+      hybrid lexical + vector ranking (score merge), core stays zero-dependency
+- [x] **Voice wake loop** — `termcrab wake` two-phase STT session (keyword arms,
+      next utterance = command, reply spoken); honest scope: not an always-on
+      DSP wakeword (battery), not claimed as one
+- [x] **Launch kit** — `docs/LAUNCH.md` (Show HN post, r/termux post, 5-min demo)
+- [x] Doctor: local-tier / dreaming / embeddings checks; hybrid index in `/api/memory`
 
 ### v1.0 — "Publish" (month 2–3)
 - npm publish (`termcrab`), versioned releases, signed install script

@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 — 2026-09-29 (Smarter Crab)
+
+### Added
+- **Tiered inference** — optional `localProvider` config block (OpenAI-compatible
+  endpoint: llama.cpp / Ollama / llama-server) + `--tier local` on `termcrab agent`
+  and `RunOpts.tier` across channels; lightweight tasks route on-device with
+  automatic fallback to the main provider
+- **"Dreaming" memory consolidation** — `termcrab dream [--force]`, hourly gateway
+  scheduler gated on `dream.enabled` + `everyHours` + battery + "anything new?"
+  checks; distills recent session transcripts into durable MEMORY.md facts using
+  the local tier when configured; `POST /api/dream` + 💤 button + SSE `dream` event
+- **Hybrid embedding search** (optional) — `npm install @huggingface/transformers`
+  activates `memory/index.jsonl` vector indexing; `MemoryStore.search()` now merges
+  semantic hits (cosine-scored) with lexical matches — **breaking:** `search()` is
+  async; without the package everything stays lexical/zero-dep
+- **Voice wake loop** — `termcrab wake [--keyword <word>]`: two-phase STT session
+  (keyword arms it, next utterance is the command, reply is spoken via TTS chain);
+  honest scope: `termux-speech-to-text` loop, not an always-on DSP wakeword
+- **Launch kit** — `docs/LAUNCH.md`: Show HN post, r/termux post, 5-minute demo
+  script, posting checklist
+- Doctor: local model tier, dreaming, and embeddings checks; `/api/memory` reports
+  vector index stats
+
+### Changed
+- `AgentCtx.localProvider` + tier routing in `runTurn`; dream/heartbeat power
+  budget shares `heartbeat.pauseBelow`
+
 ## 0.3.0 — 2026-09-29 (Where The Users Live)
 
 ### Added

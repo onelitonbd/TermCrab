@@ -8,13 +8,17 @@ import { log, setLogLevel } from './core/logger.js';
 import { onboard, OnboardFlags } from './onboard.js';
 import { startGateway, version } from './gateway/server.js';
 import { runSupervisor } from './mobile/supervisor.js';
-import { runDoctor, renderChecks, verifyTelegram } from './mobile/doctor.js';
+import { runDoctor, renderChecks, verifyTelegram, execExists } from './mobile/doctor.js';
 import { installBootScript, bootStatus, isTermux } from './mobile/boot.js';
 import { importSkills } from './skills/importer.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
 import { nextRun, parseCron } from './cron/parser.js';
 import { listAgents, agentExists, sanitizeAgentName } from './agent/prompt.js';
 import { speak } from './mobile/tts.js';
+import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
+import { runDream } from './agent/dream.js';
+import { runWakeLoop } from './mobile/wake.js';
+import { resolveProvider } from './providers/index.js';
 import { MemoryStore } from './agent/memory.js';
 import { SkillStore } from './skills/loader.js';
 import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
@@ -30,13 +34,15 @@ Commands:
   onboard [--provider p --model m --api-key k --base-url u --telegram-token t --allow-user ids --name n --no-exec --non-interactive]
   gateway [--host h --port p]        Run the gateway (HTTP API + SSE + channels)
   supervisor                         Run gateway with auto-restart watchdog
-  agent [message...] [--as <agent>] [--session s]
+  agent [message...] [--as <agent>] [--session s] [--tier local]
                            Chat one-shot or interactive REPL (/as <name>, /agents inside)
   say <text>               Speak text aloud (termux-tts-speak / espeak / say ...)
   doctor [--json]                    Diagnose the installation
   heartbeat                          Run one proactive heartbeat tick now
+  dream [--force]                    Sleep on it: consolidate chat history into memory
+  wake [--keyword <word>]            Voice loop: say the keyword, then your command
   skills [list|show <name>|import <path|git-url> [--force]]
-  memory [show|search <query>]       Inspect memory files
+  memory [show|search <query>]       Inspect memory files (hybrid lexical + vector)
   cron [ls|add --schedule s --prompt p [--name n] [--critical]|rm <id>|on <id>|off <id>|run <id>]
   boot [install|status]              Termux:Boot auto-start management
   config [path|get <k>|set <k> <v>|list]
@@ -72,12 +78,43 @@ function printEvents(ev: AgentEvent): void {
   }
 }
 
-function makeAgentCtx() {
+async function makeMemoryStore(): Promise<MemoryStore> {
   const config = loadConfig();
-  const memory = new MemoryStore();
+  return buildMemoryStore(config);
+}
+
+async function buildMemoryStore(config: ReturnType<typeof loadConfig>): Promise<MemoryStore> {
+  let index: EmbeddingIndex | undefined;
+  if (config.memory?.embeddings) {
+    try {
+      const embedder = await tryLoadEmbedder(path.join(home(), 'models'));
+      if (embedder) index = new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder);
+    } catch {
+      /* lexical-only fallback */
+    }
+  }
+  return new MemoryStore(memoryDir(), index);
+}
+
+async function makeAgentCtx() {
+  const config = loadConfig();
+  const memory = await buildMemoryStore(config);
   const skills = new SkillStore();
   const sessions = new SessionStore();
-  const ctx: AgentCtx = { config, memory, skills, sessions };
+  let localProvider;
+  if (config.localProvider?.enabled && config.localProvider.model) {
+    try {
+      localProvider = resolveProvider({
+        type: 'openai',
+        baseUrl: config.localProvider.baseUrl,
+        model: config.localProvider.model,
+        apiKey: config.localProvider.apiKey || 'local',
+      });
+    } catch {
+      localProvider = undefined;
+    }
+  }
+  const ctx: AgentCtx = { config, memory, skills, sessions, localProvider };
   return ctx;
 }
 
@@ -199,10 +236,12 @@ export async function main(argv: string[]): Promise<void> {
         options: {
           session: { type: 'string', default: 'cli:main' },
           as: { type: 'string' },
+          tier: { type: 'string' },
         },
         allowPositionals: true,
       });
-      const ctx = makeAgentCtx();
+      const ctx = await makeAgentCtx();
+      const tier: 'local' | 'cloud' | undefined = values.tier === 'local' ? 'local' : undefined;
       const sessionId = values.session || 'cli:main';
       let currentAgent = values.as ? sanitizeAgentName(values.as) ?? undefined : undefined;
       if (values.as && !currentAgent) {
@@ -225,6 +264,7 @@ export async function main(argv: string[]): Promise<void> {
           userMessage: message,
           channel: 'cli',
           agent: currentAgent,
+          tier,
           onEvent: printEvents,
         });
         console.log(`\n`);
@@ -268,6 +308,7 @@ export async function main(argv: string[]): Promise<void> {
             userMessage: line,
             channel: 'cli',
             agent: currentAgent,
+            tier,
             onEvent: printEvents,
           });
           process.stdout.write('\n');
@@ -279,7 +320,7 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     case 'heartbeat': {
-      const ctx = makeAgentCtx();
+      const ctx = await makeAgentCtx();
       const res = await runHeartbeatOnce(ctx);
       console.log(res.ran ? `✅ heartbeat ran (${res.reason})\n\n${res.output}` : `⏭️ skipped: ${res.reason}`);
       return;
@@ -408,7 +449,7 @@ export async function main(argv: string[]): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        const ctx = makeAgentCtx();
+        const ctx = await makeAgentCtx();
         const output = await runTurn(ctx, {
           sessionId: `cron:${job.id}`,
           userMessage: `[manual:${job.name}] ${job.prompt}`,
@@ -423,9 +464,62 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'dream': {
+      const force = rest.includes('--force');
+      const ctx = await makeAgentCtx();
+      console.log('💤 dreaming (consolidating memory) ...');
+      try {
+        const r = await runDream(ctx, { force });
+        if (!r.ran) console.log(`skipped: ${r.reason}`);
+        else console.log(`✅ dream complete: ${r.facts ?? 0} fact(s) consolidated (${r.reason})`);
+      } catch (err) {
+        console.error(`dream failed: ${err instanceof Error ? err.message : err}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    case 'wake': {
+      const kwFlag = rest.indexOf('--keyword');
+      const keyword = (kwFlag >= 0 ? rest[kwFlag + 1] : undefined) || 'crab';
+      if (!(await execExists('termux-speech-to-text'))) {
+        console.error('termux-speech-to-text not found.');
+        console.error('  install: pkg install termux-api  (+ the Termux:API app from F-Droid)');
+        process.exitCode = 1;
+        return;
+      }
+      console.log(`👂 wake loop: listening for "${keyword}" via termux-speech-to-text (ctrl-c to stop)`);
+      console.log('   say the keyword, then your command in the next breath.');
+      const ctx = await makeAgentCtx();
+      try {
+        const r = await runWakeLoop({
+          keyword,
+          onCommand: async (text: string) => {
+            console.log(`   🦀 heard: "${text}"`);
+            const reply = await runTurn(ctx, {
+              sessionId: 'wake:main',
+              userMessage: text,
+              channel: 'voice',
+            });
+            return reply.trim();
+          },
+          speak: async (text: string) => {
+            const res = await speak(text);
+            if (!res.ok) console.log(`   🔇 tts unavailable (${res.error}) - reply: ${text}`);
+          },
+        });
+        console.log(`wake loop ended (${r.commands} command(s) handled)`);
+      } catch (err) {
+        console.error(`wake loop failed: ${err instanceof Error ? err.message : err}`);
+        console.error('   needs Termux API app + termux-api package for speech-to-text.');
+        process.exitCode = 1;
+      }
+      return;
+    }
+
     case 'memory': {
       const [sub = 'show', ...queryParts] = rest;
-      const memory = new MemoryStore();
+      const memory = await makeMemoryStore();
       if (sub === 'search') {
         const q = queryParts.join(' ');
         if (!q) {
@@ -433,7 +527,7 @@ export async function main(argv: string[]): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        const hits = memory.search(q);
+        const hits = await memory.search(q);
         if (!hits.length) console.log('no matches');
         else for (const h of hits) console.log(`[${h.file}] ${h.line}`);
         return;

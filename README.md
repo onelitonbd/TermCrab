@@ -15,6 +15,9 @@ with zero native dependencies and mobile-first power management.
 🌊 It streams      →  token-by-token typewriter replies (Anthropic / OpenAI-compatible)
 🫀 It acts on its own → heartbeat + cron schedules + battery-adaptive power budget
 🔊 It speaks       →  termcrab say / voice skill (Termux TTS + STT)
+💤 It sleeps on it  →  dreaming: idle/charging cycles distill chats into long-term memory
+🧠 It thinks local  →  tiered inference: on-device model for light tasks, cloud for heavy
+🔎 It finds meaning →  optional semantic memory search (`npm install @huggingface/transformers`)
 📦 It just runs     →  zero runtime dependencies, no proot, no systemd needed
 ```
 \* WhatsApp = optional extension: `npm install baileys` (see [docs/WHATSAPP.md](docs/WHATSAPP.md))
@@ -74,14 +77,16 @@ Then open the control UI at `http://127.0.0.1:7788/` (token printed by
 termcrab onboard        setup wizard (provider, model, telegram, name)
 termcrab gateway        run the gateway (HTTP API + SSE + channels + heartbeat + cron)
 termcrab supervisor     run the gateway with auto-restart watchdog
-termcrab agent [msg] [--as <name>]
+termcrab agent [msg] [--as <name>] [--tier local]
                            chat one-shot or interactive REPL (/as <name>, /agents inside)
 termcrab say <text>        speak text aloud (termux-tts-speak / espeak / say ...)
 termcrab doctor         diagnose the installation (fix suggestions included)
 termcrab heartbeat      run one proactive tick now
+termcrab dream [--force]   sleep on it: consolidate sessions into long-term memory
+termcrab wake [--keyword w]  voice loop: say the keyword, then your command (STT + TTS)
 termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prompt "..." | rm | on | off | run
 termcrab skills         list / show / import skills (OpenClaw-style SKILL.md folders)
-termcrab memory         show / search memory
+termcrab memory         show / search memory (hybrid lexical + semantic when enabled)
 termcrab boot install   auto-start on device boot (Termux:Boot)
 termcrab config         get/set configuration
 ```
@@ -106,6 +111,42 @@ Each agent gets its own SOUL + session namespace; memory/skills stay shared.
 
 llama.cpp / Ollama plug in through any OpenAI-compatible endpoint — see
 [docs/LOCAL.md](docs/LOCAL.md). `termcrab doctor` probes your local endpoint.
+
+### Tiered inference (v0.4)
+
+Lightweight tasks can run on-device while the main provider stays cloud:
+
+```bash
+termcrab config set localProvider.enabled true
+termcrab config set localProvider.baseUrl http://127.0.0.1:8080/v1   # llama.cpp serve
+termcrab config set localProvider.model qwen2.5-1.5b-instruct
+termcrab agent "summarize today" --tier local   # falls back to cloud if local is down
+```
+
+Dreaming prefers the local tier automatically (cheap + private).
+
+### Dreaming 💤
+
+During idle/charging windows the gateway distills recent sessions into durable
+MEMORY.md facts (schedule: `dream.everyHours`, default 24h; power gate shared
+with `heartbeat.pauseBelow`):
+
+```bash
+termcrab dream           # consolidate now (respects the schedule)
+termcrab dream --force   # skip schedule + battery gates
+```
+
+Trigger it from the control UI (💤 button) or `POST /api/dream`.
+
+### Semantic memory search 🔎 (optional)
+
+```bash
+npm install @huggingface/transformers   # optional extension, ~model download
+termcrab memory search "dark mode"      # now lexical + vector hybrid
+```
+
+Without the package the core stays zero-dependency and search is purely lexical.
+Scored, human-readable index lives at `memory/index.jsonl`.
 
 ## Automate & extend
 

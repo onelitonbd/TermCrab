@@ -21,6 +21,8 @@ export interface AgentCtx {
   skills: import('../skills/loader.js').SkillStore;
   sessions: SessionStore;
   provider?: Provider;
+  /** Optional local-model provider (dreaming/lightweight tiers). */
+  localProvider?: Provider;
   fetchImpl?: typeof fetch;
 }
 
@@ -30,6 +32,8 @@ export interface RunOpts {
   channel?: string;
   /** Named agent profile (workspace/agents/<name>/SOUL.md + session namespace). */
   agent?: string;
+  /** Model tier: 'local' uses ctx.localProvider when configured (falls back to cloud). */
+  tier?: 'cloud' | 'local';
   onEvent?: (ev: AgentEvent) => void;
 }
 
@@ -98,7 +102,10 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   });
   emit({ type: 'run:start', runId, sessionId });
 
-  const provider = ctx.provider ?? resolveProvider(ctx.config.provider, ctx.fetchImpl);
+  const provider =
+    opts.tier === 'local' && ctx.localProvider
+      ? ctx.localProvider
+      : (ctx.provider ?? resolveProvider(ctx.config.provider, ctx.fetchImpl));
   const toolEnv: ToolEnv = { config: ctx.config, memory: ctx.memory, skills: ctx.skills };
   const tools = buildTools(toolEnv);
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));

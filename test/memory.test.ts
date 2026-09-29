@@ -17,26 +17,26 @@ test('remember stores fact and dedupes', () => {
   assert.match(store.readHead(), /concise answers/);
 });
 
-test('daily log file is created and searchable', () => {
+test('daily log file is created and searchable', async () => {
   const { store, root } = mem();
   store.remember('lives in Dhaka');
   store.logDaily('tested daily logging');
-  const hits = store.search('daily logging');
+  const hits = await store.search('daily logging');
   assert.ok(hits.length >= 1, 'daily line should be searchable');
   const dailyDir = path.join(root, 'daily');
   assert.ok(fs.existsSync(dailyDir));
   assert.ok(fs.readdirSync(dailyDir).some((f) => f.endsWith('.md')));
 });
 
-test('search ranks multi-term matches and ignores junk', () => {
+test('search ranks multi-term matches and ignores junk', async () => {
   const { store } = mem();
   store.remember('project name: TermCrab, mobile first');
   store.remember('unrelated fact about cats');
-  const hits = store.search('termcrab mobile');
+  const hits = await store.search('termcrab mobile');
   assert.ok(hits.length >= 1);
   assert.match(hits[0]!.line, /TermCrab/);
-  assert.equal(store.search('').length, 0);
-  assert.equal(store.search('zzz-not-present').length, 0);
+  assert.equal((await store.search('')).length, 0);
+  assert.equal((await store.search('zzz-not-present')).length, 0);
 });
 
 test('readHead truncates long memory', () => {

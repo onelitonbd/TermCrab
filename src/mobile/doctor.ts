@@ -235,6 +235,60 @@ export async function runDoctor(): Promise<Check[]> {
     checks.push({ id: 'whatsapp', label: 'whatsapp channel', status: 'info', detail: 'disabled (optional: npm install baileys)' });
   }
 
+  // v0.4: local model tier (on-device lightweight tasks)
+  const lp = cfg.localProvider;
+  checks.push({
+    id: 'localmodel',
+    label: 'local model tier',
+    status: lp?.enabled && lp.model ? 'ok' : 'info',
+    detail:
+      lp?.enabled && lp.model ? `${lp.model} @ ${lp.baseUrl}` : 'disabled (optional on-device tier)',
+    fix:
+      lp?.enabled && lp.model
+        ? undefined
+        : 'termcrab config set localProvider.enabled true  (plus .model / .baseUrl)',
+  });
+
+  // v0.4: dreaming (idle memory consolidation)
+  checks.push({
+    id: 'dream',
+    label: 'dreaming (memory consolidation)',
+    status: cfg.dream?.enabled ? 'ok' : 'info',
+    detail: cfg.dream?.enabled
+      ? `every ${cfg.dream.everyHours}h, gated on idle + battery (or termcrab dream)`
+      : 'disabled (termcrab config set dream.enabled true)',
+  });
+
+  // v0.4: optional embedding index (hybrid search) - core stays zero-dep without it
+  let embeddingsPkg = false;
+  try {
+    const { transformersInstalled } = await import('../agent/embed.js');
+    embeddingsPkg = await transformersInstalled();
+  } catch {
+    embeddingsPkg = false;
+  }
+  let vectors = 0;
+  try {
+    const idxFile = path.join(home(), 'memory', 'index.jsonl');
+    if (fs.existsSync(idxFile)) {
+      vectors = fs.readFileSync(idxFile, 'utf8').split('\n').filter((l) => l.trim()).length;
+    }
+  } catch {
+    /* ignore */
+  }
+  checks.push({
+    id: 'embeddings',
+    label: 'embedding search (hybrid memory)',
+    status: embeddingsPkg && cfg.memory?.embeddings !== false ? 'ok' : 'info',
+    detail: embeddingsPkg
+      ? `${vectors} vector(s) indexed${cfg.memory?.embeddings === false ? ' (memory.embeddings=false)' : ''}`
+      : 'lexical only (optional)',
+    fix:
+      embeddingsPkg || cfg.memory?.embeddings === false
+        ? undefined
+        : 'npm install @huggingface/transformers  (semantic memory search)',
+  });
+
   // Voice / TTS
   try {
     const { resolveTts } = await import('../mobile/tts.js');

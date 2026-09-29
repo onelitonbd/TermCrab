@@ -36,16 +36,26 @@ If tools don't fire, either switch model or keep a **tiered setup**: cloud model
 agent work (default), local model for privacy-sensitive summarize/rewrite via the
 `exec`-free skills.
 
-## Hybrid pattern
+## Hybrid pattern (v0.4 tiered inference)
+
+Two ways to mix local + cloud:
 
 ```bash
-# main gateway stays on a cloud model...
-termcrab config set provider.type anthropic
-termcrab config set provider.apiKey sk-ant-...
-# ...and you can flip to local anytime (airplane mode, privacy):
-termcrab config set provider.baseUrl http://127.0.0.1:8080/v1
+# A) Flip the whole agent to local anytime (airplane mode, privacy):
 termcrab config set provider.type openai
+termcrab config set provider.baseUrl http://127.0.0.1:8080/v1
 termcrab config set provider.model local-model
+
+# B) Keep cloud as the main provider, add a dedicated on-device tier:
+termcrab config set localProvider.enabled true
+termcrab config set localProvider.baseUrl http://127.0.0.1:8080/v1
+termcrab config set localProvider.model local-model
+termcrab config set localProvider.apiKey local
+
+# then route individual tasks to it:
+termcrab agent "summarize today" --tier local
+# dreaming uses the local tier automatically (falls back to cloud if it's down)
 ```
 
 Config is one JSON file — script it, git it (without keys!), flip it back.
+`termcrab doctor` shows the local tier line and probes the endpoint.

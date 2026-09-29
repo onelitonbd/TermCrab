@@ -4,10 +4,13 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
-import { PACKAGE_ROOT, ensureLayout, pidPath, stateDir, uiDir } from '../core/paths.js';
+import { PACKAGE_ROOT, ensureLayout, home, memoryDir, pidPath, stateDir, uiDir } from '../core/paths.js';
 import { AgentCtx, runTurn, providerLabel } from '../agent/loop.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
+import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
+import { runDream, startDreamScheduler } from '../agent/dream.js';
+import { resolveProvider } from '../providers/index.js';
 import { SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { extractAuth, checkToken } from './auth.js';
@@ -110,10 +113,38 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     );
   }
 
-  const memory = new MemoryStore();
+  // Optional embedding index (hybrid search) - only when @huggingface/transformers is installed.
+  let embeddingIndex: EmbeddingIndex | undefined;
+  if (config.memory?.embeddings) {
+    try {
+      const embedder = await tryLoadEmbedder(path.join(home(), 'models'));
+      if (embedder) {
+        embeddingIndex = new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder);
+        log.info('memory: hybrid search enabled (embeddings)');
+      }
+    } catch {
+      log.info('memory: embeddings unavailable, lexical only');
+    }
+  }
+  const memory = new MemoryStore(undefined, embeddingIndex);
   const skills = new SkillStore();
   const sessions = new SessionStore();
-  const agent: AgentCtx = { config, memory, skills, sessions };
+  // Optional local model tier (llama.cpp / ollama / llama-server on-device).
+  let localProvider;
+  if (config.localProvider?.enabled && config.localProvider.model) {
+    try {
+      localProvider = resolveProvider({
+        type: 'openai',
+        baseUrl: config.localProvider.baseUrl,
+        model: config.localProvider.model,
+        apiKey: config.localProvider.apiKey || 'local',
+      });
+      log.info('local model tier:', config.localProvider.model, 'at', config.localProvider.baseUrl);
+    } catch {
+      localProvider = undefined;
+    }
+  }
+  const agent: AgentCtx = { config, memory, skills, sessions, localProvider };
 
   // ---- Telegram (optional) ----
   let telegram: TelegramChannel | null = null;
@@ -235,6 +266,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   };
   const stopHeartbeat = scheduleHeartbeat(agent, notify);
   const stopCron = startCronScheduler({ ctx: agent, deliver: notify });
+  const stopDream =
+    config.dream?.enabled !== false ? startDreamScheduler(agent) : () => undefined;
   void notifyStatus(`online · ${providerLabel(config)} · port ${port}`);
 
   // ---- HTTP server ----
@@ -408,7 +441,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/memory') {
-          json(res, 200, { head: memory.readHead(8000), stats: memory.stats() });
+          json(res, 200, {
+            head: memory.readHead(8000),
+            stats: memory.stats(),
+            index: memory.indexStats(),
+          });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/dream') {
+          // Fire-and-forget: consolidation runs in the background; progress streams on SSE.
+          void runDream(agent, { force: true })
+            .then((r) => log.info('dream:', JSON.stringify(r)))
+            .catch((e: unknown) => log.warn('dream failed:', String(e)));
+          json(res, 202, { ok: true, scheduled: true });
           return;
         }
 
@@ -445,6 +491,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     stop: async () => {
       stopHeartbeat();
       stopCron();
+      stopDream();
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();
       if (whatsapp) await whatsapp.stop();

@@ -127,6 +127,7 @@
     <select id="session" title="session"><option value="web:main">main</option></select>
     <button class="ghost" id="btnNew" title="Reset session">🧹</button>
     <button class="ghost" id="btnHb" title="Run heartbeat now">🫀</button>
+    <button class="ghost" id="btnDream" title="Dream now (consolidate memory)">💤</button>
   </div>
   <textarea id="input" rows="1" placeholder="Tell your crab what to do…"></textarea>
   <button id="send">Send</button>
@@ -217,6 +218,12 @@
     es.addEventListener('heartbeat', (e) => {
       addMsg('sys', '🫀 heartbeat: ' + JSON.parse(e.data).reason);
     });
+    es.addEventListener('dream', (e) => {
+      const ev = JSON.parse(e.data);
+      addMsg('sys', ev.ran
+        ? `💤 dream: consolidated ${ev.facts ?? 0} fact(s) into memory (${ev.reason || ''})`
+        : `💤 dream skipped: ${ev.reason || ''}`);
+    });
     es.onerror = () => { /* auto-reconnects */ };
   }
 
@@ -300,6 +307,13 @@
       const r = await api('/api/heartbeat', { method: 'POST' });
       addMsg('sys', r.ran ? 'heartbeat done: ' + (r.output || '').slice(0, 500) : 'heartbeat skipped: ' + r.reason);
     } catch (e) { addMsg('sys', 'heartbeat failed: ' + e.message); }
+  };
+  $('btnDream').onclick = async () => {
+    addMsg('sys', '💤 dream started — consolidating sessions into long-term memory…');
+    try {
+      await api('/api/dream', { method: 'POST' });
+      addMsg('sys', '💤 dreaming in the background (result appears above when done)');
+    } catch (e) { addMsg('sys', 'dream failed: ' + e.message); }
   };
 
   $('session').addEventListener('change', () => loadSession($('session').value));

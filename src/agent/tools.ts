@@ -288,7 +288,7 @@ export function buildTools(env: ToolEnv): Tool[] {
       schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
     },
     async execute(args) {
-      const hits = env.memory.search(str(args, 'query'));
+      const hits = await env.memory.search(str(args, 'query'));
       if (!hits.length) return 'no matches';
       return clip(hits.map((h) => `[${h.file}] ${h.line}`).join('\n'));
     },
