@@ -20,6 +20,7 @@ import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
 import { statusReport } from './agent/status.js';
+import { planOpenclaw, applyOpenclaw } from './migrate/openclaw.js';
 import { friendlyError } from './core/friendly.js';
 import { checkForUpdate, renderUpdate } from './core/update.js';
 import { resolveProvider } from './providers/index.js';
@@ -48,6 +49,7 @@ Everyday extras:
   termcrab wake                      voice mode: say the keyword, then say your command
   termcrab memory [show|search ...]  look inside memory
   termcrab skills [list|import ...]  add extra abilities (skill folders, git repos)
+  termcrab import openclaw [--apply] bring your old OpenClaw setup over (preview first!)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
   termcrab heartbeat                 run one self-check right now
   termcrab update                    check if a newer TermCrab exists (and how to get it)
@@ -502,6 +504,75 @@ export async function main(argv: string[]): Promise<void> {
       }
       console.error(`unknown cron subcommand: ${sub}`);
       process.exitCode = 1;
+      return;
+    }
+
+    case 'import': {
+      const { values } = parseArgs({
+        args: rest,
+        options: {
+          from: { type: 'string' },
+          apply: { type: 'boolean', default: false },
+          force: { type: 'boolean', default: false },
+        },
+        allowPositionals: true,
+      });
+      const [sub] = rest.filter((r) => !r.startsWith('-'));
+      if (sub !== 'openclaw') {
+        console.error('usage: termcrab import openclaw [--from <dir>] [--apply] [--force]');
+        console.error('  (preview runs by default; add --apply to actually move anything)');
+        process.exitCode = 1;
+        return;
+      }
+      const source = (values.from as string | undefined) || path.join(os.homedir(), '.openclaw');
+      const plan = planOpenclaw(source);
+
+      console.log('');
+      console.log(`🦀 Import from OpenClaw — preview ${values.apply ? '(applying)' : '(nothing changed yet)'}`);
+      console.log(`   source: ${plan.source}`);
+      if (!plan.sourceExists) {
+        console.log(`   not found. If your setup lives elsewhere: termcrab import openclaw --from <dir>`);
+        process.exitCode = 1;
+        return;
+      }
+      console.log('');
+      console.log('   Found:');
+      console.log(`     personality: ${plan.personalityFiles.length ? plan.personalityFiles.join(', ') : '(none)'}`);
+      console.log(
+        `     memory: ${plan.memory.sourceLines} line(s) (${plan.memory.newLines} new) · ${plan.memory.dailyFiles.length} daily log(s)`,
+      );
+      console.log(`     skills: ${plan.skills.length ? plan.skills.map((s) => s.name).join(', ') : '(none)'}`);
+      if (plan.agentFolders.length) console.log(`     agents: ${plan.agentFolders.map((a) => '@' + a).join(', ')}`);
+      if (plan.configPath) console.log(`     config: ${plan.configPath}`);
+      else console.log(`     config: ${plan.configParseError ?? 'not found'}`);
+
+      const interesting = plan.rows.filter((r) => r.status !== 'absent');
+      if (interesting.length) {
+        console.log('');
+        console.log('   Config plan:');
+        for (const r of interesting) {
+          const tag = r.status === 'will set' ? '[will set]' : '[keep yours]';
+          console.log(`     ${r.from} = ${r.value}  →  ${r.to}  ${tag}`);
+        }
+      }
+      if (plan.unmapped.length) {
+        console.log('');
+        console.log(`   Not migrated (left in place): ${plan.unmapped.join(', ')}`);
+      }
+
+      console.log('');
+      console.log('   Plan:');
+      plan.actions.forEach((a, i) => console.log(`     ${i + 1}. ${a}`));
+      console.log('');
+
+      if (!values.apply) {
+        console.log('   Nothing was changed. Run again with --apply to do it.');
+        console.log('   (add --force to also replace files you already have)');
+        return;
+      }
+      const results = await applyOpenclaw(plan, { force: Boolean(values.force) });
+      console.log('   Applying:');
+      for (const r of results) console.log(`     ✓ ${r}`);
       return;
     }
 

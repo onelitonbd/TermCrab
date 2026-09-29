@@ -88,6 +88,7 @@ termcrab dream [--force]   sleep on it: consolidate sessions into long-term memo
 termcrab wake [--keyword w]  voice loop: say the keyword, then your command (STT + TTS)
 termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prompt "..." | rm | on | off | run
 termcrab skills         list / show / import skills (OpenClaw-style SKILL.md folders)
+termcrab import openclaw  bring an old OpenClaw setup across (preview first)
 termcrab memory         show / search memory (hybrid lexical + semantic when enabled)
 termcrab boot install   auto-start on device boot (Termux:Boot)
 termcrab config         get/set configuration
@@ -203,6 +204,24 @@ termux-wake-lock           # keep CPU awake while plugged in
 termcrab supervisor         # auto-restart instead of `termcrab gateway`
 termcrab doctor             # verify everything above
 ```
+
+## Coming from OpenClaw?
+
+One command brings your old setup across — preview first, nothing touches your
+files until you say so:
+
+```bash
+termcrab import openclaw              # shows the plan, changes nothing
+termcrab import openclaw --apply      # do it
+termcrab import openclaw --apply --force   # also replace files you already have
+```
+
+What it carries over: personality (SOUL/IDENTITY/USER/AGENTS/TOOLS merged into
+one `SOUL.md`), memory (daily logs, topic notes, MEMORY.md lines — no duplicates),
+skills, named agents, and a best-effort config mapping (heartbeat, WhatsApp/Telegram
+allow-lists, gateway port, model/provider/key). Anything it can't map is listed
+plainly in the report — nothing is guessed, and secrets are always masked (`•••`).
+Point it somewhere else with `--from <dir>` (default `~/.openclaw`).
 
 ## How it fits together
 

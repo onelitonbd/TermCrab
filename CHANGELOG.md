@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 — 2026-09-29 (Bring your old setup)
+
+### Added
+- **`termcrab import openclaw`** — one command that brings an old OpenClaw setup over:
+  personality files (SOUL/IDENTITY/USER/AGENTS/TOOLS) merged into TermCrab's `SOUL.md`,
+  memory (daily logs, topic folders, MEMORY.md lines — no duplicates), skills
+  (`skills/<name>/SKILL.md`), named agents, and a best-effort config mapping
+  (heartbeat, WhatsApp/Telegram allow-lists, gateway port, model/provider/API key)
+  with an **unmapped-keys report** so nothing is silently dropped
+- **Preview first** — running it without flags only shows the plan (what will be set,
+  what keeps your current TermCrab value, what's absent); nothing is written until
+  you re-run with `--apply` (and `--force` to replace existing files)
+- **Secrets stay hidden** — API keys and tokens are masked (`•••`) in every report
+- `--from <dir>` to point at a non-default OpenClaw home (default `~/.openclaw`)
+- Doctor-free by design: preview doubles as the safety check
+
+### Tests
+- 121/121 (new: migration suite — JSON5-ish parse, preview writes NOTHING,
+  apply round-trip moves personality/memory/skills/agents/config, secrets never
+  printed, idempotent second pass)
+
 ## 0.4.4 — 2026-09-29 (Talk to it)
 
 ### Added
