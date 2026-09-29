@@ -2,6 +2,34 @@
 
 # Changelog
 
+## 0.12.0 — 2026-09-29 (Three-dot menu, current-chat in the top bar)
+
+Top bar cleaned up per its owner's instructions.
+
+### Top bar
+- **Online/offline pill removed** — the header no longer shows connection
+  text; the Status screen still reports live state when you want it
+- **Three-dot menu (top right)** replaces it, listing the four controls:
+  - Talk as — pick the agent/personality (the old "default" dropdown)
+  - Reset — clear the current conversation
+  - Check in — run a self-check (heartbeat) right now
+  - Dream — consolidate recent chats into long-term memory now
+  Each action closes the menu and takes you to the Chat screen so you see
+  what happened; clicking anywhere outside closes the menu
+- The line under the title now shows **which chat you are in**
+  ("Chat: web:main") instead of the model/provider string
+- The chat toolbar row is gone (its four controls moved into the menu);
+  the chat screen now starts directly with the conversation
+- Session picker kept as a hidden state holder — the sidebar history and
+  saved-chat tools still drive it
+
+### Tests
+- 156 total, 155 pass, 1 environment skip; 12/12 served-page checks:
+  menu, four items, pill/chatBar/provider-string removed, chat-label helper,
+  zero emojis
+
+# Changelog
+
 ## 0.11.0 — 2026-09-29 (Sidebar navigation + chat history)
 
 Bottom tab bar is gone — the panel now navigates the way OpenClaw's Control
