@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased (v0.5 build — P0 #0 in progress)
+
+### Added
+- **Web control parity (phase 1+2)** — everything controllable from the CLI is now
+  reachable in the control UI:
+  - `GET/POST /api/config` (secrets masked; masked value = keep), `POST /api/doctor`,
+    `GET /api/status`, `POST /api/memory/search|remember`, `PUT /api/memory` (editor),
+    `GET /api/skills/:name` + `POST /api/skills/import`, agents `POST/GET/PUT /api/agents[/:name]`,
+    `POST /api/say`, `GET/POST /api/boot[/install]`
+  - UI panels: ⚙️ Settings, 🩺 Doctor, 🧠 Memory (search/remember/edit), 👥 Agents
+    (create/edit SOUL/active-for-chat selector), 📚 Skills (import/view), 🔊 Voice & boot
+- First live-server test suite (`test/api.test.ts`, 12 assertions groups)
+
 ## 0.4.1 — 2026-09-29 (Embeddings taste-tested)
 
 ### Added

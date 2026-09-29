@@ -57,10 +57,34 @@
   button.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--line); font-weight: 500; }
   button:disabled { opacity: .55; cursor: default; }
   #actions { display: flex; gap: 6px; align-items: center; }
-  #session {
+  #session, #agentSel {
     background: var(--panel2); color: var(--text); border: 1px solid var(--line);
     border-radius: 10px; max-width: 130px; height: 44px; padding: 0 6px; font-size: 12.5px;
   }
+  #agentSel { max-width: 110px; }
+  #rack { background: var(--panel); border-top: 1px solid var(--line); font-size: 13px; max-height: 42vh; overflow-y: auto; }
+  #rack .panel summary, #cronPanel summary { padding: 9px 14px; cursor: pointer; color: var(--muted); user-select: none; }
+  #rack .panel[open] summary, #cronPanel[open] summary { color: var(--text); }
+  .pBody { padding: 0 14px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .pRow { display: flex; gap: 8px; align-items: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; flex-wrap: wrap; }
+  .pRow .k { font-family: ui-monospace, monospace; font-size: 12px; color: var(--accent2); min-width: 190px; }
+  .pRow .nx { color: var(--muted); font-size: 11.5px; }
+  .pRow .sp { flex: 1; }
+  .pRow button, .pBody button { min-height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
+  .pBody input[type="text"], .pBody input:not([type]), .pBody input[type="search"] {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; min-width: 0; flex: 1;
+  }
+  .pBody textarea {
+    min-height: 90px; max-height: 220px; border-radius: 10px; background: var(--panel2);
+    border: 1px solid var(--line); color: var(--text); padding: 9px 11px; font: 12.5px/1.45 ui-monospace, monospace;
+  }
+  .pBody pre { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; overflow-x: auto; white-space: pre-wrap; font-size: 12px; max-height: 220px; overflow-y: auto; }
+  .pBar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .okc { color: var(--ok); } .warnc { color: #ffb020; } .failc { color: var(--danger); } .infoc { color: var(--muted); }
+  .hit { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
+  .hit .f { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }
+  .pNote { color: var(--muted); font-size: 11.5px; }
   #cronPanel { background: var(--panel); border-top: 1px solid var(--line); font-size: 13px; }
   #cronPanel summary { padding: 9px 14px; cursor: pointer; color: var(--muted); user-select: none; }
   #cronPanel[open] summary { color: var(--text); }
@@ -111,7 +135,8 @@
 <div id="log"></div>
 <div id="typing"></div>
 
-<details id="cronPanel">
+<div id="rack">
+<details id="cronPanel" class="panel">
   <summary>⏲️ Cron jobs</summary>
   <div id="cronList"><div class="nx">loading…</div></div>
   <form id="cronForm">
@@ -122,8 +147,87 @@
   </form>
 </details>
 
+<details class="panel" id="cfgPanel">
+  <summary>⚙️ Settings (config)</summary>
+  <div class="pBody">
+    <div class="pNote" id="cfgPath">loading…</div>
+    <div id="cfgRows"><div class="nx">loading…</div></div>
+    <div class="pNote">Secrets are masked ••• — type a new value to replace, leave masked to keep.</div>
+  </div>
+</details>
+
+<details class="panel" id="docPanel">
+  <summary>🩺 Doctor</summary>
+  <div class="pBody">
+    <div class="pBar"><button id="docRun">Run checks</button><span class="pNote" id="docTime"></span></div>
+    <div id="docList"><div class="nx">not run yet</div></div>
+  </div>
+</details>
+
+<details class="panel" id="memPanel">
+  <summary>🧠 Memory</summary>
+  <div class="pBody">
+    <div class="pBar">
+      <input type="search" id="memQ" placeholder="semantic search… (e.g. which editor do I like)" />
+      <button id="memSearch" class="ghost">🔎 Search</button>
+      <span class="pNote" id="memStats"></span>
+    </div>
+    <div id="memHits"></div>
+    <div class="pBar">
+      <input type="text" id="memFact" placeholder="remember a fact…" />
+      <button id="memRemember" class="ghost">➕ Remember</button>
+    </div>
+    <textarea id="memEdit" placeholder="MEMORY.md — full editable content"></textarea>
+    <div class="pBar"><button id="memSave" class="ghost">💾 Save MEMORY.md</button><span class="pNote">plain file on disk — edit it here or in any editor</span></div>
+  </div>
+</details>
+
+<details class="panel" id="agPanel">
+  <summary>👥 Agents</summary>
+  <div class="pBody">
+    <div id="agList"><div class="nx">loading…</div></div>
+    <div class="pBar">
+      <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
+      <button id="agCreate">➕ Create</button>
+    </div>
+    <div class="pNote" id="agEditName"></div>
+    <textarea id="agSoul" placeholder="SOUL.md — select an agent to edit its personality"></textarea>
+    <div class="pBar"><button id="agSave" class="ghost">💾 Save SOUL</button></div>
+  </div>
+</details>
+
+<details class="panel" id="skPanel">
+  <summary>📚 Skills</summary>
+  <div class="pBody">
+    <div id="skList"><div class="nx">loading…</div></div>
+    <div class="pBar">
+      <input type="text" id="skSrc" placeholder="import from folder path or git url" />
+      <label class="pNote"><input type="checkbox" id="skForce" style="vertical-align:middle" /> force</label>
+      <button id="skImport">⬇️ Import</button>
+    </div>
+    <pre id="skView" class="hidden"></pre>
+  </div>
+</details>
+
+<details class="panel" id="voicePanel">
+  <summary>🔊 Voice & boot</summary>
+  <div class="pBody">
+    <div class="pBar">
+      <input type="text" id="sayTxt" placeholder="speak this text aloud (TTS chain)…" />
+      <button id="sayGo" class="ghost">🔊 Say</button>
+    </div>
+    <div class="pBar">
+      <span class="pNote" id="bootInfo">boot: …</span>
+      <button id="bootInstall" class="ghost">🚀 Install boot script</button>
+    </div>
+    <div class="pNote">Wake loop (<code>termcrab wake</code>) stays CLI/phase-3 — it needs the mic STT session.</div>
+  </div>
+</details>
+</div>
+
 <div id="composer">
   <div id="actions">
+    <select id="agentSel" title="active agent"><option value="">default</option></select>
     <select id="session" title="session"><option value="web:main">main</option></select>
     <button class="ghost" id="btnNew" title="Reset session">🧹</button>
     <button class="ghost" id="btnHb" title="Run heartbeat now">🫀</button>
@@ -238,7 +342,7 @@
       const res = await api('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId: currentSession() }),
+        body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
       });
       if (state.live) state.live.textContent = res.text || state.live.textContent || '(empty reply)';
     } catch (err) {
@@ -375,6 +479,297 @@
 
   $('cronPanel').addEventListener('toggle', () => { if ($('cronPanel').open) refreshCrons(); });
 
+  // ---- Web control parity panels (v0.5 P0 #0) ----
+  const DOC_ICON = { ok: '✅', warn: '⚠️', fail: '❌', info: 'ℹ️' };
+  const getCfg = (o, dotted) => dotted.split('.').reduce((acc, k) => (acc && typeof acc === 'object' ? acc[k] : undefined), o);
+  const CFG_KEYS = [
+    'agent.name', 'provider.type', 'provider.model', 'provider.baseUrl', 'provider.apiKey',
+    'localProvider.enabled', 'localProvider.baseUrl', 'localProvider.model',
+    'dream.enabled', 'dream.everyHours',
+    'heartbeat.enabled', 'heartbeat.minutes', 'heartbeat.pauseBelow',
+    'memory.embeddings', 'gateway.token',
+    'channels.telegram.token', 'channels.telegram.allowedUserIds',
+    'channels.whatsapp.enabled', 'channels.whatsapp.allowedJids',
+  ];
+
+  async function refreshCfg() {
+    try {
+      const data = await api('/api/config');
+      $('cfgPath').textContent = 'file: ' + (data.path || '?');
+      const rows = $('cfgRows');
+      rows.innerHTML = '';
+      for (const key of CFG_KEYS) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const k = document.createElement('span'); k.className = 'k'; k.textContent = key;
+        const inp = document.createElement('input'); inp.type = 'text';
+        const cur = getCfg(data.config, key);
+        inp.value = typeof cur === 'object' && cur !== null ? JSON.stringify(cur) : String(cur ?? '');
+        const btn = document.createElement('button'); btn.className = 'ghost'; btn.textContent = 'Save';
+        btn.onclick = async () => {
+          btn.disabled = true;
+          try {
+            const r = await api('/api/config', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ key, value: inp.value }),
+            });
+            addMsg('sys', r.unchanged ? `⚙️ ${key}: kept (masked)` : `⚙️ ${key} saved`);
+            refreshCfg();
+          } catch (e) { addMsg('sys', `${key} failed: ` + e.message); }
+          finally { btn.disabled = false; }
+        };
+        row.append(k, inp, btn);
+        rows.appendChild(row);
+      }
+    } catch (e) {
+      const rows = $('cfgRows');
+      rows.innerHTML = '';
+      const d = document.createElement('div'); d.className = 'nx err';
+      d.textContent = 'config load failed: ' + e.message;
+      rows.appendChild(d);
+    }
+  }
+  $('cfgPanel').addEventListener('toggle', () => { if ($('cfgPanel').open) refreshCfg(); });
+
+  $('docRun').onclick = async () => {
+    $('docRun').disabled = true;
+    $('docList').textContent = 'running checks…';
+    try {
+      const t0 = Date.now();
+      const r = await api('/api/doctor', { method: 'POST' });
+      $('docTime').textContent = 'checked in ' + ((Date.now() - t0) / 1000).toFixed(1) + 's';
+      const list = $('docList');
+      list.innerHTML = '';
+      for (const c of r.checks || []) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const ic = document.createElement('span'); ic.textContent = DOC_ICON[c.status] || '•';
+        const lb = document.createElement('span'); lb.textContent = c.label;
+        const det = document.createElement('span'); det.className = 'nx';
+        det.textContent = (c.detail || '') + (c.fix ? ' — fix: ' + c.fix : '');
+        row.append(ic, lb, det);
+        list.appendChild(row);
+      }
+    } catch (e) {
+      $('docList').textContent = 'doctor failed: ' + e.message;
+    } finally { $('docRun').disabled = false; }
+  };
+
+  async function refreshMem() {
+    try {
+      const d = await api('/api/memory');
+      $('memStats').textContent =
+        `${d.stats.memoryBytes}B · ${d.stats.dailyFiles} daily · ` +
+        (d.index && d.index.enabled ? d.index.vectors + ' vectors' : 'lexical only');
+      $('memEdit').value = d.content || '';
+    } catch (e) { addMsg('sys', 'memory load failed: ' + e.message); }
+  }
+  $('memPanel').addEventListener('toggle', () => { if ($('memPanel').open) refreshMem(); });
+  $('memSearch').onclick = async () => {
+    const q = $('memQ').value.trim();
+    if (!q) return;
+    $('memHits').textContent = 'searching…';
+    try {
+      const r = await api('/api/memory/search', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      });
+      const box = $('memHits');
+      box.innerHTML = '';
+      if (!(r.hits || []).length) { box.textContent = 'no matches'; return; }
+      for (const h of r.hits) {
+        const div = document.createElement('div'); div.className = 'hit';
+        const f = document.createElement('div'); f.className = 'f';
+        f.textContent = `[${h.file}]` + (h.score != null ? ` · score ${Number(h.score).toFixed(1)}` : '');
+        const l = document.createElement('div'); l.textContent = h.line;
+        div.append(f, l);
+        box.appendChild(div);
+      }
+    } catch (e) { $('memHits').textContent = 'search failed: ' + e.message; }
+  };
+  $('memRemember').onclick = async () => {
+    const fact = $('memFact').value.trim();
+    if (!fact) return;
+    try {
+      const r = await api('/api/memory/remember', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fact }),
+      });
+      addMsg('sys', '🧠 ' + r.result);
+      if (r.ok) $('memFact').value = '';
+      refreshMem();
+    } catch (e) { addMsg('sys', 'remember failed: ' + e.message); }
+  };
+  $('memSave').onclick = async () => {
+    try {
+      const r = await api('/api/memory', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content: $('memEdit').value }),
+      });
+      addMsg('sys', `🧠 MEMORY.md saved (${r.stats.memoryBytes}B)`);
+      refreshMem();
+    } catch (e) { addMsg('sys', 'save failed: ' + e.message); }
+  };
+
+  async function refreshAgents() {
+    try {
+      const d = await api('/api/agents');
+      const names = d.agents || [];
+      const list = $('agList');
+      list.innerHTML = '';
+      if (!names.length) {
+        const e0 = document.createElement('div'); e0.className = 'nx';
+        e0.textContent = 'no named agents yet — create one below.';
+        list.appendChild(e0);
+      }
+      for (const nm of names) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const n = document.createElement('span'); n.className = 'k'; n.textContent = '@' + nm;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const edit = document.createElement('button'); edit.className = 'ghost'; edit.textContent = '✏️ Edit';
+        edit.onclick = async () => {
+          try {
+            const a = await api('/api/agents/' + nm);
+            $('agSoul').value = a.soul;
+            $('agEditName').textContent = 'editing @' + nm;
+            $('agSave').dataset.name = nm;
+          } catch (e) { addMsg('sys', 'load agent failed: ' + e.message); }
+        };
+        const use = document.createElement('button'); use.className = 'ghost'; use.textContent = '💬 Chat';
+        use.onclick = () => {
+          $('agentSel').value = nm;
+          addMsg('sys', 'chatting as @' + nm);
+        };
+        row.append(n, sp, edit, use);
+        list.appendChild(row);
+      }
+      const sel = $('agentSel');
+      const keep = sel.value;
+      sel.innerHTML = '<option value="">default</option>';
+      for (const nm of names) {
+        const o = document.createElement('option');
+        o.value = nm; o.textContent = '@' + nm;
+        sel.appendChild(o);
+      }
+      sel.value = keep;
+    } catch { /* non-fatal */ }
+  }
+  $('agPanel').addEventListener('toggle', () => { if ($('agPanel').open) refreshAgents(); });
+  $('agCreate').onclick = async () => {
+    const name = $('agNew').value.trim();
+    if (!name) return;
+    try {
+      const r = await api('/api/agents', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      addMsg('sys', '👥 created @' + r.name);
+      $('agNew').value = '';
+      refreshAgents();
+    } catch (e) { addMsg('sys', 'create failed: ' + e.message); }
+  };
+  $('agSave').onclick = async () => {
+    const nm = $('agSave').dataset.name;
+    if (!nm) { addMsg('sys', 'pick an agent with ✏️ Edit first'); return; }
+    try {
+      await api('/api/agents/' + nm, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ soul: $('agSoul').value }),
+      });
+      addMsg('sys', '👥 @' + nm + ' SOUL saved');
+    } catch (e) { addMsg('sys', 'save failed: ' + e.message); }
+  };
+
+  async function refreshSkills() {
+    try {
+      const d = await api('/api/skills');
+      const list = $('skList');
+      list.innerHTML = '';
+      const skills = d.skills || [];
+      if (!skills.length) {
+        const e0 = document.createElement('div'); e0.className = 'nx';
+        e0.textContent = 'no skills yet — import one below.';
+        list.appendChild(e0);
+        return;
+      }
+      for (const s of skills) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const n = document.createElement('span'); n.className = 'k'; n.textContent = s.name;
+        const o = document.createElement('span'); o.className = 'nx';
+        o.textContent = s.origin + (s.description ? ' · ' + String(s.description).slice(0, 60) : '');
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const view = document.createElement('button'); view.className = 'ghost'; view.textContent = '👁';
+        view.onclick = async () => {
+          try {
+            const sk = await api('/api/skills/' + s.name);
+            const v = $('skView');
+            v.classList.remove('hidden');
+            v.textContent = sk.content || '(empty)';
+          } catch (e) { addMsg('sys', 'view failed: ' + e.message); }
+        };
+        row.append(n, o, sp, view);
+        list.appendChild(row);
+      }
+    } catch (e) {
+      const list = $('skList');
+      list.innerHTML = '';
+      const d = document.createElement('div'); d.className = 'nx err';
+      d.textContent = 'skills load failed: ' + e.message;
+      list.appendChild(d);
+    }
+  }
+  $('skPanel').addEventListener('toggle', () => { if ($('skPanel').open) refreshSkills(); });
+  $('skImport').onclick = async () => {
+    const src = $('skSrc').value.trim();
+    if (!src) return;
+    $('skImport').disabled = true;
+    try {
+      const r = await api('/api/skills/import', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ source: src, force: $('skForce').checked }),
+      });
+      const done = (r.results || []).map((x) => `${x.action}: ${x.name}`).join(', ') || 'nothing';
+      addMsg('sys', '📚 import → ' + done);
+      $('skSrc').value = '';
+      refreshSkills();
+    } catch (e) { addMsg('sys', 'import failed: ' + e.message); }
+    finally { $('skImport').disabled = false; }
+  };
+
+  $('sayGo').onclick = async () => {
+    const t = $('sayTxt').value.trim();
+    if (!t) return;
+    $('sayGo').disabled = true;
+    try {
+      const r = await api('/api/say', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      });
+      addMsg('sys', r.ok ? '🔊 spoke via ' + r.backend : '🔇 tts: ' + (r.error || 'failed'));
+    } catch (e) { addMsg('sys', 'say failed: ' + e.message); }
+    finally { $('sayGo').disabled = false; }
+  };
+  async function refreshBoot() {
+    try {
+      const b = await api('/api/boot');
+      $('bootInfo').textContent = `boot: ${b.installed ? 'installed' : 'not installed'} · termux: ${b.termux ? 'yes' : 'no'}`;
+    } catch (e) { $('bootInfo').textContent = 'boot: ' + e.message; }
+  }
+  $('bootInstall').onclick = async () => {
+    try {
+      const r = await api('/api/boot/install', { method: 'POST' });
+      addMsg('sys', `🚀 boot script ${r.ok ? 'created' : 'updated'}: ${r.path}`);
+      refreshBoot();
+    } catch (e) { addMsg('sys', 'boot install failed: ' + e.message); }
+  };
+  $('voicePanel').addEventListener('toggle', () => { if ($('voicePanel').open) refreshBoot(); });
+
   async function bootstrap() {
     if (!state.token) { showOverlay(); return; }
     try {
@@ -383,6 +778,7 @@
       refreshHealth(); setInterval(refreshHealth, 15000);
       connectEvents();
       refreshSessions();
+      refreshAgents();
       addMsg('sys', 'connected - your agent runs on your own machine. Nothing phones home.');
     } catch {
       showOverlay('Token rejected');

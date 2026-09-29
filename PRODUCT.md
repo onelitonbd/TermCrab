@@ -90,6 +90,8 @@ phones as always-on servers, (3) privacy-first users who refuse cloud assistants
 - [x] **0.4.1** — offline model drop-in (`~/.termcrab/models/Xenova/…`), q8 default
 
 ### v0.5 — "Works everywhere" 🔜 (scope: [docs/V05.md](docs/V05.md))
+- P0 #0: **web control parity** — every CLI control exposed in the control UI
+  (config/doctor/memory/skills/agents/say/boot/status), phased; wake/onboard/update in phase 3
 - P0: `termcrab update` (release-channel self-update), `doctor --share`,
       `import openclaw` migration, 5-minute fresh-install path (pinned installer)
 - P1: memory editor + dream history UI, session export/purge, skills scaffold,

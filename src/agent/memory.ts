@@ -141,6 +141,15 @@ export class MemoryStore {
     return { memoryBytes, dailyFiles };
   }
 
+  /** Replace MEMORY.md wholesale (web editor). Throws on oversized input. */
+  write(text: string): void {
+    const clean = text.replace(/\r\n/g, '\n');
+    if (clean.length > 500_000) throw new Error('MEMORY.md too large (500KB max)');
+    fs.mkdirSync(path.dirname(this.memoryFile()), { recursive: true });
+    const body = clean.endsWith('\n') ? clean : `${clean}\n`;
+    fs.writeFileSync(this.memoryFile(), body, 'utf8');
+  }
+
   /** Vector index status (enabled=false when embeddings package is not installed). */
   indexStats(): { enabled: boolean; vectors: number } {
     if (!this.index) return { enabled: false, vectors: 0 };

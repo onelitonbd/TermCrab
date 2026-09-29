@@ -2,9 +2,19 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config } from '../core/config.js';
+import { Config, cfgSet, saveConfig } from '../core/config.js';
 import { log } from '../core/logger.js';
-import { PACKAGE_ROOT, ensureLayout, home, memoryDir, pidPath, stateDir, uiDir } from '../core/paths.js';
+import {
+  PACKAGE_ROOT,
+  configPath,
+  ensureLayout,
+  home,
+  memoryDir,
+  pidPath,
+  stateDir,
+  uiDir,
+  workspaceDir,
+} from '../core/paths.js';
 import { AgentCtx, runTurn, providerLabel } from '../agent/loop.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
@@ -20,6 +30,10 @@ import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
 import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
+import { speak } from '../mobile/tts.js';
+import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
+import { runDoctor } from '../mobile/doctor.js';
+import { importSkills } from '../skills/importer.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
@@ -53,6 +67,51 @@ function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<string>
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+const SECRET_LEAF_KEYS = new Set(['token', 'apiKey']);
+
+function maskSecret(v: string): string {
+  return v.length <= 4 ? '•••' : `${v.slice(0, 2)}•••${v.slice(-2)}`;
+}
+
+/** Deep clone of the config with secrets masked — safe to ship to the UI. */
+function redactConfig(cfg: Config): unknown {
+  const walk = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        if (SECRET_LEAF_KEYS.has(k) && typeof val === 'string' && val) out[k] = maskSecret(val);
+        else out[k] = walk(val);
+      }
+      return out;
+    }
+    return v;
+  };
+  return walk(cfg);
+}
+
+/** Apply one dotted config set to a LIVE config object (shared reference) + disk. */
+function applyConfigSet(cfg: Config, key: string, value: string): void {
+  const updated = cfgSet(cfg, key, value);
+  const live = cfg as unknown as Record<string, unknown>;
+  for (const k of Object.keys(cfg)) delete live[k];
+  Object.assign(live, updated);
+  saveConfig(cfg);
+}
+
+async function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown> | null> {
+  try {
+    const raw = await readBody(req);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function json(res: http.ServerResponse, status: number, body: unknown): void {
@@ -443,6 +502,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         if (req.method === 'GET' && pathname === '/api/memory') {
           json(res, 200, {
             head: memory.readHead(8000),
+            content: memory.readHead(500_000),
             stats: memory.stats(),
             index: memory.indexStats(),
           });
@@ -461,6 +521,201 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         if (req.method === 'POST' && pathname === '/api/heartbeat') {
           const result = await runHeartbeatOnce(agent, notify);
           json(res, 200, result);
+          return;
+        }
+
+        // ---- Web control parity (v0.5 P0 #0): everything the CLI can do ----
+
+        if (req.method === 'GET' && pathname === '/api/config') {
+          json(res, 200, { config: redactConfig(config), path: configPath() });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/config') {
+          const body = await readJsonBody(req);
+          const key = body?.key;
+          const value = body?.value;
+          if (typeof key !== 'string' || !/^[a-zA-Z][\w]*(\.[\w]+)+$/.test(key) || typeof value !== 'string') {
+            json(res, 400, { error: 'key (dotted path) and string value required' });
+            return;
+          }
+          if (value.includes('•••')) {
+            // Masked secret left untouched in the form — keep the stored value.
+            json(res, 200, { ok: true, unchanged: true, config: redactConfig(config) });
+            return;
+          }
+          if (value.length > 100_000) {
+            json(res, 400, { error: 'value too long' });
+            return;
+          }
+          applyConfigSet(config, key, value);
+          log.info(`config set via UI: ${key}`);
+          json(res, 200, { ok: true, config: redactConfig(config) });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/doctor') {
+          const checks = await runDoctor();
+          json(res, 200, { checks });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/status') {
+          json(res, 200, {
+            version: version(),
+            provider: providerLabel(config),
+            channels: { telegram: Boolean(telegram), whatsapp: Boolean(whatsapp) },
+            dream: { enabled: config.dream.enabled, everyHours: config.dream.everyHours },
+            local: {
+              enabled: config.localProvider.enabled,
+              model: config.localProvider.model,
+              baseUrl: config.localProvider.baseUrl,
+            },
+            memory: { ...memory.stats(), index: memory.indexStats() },
+            agents: listAgents(),
+            configPath: configPath(),
+            termux: isTermux(),
+          });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/memory/search') {
+          const body = await readJsonBody(req);
+          const query = typeof body?.query === 'string' ? body.query.trim() : '';
+          if (!query) {
+            json(res, 400, { error: 'query required' });
+            return;
+          }
+          const hits = await memory.search(query, 12);
+          json(res, 200, { hits });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/memory/remember') {
+          const body = await readJsonBody(req);
+          const fact = typeof body?.fact === 'string' ? body.fact.trim() : '';
+          if (!fact) {
+            json(res, 400, { error: 'fact required' });
+            return;
+          }
+          const result = memory.remember(fact.slice(0, 2000));
+          json(res, 200, { ok: /Remembered/.test(result), result });
+          return;
+        }
+
+        if (req.method === 'PUT' && pathname === '/api/memory') {
+          const body = await readJsonBody(req);
+          if (typeof body?.content !== 'string') {
+            json(res, 400, { error: 'content required' });
+            return;
+          }
+          try {
+            memory.write(body.content);
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+            return;
+          }
+          json(res, 200, { ok: true, stats: memory.stats() });
+          return;
+        }
+
+        const skillShowMatch = pathname.match(/^\/api\/skills\/([a-z0-9][a-z0-9-_]*)$/i);
+        if (skillShowMatch && req.method === 'GET') {
+          const skill = skills.get(skillShowMatch[1]!);
+          if (!skill) {
+            json(res, 404, { error: 'skill not found' });
+            return;
+          }
+          json(res, 200, skill);
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/skills/import') {
+          const body = await readJsonBody(req);
+          const source = typeof body?.source === 'string' ? body.source.trim() : '';
+          if (!source || source.length > 500) {
+            json(res, 400, { error: 'source required (folder path or git url)' });
+            return;
+          }
+          try {
+            const results = await importSkills(source, { force: body?.force === true });
+            json(res, 200, { results });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        const agentMatch = pathname.match(/^\/api\/agents\/([a-z0-9][a-z0-9_-]*)$/);
+        if (agentMatch && req.method === 'GET') {
+          const name = agentMatch[1]!;
+          const soulFile = path.join(workspaceDir(), 'agents', name, 'SOUL.md');
+          if (!fs.existsSync(soulFile)) {
+            json(res, 404, { error: 'agent not found' });
+            return;
+          }
+          json(res, 200, { name, soul: fs.readFileSync(soulFile, 'utf8') });
+          return;
+        }
+        if (agentMatch && req.method === 'PUT') {
+          const name = agentMatch[1]!;
+          const soulFile = path.join(workspaceDir(), 'agents', name, 'SOUL.md');
+          if (!fs.existsSync(soulFile)) {
+            json(res, 404, { error: 'agent not found' });
+            return;
+          }
+          const body = await readJsonBody(req);
+          const soul = typeof body?.soul === 'string' ? body.soul : '';
+          if (!soul.trim() || soul.length > 100_000) {
+            json(res, 400, { error: 'soul required (1-100000 chars)' });
+            return;
+          }
+          fs.writeFileSync(soulFile, soul, 'utf8');
+          json(res, 200, { ok: true, name });
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/agents') {
+          const body = await readJsonBody(req);
+          const name = sanitizeAgentName(typeof body?.name === 'string' ? body.name : '');
+          if (!name) {
+            json(res, 400, { error: 'invalid agent name (lowercase letters, digits, - or _)' });
+            return;
+          }
+          const soulFile = path.join(workspaceDir(), 'agents', name, 'SOUL.md');
+          if (fs.existsSync(soulFile)) {
+            json(res, 409, { error: 'agent already exists' });
+            return;
+          }
+          const soul =
+            typeof body?.soul === 'string' && body.soul.trim()
+              ? body.soul
+              : `# SOUL\n\n- Name: ${name}\n- You are ${name}, a TermCrab agent.\n`;
+          fs.mkdirSync(path.dirname(soulFile), { recursive: true });
+          fs.writeFileSync(soulFile, soul, 'utf8');
+          log.info(`agent created via UI: ${name}`);
+          json(res, 200, { ok: true, name });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/say') {
+          const body = await readJsonBody(req);
+          const text = typeof body?.text === 'string' ? body.text.trim() : '';
+          if (!text || text.length > 2000) {
+            json(res, 400, { error: 'text required (1-2000 chars)' });
+            return;
+          }
+          const result = await speak(text);
+          json(res, 200, result);
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/boot') {
+          json(res, 200, { ...bootStatus(), termux: isTermux() });
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/boot/install') {
+          const r = installBootScript();
+          json(res, 200, { ok: r.created, path: r.path, termux: isTermux() });
           return;
         }
 
