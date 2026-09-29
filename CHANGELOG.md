@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.0 — 2026-09-30 (Models page + composer model picker)
+
+- New **Models** sidebar page: pick a provider, press **Fetch** to pull that provider's full model list into a scrollable area (with a search box to filter), and tick the models you want. Every tick saves the model to the system instantly; unticking removes it.
+- New rounded **model button** in the composer next to the attachment button. It always shows the model in use; tapping it opens a popup where you pick a provider and then one of the models you saved — the chat switches to it immediately, no restart.
+- The picker only offers models you ticked on the Models page, so the system never points at something that was not chosen deliberately.
+- Fetching uses the provider's saved key (the one in use first) against its OpenAI-compatible `/models` endpoint; clear errors for missing keys, unreachable services or refusals.
+- Provider rows show how many models are saved; everything (registered lists, live model, status line) re-reads the live configuration on every open.
+
 ## 0.19.0 — 2026-09-30 (Black theme, smarter composer, icon sidebar)
 
 - The send button now turns into the stop button while a reply is coming in: the paper plane swaps to a red stop square, one click stops the reply, and it flips back when done. The separate stop button is gone.

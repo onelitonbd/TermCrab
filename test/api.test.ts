@@ -187,7 +187,7 @@ test('web control parity API', async (t) => {
     });
 
     await t.test('page routes serve the control UI (SPA fallback)', async () => {
-      for (const p of ['/', '/settings', '/status', '/providers', '/memory', '/tools', '/chat']) {
+      for (const p of ['/', '/settings', '/status', '/providers', '/models', '/memory', '/tools', '/chat']) {
         const res = await fetch(base + p);
         assert.equal(res.status, 200, p);
         const html = await res.text();
@@ -257,6 +257,21 @@ test('web control parity API', async (t) => {
         assert.ok(m, v + ' sidebar button present');
         assert.ok(m![1]!.includes('<svg'), v + ' sidebar button has an icon');
       }
+    });
+
+    await t.test('v0.20: Models sidebar page + composer model picker', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('data-goto="models"'), 'sidebar Models entry');
+      assert.ok(html.includes('id="view-models"'), 'models view section');
+      assert.ok(html.includes('id="mdlFetch"'), 'fetch button for the provider catalog');
+      assert.ok(html.includes('id="mdlSearch"'), 'search bar above the list');
+      assert.ok(html.includes("cb.className = 'mdlTick'"), 'rounded tick box per model');
+      assert.ok(html.includes("await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m })"), 'tick saves to the backend immediately');
+      assert.ok(html.includes('id="modelBtn"') && html.includes('id="modelBtnLabel"'), 'rounded model button in the composer');
+      assert.ok(html.includes('id="modelPick"'), 'model picker popup');
+      assert.ok(html.includes("api('/api/models/use', 'POST'"), 'picking a model switches the live brain');
+      assert.ok(html.includes('refreshModelBtn()'), 'composer button follows the live model');
+      assert.ok(html.includes('showModelsRoot()'), 'models page loads only when opened');
     });
 
     await t.test('listen (dictation) always answers with ok or a reason', async () => {

@@ -29,6 +29,8 @@ export interface ProviderEntry {
   baseUrl: string;
   keys: ProviderKeyEntry[];
   created: number;
+  /** Model ids the user ticked on the Models page (saved on this device). */
+  models?: string[];
 }
 
 export interface Config {

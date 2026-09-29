@@ -290,6 +290,9 @@
   #composer textarea:focus { border: 0; box-shadow: none; }
   .composerRow { display: flex; align-items: center; gap: 8px; padding: 3px 2px 0; }
   .composerSp { flex: 1; }
+  .modelBtn { width: auto; min-width: 40px; padding: 0 12px; gap: 7px; border-radius: 999px; }
+  #modelBtnLabel { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  @media (max-width: 430px) { .modelBtn { width: 40px; padding: 0; } #modelBtnLabel { display: none; } }
   .iconBtn {
     width: 40px;
     height: 40px;
@@ -358,6 +361,64 @@
     white-space: nowrap;
   }
   .smallBtn { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
+  /* ---- models page ---- */
+  .mdlBar { display: flex; gap: 8px; align-items: center; margin: 2px 0 8px; }
+  .mdlBar input { flex: 1; min-width: 0; }
+  #mdlFetchNote.errText { color: var(--danger); }
+  .mdlScroll { max-height: min(52vh, 430px); overflow-y: auto; padding-right: 2px; }
+  .mdlRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+  .mdlRow:hover { border-color: var(--line-hover); }
+  .mdlTick {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--fill);
+    position: relative;
+    cursor: pointer;
+  }
+  .mdlTick:checked { background: var(--primary); border-color: var(--primary); }
+  .mdlTick:checked::after {
+    content: "";
+    position: absolute;
+    left: 5.5px;
+    top: 1.5px;
+    width: 4px;
+    height: 9px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .mdlId { font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; }
+  /* ---- composer model picker ---- */
+  #mpProv { width: 100%; margin-top: 10px; }
+  .mpList { max-height: min(46vh, 360px); overflow-y: auto; margin-top: 10px; }
+  .mpRow {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    overflow-wrap: anywhere;
+  }
+  .mpRow:hover { border-color: var(--accent); color: var(--strong); }
+  #mpErr { color: var(--danger); }
 
   /* ---- controls ---- */
   button {
@@ -759,7 +820,7 @@
   .menuBtn:hover { background: var(--fill); color: var(--strong); }
 
   /* ---- sheets (token gate + popup modal) ---- */
-  #overlay, #modal {
+  #overlay, #modal, #modelPick {
     position: fixed;
     inset: 0;
     background: rgba(5, 7, 10, 0.78);
@@ -770,7 +831,7 @@
     padding: 0;
     animation: fade 0.15s ease-out;
   }
-  #overlay .card, #modal .card {
+  #overlay .card, #modal .card, #modelPick .card {
     background: var(--elevated);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
@@ -805,6 +866,7 @@
   <nav class="nav" aria-label="Sections">
     <button data-goto="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Status</button>
     <button data-goto="providers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="19" height="7" x="2.5" y="2.5" rx="1.5"/><rect width="19" height="7" x="2.5" y="14" rx="1.5"/><path d="M6 6h.01M6 17.5h.01"/></svg>Providers</button>
+    <button data-goto="models"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Models</button>
     <button data-goto="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="5" y="5" rx="1.5"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2.5v2M15 19.5v2M2.5 15h2M19.5 15h2M2.5 9h2M19.5 9h2M9 2.5v2M9 19.5v2"/></svg>Memory</button>
     <button data-goto="tools"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.93-3.93a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0z"/><path d="m19.66 17.73-3.17-3.17a2.5 2.5 0 0 0-3.54 0l-1.41 1.41a2.5 2.5 0 0 1-3.54-3.54l3.17-3.17a2.5 2.5 0 0 1 3.54 0l1.41 1.41a2.5 2.5 0 0 0 3.54 0l3.17-3.17a2.5 2.5 0 0 1 3.54 3.54l-3.17 3.17a2.5 2.5 0 0 0 0 3.54"/></svg>Tools</button>
     <button data-goto="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</button>
@@ -901,6 +963,30 @@
     </div>
   </section>
 
+  <section class="view" id="view-models" hidden>
+    <div class="pageHead">
+      <button class="iconBtn" id="mdlBack" type="button" title="Back" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <h2>Models</h2>
+    </div>
+    <p class="pageNote">Pick a provider, press Fetch to pull its model list, then tick the models you want. A tick saves the model right away — the chat can use it immediately.</p>
+    <div id="mdlProvList" class="listCol"><div class="nx">loading…</div></div>
+    <div id="mdlPickPage" hidden>
+      <div class="pageHead">
+        <button class="iconBtn" id="mdlPickBack" type="button" title="Back" aria-label="Back">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <h2 id="mdlPickName">Provider</h2>
+      </div>
+      <div class="mdlBar">
+        <input id="mdlSearch" type="search" placeholder="Search models…" aria-label="Search models" />
+        <button id="mdlFetch" class="smallBtn" type="button">Fetch</button>
+      </div>
+      <p class="pageNote" id="mdlFetchNote"></p>
+      <div id="mdlList" class="listCol mdlScroll"></div>
+    </div>
+  </section>
   <section class="view" id="view-memory" hidden>
     <details class="panel" id="memPanel" data-primary open>
       <summary>Memory</summary>
@@ -1026,6 +1112,10 @@
       <button id="attachBtn" class="iconBtn" type="button" title="Attach a text file" aria-label="Attach a file">
         <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.5 2.5 0 0 1 3.5 3.5l-6 6a1.5 1.5 0 0 1-2-2l5.5-5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <button id="modelBtn" class="iconBtn modelBtn" type="button" title="Choose a model" aria-label="Choose a model">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 4.5 8 1.5 2.5 4.5v7L8 14.5l5.5-3v-7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="m2.5 4.5 5.5 3 5.5-3M8 7.5v7" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        <span id="modelBtnLabel">model</span>
+      </button>
       <span class="composerSp"></span>
       <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
@@ -1051,6 +1141,20 @@
   </div>
 </div>
 
+<div id="modelPick" class="hidden">
+  <div class="card">
+    <h3 id="mpTitle">Chat with a model</h3>
+    <p class="pNote">Pick a provider — only models you saved on the Models page appear here.</p>
+    <select id="mpProv" aria-label="Provider"></select>
+    <div id="mpList" class="listCol mpList"></div>
+    <div class="pBar" style="margin-top: 14px">
+      <span class="sp"></span>
+      <button id="mpCancel" class="ghost">Close</button>
+    </div>
+    <div class="pNote" id="mpErr"></div>
+  </div>
+</div>
+
 <div id="overlay">
   <div class="card">
     <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -1072,7 +1176,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $('log');
-  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null, abort: null, lastView: 'chat', provFrom: 'status', provId: '' };
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null, abort: null, lastView: 'chat', provFrom: 'status', provId: '', mdlFrom: 'status', mdlProvId: '' };
   const currentSession = () => $('session').value || 'web:main';
 
 
@@ -1281,6 +1385,232 @@
     $('authErr').textContent = err || '';
   }
   function hideOverlay() { $('overlay').classList.add('hidden'); }
+
+  // ---- Models page: fetch a provider's catalog, tick to save, all live ----
+  let mdlFetched = null; // null until Fetch succeeds, then the provider's model ids
+  let mdlReg = [];       // models saved on the open provider
+
+  function renderMdlList() {
+    const box = $('mdlList');
+    if (!box) return;
+    const q = (($('mdlSearch') && $('mdlSearch').value) || '').trim().toLowerCase();
+    let all;
+    if (!mdlFetched) all = mdlReg.slice();
+    else all = mdlReg.filter((m) => !mdlFetched.includes(m)).concat(mdlFetched);
+    const rows = all.filter((m) => !q || m.toLowerCase().includes(q));
+    box.innerHTML = '';
+    if (!rows.length) {
+      box.innerHTML = '<div class="nx">' + (mdlFetched || mdlReg.length ? 'No models match your search.' : 'Nothing here yet — press Fetch.') + '</div>';
+      return;
+    }
+    for (const m of rows) {
+      const label = document.createElement('label');
+      label.className = 'mdlRow';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'mdlTick';
+      cb.checked = mdlReg.includes(m);
+      cb.onchange = async () => {
+        const want = cb.checked;
+        cb.disabled = true;
+        try {
+          if (want) await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m });
+          else await api('/api/providers/' + state.mdlProvId + '/models/' + encodeURIComponent(m), 'DELETE');
+          if (want && !mdlReg.includes(m)) mdlReg.push(m);
+          if (!want) mdlReg = mdlReg.filter((x) => x !== m);
+          $('mdlFetchNote').textContent = mdlReg.length + (mdlReg.length === 1 ? ' model saved' : ' models saved');
+          $('mdlFetchNote').classList.remove('errText');
+        } catch (e) {
+          cb.checked = !want; // the tick only stays when the backend accepted it
+          $('mdlFetchNote').textContent = e.message;
+          $('mdlFetchNote').classList.add('errText');
+        } finally {
+          cb.disabled = false;
+        }
+      };
+      const id = document.createElement('span');
+      id.className = 'mdlId';
+      id.textContent = m;
+      label.append(cb, id);
+      box.appendChild(label);
+    }
+  }
+
+  async function loadModelsRoot() {
+    const box = $('mdlProvList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers');
+      const list = d.providers || [];
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">No providers yet — add one on the Providers page first.</div>';
+        return;
+      }
+      for (const p of list) {
+        const row = document.createElement('div');
+        row.className = 'provRow';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'pn';
+        n.textContent = p.name;
+        const u = document.createElement('div');
+        u.className = 'pu';
+        u.textContent = p.baseUrl;
+        tx.append(n, u);
+        const meta = document.createElement('span');
+        meta.className = 'provMeta';
+        const c = p.modelCount || 0;
+        meta.textContent = c + (c === 1 ? ' saved model' : ' saved models');
+        const chev = document.createElement('span');
+        chev.className = 'provChev';
+        chev.textContent = '›';
+        row.append(tx, meta, chev);
+        row.onclick = () => openModelFetch(p.id, p.name);
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '<div class="nx">' + e.message + '</div>';
+    }
+  }
+
+  function showModelsRoot() {
+    state.mdlProvId = '';
+    $('mdlPickPage').hidden = true;
+    $('mdlProvList').hidden = false;
+    loadModelsRoot();
+  }
+
+  async function openModelFetch(id, name) {
+    state.mdlProvId = id;
+    $('mdlProvList').hidden = true;
+    $('mdlPickPage').hidden = false;
+    $('mdlPickName').textContent = name;
+    $('mdlSearch').value = '';
+    $('mdlFetchNote').classList.remove('errText');
+    mdlFetched = null;
+    mdlReg = [];
+    $('mdlList').innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers/' + id);
+      mdlReg = (d.provider && d.provider.models) || [];
+      const cnt = mdlReg.length;
+      $('mdlFetchNote').textContent = cnt
+        ? cnt + (cnt === 1 ? ' model saved' : ' models saved') + ' · press Fetch for the full list from the provider.'
+        : 'Press Fetch to load every model this provider offers.';
+      renderMdlList();
+    } catch (e) {
+      $('mdlList').innerHTML = '<div class="nx">' + e.message + '</div>';
+    }
+  }
+
+  async function fetchMdl() {
+    const id = state.mdlProvId;
+    if (!id) return;
+    const btn = $('mdlFetch');
+    btn.disabled = true;
+    $('mdlFetchNote').classList.remove('errText');
+    $('mdlFetchNote').textContent = 'Asking the provider…';
+    try {
+      const d = await api('/api/providers/' + id + '/models');
+      mdlFetched = d.models || [];
+      $('mdlFetchNote').textContent = mdlFetched.length + ' models available · tick one to save it instantly.';
+    } catch (e) {
+      $('mdlFetchNote').textContent = e.message;
+      $('mdlFetchNote').classList.add('errText');
+    } finally {
+      btn.disabled = false;
+      renderMdlList();
+    }
+  }
+
+  $('mdlBack').onclick = () => switchView(state.mdlFrom || 'status');
+  $('mdlPickBack').onclick = showModelsRoot;
+  $('mdlFetch').onclick = fetchMdl;
+  $('mdlSearch').addEventListener('input', renderMdlList);
+
+  // ---- Composer model picker: choose provider, then one of its saved models ----
+  async function refreshModelBtn() {
+    if (!state.token) return;
+    try {
+      const d = await api('/api/config');
+      const m = (d.config && d.config.provider && d.config.provider.model) || '';
+      $('modelBtnLabel').textContent = m || 'model';
+      $('modelBtn').title = 'Model in use: ' + (m || 'none');
+    } catch { /* keep the old label */ }
+  }
+
+  async function loadMpModels() {
+    const id = $('mpProv').value;
+    const box = $('mpList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    if (!id) {
+      box.innerHTML = '<div class="nx">Pick a provider.</div>';
+      return;
+    }
+    try {
+      const d = await api('/api/providers/' + id);
+      const models = (d.provider && d.provider.models) || [];
+      if (!models.length) {
+        box.innerHTML = '<div class="nx">No saved models for this provider yet — open Models in the sidebar, press Fetch and tick some.</div>';
+        return;
+      }
+      box.innerHTML = '';
+      for (const m of models) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'mpRow';
+        row.textContent = m;
+        row.onclick = async () => {
+          row.disabled = true;
+          try {
+            await api('/api/models/use', 'POST', { providerId: id, model: m });
+            $('modelPick').classList.add('hidden');
+            await refreshModelBtn();
+            refreshLiveStatus();
+          } catch (e) {
+            $('mpErr').textContent = e.message;
+            row.disabled = false;
+          }
+        };
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      $('mpErr').textContent = e.message;
+    }
+  }
+
+  async function openModelPick() {
+    $('mpErr').textContent = '';
+    $('modelPick').classList.remove('hidden');
+    $('mpList').innerHTML = '<div class="nx">loading…</div>';
+    $('mpProv').innerHTML = '';
+    try {
+      const d = await api('/api/providers');
+      const list = d.providers || [];
+      if (!list.length) {
+        $('mpList').innerHTML = '<div class="nx">No providers yet — add one on the Providers page first.</div>';
+        return;
+      }
+      for (const p of list) {
+        const o = document.createElement('option');
+        o.value = p.id;
+        o.textContent = p.name + ' — ' + p.baseUrl;
+        $('mpProv').appendChild(o);
+      }
+      if (d.active && d.active.matchedId) $('mpProv').value = d.active.matchedId;
+      await loadMpModels();
+    } catch (e) {
+      $('mpList').innerHTML = '';
+      $('mpErr').textContent = e.message;
+    }
+  }
+
+  $('modelBtn').onclick = openModelPick;
+  $('mpCancel').onclick = () => $('modelPick').classList.add('hidden');
+  $('mpProv').onchange = () => { $('mpErr').textContent = ''; loadMpModels(); };
 
   function updateChatLabel() {
     const id = currentSession() || 'web:main';
@@ -2461,10 +2791,11 @@
 
   
   // ---- Tab shell (mobile) ----
-  const VIEWS = ['chat', 'status', 'providers', 'memory', 'tools', 'settings'];
+  const VIEWS = ['chat', 'status', 'providers', 'models', 'memory', 'tools', 'settings'];
   function switchView(name) {
     if (!VIEWS.includes(name)) name = 'chat';
     if (name === 'providers' && state.lastView !== 'providers') state.provFrom = state.lastView || 'status';
+    if (name === 'models' && state.lastView !== 'models') state.mdlFrom = state.lastView || 'status';
     state.lastView = name;
     document.body.dataset.view = name;
     document.body.classList.remove('nav-open');
@@ -2482,6 +2813,7 @@
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'providers') showProvidersRoot();
+    if (name === 'models') showModelsRoot();
     if (name === 'chat') log.scrollTop = log.scrollHeight;
     pushRoute(pathForView(name));
   }
@@ -2609,6 +2941,7 @@ async function bootstrap() {
       await api('/api/skills'); // validates token
       hideOverlay();
       updateChatLabel();
+      refreshModelBtn();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
       const deepLink = state.pendingSession;

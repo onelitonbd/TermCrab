@@ -109,7 +109,14 @@ function maskApiKey(k: string): string {
 }
 
 function providerView(p: ProviderEntry) {
-  return { id: p.id, name: p.name, baseUrl: p.baseUrl, created: p.created, keyCount: p.keys.length };
+  return {
+    id: p.id,
+    name: p.name,
+    baseUrl: p.baseUrl,
+    created: p.created,
+    keyCount: p.keys.length,
+    modelCount: (p.models || []).length,
+  };
 }
 
 /** Resolved base url of the provider currently wired into the gateway. */
@@ -172,6 +179,49 @@ function providersListView(cfg: Config) {
       matchedId: matched.length ? cfg.providers[matched[0]!]!.id : null,
     },
   };
+}
+
+/** Which key to talk to a provider with: the one in use, else the first saved, else a CLI key. */
+function providerOutboundKey(p: ProviderEntry, cfg: Config): string {
+  const activeKey = cfg.provider.apiKey || "";
+  if (activeKey && p.keys.some((k) => k.key === activeKey)) return activeKey;
+  if (p.keys[0]) return p.keys[0].key;
+  if (activeKey && activeBaseUrl(cfg.provider) === p.baseUrl) return activeKey;
+  return "";
+}
+
+/** Ask an OpenAI-compatible endpoint for its model catalog. */
+async function fetchProviderModels(p: ProviderEntry, key: string): Promise<string[]> {
+  const url = p.baseUrl.replace(/\/+$/, "") + "/models";
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: key ? { authorization: "Bearer " + key } : {},
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e);
+    throw new Error("could not reach " + p.baseUrl + " (" + why.slice(0, 120) + ")");
+  }
+  if (!res.ok) throw new Error("the provider answered HTTP " + res.status);
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error("the provider sent an unreadable answer");
+  }
+  const d = data as { data?: unknown; models?: unknown };
+  const arr = Array.isArray(d.data) ? d.data : Array.isArray(d.models) ? d.models : null;
+  if (!arr) throw new Error("the provider sent an unexpected answer");
+  const ids: string[] = [];
+  for (const m of arr) {
+    const id = typeof m === "string" ? m : m && typeof m === "object" && typeof (m as { id?: unknown }).id === "string"
+      ? (m as { id: string }).id
+      : "";
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  if (!ids.length) throw new Error("no models came back from the provider");
+  return ids.sort();
 }
 
 function keyView(k: { id: string; name: string; key: string; created: number }, activeKey: string) {
@@ -755,6 +805,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             name,
             baseUrl,
             keys: [],
+            models: [],
             created: Math.floor(Date.now() / 1000),
           };
           config.providers.push(created);
@@ -769,7 +820,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           const p = config.providers.find((x) => x.id === provOne[1]);
           if (!p) { json(res, 404, { error: 'provider not found' }); return; }
           const activeKey = config.provider.apiKey || '';
-          json(res, 200, { provider: { ...providerView(p), keys: p.keys.map((k) => keyView(k, activeKey)) } });
+          json(res, 200, { provider: { ...providerView(p), keys: p.keys.map((k) => keyView(k, activeKey)), models: (p.models || []).slice() } });
           return;
         }
         if (provOne && req.method === 'DELETE') {
@@ -824,6 +875,80 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           saveConfig(config);
           log.info(`providers: now using "${p.name}" with key "${k.name}"`);
           json(res, 200, { ok: true, using: { provider: p.name, baseUrl: p.baseUrl, key: k.name } });
+          return;
+        }
+
+        // ---- Models: fetch a provider's catalog, tick to register, switch live ----
+        const provModels = pathname.match(/^\/api\/providers\/([^/]+)\/models$/);
+        if (provModels && req.method === 'GET') {
+          const p = config.providers.find((x) => x.id === provModels[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const key = providerOutboundKey(p, config);
+          if (!key) { json(res, 400, { error: 'add an API key to this provider first (open it and press +)' }); return; }
+          try {
+            const models = await fetchProviderModels(p, key);
+            json(res, 200, { models });
+          } catch (e) {
+            json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+          }
+          return;
+        }
+        if (provModels && req.method === 'POST') {
+          const p = config.providers.find((x) => x.id === provModels[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const body = await readJsonBody(req);
+          const model = typeof body?.model === 'string' ? body.model.trim() : '';
+          if (!model || model.length > 200) { json(res, 400, { error: 'a model id is required' }); return; }
+          p.models ||= [];
+          if (!p.models.includes(model)) {
+            p.models.push(model);
+            p.models.sort();
+            saveConfig(config);
+            log.info(`models: saved "${model}" from "${p.name}"`);
+          }
+          json(res, 200, { ok: true, models: p.models });
+          return;
+        }
+        const provModelDel = pathname.match(/^\/api\/providers\/([^/]+)\/models\/(.+)$/);
+        if (provModelDel && req.method === 'DELETE') {
+          const p = config.providers.find((x) => x.id === provModelDel[1]);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          const model = decodeURIComponent(provModelDel[2] || '');
+          p.models ||= [];
+          const idx = p.models.indexOf(model);
+          if (idx === -1) { json(res, 404, { error: 'model is not registered on this provider' }); return; }
+          p.models.splice(idx, 1);
+          saveConfig(config);
+          json(res, 200, { ok: true, models: p.models });
+          return;
+        }
+
+        if (pathname === '/api/models/use' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const providerId = typeof body?.providerId === 'string' ? body.providerId : '';
+          const model = typeof body?.model === 'string' ? body.model.trim() : '';
+          const p = config.providers.find((x) => x.id === providerId);
+          if (!p) { json(res, 404, { error: 'provider not found' }); return; }
+          p.models ||= [];
+          if (!model || !p.models.includes(model)) {
+            json(res, 400, { error: 'pick a model that is saved on this provider' });
+            return;
+          }
+          const key = providerOutboundKey(p, config);
+          if (!key && activeBaseUrl(config.provider) !== p.baseUrl) {
+            json(res, 400, { error: 'add an API key to this provider first' });
+            return;
+          }
+          config.provider = {
+            ...config.provider,
+            type: 'openai',
+            baseUrl: p.baseUrl,
+            apiKey: key || config.provider.apiKey || '',
+            model,
+          };
+          saveConfig(config);
+          log.info(`models: now chatting with "${p.name}" / "${model}"`);
+          json(res, 200, { ok: true, using: { provider: p.name, baseUrl: p.baseUrl, model } });
           return;
         }
 
