@@ -6,10 +6,10 @@ Ready-to-paste posts + a 5-minute demo script. Update the repo links if the repo
 
 ## 1. Show HN
 
-**Title (≤80 chars):**
+**Title (≤80 chars, 69 actual):**
 
 ```
-TermCrab: an always-on AI agent that lives in your Termux (open source, local-first)
+TermCrab: an always-on, local-first AI agent for Termux (open source)
 ```
 
 **Body:**
@@ -187,9 +187,24 @@ $ termcrab doctor
 
 ## 4. Posting checklist
 
-- [ ] Repo README quick-start matches the commands above
-- [ ] Release page has v0.4.0 with notes: https://github.com/onelitonbd/claw/releases
-- [ ] Show HN on a weekday morning US time; link repo, mention MIT + zero-dep
-- [ ] r/termux: include the honest scope notes (wake ≠ wakeword, WhatsApp opt-in)
+**Direct submission links** (both need your accounts — paste from §1/§2, takes ~2 min each):
+
+| Post | Submit URL |
+|---|---|
+| Show HN | https://news.ycombinator.com/submit (title + url = https://github.com/onelitonbd/claw) |
+| r/termux | https://www.reddit.com/r/termux/submit |
+
+Pre-flight (run right before posting so the claims are true):
+
+```bash
+git pull
+npm test                      # expect 86/86
+node -p "require('./package.json').version"   # expect 0.4.0
+gh release view v0.4.0 --json url -q .url     # release page live
+```
+
+- [ ] Show HN on a weekday morning US time; body from §1, link repo, mention MIT + zero-dep
+- [ ] r/termux: body from §2; include the honest scope notes (wake ≠ wakeword, WhatsApp opt-in)
 - [ ] Reply to every comment in the first 2 hours
 - [ ] Cross-post demo GIF (gateway UI: 💤 button → dream SSE event) if possible
+- [ ] Track visits: `gh api repos/onelitonbd/claw` stargazers + `/stargazers` over time

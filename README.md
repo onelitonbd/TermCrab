@@ -148,6 +148,10 @@ termcrab memory search "dark mode"      # now lexical + vector hybrid
 Without the package the core stays zero-dependency and search is purely lexical.
 Scored, human-readable index lives at `memory/index.jsonl`.
 
+Offline/manual model install (no Hub access needed): drop the model folder at
+`~/.termcrab/models/Xenova/all-MiniLM-L6-v2/` (config + tokenizer + `onnx/model_quantized.onnx`)
+— it's picked up before any network call.
+
 ## Automate & extend
 
 ```bash

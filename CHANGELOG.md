@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1 — 2026-09-29 (Embeddings taste-tested)
+
+### Added
+- **Offline model drop-in** — embedder now resolves `~/.termcrab/models/Xenova/all-MiniLM-L6-v2/`
+  from disk before any Hub request (manual installs on flaky networks; sandboxed/air-gapped boxes)
+- **Launch kit hardening** — direct HN/Reddit submit links + pre-flight commands in `docs/LAUNCH.md`;
+  HN title shortened to 69 chars (limit 80); `docs/V05.md` v0.5 scope
+
+### Changed
+- Embedding model dtype `fp32` → **`q8`** (~23MB vs ~90MB: faster phone download,
+  ~4× less RAM, negligible retrieval-quality loss for cosine memory search)
+
+### Verified (real end-to-end)
+- `@huggingface/transformers` + quantized MiniLM (384-dim) → hybrid search: semantic
+  query "which code editor does he like" ranks `[vector] preferred editor is neovim…` #1;
+  doctor `2 vector(s) indexed`; `/api/memory` `{enabled:true, vectors:2}`
+
 ## 0.4.0 — 2026-09-29 (Smarter Crab)
 
 ### Added

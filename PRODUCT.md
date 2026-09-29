@@ -87,6 +87,14 @@ phones as always-on servers, (3) privacy-first users who refuse cloud assistants
       DSP wakeword (battery), not claimed as one
 - [x] **Launch kit** — `docs/LAUNCH.md` (Show HN post, r/termux post, 5-min demo)
 - [x] Doctor: local-tier / dreaming / embeddings checks; hybrid index in `/api/memory`
+- [x] **0.4.1** — offline model drop-in (`~/.termcrab/models/Xenova/…`), q8 default
+
+### v0.5 — "Works everywhere" 🔜 (scope: [docs/V05.md](docs/V05.md))
+- P0: `termcrab update` (release-channel self-update), `doctor --share`,
+      `import openclaw` migration, 5-minute fresh-install path (pinned installer)
+- P1: memory editor + dream history UI, session export/purge, skills scaffold,
+      `embeddings setup`, remote-access guide
+- P2 spikes (timeboxed): real wake word, whisper.cpp dictation, Signal re-eval, CI enablement
 
 ### v1.0 — "Publish" (month 2–3)
 - npm publish (`termcrab`), versioned releases, signed install script

@@ -33,11 +33,17 @@ export function cosine(a: number[], b: number[]): number {
 
 type Pipeline = (texts: string[], opts: { normalize?: boolean; pooling?: string }) => Promise<{ data: ArrayLike<number>; dims: number[] } | ArrayLike<number>>;
 
-async function importTransformers(): Promise<{ pipeline: (task: string, model: string, opts?: Record<string, unknown>) => Promise<Pipeline> } | null> {
+async function importTransformers(): Promise<{
+  pipeline: (task: string, model: string, opts?: Record<string, unknown>) => Promise<Pipeline>;
+  env?: { allowLocalModels?: boolean; localModelPath?: string; cacheDir?: string };
+} | null> {
   for (const pkg of ['@huggingface/transformers', '@xenova/transformers']) {
     try {
       const spec = pkg;
-      return (await import(spec)) as { pipeline: (task: string, model: string, opts?: Record<string, unknown>) => Promise<Pipeline> };
+      return (await import(spec)) as {
+        pipeline: (task: string, model: string, opts?: Record<string, unknown>) => Promise<Pipeline>;
+        env?: { allowLocalModels?: boolean; localModelPath?: string; cacheDir?: string };
+      };
     } catch {
       /* try next */
     }
@@ -56,6 +62,14 @@ export async function transformersInstalled(): Promise<boolean> {
 export async function tryLoadEmbedder(cacheDir: string): Promise<Embedder | null> {
   const mod = await importTransformers();
   if (!mod) return null;
+  // Offline/manual installs: look for <cacheDir>/Xenova/all-MiniLM-L6-v2/ on disk
+  // FIRST (model folder dropped in by hand), then fall back to downloading from
+  // the Hub into the same cache dir. Makes flaky-mobile-network installs possible.
+  if (mod.env) {
+    mod.env.allowLocalModels = true;
+    mod.env.localModelPath = cacheDir;
+    mod.env.cacheDir = cacheDir;
+  }
   let pipe: Pipeline | null = null;
   const modelName = 'Xenova/all-MiniLM-L6-v2';
 
@@ -64,7 +78,9 @@ export async function tryLoadEmbedder(cacheDir: string): Promise<Embedder | null
       fs.mkdirSync(cacheDir, { recursive: true });
       pipe = await mod.pipeline('feature-extraction', modelName, {
         cache_dir: cacheDir,
-        dtype: 'fp32',
+        // q8 (~23MB): phone-friendly download + RAM; retrieval quality is plenty
+        // for cosine memory search. Falls back to whatever the Hub repo ships.
+        dtype: 'q8',
       });
     }
     return pipe;
