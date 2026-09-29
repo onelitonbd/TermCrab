@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.1 — 2026-09-30 (Update yourself, part 2)
+
+- When there is no internet, the update buttons now say "no internet connection" instead of the raw internal error text.
+
 ## 0.15.0 — 2026-09-30 (Update yourself)
 
 - New **Auto update** button on the Status screen, right next to Check for updates. One tap downloads the new version, installs it, and restarts the server by itself — the page reloads when it is back.

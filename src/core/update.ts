@@ -58,9 +58,11 @@ export async function checkForUpdate(
       url: data.html_url,
     };
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
-      error: err instanceof Error ? err.message : String(err),
+      // Node's raw message means nothing to a human — say what actually happened.
+      error: msg === 'fetch failed' ? 'no internet connection' : msg,
       current,
     };
   }

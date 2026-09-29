@@ -108,3 +108,13 @@ test('applyUpdate surfaces the failing step without throwing', async () => {
   });
   assert.deepEqual(r, { ok: false, error: 'pull exploded' });
 });
+
+test('checkForUpdate says "no internet connection" in plain words', async () => {
+  const r = await checkForUpdate('0.15.0', {
+    fetchImpl: async () => {
+      throw new Error('fetch failed');
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.error, 'no internet connection');
+});
