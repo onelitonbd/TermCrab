@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { parseArgs } from 'node:util';
@@ -8,7 +9,7 @@ import { log, setLogLevel } from './core/logger.js';
 import { onboard, OnboardFlags } from './onboard.js';
 import { startGateway, version } from './gateway/server.js';
 import { runSupervisor } from './mobile/supervisor.js';
-import { runDoctor, renderChecks, verifyTelegram, execExists } from './mobile/doctor.js';
+import { runDoctor, renderChecks, verifyTelegram, execExists, buildShareReport } from './mobile/doctor.js';
 import { installBootScript, bootStatus, isTermux } from './mobile/boot.js';
 import { importSkills } from './skills/importer.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
@@ -19,6 +20,8 @@ import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
 import { statusReport } from './agent/status.js';
+import { friendlyError } from './core/friendly.js';
+import { checkForUpdate, renderUpdate } from './core/update.js';
 import { resolveProvider } from './providers/index.js';
 import { MemoryStore } from './agent/memory.js';
 import { SkillStore } from './skills/loader.js';
@@ -47,6 +50,8 @@ Everyday extras:
   termcrab skills [list|import ...]  add extra abilities (skill folders, git repos)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
   termcrab heartbeat                 run one self-check right now
+  termcrab update                    check if a newer TermCrab exists (and how to get it)
+  termcrab doctor --share            copy-paste report for asking help (passwords stripped)
   termcrab boot [install|status]     start automatically when the phone boots
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
   termcrab supervisor                start the gateway with auto-restart (always-on mode)
@@ -75,9 +80,11 @@ function printEvents(ev: AgentEvent): void {
     case 'delta':
       process.stdout.write(ev.text);
       break;
-    case 'error':
-      process.stdout.write(`\n\x1b[31m[error] ${ev.message}\x1b[0m\n`);
+    case 'error': {
+      const f = friendlyError(ev.message);
+      process.stdout.write(`\n\x1b[31m${f.headline}\x1b[0m\n  \u2192 ${f.fix}\n`);
       break;
+    }
     default:
       break;
   }
@@ -209,8 +216,29 @@ export async function main(argv: string[]): Promise<void> {
       return;
 
     case 'doctor': {
-      const { values } = parseArgs({ args: rest, options: { json: { type: 'boolean', default: false } } });
+      const { values } = parseArgs({
+        args: rest,
+        options: {
+          json: { type: 'boolean', default: false },
+          share: { type: 'boolean', default: false },
+        },
+      });
       const checks = await runDoctor();
+      if (values.share) {
+        const report = buildShareReport(checks, {
+          version: version(),
+          provider: providerLabel(loadConfig()),
+          node: process.version,
+          platform: `${os.type()} ${os.release()}`,
+          home: home(),
+          configPath: configPath(),
+        });
+        console.log('Safe to paste anywhere (passwords are stripped):');
+        console.log('```');
+        console.log(report);
+        console.log('```');
+        return;
+      }
       if (values.json) {
         console.log(JSON.stringify(checks, null, 2));
       } else {
@@ -218,6 +246,12 @@ export async function main(argv: string[]): Promise<void> {
         console.log(r.text);
         if (r.failed) process.exitCode = 1;
       }
+      return;
+    }
+
+    case 'update': {
+      const info = await checkForUpdate(version());
+      console.log(renderUpdate(info));
       return;
     }
 

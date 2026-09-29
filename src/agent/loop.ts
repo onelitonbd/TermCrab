@@ -174,7 +174,20 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: maxIter });
     return finalText;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // Keep the cause (ECONNREFUSED, TLS, DNS codes) — the UI prints friendly
+    // hints keyed off it, and the plain message alone ("fetch failed") hides it.
+    const base = err instanceof Error ? err.message : String(err);
+    const c = err instanceof Error ? (err.cause as unknown) : undefined;
+    let causeBits = '';
+    if (c && typeof c === 'object') {
+      const code = 'code' in c ? String((c as { code?: unknown }).code ?? '') : '';
+      const cmsg = c instanceof Error ? c.message : '';
+      causeBits = [code, cmsg].filter(Boolean).join(' ');
+    }
+    const message =
+      causeBits && !base.includes(causeBits) && !base.includes(causeBits.split(' ')[0] ?? '')
+        ? `${base} (${causeBits})`
+        : base;
     log.error('agent run failed:', message);
     emit({ type: 'error', message });
     const fallback = `[agent error] ${message}`;

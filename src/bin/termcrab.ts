@@ -4,9 +4,16 @@
 // (os.networkInterfaces / Error 13) before anything else touches the network stack.
 import '../mobile/bionic.js';
 import { main } from '../cli.js';
+import { friendlyError } from '../core/friendly.js';
 
 main(process.argv.slice(2)).catch((err) => {
-  const msg = err instanceof Error ? (err.stack || err.message) : String(err);
-  console.error(`\x1b[31m[termcrab] fatal:\x1b[0m ${msg}`);
+  const f = friendlyError(err);
+  console.error(`\x1b[31m[termcrab] ${f.headline}\x1b[0m`);
+  console.error(`  \u2192 ${f.fix}`);
+  if (process.env.TCRAB_DEBUG && err instanceof Error && err.stack) {
+    console.error(err.stack);
+  } else if (err instanceof Error && err.stack) {
+    console.error(`  (details hidden - set TCRAB_DEBUG=1 to see them)`);
+  }
   process.exitCode = 1;
 });

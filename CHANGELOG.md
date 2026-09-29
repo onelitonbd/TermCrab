@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.3 — 2026-09-29 (Trust & upkeep)
+
+### Added
+- **Friendly errors everywhere** — failures now come out as a sentence + a next step:
+  "Can't reach the service at 127.0.0.1:54321 — it's not running → start llama-server
+  or check the Brain address", bad API key → exact config command, offline → mock mode,
+  blocked ports, TLS/proxy inspection, missing termux tools, missing npm packages.
+  Technical details hidden (TCRAB_DEBUG=1 reveals them)
+- **`termcrab update`** — asks GitHub for the newest release; tells you the upgrade
+  command (never auto-updates). Offline = calm message, no drama. Optional startup
+  check (`update.checkOnStart`, editable in Settings) + in-panel notice via SSE
+- **`termcrab doctor --share`** — copy-paste diagnostic block for asking help:
+  checks + environment only, key/token-shaped strings scrubbed ("secrets: none included")
+- **First-run welcome card** — when no real brain is configured, the web panel opens
+  with a 2-step "wake your crab" guide + button straight to Settings (`GET /api/setup`)
+
+### Changed
+- Agent error channel preserves the underlying cause (was: bare "fetch failed")
+- `termcrab help` lists `update` and `doctor --share`
+
+### Tests
+- 112/112 (new: update semver/network-stub suite, friendly-error suite, share-report scrub suite)
+
 ## 0.4.2 — 2026-09-29 (Made for humans)
 
 Plain-language pass over **both** interfaces — built for the owner first, coders later.

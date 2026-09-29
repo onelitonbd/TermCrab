@@ -346,6 +346,10 @@
         ? `💤 dream done: learned ${ev.facts ?? 0} new fact${(ev.facts ?? 0) === 1 ? '' : 's'} (${ev.reason || ''})`
         : `💤 dream skipped: ${humanReason(ev.reason)}`);
     });
+    es.addEventListener('update', (e) => {
+      const ev = JSON.parse(e.data);
+      addMsg('sys', `⬆️ a newer TermCrab exists: v${ev.latest} (you have v${ev.current}) — run: git pull && npm install -g .`);
+    });
     es.onerror = () => { /* auto-reconnects */ };
   }
 
@@ -510,6 +514,7 @@
     'memory.embeddings', 'gateway.token',
     'channels.telegram.token', 'channels.telegram.allowedUserIds',
     'channels.whatsapp.enabled', 'channels.whatsapp.allowedJids',
+    'update.checkOnStart',
   ];
   // Plain-English labels: every setting says what it IS in human words.
   const CFG_LABELS = {
@@ -532,6 +537,7 @@
     'channels.telegram.allowedUserIds': ['Telegram allowed people', 'Who may talk to your bot — empty means nobody'],
     'channels.whatsapp.enabled': ['WhatsApp connection', 'Turn on WhatsApp (needs: npm install baileys)'],
     'channels.whatsapp.allowedJids': ['WhatsApp allowed chats', 'Who may talk to it — empty means off'],
+    'update.checkOnStart': ['Check for updates at startup', 'Ask GitHub on startup if a newer TermCrab exists'],
   };
 
   // Turn system reasons into sentences a person can read.
@@ -885,6 +891,30 @@
       connectEvents();
       refreshSessions();
       refreshAgents();
+      // First-run welcome: if no real brain is configured yet, say what to do.
+      try {
+        const s = await api('/api/setup');
+        if (s.setupNeeded && !log.querySelector('.welcome')) {
+          const w = document.createElement('div');
+          w.className = 'msg sys welcome';
+          w.style.textAlign = 'left';
+          w.style.maxWidth = 'min(520px, 94%)';
+          const t = document.createElement('div');
+          t.textContent =
+            `👋 Welcome! v${s.version} is running. Two steps to wake your crab:\n` +
+            `1) Pick your AI brain — open ⚙️ Settings below, choose "AI brain type" and paste your password (API key).\n` +
+            `2) Say hello in the chat box.\n` +
+            `(Brain "mock" is only an offline demo — it doesn't think.)`;
+          const b = document.createElement('button');
+          b.className = 'ghost';
+          b.style.marginTop = '8px';
+          b.textContent = '👉 Open Settings';
+          b.onclick = () => { $('cfgPanel').open = true; $('cfgPanel').scrollIntoView({ behavior: 'smooth' }); };
+          w.append(t, b);
+          log.insertBefore(w, log.firstChild);
+          log.scrollTop = 0;
+        }
+      } catch { /* welcome is best-effort */ }
       addMsg('sys', 'connected - your agent runs on your own machine. Nothing phones home.');
     } catch {
       showOverlay('Token rejected');

@@ -341,6 +341,51 @@ export async function checkPortInUse(port: number): Promise<boolean> {
   return !(await portFree(port, '127.0.0.1'));
 }
 
+/** Scrub anything key-shaped out of a report before it leaves the machine. */
+function scrub(text: string): string {
+  return text
+    .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[key]')
+    .replace(/\b\d{8,}:[A-Za-z0-9_-]{20,}/g, '[token]')
+    .replace(/(apiKey|token)["']?\s*[:=]\s*["']?[^"'\s,}]+/gi, '$1: [hidden]');
+}
+
+/**
+ * Redacted, copy-paste diagnostic block for `termcrab doctor --share`.
+ * Contains checks + environment only — never config secrets.
+ */
+export function buildShareReport(
+  checks: Check[],
+  meta: {
+    version: string;
+    provider: string;
+    node: string;
+    platform: string;
+    home: string;
+    configPath: string;
+  },
+): string {
+  const lines: string[] = [
+    `termcrab doctor --share  (v${meta.version})`,
+    `date: ${new Date().toISOString()}`,
+    `node: ${meta.node} · ${meta.platform}`,
+    `brain: ${meta.provider}`,
+    `home: ${meta.home}`,
+    `config: ${meta.configPath}`,
+    `secrets: none included`,
+    '',
+    'checks:',
+  ];
+  for (const c of checks) {
+    let line = `[${c.status}] ${c.id} — ${c.label}`;
+    if (c.detail) line += `: ${c.detail}`;
+    if (c.fix && c.status !== 'ok') line += ` | fix: ${c.fix}`;
+    lines.push(line);
+  }
+  const failed = checks.filter((c) => c.status === 'fail').length;
+  lines.push('', failed ? `result: ${failed} failing check(s)` : 'result: all good');
+  return scrub(lines.join('\n'));
+}
+
 /** Verify a telegram token quickly (used by onboard). */
 export async function verifyTelegram(token: string): Promise<string | null> {
   try {

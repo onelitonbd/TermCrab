@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, cfgSet, saveConfig } from '../core/config.js';
+import { Config, cfgSet, saveConfig, configExists } from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -21,6 +21,7 @@ import { MemoryStore } from '../agent/memory.js';
 import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
 import { runDream, startDreamScheduler, readDreamState } from '../agent/dream.js';
 import { countMemoryFacts } from '../agent/status.js';
+import { checkForUpdate } from '../core/update.js';
 import { resolveProvider } from '../providers/index.js';
 import { SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
@@ -328,6 +329,17 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   const stopCron = startCronScheduler({ ctx: agent, deliver: notify });
   const stopDream =
     config.dream?.enabled !== false ? startDreamScheduler(agent) : () => undefined;
+  // One quiet update check at startup (opt-in via update.checkOnStart).
+  if (config.update?.checkOnStart) {
+    void checkForUpdate(version()).then((r) => {
+      if (r.ok && r.updateAvailable) {
+        log.info(`update available: v${r.latest} (you have v${r.current}) — git pull && npm install -g .`);
+        bus.emit({ type: 'update', latest: r.latest, current: r.current, url: r.url });
+      } else if (!r.ok) {
+        log.debug('update check skipped:', r.error ?? '');
+      }
+    });
+  }
   void notifyStatus(`online · ${providerLabel(config)} · port ${port}`);
 
   // ---- HTTP server ----
@@ -526,6 +538,16 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         // ---- Web control parity (v0.5 P0 #0): everything the CLI can do ----
+
+        if (req.method === 'GET' && pathname === '/api/setup') {
+          json(res, 200, {
+            setupNeeded: !configExists() || config.provider.type === 'mock',
+            providerType: config.provider.type,
+            hasKey: Boolean(config.provider.apiKey),
+            version: version(),
+          });
+          return;
+        }
 
         if (req.method === 'GET' && pathname === '/api/config') {
           json(res, 200, { config: redactConfig(config), path: configPath() });

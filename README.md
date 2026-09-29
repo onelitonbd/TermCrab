@@ -81,8 +81,9 @@ termcrab supervisor     run the gateway with auto-restart watchdog
 termcrab agent [msg] [--as <name>] [--tier local]
                            chat one-shot or interactive REPL (/as <name>, /agents inside)
 termcrab say <text>        speak text aloud (termux-tts-speak / espeak / say ...)
-termcrab doctor         diagnose the installation (fix suggestions included)
+termcrab doctor [--json|--share]  diagnose the installation (--share = safe paste for help)
 termcrab heartbeat      run one proactive tick now
+termcrab update         check if a newer TermCrab exists (never auto-updates)
 termcrab dream [--force]   sleep on it: consolidate sessions into long-term memory
 termcrab wake [--keyword w]  voice loop: say the keyword, then your command (STT + TTS)
 termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prompt "..." | rm | on | off | run
