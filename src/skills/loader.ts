@@ -1,0 +1,86 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { parseFrontmatter } from '../core/frontmatter.js';
+import { builtinSkillsDir, userSkillsDir } from '../core/paths.js';
+
+export interface SkillMeta {
+  name: string;
+  description: string;
+  path: string;
+  origin: 'builtin' | 'user';
+}
+
+export interface Skill extends SkillMeta {
+  content: string;
+}
+
+const NAME_RE = /^[a-z0-9][a-z0-9-_]{0,63}$/;
+
+function readSkillDir(dir: string, origin: 'builtin' | 'user'): Skill | null {
+  const file = path.join(dir, 'SKILL.md');
+  if (!fs.existsSync(file)) return null;
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const { data, content } = parseFrontmatter(raw);
+    const name = typeof data.name === 'string' && NAME_RE.test(data.name) ? data.name : path.basename(dir);
+    const description = typeof data.description === 'string' ? data.description.slice(0, 300) : '';
+    if (!NAME_RE.test(name)) return null;
+    return { name, description, content, path: dir, origin };
+  } catch {
+    return null;
+  }
+}
+
+function scan(root: string, origin: 'builtin' | 'user'): Map<string, Skill> {
+  const out = new Map<string, Skill>();
+  if (!fs.existsSync(root)) return out;
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(root, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const skill = readSkillDir(path.join(root, e.name), origin);
+    if (skill) out.set(skill.name, skill);
+  }
+  return out;
+}
+
+/** Skills are discovered fresh on each call (hot-reload friendly, no cache staleness). */
+export class SkillStore {
+  constructor(
+    private readonly roots: { dir: string; origin: 'builtin' | 'user' }[] = [
+      { dir: builtinSkillsDir(), origin: 'builtin' },
+      { dir: userSkillsDir(), origin: 'user' },
+    ],
+  ) {}
+
+  list(): SkillMeta[] {
+    const merged = new Map<string, SkillMeta>();
+    // Iterate in order: user skills (later roots) override built-ins.
+    for (const root of this.roots) {
+      for (const [name, s] of scan(root.dir, root.origin)) {
+        merged.set(name, { name, description: s.description, path: s.path, origin: s.origin });
+      }
+    }
+    return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  get(name: string): Skill | null {
+    if (!NAME_RE.test(name)) return null;
+    for (const root of [...this.roots].reverse()) {
+      const s = readSkillDir(path.join(root.dir, name), root.origin);
+      if (s) return s;
+    }
+    return null;
+  }
+
+  /** Index block injected into the system prompt: cheap (descriptions only). */
+  promptIndex(): string {
+    const skills = this.list();
+    if (!skills.length) return '(no skills installed)';
+    return skills.map((s) => `- ${s.name} [${s.origin}]: ${s.description || 'no description'}`).join('\n');
+  }
+}

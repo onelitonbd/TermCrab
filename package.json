@@ -1,0 +1,49 @@
+{
+  "name": "termcrab",
+  "version": "0.1.0",
+  "description": "TermCrab - the always-on AI agent that lives in your Termux. Gateway, channels, skills, memory. Zero native dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "TermCrab contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onelitonbd/claw.git"
+  },
+  "homepage": "https://github.com/onelitonbd/claw#readme",
+  "keywords": [
+    "ai-agent",
+    "termux",
+    "android",
+    "telegram",
+    "llm",
+    "gateway",
+    "self-hosted",
+    "assistant"
+  ],
+  "bin": {
+    "termcrab": "dist/src/bin/termcrab.js"
+  },
+  "engines": {
+    "node": ">=20.10"
+  },
+  "files": [
+    "dist/src",
+    "skills",
+    "ui",
+    "docs",
+    "install.sh",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "start": "node dist/src/bin/termcrab.js",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.0"
+  }
+}

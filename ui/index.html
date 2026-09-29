@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f14" />
+<title>TermCrab Control</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #121821; --panel2: #1a2230; --line: #26303f;
+    --text: #e6edf3; --muted: #8b98a9; --accent: #ff7a45; --accent2: #35c4a3;
+    --user: #1f3b52; --bot: #182233; --danger: #ff5f56; --ok: #3ddc84;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); display: flex; flex-direction: column;
+    font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5;
+  }
+  .logo { font-size: 22px; }
+  h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .pill {
+    margin-left: auto; font-size: 12px; background: var(--panel2); border: 1px solid var(--line);
+    padding: 4px 10px; border-radius: 999px; color: var(--muted); white-space: nowrap;
+  }
+  .pill.ok { color: var(--ok); border-color: #1d4d36; }
+  #log {
+    flex: 1; overflow-y: auto; padding: 16px 14px 8px; display: flex; flex-direction: column; gap: 10px;
+    scroll-behavior: smooth;
+  }
+  .msg { max-width: min(760px, 94%); padding: 10px 13px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: var(--user); border: 1px solid #2b567a; border-bottom-right-radius: 4px; }
+  .msg.bot  { align-self: flex-start; background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg.sys  { align-self: center; background: transparent; color: var(--muted); font-size: 12.5px; border: 1px dashed var(--line); }
+  .tools { color: var(--accent); font-size: 12.5px; align-self: flex-start; padding: 2px 6px; }
+  .err { color: var(--danger); }
+  #composer {
+    display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: var(--panel); border-top: 1px solid var(--line); align-items: flex-end;
+  }
+  textarea {
+    flex: 1; resize: none; min-height: 44px; max-height: 140px; border-radius: 12px;
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    padding: 11px 13px; font: inherit; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #14100e; font-weight: 700; border: 0; border-radius: 12px;
+    padding: 0 16px; min-height: 44px; cursor: pointer; font-size: 14px;
+  }
+  button.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+  button:disabled { opacity: .55; cursor: default; }
+  #actions { display: flex; gap: 6px; }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(5,8,12,.92); display: flex; align-items: center;
+    justify-content: center; padding: 20px; z-index: 20;
+  }
+  #overlay .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; width: min(420px, 100%); }
+  #overlay input {
+    width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    padding: 12px; border-radius: 10px; font: inherit; margin: 12px 0;
+  }
+  #overlay p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
+  .hidden { display: none !important; }
+  #typing { color: var(--muted); font-size: 13px; padding: 0 16px 6px; min-height: 18px; font-style: italic; }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">🦀</span>
+  <div>
+    <h1>TermCrab</h1>
+    <div class="sub" id="health">connecting…</div>
+  </div>
+  <span class="pill" id="pill">offline</span>
+</header>
+
+<div id="log"></div>
+<div id="typing"></div>
+
+<div id="composer">
+  <div id="actions">
+    <button class="ghost" id="btnNew" title="Reset session">🧹</button>
+    <button class="ghost" id="btnHb" title="Run heartbeat now">🫀</button>
+  </div>
+  <textarea id="input" rows="1" placeholder="Tell your crab what to do…"></textarea>
+  <button id="send">Send</button>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <div style="font-size:30px">🦀</div>
+    <h2 style="margin:8px 0 2px">TermCrab Control</h2>
+    <p>Paste the gateway token (printed in the terminal, or <code>termcrab config get gateway.token</code>).</p>
+    <input id="token" type="password" placeholder="gateway token" autocomplete="off" />
+    <button id="connect" style="width:100%">Connect</button>
+    <p id="authErr" class="err"></p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const log = $('log');
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false };
+
+  function addMsg(cls, text) {
+    const div = document.createElement('div');
+    div.className = `msg ${cls}`;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  async function api(path, opts = {}) {
+    const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
+    const res = await fetch(path, Object.assign({}, opts, { headers }));
+    if (res.status === 401) { showOverlay('Invalid or missing token'); throw new Error('unauthorized'); }
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { msg = (await res.json()).error || msg; } catch {}
+      throw new Error(msg);
+    }
+    return res.json();
+  }
+
+  function showOverlay(err) {
+    $('overlay').classList.remove('hidden');
+    $('authErr').textContent = err || '';
+  }
+  function hideOverlay() { $('overlay').classList.add('hidden'); }
+
+  async function refreshHealth() {
+    try {
+      const h = await (await fetch('/api/health')).json();
+      $('health').textContent = `${h.provider} · v${h.version}${h.telegram ? ' · telegram on' : ''}`;
+      $('pill').textContent = 'online';
+      $('pill').classList.add('ok');
+    } catch {
+      $('pill').textContent = 'offline';
+      $('pill').classList.remove('ok');
+    }
+  }
+
+  function connectEvents() {
+    const es = new EventSource('/api/events?token=' + encodeURIComponent(state.token));
+    es.addEventListener('tool:start', (e) => {
+      const ev = JSON.parse(e.data);
+      const div = document.createElement('div');
+      div.className = 'tools';
+      div.textContent = '⚡ ' + ev.name + (ev.args && ev.args.command ? `(${String(ev.args.command).slice(0,80)})` : '');
+      log.appendChild(div); log.scrollTop = log.scrollHeight;
+    });
+    es.addEventListener('tool:end', (e) => {
+      const ev = JSON.parse(e.data);
+      const last = [...log.querySelectorAll('.tools')].pop();
+      if (last) last.textContent += ev.ok ? ' ✓' : ' ✗';
+    });
+    es.addEventListener('delta', (e) => {
+      const ev = JSON.parse(e.data);
+      $('typing').textContent = ev.text.slice(0, 300);
+    });
+    es.addEventListener('heartbeat', (e) => {
+      addMsg('sys', '🫀 heartbeat: ' + JSON.parse(e.data).reason);
+    });
+    es.onerror = () => { /* auto-reconnects */ };
+  }
+
+  async function send() {
+    const text = $('input').value.trim();
+    if (!text || state.busy) return;
+    state.busy = true; $('send').disabled = true;
+    $('input').value = '';
+    addMsg('user', text);
+    const pending = addMsg('bot', '…');
+    try {
+      const res = await api('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: text, sessionId: 'web:main' }),
+      });
+      pending.textContent = res.text || '(empty reply)';
+    } catch (err) {
+      pending.textContent = '⚠️ ' + err.message;
+      pending.classList.add('err');
+    } finally {
+      $('typing').textContent = '';
+      state.busy = false; $('send').disabled = false;
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+
+  $('send').onclick = send;
+  $('input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  $('btnNew').onclick = async () => {
+    try { await api('/api/sessions/web:main', { method: 'DELETE' }); addMsg('sys', 'session reset'); } catch (e) { addMsg('sys', 'reset failed: ' + e.message); }
+  };
+  $('btnHb').onclick = async () => {
+    addMsg('sys', '🫀 running heartbeat…');
+    try {
+      const r = await api('/api/heartbeat', { method: 'POST' });
+      addMsg('sys', r.ran ? 'heartbeat done: ' + (r.output || '').slice(0, 500) : 'heartbeat skipped: ' + r.reason);
+    } catch (e) { addMsg('sys', 'heartbeat failed: ' + e.message); }
+  };
+
+  async function bootstrap() {
+    if (!state.token) { showOverlay(); return; }
+    try {
+      await api('/api/skills'); // validates token
+      hideOverlay();
+      refreshHealth(); setInterval(refreshHealth, 15000);
+      connectEvents();
+      addMsg('sys', 'connected - your agent runs on your own machine. Nothing phones home.');
+    } catch {
+      showOverlay('Token rejected');
+    }
+  }
+  $('connect').onclick = () => {
+    state.token = $('token').value.trim();
+    localStorage.setItem('tc_token', state.token);
+    bootstrap();
+  };
+  $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('connect').click(); });
+
+  bootstrap();
+})();
+</script>
+</body>
+</html>

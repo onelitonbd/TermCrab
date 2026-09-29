@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+termcrab-data/
+*.pid
+.DS_Store
+
+.smoke-home/
