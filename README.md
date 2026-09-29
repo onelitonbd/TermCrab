@@ -54,7 +54,7 @@ node dist/src/bin/termcrab.js onboard     # interactive wizard
 node dist/src/bin/termcrab.js gateway     # start your agent
 ```
 
-Or with the installer:
+Or with the one-command installer (re-run the same command later to upgrade):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw/install.sh | bash

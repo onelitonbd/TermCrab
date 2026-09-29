@@ -319,6 +319,20 @@ export async function runDoctor(): Promise<Check[]> {
     /* optional */
   }
 
+  // Voice input (dictation) — used by the web panel 🎤 button.
+  const sttOk = await execExists('termux-speech-to-text');
+  checks.push(
+    sttOk
+      ? { id: 'stt', label: 'voice input (dictation)', status: 'ok', detail: 'termux-speech-to-text' }
+      : {
+          id: 'stt',
+          label: 'voice input (dictation)',
+          status: 'info',
+          detail: 'no dictation tool (works on Termux only)',
+          fix: 'pkg install termux-api  (+ the Termux:API app from F-Droid)',
+        },
+  );
+
   return checks;
 }
 

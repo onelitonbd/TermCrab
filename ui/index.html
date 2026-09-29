@@ -234,6 +234,10 @@
       <button id="sayGo" class="ghost">🔊 Say</button>
     </div>
     <div class="pBar">
+      <button id="listenGo" class="ghost">🎤 Listen (dictate)</button>
+      <span class="pNote">tap → speak → words land in the chat box (needs Termux:API)</span>
+    </div>
+    <div class="pBar">
       <span class="pNote" id="bootInfo">boot: …</span>
       <button id="bootInstall" class="ghost">🚀 Install boot script</button>
     </div>
@@ -865,6 +869,21 @@
       addMsg('sys', r.ok ? '🔊 spoke via ' + r.backend : '🔇 tts: ' + (r.error || 'failed'));
     } catch (e) { addMsg('sys', 'say failed: ' + e.message); }
     finally { $('sayGo').disabled = false; }
+  };
+  $('listenGo').onclick = async () => {
+    $('listenGo').disabled = true;
+    addMsg('sys', '🎤 listening — speak now…');
+    try {
+      const r = await api('/api/listen', { method: 'POST' });
+      if (r.ok && r.text) {
+        $('input').value = ($('input').value ? $('input').value + ' ' : '') + r.text;
+        addMsg('sys', '🎤 heard: "' + r.text + '" — press Send');
+        $('input').focus();
+      } else {
+        addMsg('sys', '🎤 ' + (r.error || 'did not hear anything'));
+      }
+    } catch (e) { addMsg('sys', 'listen failed: ' + e.message); }
+    finally { $('listenGo').disabled = false; }
   };
   async function refreshBoot() {
     try {

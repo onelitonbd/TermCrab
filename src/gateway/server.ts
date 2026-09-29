@@ -33,6 +33,7 @@ import { parseAgentPrefix } from '../channels/telegram.js';
 import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
+import { listenOnce } from '../mobile/stt.js';
 import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
@@ -738,6 +739,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const result = await speak(text);
           json(res, 200, result);
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/listen') {
+          // One-shot dictation; always 200 with ok/error so the UI can show either.
+          json(res, 200, await listenOnce(30_000));
           return;
         }
 

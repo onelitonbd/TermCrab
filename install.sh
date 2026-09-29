@@ -29,13 +29,15 @@ command -v git >/dev/null 2>&1 || {
 }
 
 # --- clone ------------------------------------------------------------
+MODE="install"
 if [ -d "$DEST/.git" ]; then
-  say "updating existing checkout at $DEST"
+  MODE="upgrade"
+  say "upgrading existing install at $DEST"
   git -C "$DEST" fetch --quiet origin "$BRANCH"
   git -C "$DEST" checkout --quiet "$BRANCH"
   git -C "$DEST" pull --quiet --ff-only origin "$BRANCH" || true
 else
-  say "cloning $REPO ($BRANCH) -> $DEST"
+  say "installing: cloning $REPO ($BRANCH) -> $DEST"
   mkdir -p "$(dirname "$DEST")"
   git clone --quiet --branch "$BRANCH" "$REPO" "$DEST"
 fi
@@ -46,17 +48,26 @@ say "installing dev dependencies + build..."
 npm install --no-fund --no-audit
 
 # --- shim -------------------------------------------------------------
-BIN_DIR="$HOME/.local/bin"
-mkdir -p "$BIN_DIR"
-cat > "$BIN_DIR/termcrab" <<EOF
+write_shim() {
+  cat > "$1/termcrab" <<SHIM
 #!/usr/bin/env bash
 exec node "$DEST/dist/src/bin/termcrab.js" "\$@"
-EOF
-chmod +x "$BIN_DIR/termcrab"
-case ":$PATH:" in
-  *":$BIN_DIR:"*) ;;
-  *) say "add to your shell:  export PATH=\"\$PATH:$BIN_DIR\"" ;;
-esac
+SHIM
+  chmod +x "$1/termcrab"
+}
+BIN_DIR="$HOME/.local/bin"
+mkdir -p "$BIN_DIR"
+write_shim "$BIN_DIR"
+# On Termux, $PREFIX/bin is already on PATH - drop a shim there too (no PATH edits needed).
+if [ -n "${PREFIX:-}" ] && [ -d "$PREFIX/bin" ] && [ -w "$PREFIX/bin" ]; then
+  write_shim "$PREFIX/bin"
+  say "termcrab command installed (PREFIX/bin)"
+else
+  case ":$PATH:" in
+    *":$BIN_DIR:"*) say "termcrab command installed ($BIN_DIR)" ;;
+    *) say "termcrab command installed ($BIN_DIR) - add to PATH:  export PATH=\"\$PATH:$BIN_DIR\"" ;;
+  esac
+fi
 
 # --- post -------------------------------------------------------------
 if [ ! -f "${TCRAB_HOME:-$HOME/.termcrab}/config.json" ]; then
@@ -67,4 +78,12 @@ if [ ! -f "${TCRAB_HOME:-$HOME/.termcrab}/config.json" ]; then
 else
   say "existing config found - 'termcrab doctor' to verify"
 fi
-say "done 🦀"
+VER=$(node -p "require('$DEST/package.json').version" 2>/dev/null || echo '?')
+echo
+if [ "$MODE" = "upgrade" ]; then
+  say "upgraded 🦀 (v$VER) at $DEST"
+else
+  say "installed 🦀 (v$VER) at $DEST"
+fi
+echo "   next:  termcrab onboard    (setup wizard)"
+echo "          termcrab status     (see everything in plain words)"

@@ -185,6 +185,13 @@ test('web control parity API', async (t) => {
       assert.equal(typeof b.data.installed, 'boolean');
       assert.equal(typeof b.data.termux, 'boolean');
     });
+
+    await t.test('listen (dictation) always answers with ok or a reason', async () => {
+      const l = await req('/api/listen', 'POST');
+      assert.equal(l.status, 200, 'must never be an HTTP error');
+      assert.equal(typeof l.data.ok, 'boolean');
+      if (!l.data.ok) assert.ok(typeof l.data.error === 'string' && l.data.error.length > 5);
+    });
   } finally {
     await handle.stop();
   }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.4 — 2026-09-29 (Talk to it)
+
+### Added
+- **Dictation in the panel** — 🎤 *Listen* button: tap, speak, words land in the chat box
+  (`POST /api/listen`, one-shot `termux-speech-to-text`, 30s timeout; missing tool or
+  silence return friendly messages, never HTTP errors)
+- Doctor: **voice input (dictation)** check (ok / install hint for Termux:API)
+
+### Changed
+- **`install.sh` is now a true one-command install AND upgrade** — re-running it upgrades
+  in place ("installed/upgraded 🦀 (vX)"), drops the `termcrab` command into `$PREFIX/bin`
+  on Termux (no PATH editing) with `~/.local/bin` fallback elsewhere, prints next steps
+  (`onboard`, `status`)
+
+### Tests
+- 115/115 (new: dictation suite — never hangs, friendly when tool missing; live API listen route)
+
 ## 0.4.3 — 2026-09-29 (Trust & upkeep)
 
 ### Added
