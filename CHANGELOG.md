@@ -1,6 +1,11 @@
 # Changelog
 
-# Changelog
+## 0.14.0 — 2026-09-30 (Chat front and center)
+
+- The sidebar no longer lists Chat as a section — the chat is the home screen, not a menu entry.
+- A plus button now sits beside the "Chat history" heading: one tap starts a fresh chat, lands you in it, and puts the cursor in the message box.
+- First launch after entering the passcode now opens and loads the current chat automatically — no more picking a session from the list to get started.
+- A brand-new chat stays selected (and shows in the sidebar) even before its first message is sent.
 
 ## 0.13.0 — 2026-09-29 (Every screen has its own address)
 

@@ -412,6 +412,10 @@
   .nav button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
   .nav button.on:hover { color: var(--strong); background: var(--fill); }
   .sideLabel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     font-size: 12.5px;
     color: var(--muted);
     font-weight: 600;
@@ -419,6 +423,18 @@
     border-top: 1px solid var(--line);
     margin-top: 10px;
   }
+  #newChatBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    border-radius: var(--r-sm);
+    flex-shrink: 0;
+  }
+  #newChatBtn svg { display: block; }
   #histList { display: flex; flex-direction: column; gap: 2px; }
   .histRow {
     display: flex;
@@ -616,13 +632,12 @@
 <body>
 <aside id="side">
   <nav class="nav" aria-label="Sections">
-    <button data-goto="chat" class="on" aria-current="page">Chat</button>
     <button data-goto="status">Status</button>
     <button data-goto="memory">Memory</button>
     <button data-goto="tools">Tools</button>
     <button data-goto="settings">Settings</button>
   </nav>
-  <div class="sideLabel">Chat history</div>
+  <div class="sideLabel"><span>Chat history</span><button id="newChatBtn" class="ghost" title="New chat" aria-label="New chat"><svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 2.5v10M2.5 7.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
   <div id="histList"><div class="nx" style="padding:4px 8px">loading…</div></div>
 </aside>
 <div class="main">
@@ -1017,6 +1032,7 @@
         opts.push(s); seen.add(s.id);
       }
       if (!seen.has('web:main')) opts.unshift({ id: 'web:main', messages: 0 });
+      if (keep && keep !== 'web:main' && !seen.has(keep)) opts.push({ id: keep, messages: 0 });
       sel.innerHTML = '';
       for (const s of opts) {
         const o = document.createElement('option');
@@ -1024,19 +1040,22 @@
         o.textContent = s.id.length > 16 ? s.id.slice(0, 15) + '…' : s.id;
         sel.appendChild(o);
       }
-      sel.value = seen.has(keep) || keep === 'web:main' ? keep : (opts[0] ? opts[0].id : 'web:main');
+      sel.value = keep;
       state.sessions = data.sessions || [];
+      if (keep && keep !== 'web:main' && !state.sessions.some((s) => s.id === keep)) {
+        state.sessions.unshift({ id: keep, messages: 0, modified: Math.floor(Date.now() / 1000) });
+      }
       renderHistory(state.sessions);
       updateChatLabel();
       if (state.pendingSession) {
         const want = state.pendingSession;
         state.pendingSession = null;
-        if (sel.value === want) loadSession(want);
+        if (sel.value === want) await loadSession(want);
       }
     } catch { /* non-fatal */ }
   }
 
-  async function loadSession(id) {
+  async function loadSession(id, quiet) {
     updateChatLabel();
     try {
       const data = await api('/api/sessions/' + encodeURIComponent(id));
@@ -1045,7 +1064,7 @@
         if (m.role === 'user') addMsg('user', m.content);
         else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
       }
-      if (!log.children.length) addMsg('sys', `session "${id}" is empty`);
+      if (!log.children.length && !quiet) addMsg('sys', `session "${id}" is empty`);
     } catch (e) {
       addMsg('sys', 'failed to load session: ' + e.message);
     }
@@ -1845,6 +1864,33 @@
     if (open) refreshSessions();
   };
   $('navScrim').onclick = closeNav;
+
+  // Sidebar "plus" button: start a fresh chat session.
+  $('newChatBtn').onclick = () => {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const id = 'web:' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) +
+      '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+    const sel = $('session');
+    if (!Array.prototype.some.call(sel.options, (o) => o.value === id)) {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = id;
+      sel.appendChild(o);
+    }
+    sel.value = id;
+    state.pendingSession = null;
+    log.innerHTML = '';
+    addMsg('sys', 'New chat — say hello to start.');
+    updateChatLabel();
+    state.sessions = [{ id, messages: 0, modified: Math.floor(Date.now() / 1000) }]
+      .concat((state.sessions || []).filter((s) => s.id !== id));
+    renderHistory(state.sessions);
+    switchView('chat');
+    closeNav();
+    const input = $('input');
+    if (input) input.focus();
+  };
   function renderHistory(sessions) {
     const box = $('histList');
     if (!box) return;
@@ -1894,7 +1940,9 @@ async function bootstrap() {
       updateChatLabel();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
-      refreshSessions();
+      const deepLink = state.pendingSession;
+      await refreshSessions();
+      if (!deepLink) await loadSession(currentSession(), true);
       refreshAgents();
       // First-run welcome: if no real brain is configured yet, say what to do.
       try {

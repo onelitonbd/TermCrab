@@ -202,6 +202,15 @@ test('web control parity API', async (t) => {
       assert.equal(post404.status, 404);
     });
 
+    await t.test('sidebar: Chat nav removed, plus button added, chat auto-loads', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(!html.includes('data-goto="chat"'), 'sidebar must not list Chat');
+      assert.ok(html.includes('id="newChatBtn"'), 'plus button beside Chat history');
+      assert.ok(html.includes('<span>Chat history</span>'), 'Chat history label kept');
+      // first launch after the passcode loads the current chat without selection
+      assert.ok(html.includes('await loadSession(currentSession(), true)'), 'auto-load current session in bootstrap');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');
