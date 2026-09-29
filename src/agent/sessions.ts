@@ -53,7 +53,7 @@ export class SessionStore {
     }
   }
 
-  list(): { id: string; messages: number; modified: number }[] {
+  list(): { id: string; messages: number; modified: number; bytes: number }[] {
     if (!fs.existsSync(this.root)) return [];
     return fs
       .readdirSync(this.root)
@@ -65,9 +65,61 @@ export class SessionStore {
           id: f.replace(/\.jsonl$/, ''),
           messages: content.split('\n').filter((l) => l.trim()).length,
           modified: Math.floor(fs.statSync(full).mtimeMs / 1000),
+          bytes: Buffer.byteLength(content, 'utf8'),
         };
       })
       .sort((a, b) => b.modified - a.modified);
+  }
+
+  /** Readable Markdown export of one conversation (for saving/sharing). */
+  exportMarkdown(sessionId: string): string | null {
+    const entries = this.read(sessionId);
+    if (!entries.length) return null;
+    const lines: string[] = [`# Chat: ${sessionId}`, ''];
+    for (const e of entries) {
+      const when = new Date(e.ts).toISOString().slice(0, 16).replace('T', ' ');
+      if (e.role === 'user') lines.push(`**You** (${when}):`, '', e.content, '');
+      else if (e.role === 'assistant') lines.push(`**Crab** (${when}):`, '', e.content, '');
+      else if (e.role === 'tool') lines.push(`*tool ${e.name}:* \`${String(e.result).slice(0, 200)}\``, '');
+    }
+    return lines.join('\n');
+  }
+
+  /**
+   * Delete conversations (and old reset backups) older than `days` —
+   * actually frees disk, unlike reset() which only renames.
+   */
+  purgeOlderThan(days: number): { removed: number; freedBytes: number } {
+    if (!fs.existsSync(this.root)) return { removed: 0, freedBytes: 0 };
+    const cutoff = Date.now() - Math.max(0, days) * 86_400_000;
+    let removed = 0;
+    let freedBytes = 0;
+    for (const f of fs.readdirSync(this.root)) {
+      if (!f.endsWith('.jsonl') && !f.endsWith('.bak')) continue;
+      const full = path.join(this.root, f);
+      try {
+        const st = fs.statSync(full);
+        if (st.mtimeMs >= cutoff) continue;
+        freedBytes += st.size;
+        fs.unlinkSync(full);
+        removed++;
+      } catch {
+        /* someone else got it */
+      }
+    }
+    return { removed, freedBytes };
+  }
+
+  /** Rename a conversation (moves the file; refuses to clobber). */
+  rename(from: string, to: string): 'ok' | 'not-found' | 'exists' | 'bad-name' {
+    const dest = sanitizeSessionId(to);
+    if (dest !== to.trim()) return 'bad-name';
+    const src = this.file(from);
+    const dst = path.join(this.root, `${dest}.jsonl`);
+    if (!fs.existsSync(src)) return 'not-found';
+    if (fs.existsSync(dst)) return 'exists';
+    fs.renameSync(src, dst);
+    return 'ok';
   }
 
   /**

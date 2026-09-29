@@ -130,6 +130,13 @@
     padding: 11px 12px; border-radius: 10px; font: inherit; margin: 6px 0; box-sizing: border-box;
   }
   #wiz select { height: 44px; }
+  .pBody select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; font-size: 12.5px; }
+  .sessRow { display: flex; gap: 8px; align-items: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .sessRow .id { font-family: ui-monospace, monospace; color: var(--accent2); }
+  .sessRow .meta { color: var(--muted); font-size: 11.5px; }
+  .sessRow .sp { flex: 1; }
+  .dreamRow { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; }
+  .dreamRow .d { color: var(--accent2); font-family: ui-monospace, monospace; font-size: 11px; margin-right: 8px; }
   .hidden { display: none !important; }
   #typing { color: var(--muted); font-size: 13px; padding: 0 16px 6px; min-height: 18px; font-style: italic; }
 </style>
@@ -164,6 +171,7 @@
       🧠 <b>Memory</b> — what your crab remembers. Search it, add to it, or edit the file directly.<br>
       👥 <b>Agents</b> — helper personalities (e.g. one that answers very briefly). Pick who you're talking to in the bar below.<br>
       📚 <b>Skills</b> — extra abilities you can install from a folder or a git repository.<br>
+      🗂️ <b>Chats</b> — every conversation with its size; save one as a text file, rename it, or clear out old ones.<br>
       🔊 <b>Voice &amp; boot</b> — make it speak; start it automatically when the phone boots.<br>
       ⏲️ <b>Cron</b> — repeating jobs (like "every weekday at 8am"). 🫀 = check in now · 💤 = dream (learn) now.
     </div>
@@ -213,6 +221,8 @@
     </div>
     <textarea id="memEdit" placeholder="MEMORY.md — full editable content"></textarea>
     <div class="pBar"><button id="memSave" class="ghost">💾 Save MEMORY.md</button><span class="pNote">plain file on disk — edit it here or in any editor</span></div>
+    <div class="pBar"><span class="k">💤 dream history</span><span class="pNote" id="dreamInfo">loading…</span></div>
+    <div id="dreamList"></div>
   </div>
 </details>
 
@@ -222,6 +232,12 @@
     <div id="agList"><div class="nx">loading…</div></div>
     <div class="pBar">
       <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
+      <select id="agTemplate" title="starter personality">
+        <option value="">starter: blank</option>
+        <option value="brief">starter: brief</option>
+        <option value="teacher">starter: teacher</option>
+        <option value="researcher">starter: researcher</option>
+      </select>
       <button id="agCreate">➕ Create</button>
     </div>
     <div class="pNote" id="agEditName"></div>
@@ -240,6 +256,21 @@
       <button id="skImport">⬇️ Import</button>
     </div>
     <pre id="skView" class="hidden"></pre>
+  </div>
+</details>
+
+<details class="panel" id="chatPanel">
+  <summary>🗂️ Chats (sessions)</summary>
+  <div class="pBody">
+    <div id="sessList"><div class="nx">loading…</div></div>
+    <div class="pBar">
+      <button id="sessExport" class="ghost">📥 Export selected chat</button>
+      <button id="sessRename" class="ghost">✏️ Rename</button>
+      <span class="sp"></span>
+      <input type="text" id="purgeDays" placeholder="days" style="max-width:70px" value="30" />
+      <button id="sessPurge" class="ghost">🧹 Clean old</button>
+    </div>
+    <div class="pNote">Export saves the selected chat as readable text. "Clean old" deletes chats older than N days to free space.</div>
   </div>
 </details>
 
@@ -751,6 +782,33 @@
     } finally { $('docRun').disabled = false; }
   };
 
+  async function refreshDreams() {
+    try {
+      const d = await api('/api/dreams');
+      $('dreamInfo').textContent = d.lastDreamAt
+        ? 'last: ' + new Date(d.lastDreamAt).toLocaleString()
+        : 'no dreams yet — 💤 button runs one';
+      const list = $('dreamList');
+      list.innerHTML = '';
+      if (!d.history || !d.history.length) {
+        const e = document.createElement('div');
+        e.className = 'pNote';
+        e.textContent = 'nothing learned yet';
+        list.appendChild(e);
+        return;
+      }
+      for (const h of d.history) {
+        const row = document.createElement('div');
+        row.className = 'dreamRow';
+        const dt = document.createElement('span');
+        dt.className = 'd';
+        dt.textContent = h.day;
+        row.append(dt, document.createTextNode(h.line));
+        list.appendChild(row);
+      }
+    } catch (e) { $('dreamInfo').textContent = 'dream history: ' + e.message; }
+  }
+
   async function refreshMem() {
     try {
       const d = await api('/api/memory');
@@ -760,7 +818,7 @@
       $('memEdit').value = d.content || '';
     } catch (e) { addMsg('sys', 'memory load failed: ' + e.message); }
   }
-  $('memPanel').addEventListener('toggle', () => { if ($('memPanel').open) refreshMem(); });
+  $('memPanel').addEventListener('toggle', () => { if ($('memPanel').open) { refreshMem(); refreshDreams(); } });
   $('memSearch').onclick = async () => {
     const q = $('memQ').value.trim();
     if (!q) return;
@@ -858,10 +916,11 @@
     const name = $('agNew').value.trim();
     if (!name) return;
     try {
+      const tpl = $('agTemplate').value || undefined;
       const r = await api('/api/agents', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, template: tpl }),
       });
       addMsg('sys', '👥 created @' + r.name);
       $('agNew').value = '';
@@ -1091,6 +1150,79 @@
       refreshHealth(); refreshLiveStatus();
     } catch (e) { $('wizErr').textContent = 'save failed: ' + e.message; }
     finally { $('wizFinish').disabled = false; }
+  };
+
+  // ---- Chats panel (export / rename / purge) ----
+  async function refreshSessPanel() {
+    try {
+      const data = await api('/api/sessions');
+      const box = $('sessList');
+      box.innerHTML = '';
+      const list = data.sessions || [];
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">no chats yet</div>';
+        return;
+      }
+      for (const s of list) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        row.dataset.id = s.id;
+        const id = document.createElement('span');
+        id.className = 'id';
+        id.textContent = s.id;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `${s.messages} msg · ${Math.max(1, Math.round((s.bytes || 0) / 1024))} KB · ${new Date(s.modified * 1000).toISOString().slice(0, 10)}`;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const load = document.createElement('button');
+        load.className = 'ghost'; load.textContent = 'Open';
+        load.onclick = () => { $('session').value = s.id; loadSession(s.id); };
+        row.append(id, meta, sp, load);
+        box.appendChild(row);
+      }
+    } catch (e) { $('sessList').innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+  $('chatPanel').addEventListener('toggle', () => { if ($('chatPanel').open) refreshSessPanel(); });
+  $('sessExport').onclick = async () => {
+    const sel = $('session').value;
+    if (!sel) { addMsg('sys', 'pick a chat in the bar below first'); return; }
+    try {
+      const r = await api('/api/sessions/' + encodeURIComponent(sel) + '/export');
+      const blob = new Blob([r.markdown], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = sel.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.md';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      addMsg('sys', `📥 exported "${sel}" as Markdown`);
+    } catch (e) { addMsg('sys', 'export failed: ' + e.message); }
+  };
+  $('sessRename').onclick = async () => {
+    const sel = $('session').value;
+    if (!sel) { addMsg('sys', 'pick a chat in the bar below first'); return; }
+    const to = prompt('New name for "' + sel + '":', sel);
+    if (!to || to === sel) return;
+    try {
+      await api('/api/sessions/' + encodeURIComponent(sel) + '/rename', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ to }),
+      });
+      addMsg('sys', `✏️ renamed "${sel}" → "${to}"`);
+      $('session').value = to;
+      refreshSessions(); refreshSessPanel();
+    } catch (e) { addMsg('sys', 'rename failed: ' + e.message); }
+  };
+  $('sessPurge').onclick = async () => {
+    const days = Number($('purgeDays').value) || 30;
+    if (!confirm('Delete chats older than ' + days + ' day(s)? This frees space and cannot be undone.')) return;
+    try {
+      const r = await api('/api/sessions/purge', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ olderThanDays: days }),
+      });
+      addMsg('sys', `🧹 removed ${r.removed} old chat(s), freed ${Math.round((r.freedBytes || 0) / 1024)} KB`);
+      refreshSessions(); refreshSessPanel();
+    } catch (e) { addMsg('sys', 'clean failed: ' + e.message); }
   };
 
   // ---- Update button (phase 3) ----

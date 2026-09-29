@@ -28,6 +28,7 @@ curl -N "http://127.0.0.1:7788/api/events?token=$TOKEN"
 → `200 { "text": "<final reply>", "sessionId": "web:main" }` (runs the full agent loop)
 
 ### `GET /api/sessions`
+→ `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000, "bytes": 4096 } ] }`
 → `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000 } ] }`
 
 ### `GET /api/sessions/:id`
@@ -35,6 +36,18 @@ curl -N "http://127.0.0.1:7788/api/events?token=$TOKEN"
 
 ### `DELETE /api/sessions/:id`
 Resets the session (backs up the JSONL file).
+
+### `GET /api/sessions/:id/export`
+→ `{ "id": "web:main", "markdown": "# Chat: web:main…" }` (404 if unknown)
+
+### `POST /api/sessions/:id/rename` — body `{ "to": "new-id" }`
+→ `{ "ok": true }` · 404 unknown · 409 taken · 400 bad characters
+
+### `POST /api/sessions/purge` — body `{ "olderThanDays": 30 }`
+→ `{ "removed": 3, "freedBytes": 12345 }` (really deletes old chats)
+
+### `GET /api/dreams`
+→ `{ "lastDreamAt": 1790000000000, "history": [ { "day": "2026-09-29", "line": "…" } ] }`
 
 ### `GET /api/skills`
 → `{ "skills": [ { "name": "web-research", "description": "…", "origin": "builtin" } ] }`

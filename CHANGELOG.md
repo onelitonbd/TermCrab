@@ -2,6 +2,37 @@
 
 # Changelog
 
+## 0.7.0 — 2026-09-29 (The nice-to-haves)
+
+Completes the v0.5 P1 block ("oh, nice") — five quality-of-life upgrades.
+
+### Added
+- **💤 Dream history** — Memory panel shows when your crab last "dreamed" and
+  what it learned (every `dream:` line from the daily logs); `termcrab dream
+  --history` prints the same from the terminal
+- **🗂️ Chats panel** — see every conversation with size + date; **export** any
+  chat as a readable Markdown file (download or `termcrab sessions export`),
+  **rename** it, **clean out** chats older than N days to free space
+  (`termcrab sessions ls|export|purge|rename`; purge really deletes,
+  unlike reset which only renames)
+- **✨ `termcrab skills new <name>`** — writes a working SKILL.md skeleton the
+  loader picks up immediately (validated in tests)
+- **👥 Agent starter templates** — `termcrab agents new <name> --template
+  brief|teacher|researcher` and a template dropdown when creating agents in
+  the panel
+- **🧠 `termcrab embeddings status|setup`** — plain-English state of smart
+  memory search + guided setup (installs the optional package, fetches the
+  ~23 MB model, verifies a 384-dim probe; offline = drop-in folder instructions)
+- **📡 `docs/REMOTE.md`** — Tailscale / Cloudflare tunnel / SSH recipes with a
+  hardening checklist and an explicit "what NOT to do" (no bare public IPs)
+
+### Tests
+- 152/152 (24 new: session export/purge/rename round-trip, scaffolds accepted
+  by the real loader, embeddings setup paths incl. failure messages, dream
+  history parsing, gateway routes for all of the above)
+
+# Changelog
+
 ## 0.6.0 — 2026-09-29 (You're in the driver's seat)
 
 Completes web control parity (P0 #0, phase 3): every CLI control now has a

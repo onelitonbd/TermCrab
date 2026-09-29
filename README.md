@@ -90,7 +90,10 @@ termcrab update         check if a newer TermCrab exists (never auto-updates)
 termcrab dream [--force]   sleep on it: consolidate sessions into long-term memory
 termcrab wake [--keyword w]  voice loop: say the keyword, then your command (STT + TTS)
 termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prompt "..." | rm | on | off | run
-termcrab skills         list / show / import skills (OpenClaw-style SKILL.md folders)
+termcrab skills         list / show / import / new skills (OpenClaw-style SKILL.md folders)
+termcrab sessions       ls / export <id> / rename / purge --older-than N (chat history)
+termcrab agents         ls / new <name> --template brief|teacher|researcher
+termcrab embeddings     status / setup — smart memory search (optional, offline-capable)
 termcrab import openclaw  bring an old OpenClaw setup across (preview first)
 termcrab memory         show / search memory (hybrid lexical + semantic when enabled)
 termcrab boot install   auto-start on device boot (Termux:Boot)
@@ -225,6 +228,11 @@ skills, named agents, and a best-effort config mapping (heartbeat, WhatsApp/Tele
 allow-lists, gateway port, model/provider/key). Anything it can't map is listed
 plainly in the report — nothing is guessed, and secrets are always masked (`•••`).
 Point it somewhere else with `--from <dir>` (default `~/.openclaw`).
+
+## Reaching it from outside the house
+
+See **[docs/REMOTE.md](docs/REMOTE.md)** — Tailscale / Cloudflare tunnel / SSH
+recipes, a 2-minute hardening checklist, and exactly what *not* to do.
 
 ## How it fits together
 

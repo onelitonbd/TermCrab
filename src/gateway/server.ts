@@ -19,7 +19,7 @@ import { AgentCtx, runTurn, providerLabel } from '../agent/loop.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
 import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
-import { runDream, startDreamScheduler, readDreamState } from '../agent/dream.js';
+import { runDream, startDreamScheduler, readDreamState, dreamHistory } from '../agent/dream.js';
 import { countMemoryFacts } from '../agent/status.js';
 import { checkForUpdate } from '../core/update.js';
 import { resolveProvider } from '../providers/index.js';
@@ -40,6 +40,7 @@ import { listenOnce } from '../mobile/stt.js';
 import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
+import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
@@ -459,6 +460,51 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        if (req.method === 'POST' && pathname === '/api/sessions/purge') {
+          const body = await readJsonBody(req);
+          const days = Number(body?.olderThanDays ?? 30);
+          if (!Number.isFinite(days) || days < 0) {
+            json(res, 400, { error: 'olderThanDays must be a number of days (e.g. 30)' });
+            return;
+          }
+          json(res, 200, sessions.purgeOlderThan(days));
+          return;
+        }
+
+        const sessionExport = pathname.match(/^\/api\/sessions\/([^/]+)\/export$/);
+        if (sessionExport && req.method === 'GET') {
+          const id = decodeURIComponent(sessionExport[1]!);
+          const md = sessions.exportMarkdown(id);
+          if (md === null) {
+            json(res, 404, { error: 'no chat found with that id' });
+            return;
+          }
+          json(res, 200, { id, markdown: md });
+          return;
+        }
+
+        const sessionRename = pathname.match(/^\/api\/sessions\/([^/]+)\/rename$/);
+        if (sessionRename && req.method === 'POST') {
+          const id = decodeURIComponent(sessionRename[1]!);
+          const body = await readJsonBody(req);
+          const to = typeof body?.to === 'string' ? body.to.trim() : '';
+          if (!to) {
+            json(res, 400, { error: 'new name required (to=<id>)' });
+            return;
+          }
+          const r = sessions.rename(id, to);
+          if (r === 'ok') json(res, 200, { ok: true, id: to });
+          else if (r === 'not-found') json(res, 404, { error: 'no chat found with that id' });
+          else if (r === 'exists') json(res, 409, { error: 'a chat with the new name already exists' });
+          else json(res, 400, { error: 'new name may only contain letters, digits, - _ . :' });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/dreams') {
+          json(res, 200, dreamHistory());
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/crons') {
           const now = new Date();
           json(res, 200, {
@@ -740,10 +786,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             json(res, 409, { error: 'agent already exists' });
             return;
           }
+          const tpl = typeof body?.template === 'string' && isSoulTemplate(body.template) ? body.template : null;
           const soul =
             typeof body?.soul === 'string' && body.soul.trim()
               ? body.soul
-              : `# SOUL\n\n- Name: ${name}\n- You are ${name}, a TermCrab agent.\n`;
+              : tpl
+                ? soulTemplate(tpl, name)
+                : `# SOUL\n\n- Name: ${name}\n- You are ${name}, a TermCrab agent.\n`;
           fs.mkdirSync(path.dirname(soulFile), { recursive: true });
           fs.writeFileSync(soulFile, soul, 'utf8');
           log.info(`agent created via UI: ${name}`);

@@ -171,6 +171,39 @@ export async function runDream(ctx: AgentCtx, opts: DreamOpts = {}): Promise<Dre
   return result;
 }
 
+export interface DreamHistoryEntry {
+  day: string;
+  line: string;
+}
+
+/**
+ * Everything the user can see about past dreams: when the last one ran,
+ * plus every `dream:` line written into the daily logs (the trail it left).
+ */
+export function dreamHistory(limit = 20): { lastDreamAt: number | null; history: DreamHistoryEntry[] } {
+  const history: DreamHistoryEntry[] = [];
+  const daily = path.join(memoryDir(), 'daily');
+  try {
+    const days = fs.readdirSync(daily).filter((f) => f.endsWith('.md')).sort().reverse();
+    for (const day of days) {
+      if (history.length >= limit) break;
+      try {
+        const lines = fs.readFileSync(path.join(daily, day), 'utf8').split('\n');
+        for (const line of lines) {
+          if (history.length >= limit) break;
+          const m = line.match(/^- dream:\s*(.+)$/);
+          if (m) history.push({ day: day.replace(/\.md$/, ''), line: m[1]!.trim() });
+        }
+      } catch {
+        /* unreadable day - skip */
+      }
+    }
+  } catch {
+    /* no daily dir yet */
+  }
+  return { lastDreamAt: loadState().lastDreamAt ?? null, history };
+}
+
 /** Hourly due-check scheduled by the gateway. Returns stop(). */
 export function startDreamScheduler(ctx: AgentCtx): () => void {
   let stopped = false;

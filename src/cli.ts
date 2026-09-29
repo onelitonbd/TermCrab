@@ -28,6 +28,9 @@ import { MemoryStore } from './agent/memory.js';
 import { SkillStore } from './skills/loader.js';
 import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
 import { SessionStore } from './agent/sessions.js';
+import { scaffoldSkill, scaffoldAgent, isSoulTemplate, SOUL_TEMPLATES } from './skills/scaffold.js';
+import { embeddingsStatus, embeddingsSetup } from './agent/embed-setup.js';
+import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
 
@@ -39,7 +42,7 @@ Start here (the 5 commands most people ever need):
   termcrab status           plain-English overview: brain, memory, schedule, battery
   termcrab agent "ask..."   talk to your assistant (no message = open a chat session)
   termcrab gateway          start the web control panel (open the printed address in a browser)
-  termcrab dream            "sleep on it" — turn today's chats into long-term memory
+  termcrab dream [--history]        "sleep on it" — turn chats into memory (--history = see past dreams)
   termcrab doctor           health check: tells you what's broken and exactly how to fix it
 
 Everyday extras:
@@ -48,7 +51,10 @@ Everyday extras:
   termcrab say <text>                speak text aloud
   termcrab wake                      voice mode: say the keyword, then say your command
   termcrab memory [show|search ...]  look inside memory
-  termcrab skills [list|import ...]  add extra abilities (skill folders, git repos)
+  termcrab skills [list|import|new]  add extra abilities (skill folders, git repos)
+  termcrab sessions [ls|export|purge|rename]  manage chats: save one as text, clean old ones
+  termcrab agents new <name> --template brief|teacher|researcher   starter personality
+  termcrab embeddings [status|setup] smart memory search (optional, offline-capable)
   termcrab import openclaw [--apply] bring your old OpenClaw setup over (preview first!)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
   termcrab heartbeat                 run one self-check right now
@@ -409,6 +415,26 @@ export async function main(argv: string[]): Promise<void> {
         console.log(`# ${skill.name} [${skill.origin}]\n${skill.description}\n\n${skill.content}`);
         return;
       }
+      if (sub === 'new') {
+        const name = source;
+        if (!name) {
+          console.error('usage: termcrab skills new <name> [--description "one line"]');
+          process.exitCode = 1;
+          return;
+        }
+        const dIdx = rest.indexOf('--description');
+        const desc = dIdx >= 0 ? rest[dIdx + 1] : '';
+        const r = scaffoldSkill(name, desc ?? '');
+        if (!r.ok) {
+          console.error(r.error);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`✅ created ${r.path}`);
+        console.log('   edit it — the instructions in that file are what the agent follows.');
+        console.log('   try: termcrab skills list');
+        return;
+      }
       const list = store.list();
       if (!list.length) {
         console.log('no skills found');
@@ -583,6 +609,20 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     case 'dream': {
+      if (rest.includes('--history')) {
+        const { lastDreamAt, history } = dreamHistory();
+        if (!history.length && !lastDreamAt) {
+          console.log('no dreams yet — run: termcrab dream');
+          return;
+        }
+        console.log(lastDreamAt ? `last dream: ${new Date(lastDreamAt).toISOString().slice(0, 16).replace('T', ' ')}` : 'last dream: (unknown)');
+        if (history.length) {
+          console.log('\nwhat it learned:');
+          for (const h of history) console.log(`  ${h.day}  ${h.line}`);
+        }
+        console.log('\nedit the daily logs anytime: memory/daily/<date>.md');
+        return;
+      }
       const force = rest.includes('--force');
       const ctx = await makeAgentCtx();
       console.log('💤 dreaming (consolidating memory) ...');
@@ -632,6 +672,135 @@ export async function main(argv: string[]): Promise<void> {
         console.error('   needs Termux API app + termux-api package for speech-to-text.');
         process.exitCode = 1;
       }
+      return;
+    }
+
+    case 'sessions': {
+      const [sub = 'ls', a, b] = rest;
+      const store = new SessionStore();
+      if (sub === 'ls' || sub === 'list') {
+        const list = store.list();
+        if (!list.length) {
+          console.log('no chats yet');
+          return;
+        }
+        for (const s of list) {
+          const kb = Math.max(1, Math.round(s.bytes / 1024));
+          console.log(`${s.id.padEnd(30)} ${String(s.messages).padStart(4)} messages  ${kb} KB  ${new Date(s.modified * 1000).toISOString().slice(0, 10)}`);
+        }
+        return;
+      }
+      if (sub === 'export') {
+        if (!a) {
+          console.error('usage: termcrab sessions export <id> [file.md]');
+          process.exitCode = 1;
+          return;
+        }
+        const md = store.exportMarkdown(a);
+        if (md === null) {
+          console.error(`no chat found: ${a}  (see: termcrab sessions ls)`);
+          process.exitCode = 1;
+          return;
+        }
+        const out = b || `${a.replace(/[^a-zA-Z0-9_.-]/g, '_')}.md`;
+        fs.writeFileSync(out, md, 'utf8');
+        console.log(`✅ exported to ${out}`);
+        return;
+      }
+      if (sub === 'purge') {
+        // --older-than N (days), default 30
+        const idx = rest.indexOf('--older-than');
+        const days = idx >= 0 ? Number(rest[idx + 1]) : 30;
+        if (!Number.isFinite(days) || days < 0) {
+          console.error('usage: termcrab sessions purge --older-than <days>');
+          process.exitCode = 1;
+          return;
+        }
+        const r = store.purgeOlderThan(days);
+        console.log(`🧹 removed ${r.removed} old chat file(s), freed ${Math.max(0, Math.round(r.freedBytes / 1024))} KB (older than ${days} day(s))`);
+        return;
+      }
+      if (sub === 'rename') {
+        if (!a || !b) {
+          console.error('usage: termcrab sessions rename <old-id> <new-id>');
+          process.exitCode = 1;
+          return;
+        }
+        const r = store.rename(a, b);
+        if (r === 'ok') console.log(`✅ renamed ${a} -> ${b}`);
+        else if (r === 'not-found') console.error(`no chat found: ${a}`);
+        else if (r === 'exists') console.error(`a chat named ${b} already exists`);
+        else console.error('new id may only contain letters, digits, - _ . :');
+        if (r !== 'ok') process.exitCode = 1;
+        return;
+      }
+      console.error('usage: termcrab sessions [ls|export <id>|purge --older-than N|rename <old> <new>]');
+      process.exitCode = 1;
+      return;
+    }
+
+    case 'agents': {
+      const [sub = 'ls', name] = rest;
+      if (sub === 'ls' || sub === 'list') {
+        const agents = listAgents();
+        console.log(agents.length ? agents.map((a) => ` @${a}`).join('\n') : '(no named agents yet)');
+        if (!agents.length) console.log('  create one: termcrab agents new <name> --template brief');
+        return;
+      }
+      if (sub === 'new') {
+        const tIdx = rest.indexOf('--template');
+        const kindRaw = tIdx >= 0 ? rest[tIdx + 1] : undefined;
+        if (!name) {
+          console.error('usage: termcrab agents new <name> [--template brief|teacher|researcher]');
+          process.exitCode = 1;
+          return;
+        }
+        const kind = kindRaw && isSoulTemplate(kindRaw) ? kindRaw : 'brief';
+        if (kindRaw && !isSoulTemplate(kindRaw)) {
+          console.error(`unknown template "${kindRaw}" — choose one of: ${SOUL_TEMPLATES.join(', ')}`);
+          process.exitCode = 1;
+          return;
+        }
+        const r = scaffoldAgent(name, kind);
+        if (!r.ok) {
+          console.error(r.error);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`✅ created ${r.path} (template: ${kind})`);
+        console.log(`   chat with it: termcrab agent "hello" --as ${name}`);
+        return;
+      }
+      console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
+      process.exitCode = 1;
+      return;
+    }
+
+    case 'embeddings': {
+      const [sub = 'status'] = rest;
+      if (sub === 'status') {
+        const st = embeddingsStatus();
+        console.log(`🔍 smart memory search: ${st.summary}`);
+        console.log(`   package: ${st.packageInstalled ? 'installed' : 'not installed'} · model: ${st.modelCached ? 'cached' : 'not downloaded'} · vectors: ${st.indexVectors}`);
+        return;
+      }
+      if (sub === 'setup') {
+        console.log('🧠 setting up smart memory search...');
+        try {
+          const r = await embeddingsSetup();
+          for (const step of r.steps) console.log(`   ${r.ok && step.startsWith('done') ? '✅' : '·'} ${step}`);
+          if (!r.ok) {
+            console.error(`\n❌ ${r.error}`);
+            process.exitCode = 1;
+          }
+        } catch (err) {
+          console.error(`setup failed: ${err instanceof Error ? err.message : err}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      console.error('usage: termcrab embeddings [status|setup]');
+      process.exitCode = 1;
       return;
     }
 
