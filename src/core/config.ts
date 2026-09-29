@@ -37,6 +37,13 @@ export interface Config {
       allowedUserIds: number[];
       notifyChatId?: number;
     };
+    whatsapp?: {
+      enabled: boolean;
+      /** WhatsApp JIDs or bare phone numbers. Empty = channel stays off. */
+      allowedJids: string[];
+      /** Auth state dir (default: <home>/state/wa-auth). */
+      authDir?: string;
+    };
     web: { enabled: boolean };
   };
   heartbeat: {
@@ -60,7 +67,7 @@ export function defaults(): Config {
     provider: { type: 'mock', model: DEFAULT_MODEL_HINTS.mock! },
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '' },
-    channels: { web: { enabled: true } },
+    channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },
     heartbeat: { enabled: true, minutes: 60, pauseBelow: 20 },
     update: { checkOnStart: false },
   };

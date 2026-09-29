@@ -1,6 +1,6 @@
 import { TelegramApi } from './api.js';
 import { log } from '../core/logger.js';
-import { outboxPush, OutboxItem } from '../mobile/outbox.js';
+import { outboxPush, outboxTake, OutboxItem } from '../mobile/outbox.js';
 
 export interface TelegramCfg {
   token: string;
@@ -57,26 +57,30 @@ export class TelegramChannel {
     await this.loopPromise;
   }
 
-  /** Queue-safe send with outbox fallback (mobile networks drop packets). */
-  async send(chatId: number, text: string): Promise<void> {
+  /** Deliver with chunking + HTML escaping; throws on failure (used by flush). */
+  private async deliver(chatId: number, text: string): Promise<void> {
     for (const chunk of chunkText(text)) {
-      try {
-        await this.api.sendMessage(chatId, escapeHtml(chunk));
-        this.backoffMs = 1000;
-      } catch (err) {
-        log.warn('telegram send failed, queuing to outbox:', err instanceof Error ? err.message : err);
-        const item: OutboxItem = { channel: 'telegram', chatId, text: chunk, ts: Date.now(), attempts: 1 };
-        outboxPush(item);
-      }
+      await this.api.sendMessage(chatId, escapeHtml(chunk));
+      this.backoffMs = 1000;
     }
   }
 
-  async flushOutbox(take: () => OutboxItem[]): Promise<number> {
-    const items = take();
+  /** Queue-safe send with outbox fallback (mobile networks drop packets). */
+  async send(chatId: number, text: string): Promise<void> {
+    try {
+      await this.deliver(chatId, text);
+    } catch (err) {
+      log.warn('telegram send failed, queuing to outbox:', err instanceof Error ? err.message : err);
+      outboxPush({ channel: 'telegram', chatId, text, ts: Date.now(), attempts: 1 });
+    }
+  }
+
+  async flushOutbox(): Promise<number> {
+    const items = outboxTake('telegram');
     let sent = 0;
     for (const item of items) {
       try {
-        await this.api.sendMessage(item.chatId, escapeHtml(item.text));
+        await this.deliver(Number(item.chatId), item.text);
         sent++;
       } catch {
         outboxPush({ ...item, attempts: item.attempts + 1 });
@@ -144,4 +148,16 @@ export interface TelegramUpdate {
     chat: { id: number; type?: string };
     from?: { id: number; username?: string; first_name?: string };
   };
+}
+
+/**
+ * Multi-agent routing: "@brief do the thing" -> agent "brief" (if known).
+ * Returns the stripped text and the resolved agent name (if any).
+ */
+export function parseAgentPrefix(text: string, knownAgents: string[]): { agent: string | null; text: string } {
+  const m = text.trim().match(/^@([a-zA-Z0-9][a-zA-Z0-9-_]{0,63})(\s+|$)/);
+  if (!m) return { agent: null, text };
+  const candidate = m[1]!.toLowerCase();
+  if (!knownAgents.includes(candidate)) return { agent: null, text };
+  return { agent: candidate, text: text.trim().slice(m[0].length).trim() || text };
 }

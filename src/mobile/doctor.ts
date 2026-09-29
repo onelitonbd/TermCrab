@@ -183,9 +183,87 @@ export async function runDoctor(): Promise<Check[]> {
   checks.push({
     id: 'exec',
     label: 'shell exec policy',
-    status: cfg.agent.allowExec ? 'info' : 'info',
+    status: 'info',
     detail: cfg.agent.allowExec ? 'allowExec=true (agent may run shell commands)' : 'allowExec=false (shell disabled)',
   });
+
+  // Local model endpoint probe (when provider.baseUrl points at localhost)
+  try {
+    const base = cfg.provider.baseUrl;
+    if (base && /^https?:\/\/(127\.0\.0\.1|localhost|::1)/.test(base)) {
+      const url = `${base.replace(/\/+$/, '')}/models`;
+      let ok = false;
+      let detail = url;
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(2500) });
+        ok = res.ok;
+        if (!ok) detail = `${url} -> HTTP ${res.status}`;
+      } catch (err) {
+        detail = `${url} unreachable (${err instanceof Error ? err.message : err})`;
+      }
+      checks.push({
+        id: 'localmodel',
+        label: 'local model endpoint',
+        status: ok ? 'ok' : 'fail',
+        detail,
+        fix: ok ? undefined : 'start llama-server / ollama, or clear provider.baseUrl to use a cloud API',
+      });
+    }
+  } catch {
+    /* optional probe */
+  }
+
+  // WhatsApp (optional extension)
+  const wa = cfg.channels.whatsapp;
+  if (wa?.enabled) {
+    const { baileysInstalled } = await import('../channels/whatsapp.js');
+    const installed = await baileysInstalled();
+    checks.push({
+      id: 'whatsapp',
+      label: 'whatsapp channel (optional Baileys extension)',
+      status: installed && wa.allowedJids?.length ? 'ok' : installed ? 'warn' : 'fail',
+      detail: !installed
+        ? 'baileys not installed'
+        : wa.allowedJids?.length
+          ? `enabled · allowlist: ${wa.allowedJids.length} entry/entries`
+          : 'enabled but allowlist EMPTY (channel stays off)',
+      fix: installed
+        ? 'termcrab config set channels.whatsapp.allowedJids ["<phone-number>"]'
+        : 'npm install baileys   (inside the TermCrab directory)',
+    });
+  } else {
+    checks.push({ id: 'whatsapp', label: 'whatsapp channel', status: 'info', detail: 'disabled (optional: npm install baileys)' });
+  }
+
+  // Voice / TTS
+  try {
+    const { resolveTts } = await import('../mobile/tts.js');
+    const { execFile: ef } = await import('node:child_process');
+    const { promisify: pm } = await import('node:util');
+    const execAsync = pm(ef);
+    const has = async (c: string) => {
+      try {
+        await execAsync('which', [c], { timeout: 2000 });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    let found: string | null = null;
+    for (const c of ['termux-tts-speak', 'espeak-ng', 'espeak', 'say', 'spd-say']) {
+      if (await has(c)) {
+        found = c;
+        break;
+      }
+    }
+    checks.push(
+      found
+        ? { id: 'tts', label: 'voice output (TTS)', status: 'ok', detail: found }
+        : { id: 'tts', label: 'voice output (TTS)', status: 'info', detail: 'no TTS backend', fix: 'pkg install termux-api (Termux) or espeak-ng' },
+    );
+  } catch {
+    /* optional */
+  }
 
   return checks;
 }

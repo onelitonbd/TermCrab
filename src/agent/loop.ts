@@ -3,7 +3,7 @@ import { log } from '../core/logger.js';
 import { providerSummary, resolveProvider } from '../providers/index.js';
 import { ChatResult, Provider, ProviderMessage } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
-import { buildSystemPrompt } from './prompt.js';
+import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { Entry, newRunId, SessionStore } from './sessions.js';
 import { buildTools, Tool, ToolEnv } from './tools.js';
 
@@ -28,6 +28,8 @@ export interface RunOpts {
   sessionId: string;
   userMessage: string;
   channel?: string;
+  /** Named agent profile (workspace/agents/<name>/SOUL.md + session namespace). */
+  agent?: string;
   onEvent?: (ev: AgentEvent) => void;
 }
 
@@ -82,7 +84,11 @@ async function chatWithTimeout(
 export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   const emit = opts.onEvent ?? (() => undefined);
   const runId = newRunId();
-  const { sessionId, userMessage } = opts;
+  const { userMessage } = opts;
+
+  // Named agents get their own session namespace: <agent>:<sessionId>
+  const agentName = opts.agent ? sanitizeAgentName(opts.agent) ?? undefined : undefined;
+  const sessionId = agentName ? `${agentName}:${opts.sessionId}` : opts.sessionId;
 
   ctx.sessions.append(sessionId, {
     role: 'user',
@@ -96,7 +102,12 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   const toolEnv: ToolEnv = { config: ctx.config, memory: ctx.memory, skills: ctx.skills };
   const tools = buildTools(toolEnv);
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));
-  const system = buildSystemPrompt({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
+  const system = buildSystemPrompt({
+    config: ctx.config,
+    memory: ctx.memory,
+    skills: ctx.skills,
+    agentName,
+  });
   const maxIter = Math.max(1, Math.min(ctx.config.agent.maxIterations || 8, 25));
 
   let finalText = '';

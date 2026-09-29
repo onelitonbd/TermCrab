@@ -7,8 +7,8 @@ import { outboxPath, stateDir } from '../core/paths.js';
  * are persisted and retried later instead of being lost.
  */
 export interface OutboxItem {
-  channel: 'telegram';
-  chatId: number;
+  channel: 'telegram' | 'whatsapp';
+  chatId: number | string;
   text: string;
   ts: number;
   attempts: number;
@@ -34,10 +34,16 @@ export function outboxPush(item: OutboxItem): void {
   save(items.slice(-200));
 }
 
-export function outboxTakeAll(): OutboxItem[] {
+export function outboxTake(channel?: OutboxItem['channel']): OutboxItem[] {
   const items = load();
-  save([]);
-  return items;
+  if (!channel) {
+    save([]);
+    return items;
+  }
+  const taken = items.filter((i) => i.channel === channel);
+  const rest = items.filter((i) => i.channel !== channel);
+  save(rest);
+  return taken;
 }
 
 export function outboxPeek(): OutboxItem[] {

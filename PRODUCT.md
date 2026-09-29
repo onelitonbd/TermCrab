@@ -63,12 +63,16 @@ phones as always-on servers, (3) privacy-first users who refuse cloud assistants
 - [x] **Termux notifications** — ongoing gateway status + per-run alerts
 - [x] Session picker + transcript loading in the control UI
 
-### v0.3 — "Where the users live" (weeks 2–4)
-- WhatsApp channel — **spike first**: Baileys vs zero-dep policy (bundle as optional
-  extension so core stays dependency-free), plus Signal (signal-cli) evaluation
-- Cron UI management in the control panel; per-channel session grouping
-- Voice: `termux-speech-to-text` / `termux-tts-speak` + wake-word experiment
-- Termux:GUI foreground service experiment (unkillable status)
+### v0.3 — "Where the users live" ✅ SHIPPED (2026-09-29, this release)
+- [x] **WhatsApp channel** — optional Baileys extension (core stays zero-dep),
+      QR pairing, allowlist-secure, outbox-backed, `/new` `/status` `/agents`
+- [x] **Multi-agent profiles** — `workspace/agents/<name>/SOUL.md`, `@name` routing
+      in channels, `--as` / `/as` in CLI, `POST /api/chat {agent}`
+- [x] **Cron management UI** — list/add/pause/run/delete from the control panel
+- [x] **Voice** — `termcrab say` TTS chain (Termux→espeak→mac say) + `voice` skill
+- [x] **Local models guide** (`docs/LOCAL.md`) + localhost endpoint probe in doctor
+- [x] Signal (signal-cli): evaluated — external daemon dependency; deferred until
+      demand justifies the ops burden (documented in doctor output)
 
 ### v0.3 — "Smarter crab" (weeks 4–6)
 - On-device inference tier: llama.cpp via `pkg install llama.cpp` with small

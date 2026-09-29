@@ -8,13 +8,16 @@ persistent Markdown memory — controllable from a **web control UI** and **Tele
 with zero native dependencies and mobile-first power management.
 
 ```
-🦀 Chat with it   →  Web Control UI (phone browser) + Telegram bot + CLI
+🦀 Chat with it   →  Web Control UI (phone browser) + Telegram bot + WhatsApp* + CLI
+👥 Team of agents →  named agent profiles (workspace/agents/<name>/SOUL.md, route with @name)
 ⚡ It does things  →  shell exec, files, web fetch, termux-* device APIs
 🧠 It remembers    →  MEMORY.md + daily logs you can open and edit
 🌊 It streams      →  token-by-token typewriter replies (Anthropic / OpenAI-compatible)
-🫀 It acts on its own → heartbeat checklist, user cron jobs, battery-adaptive schedule
+🫀 It acts on its own → heartbeat + cron schedules + battery-adaptive power budget
+🔊 It speaks       →  termcrab say / voice skill (Termux TTS + STT)
 📦 It just runs     →  zero runtime dependencies, no proot, no systemd needed
 ```
+\* WhatsApp = optional extension: `npm install baileys` (see [docs/WHATSAPP.md](docs/WHATSAPP.md))
 
 ## Why TermCrab
 
@@ -71,7 +74,9 @@ Then open the control UI at `http://127.0.0.1:7788/` (token printed by
 termcrab onboard        setup wizard (provider, model, telegram, name)
 termcrab gateway        run the gateway (HTTP API + SSE + channels + heartbeat + cron)
 termcrab supervisor     run the gateway with auto-restart watchdog
-termcrab agent [msg]    chat one-shot or interactive REPL (streamed output)
+termcrab agent [msg] [--as <name>]
+                           chat one-shot or interactive REPL (/as <name>, /agents inside)
+termcrab say <text>        speak text aloud (termux-tts-speak / espeak / say ...)
 termcrab doctor         diagnose the installation (fix suggestions included)
 termcrab heartbeat      run one proactive tick now
 termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prompt "..." | rm | on | off | run
@@ -80,6 +85,27 @@ termcrab memory         show / search memory
 termcrab boot install   auto-start on device boot (Termux:Boot)
 termcrab config         get/set configuration
 ```
+
+## Named agents
+
+```bash
+mkdir -p ~/.termcrab/workspace/agents/brief
+cat > ~/.termcrab/workspace/agents/brief/SOUL.md <<'EOF'
+# SOUL
+- Name: Brief
+- You answer in max 5 bullet points. No preamble, ever.
+EOF
+
+termcrab agent --as brief "what's on my plate?"
+# in Telegram/WhatsApp:  @brief what's on my plate?
+```
+
+Each agent gets its own SOUL + session namespace; memory/skills stay shared.
+
+## Local & offline models
+
+llama.cpp / Ollama plug in through any OpenAI-compatible endpoint — see
+[docs/LOCAL.md](docs/LOCAL.md). `termcrab doctor` probes your local endpoint.
 
 ## Automate & extend
 

@@ -13,7 +13,9 @@ import { SkillStore } from '../skills/loader.js';
 import { extractAuth, checkToken } from './auth.js';
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
-import { outboxTakeAll } from '../mobile/outbox.js';
+import { WhatsAppChannel } from '../channels/whatsapp.js';
+import { parseAgentPrefix } from '../channels/telegram.js';
+import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
@@ -122,7 +124,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       cfg: tgCfg,
       getOffset: () => readTelegramState().offset,
       setOffset: (n) => writeTelegramState(n),
-      onMessage: async (_userId, chatId, text, _name) => {
+      onMessage: async (_userId, chatId, text, displayName) => {
         // Remember where proactive messages should go.
         if (config.channels.telegram && config.channels.telegram.notifyChatId !== chatId) {
           config.channels.telegram.notifyChatId = chatId;
@@ -136,24 +138,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             /* non-fatal */
           }
         }
-        if (text === '/new') {
-          sessions.reset(`telegram:${chatId}`);
-          return '🧹 Session reset. Fresh start!';
-        }
-        if (text === '/heartbeat') {
-          const res = await runHeartbeatOnce(agent);
-          return res.ran ? `🫀 Heartbeat done (${res.reason}):\n\n${res.output}` : `🫀 Heartbeat skipped: ${res.reason}`;
-        }
-        if (text === '/status') {
-          return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}`;
-        }
-        const result = await runTurn(agent, {
-          sessionId: `telegram:${chatId}`,
-          userMessage: text,
-          channel: 'telegram',
-          onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
-        });
-        return result;
+        return handleChannelMessage('telegram', chatId, text, _userId, displayName);
       },
     });
     telegram.start();
@@ -162,12 +147,83 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     log.warn('telegram token set but allowlist empty - channel NOT started (secure default). Run: termcrab config set channels.telegram.allowedUserIds [123]');
   }
 
+  // ---- WhatsApp (optional Baileys extension; off unless enabled + allowlisted) ----
+  let whatsapp: WhatsAppChannel | null = null;
+  const waCfg = config.channels.whatsapp;
+  if (waCfg?.enabled && waCfg.allowedJids?.length) {
+    whatsapp = new WhatsAppChannel({
+      cfg: waCfg,
+      onMessage: async (userId, chatId, text, displayName) => handleChannelMessage('whatsapp', chatId, text, userId, displayName),
+    });
+    try {
+      await whatsapp.start();
+    } catch (err) {
+      log.warn('whatsapp not started:', err instanceof Error ? err.message : err);
+      whatsapp = null;
+    }
+  } else if (waCfg?.enabled) {
+    log.warn(
+      'whatsapp enabled but allowlist empty - channel NOT started. Set: termcrab config set channels.whatsapp.allowedJids ["<phone-number>"]',
+    );
+  }
+
+  /** Shared inbound handler for text channels (telegram/whatsapp). */
+  async function handleChannelMessage(
+    channel: 'telegram' | 'whatsapp',
+    chatId: string | number,
+    text: string,
+    userId: string | number,
+    displayName: string,
+  ): Promise<string> {
+    const baseSession = `${channel}:${chatId}`;
+
+    if (text === '/new') {
+      sessions.reset(baseSession);
+      // also reset every agent-scoped variant of this chat
+      for (const s of sessions.list()) {
+        if (s.id.endsWith(`:${baseSession}`)) sessions.reset(s.id);
+      }
+      return '🧹 Session reset. Fresh start!';
+    }
+    if (text === '/agents') {
+      const agents = listAgents();
+      return agents.length
+        ? `👥 Named agents:\n${agents.map((a) => `• @${a} <message>`).join('\n')}\nUsage: start your message with @name`
+        : 'No named agents yet. Create workspace/agents/<name>/SOUL.md';
+    }
+    if (text === '/status') {
+      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}`;
+    }
+    if (channel === 'telegram' && text === '/heartbeat') {
+      const res = await runHeartbeatOnce(agent);
+      return res.ran ? `🫀 Heartbeat done (${res.reason}):\n\n${res.output}` : `🫀 Heartbeat skipped: ${res.reason}`;
+    }
+
+    const routed = parseAgentPrefix(text, listAgents());
+    const result = await runTurn(agent, {
+      sessionId: baseSession,
+      userMessage: routed.text,
+      channel,
+      agent: routed.agent ?? undefined,
+      onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+    });
+    void userId;
+    void displayName;
+    return result;
+  }
+
   // ---- Outbox flush (offline tolerance) ----
   const outboxTimer = setInterval(() => {
-    if (!telegram) return;
-    void telegram.flushOutbox(outboxTakeAll).then((n) => {
-      if (n > 0) log.info(`outbox: flushed ${n} queued message(s)`);
-    });
+    if (telegram) {
+      void telegram.flushOutbox().then((n) => {
+        if (n > 0) log.info(`outbox: flushed ${n} telegram message(s)`);
+      });
+    }
+    if (whatsapp) {
+      void whatsapp.flushOutbox().then((n) => {
+        if (n > 0) log.info(`outbox: flushed ${n} whatsapp message(s)`);
+      });
+    }
   }, 30_000);
   outboxTimer.unref();
 
@@ -232,20 +288,29 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         if (req.method === 'POST' && pathname === '/api/chat') {
           const raw = await readBody(req);
-          const body = raw ? (JSON.parse(raw) as { message?: string; sessionId?: string }) : {};
+          const body = raw
+            ? (JSON.parse(raw) as { message?: string; sessionId?: string; agent?: string })
+            : {};
           const message = (body.message || '').trim();
           if (!message) {
             json(res, 400, { error: 'message required' });
             return;
           }
           const sessionId = body.sessionId || 'web:main';
+          const agentName = body.agent ? sanitizeAgentName(body.agent) ?? undefined : undefined;
           const text = await runTurn(agent, {
             sessionId,
             userMessage: message,
             channel: 'web',
+            agent: agentName,
             onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
           });
-          json(res, 200, { text, sessionId });
+          json(res, 200, { text, sessionId: agentName ? `${agentName}:${sessionId}` : sessionId });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/agents') {
+          json(res, 200, { agents: listAgents() });
           return;
         }
 
@@ -382,6 +447,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       stopCron();
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();
+      if (whatsapp) await whatsapp.stop();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       void cancelStatusNotification();
       try {

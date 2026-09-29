@@ -61,6 +61,29 @@
     background: var(--panel2); color: var(--text); border: 1px solid var(--line);
     border-radius: 10px; max-width: 130px; height: 44px; padding: 0 6px; font-size: 12.5px;
   }
+  #cronPanel { background: var(--panel); border-top: 1px solid var(--line); font-size: 13px; }
+  #cronPanel summary { padding: 9px 14px; cursor: pointer; color: var(--muted); user-select: none; }
+  #cronPanel[open] summary { color: var(--text); }
+  #cronList { padding: 0 14px 6px; display: flex; flex-direction: column; gap: 6px; }
+  .cronRow {
+    display: flex; gap: 8px; align-items: center; background: var(--panel2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; flex-wrap: wrap;
+  }
+  .cronRow .nm { font-weight: 600; }
+  .cronRow .sc { font-family: ui-monospace, monospace; color: var(--accent2); font-size: 12px; }
+  .cronRow .nx { color: var(--muted); font-size: 11.5px; }
+  .cronRow .sp { flex: 1; }
+  .cronRow button { min-height: 30px; padding: 0 9px; font-size: 12.5px; border-radius: 8px; }
+  .cronRow.off { opacity: .55; }
+  #cronForm { display: flex; gap: 6px; padding: 4px 14px 12px; flex-wrap: wrap; }
+  #cronForm input {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; min-width: 0;
+  }
+  #cronForm input[name=name] { width: 110px; }
+  #cronForm input[name=schedule] { width: 130px; font-family: ui-monospace, monospace; }
+  #cronForm input[name=prompt] { flex: 1; min-width: 160px; }
+  #cronForm button { min-height: 34px; }
   #overlay {
     position: fixed; inset: 0; background: rgba(5,8,12,.92); display: flex; align-items: center;
     justify-content: center; padding: 20px; z-index: 20;
@@ -87,6 +110,17 @@
 
 <div id="log"></div>
 <div id="typing"></div>
+
+<details id="cronPanel">
+  <summary>⏲️ Cron jobs</summary>
+  <div id="cronList"><div class="nx">loading…</div></div>
+  <form id="cronForm">
+    <input name="name" placeholder="name" maxlength="40" />
+    <input name="schedule" placeholder="0 8 * * *" required title="5-field cron or @daily" />
+    <input name="prompt" placeholder="what should the agent do?" required />
+    <button type="submit">Add</button>
+  </form>
+</details>
 
 <div id="composer">
   <div id="actions">
@@ -269,6 +303,63 @@
   };
 
   $('session').addEventListener('change', () => loadSession($('session').value));
+
+  // ---- Cron management ----
+  async function refreshCrons() {
+    try {
+      const data = await api('/api/crons');
+      const list = $('cronList');
+      const crons = data.crons || [];
+      if (!crons.length) {
+        list.innerHTML = '<div class="nx">No cron jobs yet — add one below (e.g. @daily or 0 8 * * 1-5).</div>';
+        return;
+      }
+      list.innerHTML = '';
+      for (const c of crons) {
+        const row = document.createElement('div');
+        row.className = 'cronRow' + (c.enabled ? '' : ' off');
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = c.name;
+        const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = c.schedule;
+        const nx = document.createElement('span'); nx.className = 'nx';
+        nx.textContent = c.nextRun ? 'next ' + new Date(c.nextRun).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'no next run';
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const toggle = document.createElement('button'); toggle.className = 'ghost'; toggle.textContent = c.enabled ? '⏸' : '▶';
+        toggle.onclick = async () => { await api(`/api/crons/${c.id}/${c.enabled ? 'disable' : 'enable'}`, { method: 'POST' }); refreshCrons(); };
+        const run = document.createElement('button'); run.className = 'ghost'; run.textContent = '⚡'; run.title = 'run now';
+        run.onclick = async () => { run.disabled = true; addMsg('sys', `⏲️ running "${c.name}"…`); try { const r = await api(`/api/crons/${c.id}/run`, { method: 'POST' }); addMsg('bot', r.output || '(no output)'); } catch (e) { addMsg('sys', 'cron run failed: ' + e.message); } finally { run.disabled = false; } };
+        const del = document.createElement('button'); del.className = 'ghost'; del.textContent = '🗑';
+        del.onclick = async () => { await api(`/api/crons/${c.id}`, { method: 'DELETE' }); refreshCrons(); };
+        row.append(nm, sc, nx, sp, toggle, run, del);
+        list.appendChild(row);
+      }
+    } catch (e) {
+      $('cronList').innerHTML = '<div class="nx err">failed to load crons: ' + e.message + '</div>';
+    }
+  }
+
+  $('cronForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    try {
+      const res = await api('/api/crons', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: f.namedItem('name').value.trim(),
+          schedule: f.namedItem('schedule').value.trim(),
+          prompt: f.namedItem('prompt').value.trim(),
+        }),
+      });
+      f.namedItem('name').value = '';
+      f.namedItem('schedule').value = '';
+      f.namedItem('prompt').value = '';
+      refreshCrons();
+    } catch (err) {
+      addMsg('sys', 'cron add failed: ' + err.message);
+    }
+  });
+
+  $('cronPanel').addEventListener('toggle', () => { if ($('cronPanel').open) refreshCrons(); });
 
   async function bootstrap() {
     if (!state.token) { showOverlay(); return; }

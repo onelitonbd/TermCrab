@@ -13,6 +13,8 @@ import { installBootScript, bootStatus, isTermux } from './mobile/boot.js';
 import { importSkills } from './skills/importer.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
 import { nextRun, parseCron } from './cron/parser.js';
+import { listAgents, agentExists, sanitizeAgentName } from './agent/prompt.js';
+import { speak } from './mobile/tts.js';
 import { MemoryStore } from './agent/memory.js';
 import { SkillStore } from './skills/loader.js';
 import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
@@ -28,7 +30,9 @@ Commands:
   onboard [--provider p --model m --api-key k --base-url u --telegram-token t --allow-user ids --name n --no-exec --non-interactive]
   gateway [--host h --port p]        Run the gateway (HTTP API + SSE + channels)
   supervisor                         Run gateway with auto-restart watchdog
-  agent [message...] [--session s]   Chat (one-shot or interactive REPL)
+  agent [message...] [--as <agent>] [--session s]
+                           Chat one-shot or interactive REPL (/as <name>, /agents inside)
+  say <text>               Speak text aloud (termux-tts-speak / espeak / say ...)
   doctor [--json]                    Diagnose the installation
   heartbeat                          Run one proactive heartbeat tick now
   skills [list|show <name>|import <path|git-url> [--force]]
@@ -173,25 +177,65 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'say': {
+      const text = rest.join(' ').trim();
+      if (!text) {
+        console.error('usage: termcrab say <text>');
+        process.exitCode = 1;
+        return;
+      }
+      const result = await speak(text);
+      if (result.ok) console.log(`🔊 spoke via ${result.backend}`);
+      else {
+        console.error(`tts failed: ${result.error}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+
     case 'agent': {
       const { values, positionals } = parseArgs({
         args: rest,
-        options: { session: { type: 'string', default: 'cli:main' } },
+        options: {
+          session: { type: 'string', default: 'cli:main' },
+          as: { type: 'string' },
+        },
         allowPositionals: true,
       });
       const ctx = makeAgentCtx();
       const sessionId = values.session || 'cli:main';
+      let currentAgent = values.as ? sanitizeAgentName(values.as) ?? undefined : undefined;
+      if (values.as && !currentAgent) {
+        console.error(`invalid agent name: ${values.as} (use lowercase letters, digits, - or _)`);
+        process.exitCode = 1;
+        return;
+      }
+      if (currentAgent && !agentExists(currentAgent)) {
+        console.error(`agent "${currentAgent}" not found (no workspace/agents/${currentAgent}/SOUL.md)`);
+        console.error(`known agents: ${listAgents().join(', ') || '(none)'}`);
+        process.exitCode = 1;
+        return;
+      }
       const message = positionals.join(' ').trim();
+      const label = () => `${currentAgent ?? ctx.config.agent.name}`;
 
       if (message) {
-        const text = await runTurn(ctx, { sessionId, userMessage: message, channel: 'cli', onEvent: printEvents });
+        await runTurn(ctx, {
+          sessionId,
+          userMessage: message,
+          channel: 'cli',
+          agent: currentAgent,
+          onEvent: printEvents,
+        });
         console.log(`\n`);
-        if (!text) console.log('(no reply)');
         return;
       }
 
       // Interactive REPL
-      console.log(`🦀 ${ctx.config.agent.name} - ${providerLabel(ctx.config)}  (type "exit" to quit, "/new" to reset)`);
+      console.log(
+        `🦀 ${label()} [${providerLabel(ctx.config)}] - as: ${currentAgent ?? '(default)'}. ` +
+          `Commands: /agents, /as <name>, /new, exit`,
+      );
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
       try {
         for (;;) {
@@ -199,12 +243,33 @@ export async function main(argv: string[]): Promise<void> {
           if (!line) continue;
           if (line === 'exit' || line === 'quit') break;
           if (line === '/new') {
-            ctx.sessions.reset(sessionId);
+            ctx.sessions.reset(currentAgent ? `${currentAgent}:${sessionId}` : sessionId);
             console.log('(session reset)');
             continue;
           }
+          if (line === '/agents') {
+            const agents = listAgents();
+            console.log(agents.length ? agents.map((a) => ` @${a}`).join('\n') : '(no named agents)');
+            continue;
+          }
+          if (line.startsWith('/as ')) {
+            const name = sanitizeAgentName(line.slice(4).trim());
+            if (name && agentExists(name)) {
+              currentAgent = name;
+              console.log(`switched to agent @${name}`);
+            } else {
+              console.log(`unknown agent. known: ${listAgents().join(', ') || '(none)'}`);
+            }
+            continue;
+          }
           process.stdout.write('\n');
-          await runTurn(ctx, { sessionId, userMessage: line, channel: 'cli', onEvent: printEvents });
+          await runTurn(ctx, {
+            sessionId,
+            userMessage: line,
+            channel: 'cli',
+            agent: currentAgent,
+            onEvent: printEvents,
+          });
           process.stdout.write('\n');
         }
       } finally {

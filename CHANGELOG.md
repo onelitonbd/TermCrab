@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0 — 2026-09-29 (Where The Users Live)
+
+### Added
+- **WhatsApp channel** — optional Baileys extension (core stays zero-dependency):
+  QR pairing in terminal, secure-by-default allowlist (channel off until configured),
+  `/new` `/status` `/agents` commands, outbox fallback, graceful "npm install baileys" hint
+- **Multi-agent profiles** — named agents as `workspace/agents/<name>/SOUL.md`;
+  route with `@name` prefix (Telegram/WhatsApp), `termcrab agent --as <name>`,
+  REPL `/as` + `/agents`, `POST /api/chat {agent}`, `GET /api/agents`
+- **Cron management UI** — list/add/pause/run/delete schedules from the control panel
+- **Voice** — `termcrab say <text>` (termux-tts-speak → espeak-ng → espeak → spd-say → say)
+  + `voice` skill for dictation loops (`termux-speech-to-text`); doctor checks
+- **Local model docs** — `docs/LOCAL.md` (llama.cpp / Ollama via OpenAI-compatible endpoint)
+- Doctor: whatsapp + TTS checks
+
+### Changed
+- Outbox is now per-channel (`telegram` / `whatsapp`) with independent flushers
+
 ## 0.2.0 — 2026-09-29 (Daily Driver)
 
 ### Added
