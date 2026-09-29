@@ -172,7 +172,9 @@ function providersListView(cfg: Config) {
     providers: views,
     active: {
       type: cfg.provider.type,
-      label: activeLabel(cfg.provider, activeBase),
+      label: matched.length
+        ? cfg.providers[matched[0]!]!.name
+        : activeLabel(cfg.provider, activeBase),
       baseUrl: activeBase,
       model: cfg.provider.model || "",
       maskedKey: activeKey ? maskApiKey(activeKey) : "",

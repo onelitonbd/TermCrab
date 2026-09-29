@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.1 — 2026-09-30 (Current provider shows your own name)
+
+- When the provider in use matches a saved entry, the system now displays the name you gave it on the Providers page (instead of the raw address), everywhere the current provider is shown.
+
 ## 0.20.0 — 2026-09-30 (Models page + composer model picker)
 
 - New **Models** sidebar page: pick a provider, press **Fetch** to pull that provider's full model list into a scrollable area (with a search box to filter), and tick the models you want. Every tick saves the model to the system instantly; unticking removes it.

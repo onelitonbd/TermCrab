@@ -129,6 +129,10 @@ test('models API: fetch / register / use, everything live', async (t) => {
       const cfg = await req('/api/config');
       const masked = JSON.stringify(cfg.data);
       assert.ok(!masked.includes('sk-upstream-1'), 'raw key never returned');
+      const list = await req('/api/providers');
+      const act = list.data.active as Record<string, unknown>;
+      assert.equal(act.matchedId, provId);
+      assert.equal(act.label, 'Local shim', 'the saved provider name is what shows as current');
       // switch back to the offline demo
       const saved = await req(`/api/providers/${provId}`);
       const savedModels = (saved.data.provider as { models: string[] }).models;
