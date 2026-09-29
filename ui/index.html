@@ -3,24 +3,24 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0d1117" />
+<meta name="theme-color" content="#000000" />
 <title>TermCrab</title>
 <style>
   :root {
     color-scheme: dark;
-    /* GitHub default dark (Primer): canvas #0d1117, surface #161b22,
-       borders #30363d, text #e6edf3, blue accent, green primary buttons. */
-    --bg: #0d1117;
-    --bg-accent: #161b22;
-    --elevated: #161b22;
-    --card: #161b22;
-    --fill: #0d1117;
-    --line: #30363d;
-    --line-strong: #3d444d;
-    --line-hover: #484f58;
-    --text: #e6edf3;
-    --strong: #f0f6fc;
-    --muted: #9198a1;
+    /* True black dark theme: pure-black canvas, faint surfaces and lines,
+       bright text, blue accent, green primary buttons. */
+    --bg: #000000;
+    --bg-accent: #000000;
+    --elevated: #0e0e0e;
+    --card: #0e0e0e;
+    --fill: #171717;
+    --line: #222222;
+    --line-strong: #303030;
+    --line-hover: #444444;
+    --text: #e9e9e9;
+    --strong: #ffffff;
+    --muted: #939393;
     --accent: #58a6ff;
     --accent-hover: #79c0ff;
     --primary: #238636;
@@ -310,6 +310,8 @@
   .iconBtn.primary { background: var(--primary); border-color: transparent; color: #ffffff; }
   .iconBtn.primary:hover { background: var(--primary-hover); color: #ffffff; }
   .iconBtn.primary:disabled { background: var(--primary); opacity: 0.45; }
+  .iconBtn.stopMode { background: var(--destructive); border-color: transparent; color: #ffffff; }
+  .iconBtn.stopMode:hover { background: var(--danger); color: #ffffff; border-color: transparent; }
 
   /* ---- providers page ---- */
   .pageHead { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
@@ -552,7 +554,9 @@
   .nav { display: flex; flex-direction: column; gap: 2px; }
   .nav button {
     position: relative;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 9px;
     text-align: left;
     background: transparent;
     border: 0;
@@ -560,10 +564,11 @@
     font-weight: 600;
     font-size: 14px;
     min-height: 42px;
-    padding: 0 12px 0 14px;
+    padding: 0 12px;
     border-radius: var(--r-sm);
     width: 100%;
   }
+  .nav button svg { flex-shrink: 0; width: 17px; height: 17px; }
   .nav button.on { color: var(--strong); background: var(--fill); }
   .nav button.on::before {
     content: "";
@@ -798,11 +803,11 @@
 <body>
 <aside id="side">
   <nav class="nav" aria-label="Sections">
-    <button data-goto="status">Status</button>
-    <button data-goto="providers">Providers</button>
-    <button data-goto="memory">Memory</button>
-    <button data-goto="tools">Tools</button>
-    <button data-goto="settings">Settings</button>
+    <button data-goto="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Status</button>
+    <button data-goto="providers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="19" height="7" x="2.5" y="2.5" rx="1.5"/><rect width="19" height="7" x="2.5" y="14" rx="1.5"/><path d="M6 6h.01M6 17.5h.01"/></svg>Providers</button>
+    <button data-goto="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="5" y="5" rx="1.5"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2.5v2M15 19.5v2M2.5 15h2M19.5 15h2M2.5 9h2M19.5 9h2M9 2.5v2M9 19.5v2"/></svg>Memory</button>
+    <button data-goto="tools"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.93-3.93a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0z"/><path d="m19.66 17.73-3.17-3.17a2.5 2.5 0 0 0-3.54 0l-1.41 1.41a2.5 2.5 0 0 1-3.54-3.54l3.17-3.17a2.5 2.5 0 0 1 3.54 0l1.41 1.41a2.5 2.5 0 0 0 3.54 0l3.17-3.17a2.5 2.5 0 0 1 3.54 3.54l-3.17 3.17a2.5 2.5 0 0 0 0 3.54"/></svg>Tools</button>
+    <button data-goto="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</button>
   </nav>
   <div class="sideLabel"><span>Chat history</span><button id="newChatBtn" class="ghost" title="New chat" aria-label="New chat"><svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 2.5v10M2.5 7.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
   <div id="histList"><div class="nx" style="padding:4px 8px">loading…</div></div>
@@ -1022,9 +1027,6 @@
         <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.5 2.5 0 0 1 3.5 3.5l-6 6a1.5 1.5 0 0 1-2-2l5.5-5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <span class="composerSp"></span>
-      <button id="stopBtn" class="iconBtn" type="button" title="Stop the reply" aria-label="Stop" disabled>
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>
-      </button>
       <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       </button>
@@ -1362,10 +1364,20 @@
     es.onerror = () => { /* auto-reconnects */ };
   }
 
+  const SEND_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+  const STOP_ICON = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>';
+  function setSendMode(stop) {
+    const b = $('send');
+    b.innerHTML = stop ? STOP_ICON : SEND_ICON;
+    b.title = stop ? 'Stop' : 'Send';
+    b.setAttribute('aria-label', stop ? 'Stop' : 'Send');
+    b.classList.toggle('stopMode', !!stop);
+  }
+
   async function send() {
     const text = $('input').value.trim();
     if (!text || state.busy) return;
-    state.busy = true; $('send').disabled = true; $('stopBtn').disabled = false;
+    state.busy = true; setSendMode(true);
     state.abort = new AbortController();
     $('input').value = '';
     addMsg('user', text);
@@ -1391,7 +1403,7 @@
       state.live = null;
       state.liveRaw = '';
       state.abort = null;
-      state.busy = false; $('send').disabled = false; $('stopBtn').disabled = true;
+      state.busy = false; setSendMode(false);
       log.scrollTop = log.scrollHeight;
       refreshSessions();
     }
@@ -1446,11 +1458,10 @@
     }
   }
 
-  $('send').onclick = send;
+  $('send').onclick = () => { if (state.busy) { if (state.abort) state.abort.abort(); } else send(); };
   $('input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
-  $('stopBtn').onclick = () => { if (state.abort) state.abort.abort(); };
   $('attachBtn').onclick = () => $('attachFile').click();
   $('attachFile').onchange = async () => {
     const f = $('attachFile').files && $('attachFile').files[0];

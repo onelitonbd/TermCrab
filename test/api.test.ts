@@ -216,11 +216,11 @@ test('web control parity API', async (t) => {
       assert.equal(res.status, 401);
     });
 
-    await t.test('v0.16: GitHub dark theme, markdown replies, full-width answers', async () => {
+    await t.test('v0.16: dark theme, markdown replies, full-width answers', async () => {
       const html = await (await fetch(base + '/')).text();
-      assert.ok(html.includes('content="#0d1117"'), 'GitHub dark theme-color');
-      assert.ok(html.includes('--bg: #0d1117'), 'GitHub dark canvas token');
-      assert.ok(html.includes('--primary: #238636'), 'GitHub green primary buttons');
+      assert.ok(html.includes('content="#000000"'), 'black theme-color');
+      assert.ok(html.includes('--bg: #000000'), 'black canvas token');
+      assert.ok(html.includes('--primary: #238636'), 'green primary buttons');
       assert.ok(html.includes('function renderMarkdown'), 'markdown renderer shipped');
       assert.ok(html.includes('// ==== end markdown renderer ===='), 'renderer end marker');
       assert.ok(html.includes('class="mdCode"'), 'code block markup builder');
@@ -232,7 +232,7 @@ test('web control parity API', async (t) => {
     await t.test('v0.17: two-layer composer + Providers page, wizard retired', async () => {
       const html = await (await fetch(base + '/')).text();
       assert.ok(html.includes('id="composerBox"'), 'rounded two-layer composer');
-      assert.ok(html.includes('id="stopBtn"'), 'stop icon button');
+      assert.ok(!html.includes('id="stopBtn"'), 'separate stop button removed');
       assert.ok(html.includes('id="attachBtn"'), 'attachment icon button');
       assert.ok(html.includes('placeholder="Type a message'), 'message placeholder');
       assert.ok(html.includes('data-goto="providers"'), 'sidebar Providers section');
@@ -242,6 +242,21 @@ test('web control parity API', async (t) => {
       assert.ok(!html.includes('wizOpen'), 'old wizard opener removed');
       assert.ok(html.includes('provStatic'), 'current-provider row for CLI/onboard setups');
       assert.ok(html.includes("p.inUse"), 'in-use flag rendered on saved providers');
+    });
+
+    await t.test('v0.19: black theme, send doubles as stop, sidebar icons', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('--bg: #000000'), 'true black canvas');
+      assert.ok(html.includes('content="#000000"'), 'browser chrome matches the black theme');
+      assert.ok(!html.includes('#0d1117'), 'old grey-dark canvas gone');
+      assert.ok(html.includes('setSendMode'), 'send button switches into stop mode');
+      assert.ok(html.includes('stopMode'), 'stop-mode class');
+      assert.ok(html.includes('if (state.busy) { if (state.abort) state.abort.abort(); }'), 'clicking send while replying stops it');
+      for (const v of ['status', 'providers', 'memory', 'tools', 'settings']) {
+        const m = html.match(new RegExp('<button data-goto="' + v + '">([\\s\\S]*?)</button>'));
+        assert.ok(m, v + ' sidebar button present');
+        assert.ok(m![1]!.includes('<svg'), v + ' sidebar button has an icon');
+      }
     });
 
     await t.test('listen (dictation) always answers with ok or a reason', async () => {

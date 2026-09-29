@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0 — 2026-09-30 (Black theme, smarter composer, icon sidebar)
+
+- The send button now turns into the stop button while a reply is coming in: the paper plane swaps to a red stop square, one click stops the reply, and it flips back when done. The separate stop button is gone.
+- The whole app moves to a true black theme: pure black background everywhere, faint dark-grey surfaces and borders, brighter text — easy on the eyes and on OLED screens.
+- Every sidebar item (Status, Providers, Memory, Tools, Settings) now shows a clean line icon next to its name.
+
 ## 0.18.0 — 2026-09-30 (Providers stay in sync)
 
 - The Providers list now always shows what the system is actually using: saved providers get an "in use" badge, and when the current provider was set outside the page (from the terminal — onboard, config set) it still appears at the top with the badge, named after its service (OpenAI, OpenRouter, Groq, Ollama…).
