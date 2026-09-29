@@ -211,6 +211,11 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('await loadSession(currentSession(), true)'), 'auto-load current session in bootstrap');
     });
 
+    await t.test('auto-update endpoint requires the token', async () => {
+      const res = await fetch(base + '/api/update/apply', { method: 'POST' });
+      assert.equal(res.status, 401);
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');

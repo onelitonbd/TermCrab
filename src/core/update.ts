@@ -80,7 +80,8 @@ export function renderUpdate(check: UpdateCheck): string {
   }
   return [
     `⬆️  Version ${check.latest} is available (you have ${check.current}).`,
-    `  → Upgrade: git pull && npm install -g .`,
+    `  → Upgrade: click Auto update in the web Status screen (it installs and restarts by itself),`,
+    `     or by hand: git pull && npm install`,
     check.url ? `  → Details: ${check.url}` : '',
   ]
     .filter(Boolean)

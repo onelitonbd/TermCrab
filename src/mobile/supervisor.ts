@@ -38,7 +38,9 @@ export async function runSupervisor(): Promise<void> {
     log.info(`supervisor: launching gateway (${bin})`);
     child = spawn(process.execPath, [bin, 'gateway'], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
+      // TCRAB_SUPERVISOR tells the gateway that exits are restarted here,
+      // so auto-update just exits cleanly instead of spawning a twin.
+      env: { ...process.env, TCRAB_SUPERVISOR: '1' },
     });
 
     const out = fs.createWriteStream(logFile, { flags: 'a' });

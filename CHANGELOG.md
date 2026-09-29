@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.0 — 2026-09-30 (Update yourself)
+
+- New **Auto update** button on the Status screen, right next to Check for updates. One tap downloads the new version, installs it, and restarts the server by itself — the page reloads when it is back.
+- Progress is visible while it works (downloading, installing, preparing, restarting), and if anything goes wrong it says so and keeps running the old version untouched.
+- Fixed slow shutdown: closing the server used to wait forever for open browser tabs. Ctrl+C now stops the gateway in well under a second, even with the control UI open (a hard 3-second cap guarantees it).
+- Under `termcrab supervisor`, an auto-update simply exits cleanly and the supervisor starts the new code.
+- The Status screen's help text no longer mentions bottom tabs (removed in v0.11) and the CLI update message now points at the Auto update button.
+
 ## 0.14.0 — 2026-09-30 (Chat front and center)
 
 - The sidebar no longer lists Chat as a section — the chat is the home screen, not a menu entry.

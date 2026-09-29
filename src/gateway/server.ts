@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import http from 'node:http';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Config, cfgSet, saveConfig, configExists } from '../core/config.js';
@@ -9,6 +10,7 @@ import {
   configPath,
   ensureLayout,
   home,
+  logsDir,
   memoryDir,
   pidPath,
   stateDir,
@@ -22,6 +24,7 @@ import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
 import { runDream, startDreamScheduler, readDreamState, dreamHistory } from '../agent/dream.js';
 import { countMemoryFacts } from '../agent/status.js';
 import { checkForUpdate } from '../core/update.js';
+import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
@@ -356,7 +359,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   if (config.update?.checkOnStart) {
     void checkForUpdate(version()).then((r) => {
       if (r.ok && r.updateAvailable) {
-        log.info(`update available: v${r.latest} (you have v${r.current}) — git pull && npm install -g .`);
+        log.info(`update available: v${r.latest} (you have v${r.current}) — use the Auto update button in the web Status screen`);
         bus.emit({ type: 'update', latest: r.latest, current: r.current, url: r.url });
       } else if (!r.ok) {
         log.debug('update check skipped:', r.error ?? '');
@@ -850,6 +853,29 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        if (req.method === 'POST' && pathname === '/api/update/apply') {
+          // "Auto update" button — downloads, installs, then restarts the server.
+          const body = await readJsonBody(req);
+          const force = body?.force === true;
+          if (applyRunning) {
+            json(res, 409, { error: 'an update is already running' });
+            return;
+          }
+          const check = await checkForUpdate(version());
+          if (check.ok && !check.updateAvailable && !force) {
+            json(res, 200, { ok: true, upToDate: true, current: check.current });
+            return;
+          }
+          if (!check.ok && !force) {
+            json(res, 200, { ok: false, error: check.error || 'could not check for updates' });
+            return;
+          }
+          const target = check.latest ?? version();
+          json(res, 200, { ok: true, accepted: true, target });
+          void runApplyAndRestart(target); // progress arrives over the event stream
+          return;
+        }
+
         if (req.method === 'POST' && pathname === '/api/onboard') {
           // Web setup wizard: apply in one shot, same fields as `termcrab onboard`.
           const body = await readJsonBody(req);
@@ -933,6 +959,48 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   // PID file (supervisor + doctor use it)
   fs.writeFileSync(pidPath(), String(process.pid), 'utf8');
 
+  // One update at a time.
+  let applyRunning = false;
+
+  /** Pull + install + build, then restart the server on the new code. */
+  async function runApplyAndRestart(target: string): Promise<void> {
+    applyRunning = true;
+    try {
+      const phaseMsg: Record<ApplyPhase, string> = {
+        pull: 'downloading the new code…',
+        install: 'installing…',
+        build: 'preparing the update…',
+      };
+      const r = await applyUpdate({
+        onPhase: (phase) => bus.emit({ type: 'update', phase, message: phaseMsg[phase], target }),
+      });
+      if (!r.ok) {
+        bus.emit({ type: 'update', phase: 'error', message: r.error, target });
+        applyRunning = false;
+        return;
+      }
+      bus.emit({ type: 'update', phase: 'restart', message: 'update installed — restarting the server…', target });
+      await new Promise((done) => setTimeout(done, 400)); // let browsers receive the event
+      await handle.stop();
+      if (process.env.TCRAB_SUPERVISOR === '1') {
+        process.exit(0); // the supervisor starts us again on the new code
+      }
+      // Standalone run: relaunch ourselves detached; logs go to logs/gateway.log.
+      fs.mkdirSync(logsDir(), { recursive: true });
+      const out = fs.openSync(path.join(logsDir(), 'gateway.log'), 'a');
+      const child = spawn(process.execPath, process.argv.slice(1), {
+        detached: true,
+        stdio: ['ignore', out, out],
+        env: process.env,
+      });
+      child.unref();
+      process.exit(0);
+    } catch (err) {
+      bus.emit({ type: 'update', phase: 'error', message: err instanceof Error ? err.message : String(err), target });
+      applyRunning = false;
+    }
+  }
+
   const handle: GatewayHandle = {
     server,
     port,
@@ -945,7 +1013,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();
       if (whatsapp) await whatsapp.stop();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        // An open control-UI event stream (or idle keep-alive) would otherwise
+        // hold close() open forever — that made Ctrl+C hang with the UI open.
+        server.closeAllConnections();
+      });
       void cancelStatusNotification();
       try {
         if (fs.existsSync(pidPath())) fs.unlinkSync(pidPath());

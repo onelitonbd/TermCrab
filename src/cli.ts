@@ -209,9 +209,14 @@ export async function main(argv: string[]): Promise<void> {
       log.info(`control UI token: ${config.gateway.token}`);
       log.info('press Ctrl+C to stop');
 
+      let stopping = false;
       const shutdown = async () => {
+        if (stopping) process.exit(0); // second Ctrl+C forces an exit
+        stopping = true;
         log.info('shutting down...');
+        const hardStop = setTimeout(() => process.exit(0), 3000); // never hang
         await handle.stop();
+        clearTimeout(hardStop);
         process.exit(0);
       };
       process.on('SIGINT', shutdown);

@@ -687,9 +687,10 @@
         <div class="pBar">
           <button id="wizOpen" class="ghost">Setup wizard</button>
           <button id="updCheck" class="ghost">Check for updates</button>
+          <button id="updApply" class="ghost" title="Download the update, install it, and restart the server">Auto update</button>
           <span class="pNote" id="updInfo"></span>
         </div>
-        <p class="how"><b>This is your crab.</b> Chat with it — it answers and does things on this device. The tabs along the bottom: <b>Status</b> is this screen (health and fixes), <b>Memory</b> is what it remembers, <b>Tools</b> holds schedules, skills, voice and saved chats, <b>Settings</b> holds everything you can change, named in plain words.</p>
+        <p class="how"><b>This is your crab.</b> Chat with it — it answers and does things on this device. Use the menu at the top left to move between sections: <b>Status</b> is this screen (health and fixes), <b>Memory</b> is what it remembers, <b>Tools</b> holds schedules, skills, voice and saved chats, <b>Settings</b> holds everything you can change, named in plain words.</p>
       </div>
     </details>
     <details class="panel" id="docPanel">
@@ -977,9 +978,10 @@
     });
     es.addEventListener('update', (e) => {
       const ev = JSON.parse(e.data);
-      addMsg('sys', `A newer TermCrab exists: v${ev.latest} (you have v${ev.current}). Run: git pull && npm install -g .`);
+      if (ev.phase) { handleUpdatePhase(ev); return; }
+      addMsg('sys', `A newer TermCrab exists: v${ev.latest} (you have v${ev.current}). Click Auto update in Status to install it.`);
       const ui = $('updInfo');
-      if (ui) ui.textContent = `v${ev.latest} available`;
+      if (ui) ui.textContent = `v${ev.latest} available — click Auto update`;
     });
     es.addEventListener('wake', (e) => {
       const ev = JSON.parse(e.data);
@@ -1784,11 +1786,90 @@
       const r = await api('/api/update', { method: 'POST' });
       if (!r.ok) { $('updInfo').textContent = 'could not check: ' + (r.error || 'offline?'); }
       else if (r.updateAvailable) {
-        $('updInfo').textContent = `v${r.latest} available (you have v${r.current})`;
-        addMsg('sys', `A newer TermCrab exists: v${r.latest} (you have v${r.current}). Run: git pull && npm install -g .`);
+        $('updInfo').textContent = `v${r.latest} available (you have v${r.current}) — click Auto update`;
+        addMsg('sys', `A newer TermCrab exists: v${r.latest} (you have v${r.current}). Click Auto update to install it.`);
       } else { $('updInfo').textContent = `you're on the latest (v${r.current})`; addMsg('sys', `You're on the latest version (v${r.current})`); }
     } catch (e) { $('updInfo').textContent = 'check failed: ' + e.message; }
     finally { $('updCheck').disabled = false; }
+  };
+
+  // ---- Auto update: download, install, restart by itself ----
+  let restartWatch = false;
+  function watchRestart() {
+    if (restartWatch) return;
+    restartWatch = true;
+    const started = Date.now();
+    const tick = async () => {
+      try {
+        const res = await fetch('/api/health');
+        const h = await res.json();
+        if (h.ok && Date.now() - started > 1500) {
+          $('updInfo').textContent = `updated (v${h.version}) — reloading…`;
+          addMsg('sys', `Update installed — now running v${h.version}. Reloading…`);
+          setTimeout(() => location.reload(), 1500);
+          return;
+        }
+      } catch { /* the server is still restarting */ }
+      if (Date.now() - started > 90000) {
+        $('updInfo').textContent = 'update installed — reload the page to get back in.';
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+        return;
+      }
+      setTimeout(tick, 1500);
+    };
+    setTimeout(tick, 1500);
+  }
+
+  function handleUpdatePhase(ev) {
+    const info = $('updInfo');
+    if (ev.phase === 'pull') info.textContent = 'downloading the update…';
+    else if (ev.phase === 'install') info.textContent = 'installing…';
+    else if (ev.phase === 'build') info.textContent = 'preparing…';
+    else if (ev.phase === 'restart') {
+      info.textContent = 'restarting the server…';
+      addMsg('sys', 'Update: restarting the server…');
+      watchRestart();
+      return;
+    } else if (ev.phase === 'error') {
+      info.textContent = 'update failed: ' + (ev.message || 'unknown problem');
+      addMsg('sys', 'Auto update failed: ' + (ev.message || 'unknown problem') + ' — still running the old version.');
+      $('updApply').disabled = false;
+      $('updCheck').disabled = false;
+      return;
+    }
+    addMsg('sys', 'Update: ' + (ev.message || ev.phase));
+  }
+
+  $('updApply').onclick = async () => {
+    $('updApply').disabled = true;
+    $('updCheck').disabled = true;
+    $('updInfo').textContent = 'checking for the update…';
+    try {
+      const r = await api('/api/update/apply', { method: 'POST' });
+      if (r.upToDate) {
+        $('updInfo').textContent = `you're on the latest (v${r.current})`;
+        addMsg('sys', `You're on the latest version (v${r.current}) — nothing to update.`);
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+      } else if (r.error) {
+        $('updInfo').textContent = 'update problem: ' + r.error;
+        addMsg('sys', 'Auto update: ' + r.error);
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+      } else if (r.accepted) {
+        restartWatch = false;
+        $('updInfo').textContent = 'update started…';
+        addMsg('sys', `Updating TermCrab to v${r.target} — the page reloads by itself once the server is back.`);
+      } else {
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+      }
+    } catch (e) {
+      $('updInfo').textContent = 'could not start the update: ' + e.message;
+      $('updApply').disabled = false;
+      $('updCheck').disabled = false;
+    }
   };
 
   
