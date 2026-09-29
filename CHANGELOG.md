@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.0 — 2026-09-30 (GitHub dark + real markdown)
+
+- The whole interface now uses GitHub's default dark theme: canvas #0d1117, hairline #30363d borders, off-white text, blue accents and links, green primary buttons — the exact palette GitHub uses.
+- AI replies now take the full width of the screen instead of sitting in a small bubble, following the way chat apps design for phones in 2026.
+- AI replies now render proper markdown: headings, bold, italic, strikethrough, bullet/numbered/task lists (nested too), quotes, tables (scroll sideways on phones), horizontal rules, links and images, inline code, and fenced code blocks with a language label and a one-tap Copy button.
+- Markdown is re-rendered live while the reply is streaming in — no layout jump when it finishes.
+- Research applied for phones: small heading sizes that never overpower the answer, 15px body with roomy line height, tables and code blocks scroll horizontally instead of breaking the layout, links are underlined and tappable, and everything the AI writes is escaped first so no injected HTML can ever run.
+
 ## 0.15.1 — 2026-09-30 (Update yourself, part 2)
 
 - When there is no internet, the update buttons now say "no internet connection" instead of the raw internal error text.

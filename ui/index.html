@@ -3,37 +3,39 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0e1015" />
+<meta name="theme-color" content="#0d1117" />
 <title>TermCrab</title>
 <style>
-:root {
+  :root {
     color-scheme: dark;
-    /* OpenClaw control-UI token family (their ui/docs/design-system/color-tokens.md) */
-    --bg: #0e1015;
-    --bg-accent: #13151b;
-    --elevated: #191c24;
-    --card: #161920;
-    --fill: #1f2330;
-    --line: #1e2028;
-    --line-strong: #2e3040;
-    --line-hover: #3e4050;
-    --text: #bcbcc0;
-    --strong: #f4f4f5;
-    --muted: #8b8b94;
-    --accent: #ff5c5c;
-    --accent-hover: #ff7070;
-    --primary: #d13c3c;
-    --teal: #14b8a6;
-    --ok: #22c55e;
-    --warn: #f59e0b;
-    --danger: #f87171;
-    --info: #60a5fa;
-    --destructive: #d32f2f;
+    /* GitHub default dark (Primer): canvas #0d1117, surface #161b22,
+       borders #30363d, text #e6edf3, blue accent, green primary buttons. */
+    --bg: #0d1117;
+    --bg-accent: #161b22;
+    --elevated: #161b22;
+    --card: #161b22;
+    --fill: #0d1117;
+    --line: #30363d;
+    --line-strong: #3d444d;
+    --line-hover: #484f58;
+    --text: #e6edf3;
+    --strong: #f0f6fc;
+    --muted: #9198a1;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --primary: #238636;
+    --primary-hover: #2ea043;
+    --teal: #8957e5;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --danger: #f85149;
+    --info: #58a6ff;
+    --destructive: #da3633;
     --r-sm: 6px;
     --r-md: 10px;
     --r-lg: 14px;
     --r-xl: 20px;
-    --ring: 0 0 0 2px var(--bg), 0 0 0 3px rgba(255, 92, 92, 0.8);
+    --ring: 0 0 0 2px var(--bg), 0 0 0 3px rgba(88, 166, 255, 0.8);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -111,17 +113,22 @@
   }
   .msg.user {
     align-self: flex-end;
-    background: rgba(255, 92, 92, 0.12);
-    border: 1px solid rgba(255, 92, 92, 0.3);
+    background: rgba(56, 139, 253, 0.10);
+    border: 1px solid rgba(56, 139, 253, 0.4);
     color: var(--strong);
     border-radius: 16px 16px 5px 16px;
   }
   .msg.bot {
-    align-self: flex-start;
-    background: var(--card);
-    border: 1px solid var(--line);
+    /* AI answers take the full screen width (chat apps on mobile, 2026):
+       the reply is the content, not a bubble. */
+    align-self: stretch;
+    max-width: 100%;
+    background: transparent;
+    border: 0;
     color: var(--text);
-    border-radius: 16px 16px 16px 5px;
+    border-radius: var(--r-md);
+    padding: 2px 4px 8px;
+    white-space: normal;
   }
   .msg.sys {
     align-self: center;
@@ -144,6 +151,99 @@
   }
   .tools { align-self: flex-start; color: var(--muted); font-size: 12.5px; padding: 0 4px; }
   .err { color: var(--danger) !important; }
+
+  /* ---- markdown in AI replies (GitHub-style, tuned for phones) ---- */
+  .msg.bot > :first-child { margin-top: 0; }
+  .msg.bot > :last-child { margin-bottom: 0; }
+  .msg.bot p { margin: 0 0 10px; }
+  .msg.bot h1, .msg.bot h2, .msg.bot h3, .msg.bot h4, .msg.bot h5, .msg.bot h6 {
+    margin: 14px 0 6px;
+    line-height: 1.3;
+    font-weight: 650;
+    color: var(--strong);
+  }
+  /* headings stay small on phones so they never overpower the answer */
+  .msg.bot h1 { font-size: 1.2em; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .msg.bot h2 { font-size: 1.12em; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .msg.bot h3 { font-size: 1.05em; }
+  .msg.bot h4, .msg.bot h5, .msg.bot h6 { font-size: 1em; }
+  .msg.bot a { color: var(--accent); text-decoration: underline; }
+  .msg.bot ul, .msg.bot ol { margin: 0 0 10px; padding-left: 1.5em; }
+  .msg.bot li { margin: 0 0 4px; }
+  .msg.bot li::marker { color: var(--muted); }
+  .msg.bot li input[type="checkbox"] { accent-color: var(--accent); margin-right: 6px; }
+  .msg.bot blockquote {
+    margin: 0 0 10px;
+    padding: 2px 12px;
+    border-left: 3px solid var(--line-strong);
+    color: var(--muted);
+  }
+  .msg.bot hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+  .msg.bot img { max-width: 100%; border-radius: var(--r-sm); display: block; margin: 4px 0 10px; }
+  .msg.bot code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+    background: rgba(110, 118, 129, 0.4);
+    padding: 0.15em 0.4em;
+    border-radius: 6px;
+  }
+  .msg.bot .mdTable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    margin: 0 0 12px;
+  }
+  .msg.bot table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .msg.bot th, .msg.bot td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; }
+  .msg.bot th { background: var(--card); font-weight: 600; color: var(--strong); white-space: nowrap; }
+  .msg.bot tr:last-child td { border-bottom: 0; }
+  .msg.bot .mdCode {
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    margin: 0 0 12px;
+    overflow: hidden;
+  }
+  .msg.bot .mdCodeBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px 5px 11px;
+    border-bottom: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .msg.bot .mdCopy {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .msg.bot .mdCopy:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
+  .msg.bot pre {
+    margin: 0;
+    padding: 11px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .msg.bot pre code {
+    background: none;
+    padding: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre;
+    color: var(--text);
+  }
   #typing {
     min-height: 20px;
     padding: 0 14px 4px;
@@ -189,7 +289,7 @@
     font-size: 15px;
     cursor: pointer;
   }
-  #send:active { background: var(--accent); color: #1a0b0b; }
+  #send:active { background: #1a7f37; color: #ffffff; }
 
   /* ---- controls ---- */
   button {
@@ -204,7 +304,7 @@
     font-size: 14.5px;
     font-family: inherit;
   }
-  button:hover { background: var(--accent); color: #1a0b0b; }
+  button:hover { background: var(--primary-hover); color: #ffffff; }
   button.ghost {
     background: transparent;
     color: var(--text);
@@ -216,9 +316,9 @@
   button:disabled:hover { background: var(--primary); color: #fafafa; }
   button.ghost:disabled:hover { background: transparent; color: var(--text); }
   button.danger { color: var(--danger); }
-  button.danger:hover { background: rgba(248, 113, 113, 0.12); color: var(--danger); }
+  button.danger:hover { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
   :focus-visible { outline: none; box-shadow: var(--ring); }
-  header :focus-visible, .nav button.on:focus-visible { box-shadow: 0 0 0 2px var(--bg-accent), 0 0 0 3px rgba(255, 112, 112, 0.9); }
+  header :focus-visible, .nav button.on:focus-visible { box-shadow: 0 0 0 2px var(--bg-accent), 0 0 0 3px rgba(88, 166, 255, 0.9); }
 
   input[type="text"], input[type="password"], input[type="search"], select, textarea {
     font-size: 16px;
@@ -363,10 +463,10 @@
   }
   .dreamRow .d { color: var(--teal); font-weight: 600; font-size: 12px; margin-right: 8px; font-variant-numeric: tabular-nums; }
   .st { font-size: 11.5px; font-weight: 700; border-radius: var(--r-sm); padding: 2px 7px; flex-shrink: 0; }
-  .doc-ok { color: var(--ok); background: rgba(34, 197, 94, 0.1); }
+  .doc-ok { color: var(--ok); background: rgba(63, 185, 80, 0.1); }
   .doc-warn { color: var(--warn); background: rgba(245, 158, 11, 0.1); }
   .doc-fail { color: var(--danger); background: rgba(248, 113, 113, 0.1); }
-  .doc-info { color: var(--info); background: rgba(96, 165, 250, 0.1); }
+  .doc-info { color: var(--info); background: rgba(88, 166, 255, 0.1); }
   .okc { color: var(--ok); } .warnc { color: var(--warn); } .failc { color: var(--danger); } .infoc { color: var(--muted); }
   .hidden { display: none !important; }
 
@@ -646,14 +746,14 @@
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
   <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-    <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#ff5c5c" stroke-width="1.7"/>
-    <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M3.2 7.4 6.6 9.6" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round"/>
-    <path d="M22.5 15.5 26 12.5 27.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M28.8 7.4 25.4 9.6" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round"/>
-    <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#ff5c5c" stroke-width="1.6" stroke-linecap="round"/>
-    <circle cx="13.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
-    <circle cx="18.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
+    <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
+    <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M3.2 7.4 6.6 9.6" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28.8 7.4 25.4 9.6" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+    <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
   </svg>
   <div class="plate">
     <h1>TermCrab</h1>
@@ -875,11 +975,11 @@
 <div id="overlay">
   <div class="card">
     <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#ff5c5c" stroke-width="1.7"/>
-      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#ff5c5c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#ff5c5c" stroke-width="1.6" stroke-linecap="round"/>
-      <circle cx="13.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
-      <circle cx="18.5" cy="16.5" r="1.1" fill="#ff5c5c"/>
+      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
+      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+      <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
     </svg>
     <h2>TermCrab</h2>
     <p>Paste the gateway token (printed in the terminal, or run <code>termcrab config get gateway.token</code>).</p>
@@ -893,17 +993,197 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $('log');
-  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, pendingSession: null };
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null };
   const currentSession = () => $('session').value || 'web:main';
+
+
+  // ==== markdown renderer (zero-dependency, mobile-first) ====
+  function mdEsc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function mdSafeUrl(u) {
+    const url = String(u).trim();
+    if (/^https?:\/\/[^\s<>"']+$/i.test(url)) return url;
+    if (/^mailto:[^\s<>"']+$/i.test(url)) return url;
+    return null;
+  }
+  function mdInline(raw, depth) {
+    const codes = [];
+    let s = String(raw).replace(/`([^`\n]+)`/g, (m, c) => {
+      codes.push(c);
+      return '\x00C' + (codes.length - 1) + '\x00';
+    });
+    const links = [];
+    s = s.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (m, alt, url) => {
+      links.push({ label: alt, url, img: true });
+      return '\x00L' + (links.length - 1) + '\x00';
+    });
+    s = s.replace(/\[([^\]]+)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (m, label, url) => {
+      links.push({ label, url, img: false });
+      return '\x00L' + (links.length - 1) + '\x00';
+    });
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<>"')\]]+)/g, (m, pre, url) => {
+      links.push({ label: url, url, img: false });
+      return pre + '\x00L' + (links.length - 1) + '\x00';
+    });
+    s = mdEsc(s);
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, '$1<em>$2</em>');
+    s = s.replace(/(^|[^_\w])_([^_\n]+)_(?![_\w])/g, '$1<em>$2</em>');
+    s = s.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+    s = s.replace(/\n/g, '<br>');
+    s = s.replace(/\x00C(\d+)\x00/g, (m, i) => '<code>' + mdEsc(codes[Number(i)] ?? '') + '</code>');
+    s = s.replace(/\x00L(\d+)\x00/g, (m, i) => {
+      const l = links[Number(i)];
+      if (!l) return '';
+      const safe = mdSafeUrl(l.url);
+      if (l.img) {
+        if (!safe) return mdEsc(l.label);
+        return '<img src="' + mdEsc(safe) + '" alt="' + mdEsc(l.label) + '" loading="lazy">';
+      }
+      const label = depth < 3 ? mdInline(l.label, depth + 1) : mdEsc(l.label);
+      if (!safe) return label;
+      return '<a href="' + mdEsc(safe) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    });
+    return s;
+  }
+  function renderMarkdown(src) {
+    if (src == null) return '';
+    let text = String(src).replace(/\r\n?/g, '\n');
+    const fences = [];
+    // 1) pull out fenced code blocks (```lang ... ```), including an
+    //    unterminated one — that just means the reply is still streaming.
+    text = text.replace(/```([^\n]*)\n([\s\S]*?)```/g, (m, lang, code) => {
+      fences.push({ lang: lang.trim(), code });
+      return '\n\x00F' + (fences.length - 1) + '\x00\n';
+    });
+    const leftover = text.indexOf('```');
+    const atLineStart = leftover !== -1 && (leftover === 0 || text[leftover - 1] === '\n');
+    if (atLineStart) {
+      const rest = text.slice(leftover + 3);
+      const nl = rest.indexOf('\n');
+      const lang = nl === -1 ? rest : rest.slice(0, nl);
+      const code = nl === -1 ? '' : rest.slice(nl + 1);
+      fences.push({ lang: lang.trim(), code });
+      text = text.slice(0, leftover) + '\n\x00F' + (fences.length - 1) + '\x00\n';
+    }
+    const fenceHtml = (idx) => {
+      const f = fences[idx] || { lang: '', code: '' };
+      const label = /^[a-z0-9+#._-]{1,24}$/i.test(f.lang) ? f.lang : 'code';
+      const code = f.code.replace(/\n$/, '');
+      return '<div class="mdCode"><div class="mdCodeBar"><span>' + mdEsc(label) +
+        '</span><button type="button" class="mdCopy">Copy</button></div><pre><code>' +
+        mdEsc(code) + '</code></pre></div>';
+    };
+    const isSepRow = (line) => {
+      const cells = line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((c) => c.trim());
+      return cells.length > 0 && cells.every((c) => /^:?-{2,}:?$/.test(c));
+    };
+    const rowCells = (line) => line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((c) => c.trim());
+    const listHtml = (block) => {
+      const lines = block.split('\n');
+      const first = lines[0].match(/^(\s*)([-*+]|\d+[.)])\s+/);
+      if (!first) return '';
+      const ordered = /\d/.test(first[2]);
+      const items = [];
+      let cur = null;
+      for (const line of lines) {
+        const m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+        const indentedMarker = m && m[1].length >= 2;
+        if (m && !indentedMarker) {
+          if (cur) items.push(cur);
+          cur = { parts: [m[3]], nested: [] };
+        } else if (m && indentedMarker && cur) {
+          cur.nested.push(line.replace(/^\s{2}/, ''));
+        } else if (cur) {
+          if (/^\s{2,}\S/.test(line)) cur.nested.push(line.replace(/^\s{2}/, ''));
+          else cur.parts.push(line);
+        }
+      }
+      if (cur) items.push(cur);
+      const tag = ordered ? 'ol' : 'ul';
+      let html = '<' + tag + '>';
+      for (const it of items) {
+        let body = it.parts.join('\n');
+        let check = '';
+        const task = body.match(/^\[([ xX])\]\s+([\s\S]*)$/);
+        if (task) {
+          const checked = task[1].toLowerCase() === 'x' ? ' checked' : '';
+          check = '<input type="checkbox" disabled' + checked + '>';
+          body = task[2];
+        }
+        html += '<li>' + check + mdInline(body, 0) + '</li>';
+        if (it.nested.length) html = html.replace(/<\/li>$/, listHtml(it.nested.join('\n')) + '</li>');
+      }
+      return html + '</' + tag + '>';
+    };
+    // 2) walk the blocks and render each one
+    const blocks = text.split(/\n{2,}/);
+    const parts = [];
+    for (const raw of blocks) {
+      const block = raw.replace(/^\n+|\n+$/g, '');
+      if (!block.trim()) continue;
+      const fm = block.match(/^\x00F(\d+)\x00$/);
+      if (fm) { parts.push(fenceHtml(Number(fm[1]))); continue; }
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(block.trim())) { parts.push('<hr>'); continue; }
+      const hm = block.match(/^#{1,6}\s+([\s\S]*)$/);
+      if (hm) {
+        const level = (block.match(/^#+/) || ['#'])[0].length;
+        parts.push('<h' + level + '>' + mdInline(hm[1], 0) + '</h' + level + '>');
+        continue;
+      }
+      const lines = block.split('\n');
+      if (lines.length && lines.every((l) => /^>\s?/.test(l) || !l.trim())) {
+        const inner = lines.map((l) => l.replace(/^>\s?/, '')).join('\n');
+        parts.push('<blockquote>' + renderMarkdown(inner) + '</blockquote>');
+        continue;
+      }
+      if (lines.length >= 2 && /\|/.test(lines[0]) && isSepRow(lines[1])) {
+        const head = rowCells(lines[0]);
+        const body = lines.slice(2).filter((l) => /\S/.test(l)).map(rowCells);
+        let t = '<div class="mdTable"><table><thead><tr>';
+        t += head.map((c) => '<th>' + mdInline(c, 0) + '</th>').join('');
+        t += '</tr></thead><tbody>';
+        for (const row of body) {
+          t += '<tr>' + head.map((_, i) => '<td>' + mdInline(row[i] ?? '', 0) + '</td>').join('') + '</tr>';
+        }
+        parts.push(t + '</tbody></table></div>');
+        continue;
+      }
+      if (/^\s*([-*+]|\d+[.)])\s+/.test(block)) { parts.push(listHtml(block)); continue; }
+      parts.push('<p>' + mdInline(block, 0) + '</p>');
+    }
+    return parts.join('');
+  }
+  // ==== end markdown renderer ====
 
   function addMsg(cls, text) {
     const div = document.createElement('div');
     div.className = `msg ${cls}`;
-    div.textContent = text;
+    if (cls === 'bot') div.innerHTML = renderMarkdown(text);
+    else div.textContent = text;
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
     return div;
   }
+
+  // one delegated listener: every "Copy" button in a code block
+  log.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.mdCopy') : null;
+    if (!btn) return;
+    const box = btn.closest('.mdCode');
+    const pre = box && box.querySelector('pre');
+    if (!pre) return;
+    const ok = () => {
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pre.textContent).then(ok, ok);
+    } else ok();
+  });
 
   async function api(path, opts = {}) {
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
@@ -957,10 +1237,19 @@
     });
     es.addEventListener('delta', (e) => {
       const ev = JSON.parse(e.data);
-      // typewriter: append streamed chunks to the live bubble
-      if (!state.live) state.live = addMsg('bot', '');
-      state.live.textContent += ev.text;
-      log.scrollTop = log.scrollHeight;
+      // typewriter: append streamed chunks, repainted as markdown
+      if (!state.live) { state.live = addMsg('bot', ''); state.liveRaw = ''; }
+      state.liveRaw = (state.liveRaw || '') + ev.text;
+      const paint = () => {
+        if (state.live) {
+          state.live.innerHTML = renderMarkdown(state.liveRaw || '');
+          log.scrollTop = log.scrollHeight;
+        }
+      };
+      const now = Date.now();
+      if (now - (state.livePaint || 0) > 120) { state.livePaint = now; paint(); }
+      clearTimeout(state.liveTimer);
+      state.liveTimer = setTimeout(() => { state.livePaint = 0; paint(); }, 150);
     });
     es.addEventListener('cron', (e) => {
       const ev = JSON.parse(e.data);
@@ -1009,7 +1298,7 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
       });
-      if (state.live) state.live.textContent = res.text || state.live.textContent || '(empty reply)';
+      if (state.live) { state.liveRaw = res.text || state.liveRaw || '(empty reply)'; state.live.innerHTML = renderMarkdown(state.liveRaw); }
     } catch (err) {
       if (state.live) {
         state.live.textContent = err.message;

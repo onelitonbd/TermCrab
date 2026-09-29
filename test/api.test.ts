@@ -216,6 +216,19 @@ test('web control parity API', async (t) => {
       assert.equal(res.status, 401);
     });
 
+    await t.test('v0.16: GitHub dark theme, markdown replies, full-width answers', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('content="#0d1117"'), 'GitHub dark theme-color');
+      assert.ok(html.includes('--bg: #0d1117'), 'GitHub dark canvas token');
+      assert.ok(html.includes('--primary: #238636'), 'GitHub green primary buttons');
+      assert.ok(html.includes('function renderMarkdown'), 'markdown renderer shipped');
+      assert.ok(html.includes('// ==== end markdown renderer ===='), 'renderer end marker');
+      assert.ok(html.includes('class="mdCode"'), 'code block markup builder');
+      assert.ok(html.includes("if (cls === 'bot') div.innerHTML = renderMarkdown(text)"), 'AI replies rendered as markdown');
+      assert.ok(html.includes('align-self: stretch'), 'AI replies span the full width');
+      assert.ok(!html.includes('#ff5c5c'), 'old coral accent removed');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');
