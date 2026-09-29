@@ -10,6 +10,9 @@ import { startGateway, version } from './gateway/server.js';
 import { runSupervisor } from './mobile/supervisor.js';
 import { runDoctor, renderChecks, verifyTelegram } from './mobile/doctor.js';
 import { installBootScript, bootStatus, isTermux } from './mobile/boot.js';
+import { importSkills } from './skills/importer.js';
+import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
+import { nextRun, parseCron } from './cron/parser.js';
 import { MemoryStore } from './agent/memory.js';
 import { SkillStore } from './skills/loader.js';
 import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
@@ -28,8 +31,9 @@ Commands:
   agent [message...] [--session s]   Chat (one-shot or interactive REPL)
   doctor [--json]                    Diagnose the installation
   heartbeat                          Run one proactive heartbeat tick now
-  skills [list|show <name>]          Inspect skills
+  skills [list|show <name>|import <path|git-url> [--force]]
   memory [show|search <query>]       Inspect memory files
+  cron [ls|add --schedule s --prompt p [--name n] [--critical]|rm <id>|on <id>|off <id>|run <id>]
   boot [install|status]              Termux:Boot auto-start management
   config [path|get <k>|set <k> <v>|list]
   version                            Print version
@@ -217,9 +221,31 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     case 'skills': {
-      const [sub = 'list', name] = rest;
+      const [sub = 'list', source] = rest;
       const store = new SkillStore();
+      if (sub === 'import') {
+        if (!source) {
+          console.error('usage: termcrab skills import <folder|git-url> [--force]');
+          process.exitCode = 1;
+          return;
+        }
+        const force = rest.includes('--force');
+        console.log(`importing from ${source} ...`);
+        try {
+          const results = await importSkills(source, { force });
+          for (const r of results) {
+            const icon = r.action === 'skipped' ? '⏭️' : '✅';
+            console.log(`${icon} ${r.action}: ${r.name}`);
+          }
+          console.log(`\n${results.length} skill(s) processed. Try: termcrab skills list`);
+        } catch (err) {
+          console.error(`import failed: ${err instanceof Error ? err.message : err}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
       if (sub === 'show') {
+        const name = source;
         if (!name) {
           console.error('usage: termcrab skills show <name>');
           process.exitCode = 1;
@@ -240,6 +266,95 @@ export async function main(argv: string[]): Promise<void> {
         return;
       }
       for (const s of list) console.log(`${s.name.padEnd(20)} [${s.origin}] ${s.description}`);
+      return;
+    }
+
+    case 'cron': {
+      const [sub = 'ls', id] = rest;
+      if (sub === 'ls' || sub === 'list') {
+        const jobs = loadCrons();
+        if (!jobs.length) {
+          console.log('no cron jobs. Add one:');
+          console.log('  termcrab cron add --schedule "0 8 * * *" --prompt "give me a briefing" --name morning');
+          return;
+        }
+        const now = new Date();
+        for (const j of jobs) {
+          let next = 'invalid schedule';
+          try {
+            const nx = nextRun(parseCron(j.schedule), now);
+            next = nx ? nx.toLocaleString() : 'no next run';
+          } catch {
+            /* keep invalid */
+          }
+          const state = j.enabled ? 'on ' : 'off';
+          console.log(
+            `${state} ${j.id}  ${j.name.padEnd(18)} ${j.schedule.padEnd(14)} next: ${next}${j.critical ? ' [critical]' : ''}`,
+          );
+        }
+        return;
+      }
+      if (sub === 'add') {
+        const opts = parseArgs({
+          args: rest.slice(1),
+          options: {
+            schedule: { type: 'string' },
+            prompt: { type: 'string' },
+            name: { type: 'string' },
+            critical: { type: 'boolean', default: false },
+          },
+        }).values;
+        if (!opts.schedule || !opts.prompt) {
+          console.error('usage: termcrab cron add --schedule "*/30 * * * *" --prompt "..." [--name x] [--critical]');
+          process.exitCode = 1;
+          return;
+        }
+        try {
+          const job = addCron({
+            name: opts.name || '',
+            schedule: opts.schedule,
+            prompt: opts.prompt,
+            critical: opts.critical,
+          });
+          const nx = nextRun(parseCron(job.schedule));
+          console.log(`✅ cron ${job.id} "${job.name}" created. Next run: ${nx ? nx.toLocaleString() : 'n/a'}`);
+        } catch (err) {
+          console.error(`error: ${err instanceof Error ? err.message : err}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      if (sub === 'rm' || sub === 'delete') {
+        const ok = removeCron(id || '');
+        console.log(ok ? '✅ removed' : 'not found');
+        if (!ok) process.exitCode = 1;
+        return;
+      }
+      if (sub === 'on' || sub === 'off') {
+        const job = setCronEnabled(id || '', sub === 'on');
+        console.log(job ? `✅ ${job.name} is now ${job.enabled ? 'on' : 'off'}` : 'not found');
+        if (!job) process.exitCode = 1;
+        return;
+      }
+      if (sub === 'run') {
+        const job = getCron(id || '');
+        if (!job) {
+          console.error('cron not found');
+          process.exitCode = 1;
+          return;
+        }
+        const ctx = makeAgentCtx();
+        const output = await runTurn(ctx, {
+          sessionId: `cron:${job.id}`,
+          userMessage: `[manual:${job.name}] ${job.prompt}`,
+          channel: 'cron',
+          onEvent: printEvents,
+        });
+        console.log(`\n`);
+        return;
+      }
+      console.error(`unknown cron subcommand: ${sub}`);
+      process.exitCode = 1;
       return;
     }
 

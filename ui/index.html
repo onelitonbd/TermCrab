@@ -56,7 +56,11 @@
   }
   button.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--line); font-weight: 500; }
   button:disabled { opacity: .55; cursor: default; }
-  #actions { display: flex; gap: 6px; }
+  #actions { display: flex; gap: 6px; align-items: center; }
+  #session {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; max-width: 130px; height: 44px; padding: 0 6px; font-size: 12.5px;
+  }
   #overlay {
     position: fixed; inset: 0; background: rgba(5,8,12,.92); display: flex; align-items: center;
     justify-content: center; padding: 20px; z-index: 20;
@@ -86,6 +90,7 @@
 
 <div id="composer">
   <div id="actions">
+    <select id="session" title="session"><option value="web:main">main</option></select>
     <button class="ghost" id="btnNew" title="Reset session">🧹</button>
     <button class="ghost" id="btnHb" title="Run heartbeat now">🫀</button>
   </div>
@@ -108,7 +113,8 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $('log');
-  const state = { token: localStorage.getItem('tc_token') || '', busy: false };
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null };
+  const currentSession = () => $('session').value || 'web:main';
 
   function addMsg(cls, text) {
     const div = document.createElement('div');
@@ -165,7 +171,14 @@
     });
     es.addEventListener('delta', (e) => {
       const ev = JSON.parse(e.data);
-      $('typing').textContent = ev.text.slice(0, 300);
+      // typewriter: append streamed chunks to the live bubble
+      if (!state.live) state.live = addMsg('bot', '');
+      state.live.textContent += ev.text;
+      log.scrollTop = log.scrollHeight;
+    });
+    es.addEventListener('cron', (e) => {
+      const ev = JSON.parse(e.data);
+      addMsg('sys', `⏲️ cron ${ev.name}: ${(ev.preview || '').slice(0, 200)}`);
     });
     es.addEventListener('heartbeat', (e) => {
       addMsg('sys', '🫀 heartbeat: ' + JSON.parse(e.data).reason);
@@ -179,21 +192,60 @@
     state.busy = true; $('send').disabled = true;
     $('input').value = '';
     addMsg('user', text);
-    const pending = addMsg('bot', '…');
+    state.live = addMsg('bot', '');
     try {
       const res = await api('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId: 'web:main' }),
+        body: JSON.stringify({ message: text, sessionId: currentSession() }),
       });
-      pending.textContent = res.text || '(empty reply)';
+      if (state.live) state.live.textContent = res.text || state.live.textContent || '(empty reply)';
     } catch (err) {
-      pending.textContent = '⚠️ ' + err.message;
-      pending.classList.add('err');
+      if (state.live) {
+        state.live.textContent = '⚠️ ' + err.message;
+        state.live.classList.add('err');
+      }
     } finally {
-      $('typing').textContent = '';
+      state.live = null;
       state.busy = false; $('send').disabled = false;
       log.scrollTop = log.scrollHeight;
+      refreshSessions();
+    }
+  }
+
+  async function refreshSessions() {
+    try {
+      const data = await api('/api/sessions');
+      const sel = $('session');
+      const keep = sel.value || 'web:main';
+      const opts = [];
+      const seen = new Set();
+      for (const s of data.sessions || []) {
+        opts.push(s); seen.add(s.id);
+      }
+      if (!seen.has('web:main')) opts.unshift({ id: 'web:main', messages: 0 });
+      sel.innerHTML = '';
+      for (const s of opts) {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.id.length > 16 ? s.id.slice(0, 15) + '…' : s.id;
+        sel.appendChild(o);
+      }
+      sel.value = seen.has(keep) || keep === 'web:main' ? keep : (opts[0] ? opts[0].id : 'web:main');
+    } catch { /* non-fatal */ }
+  }
+
+  async function loadSession(id) {
+    try {
+      const data = await api('/api/sessions/' + encodeURIComponent(id));
+      log.innerHTML = '';
+      for (const m of data.messages || []) {
+        if (m.role === 'user') addMsg('user', m.content);
+        else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
+      }
+      if (!log.children.length) addMsg('sys', `session "${id}" is empty`);
+    } catch (e) {
+      addMsg('sys', 'failed to load session: ' + e.message);
     }
   }
 
@@ -202,7 +254,11 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
   $('btnNew').onclick = async () => {
-    try { await api('/api/sessions/web:main', { method: 'DELETE' }); addMsg('sys', 'session reset'); } catch (e) { addMsg('sys', 'reset failed: ' + e.message); }
+    try {
+      await api('/api/sessions/' + encodeURIComponent(currentSession()), { method: 'DELETE' });
+      addMsg('sys', 'session reset');
+      refreshSessions();
+    } catch (e) { addMsg('sys', 'reset failed: ' + e.message); }
   };
   $('btnHb').onclick = async () => {
     addMsg('sys', '🫀 running heartbeat…');
@@ -212,6 +268,8 @@
     } catch (e) { addMsg('sys', 'heartbeat failed: ' + e.message); }
   };
 
+  $('session').addEventListener('change', () => loadSession($('session').value));
+
   async function bootstrap() {
     if (!state.token) { showOverlay(); return; }
     try {
@@ -219,6 +277,7 @@
       hideOverlay();
       refreshHealth(); setInterval(refreshHealth, 15000);
       connectEvents();
+      refreshSessions();
       addMsg('sys', 'connected - your agent runs on your own machine. Nothing phones home.');
     } catch {
       showOverlay('Token rejected');

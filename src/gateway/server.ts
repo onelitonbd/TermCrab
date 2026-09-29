@@ -14,6 +14,10 @@ import { extractAuth, checkToken } from './auth.js';
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { outboxTakeAll } from '../mobile/outbox.js';
+import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
+import { startCronScheduler, cronTick } from '../cron/scheduler.js';
+import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
+import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
 
 export interface GatewayHandle {
   server: http.Server;
@@ -174,6 +178,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     log.info('heartbeat output:', text.slice(0, 300));
   };
   const stopHeartbeat = scheduleHeartbeat(agent, notify);
+  const stopCron = startCronScheduler({ ctx: agent, deliver: notify });
+  void notifyStatus(`online · ${providerLabel(config)} · port ${port}`);
 
   // ---- HTTP server ----
   const server = http.createServer(async (req, res) => {
@@ -261,6 +267,76 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        if (req.method === 'GET' && pathname === '/api/crons') {
+          const now = new Date();
+          json(res, 200, {
+            crons: loadCrons().map((c) => {
+              let next: string | null = null;
+              try {
+                const nx = nextRun(parseCron(c.schedule), now);
+                next = nx ? nx.toISOString() : null;
+              } catch {
+                next = null;
+              }
+              return { ...c, nextRun: next };
+            }),
+          });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/crons') {
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { name?: string; schedule?: string; prompt?: string; critical?: boolean }) : {};
+          try {
+            const job = addCron({
+              name: body.name || '',
+              schedule: body.schedule || '',
+              prompt: body.prompt || '',
+              critical: body.critical,
+            });
+            json(res, 200, { cron: job });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        const cronMatch = pathname.match(/^\/api\/crons\/([^/]+)$/);
+        if (cronMatch && req.method === 'DELETE') {
+          const id = decodeURIComponent(cronMatch[1]!);
+          const ok = removeCron(id);
+          json(res, ok ? 200 : 404, { ok });
+          return;
+        }
+
+        const cronRunMatch = pathname.match(/^\/api\/crons\/([^/]+)\/run$/);
+        if (cronRunMatch && req.method === 'POST') {
+          const job = getCron(decodeURIComponent(cronRunMatch[1]!));
+          if (!job) {
+            json(res, 404, { error: 'cron not found' });
+            return;
+          }
+          const output = await runTurn(agent, {
+            sessionId: `cron:${job.id}`,
+            userMessage: `[manual:${job.name}] ${job.prompt}`,
+            channel: 'cron',
+            onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+          });
+          json(res, 200, { output });
+          return;
+        }
+
+        const cronToggleMatch = pathname.match(/^\/api\/crons\/([^/]+)\/(enable|disable)$/);
+        if (cronToggleMatch && req.method === 'POST') {
+          const job = setCronEnabled(decodeURIComponent(cronToggleMatch[1]!), cronToggleMatch[2] === 'enable');
+          if (!job) {
+            json(res, 404, { error: 'cron not found' });
+            return;
+          }
+          json(res, 200, { cron: job });
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/skills') {
           json(res, 200, { skills: skills.list() });
           return;
@@ -303,9 +379,11 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     agent,
     stop: async () => {
       stopHeartbeat();
+      stopCron();
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();
       await new Promise<void>((resolve) => server.close(() => resolve()));
+      void cancelStatusNotification();
       try {
         if (fs.existsSync(pidPath())) fs.unlinkSync(pidPath());
       } catch {

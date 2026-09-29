@@ -64,11 +64,15 @@ export function toProviderMessages(entries: Entry[]): ProviderMessage[] {
   return out;
 }
 
-async function chatWithTimeout(provider: Provider, req: Parameters<Provider['chat']>[0]): Promise<ChatResult> {
+async function chatWithTimeout(
+  provider: Provider,
+  req: Parameters<Provider['chat']>[0],
+  onDelta?: (chunk: string) => void,
+): Promise<ChatResult> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), PROVIDER_TIMEOUT_MS);
   try {
-    return await provider.chat(req, { signal: ctrl.signal });
+    return await provider.chat(req, { signal: ctrl.signal, onDelta });
   } finally {
     clearTimeout(timer);
   }
@@ -99,7 +103,12 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   try {
     for (let i = 0; i < maxIter; i++) {
       const messages = toProviderMessages(ctx.sessions.read(sessionId));
-      const result = await chatWithTimeout(provider, { system, messages, tools: tools.map((t) => t.def) });
+      let streamedChars = 0;
+      const result = await chatWithTimeout(provider, { system, messages, tools: tools.map((t) => t.def) }, (chunk) => {
+        if (!chunk) return;
+        streamedChars += chunk.length;
+        emit({ type: 'delta', text: chunk });
+      });
 
       if (result.toolCalls.length) {
         // Persist the assistant tool-call turn, then execute each tool.
@@ -109,7 +118,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           ts: Date.now(),
           toolCalls: result.toolCalls,
         });
-        if (result.text) emit({ type: 'delta', text: result.text });
+        if (result.text && !streamedChars) emit({ type: 'delta', text: result.text });
 
         for (const call of result.toolCalls) {
           emit({ type: 'tool:start', name: call.name, args: call.args });
@@ -136,7 +145,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
       }
 
       finalText = result.text ?? '';
-      if (finalText) emit({ type: 'delta', text: finalText });
+      if (finalText && !streamedChars) emit({ type: 'delta', text: finalText });
       ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
       emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i + 1 });
       return finalText;

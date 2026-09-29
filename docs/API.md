@@ -46,6 +46,19 @@ Resets the session (backs up the JSONL file).
 Runs one proactive tick now (battery-aware).
 → `{ "ran": true, "reason": "battery 88% (charging)", "output": "…" }`
 
+### `GET /api/crons`
+→ `{ "crons": [ { "id", "name", "schedule", "prompt", "enabled", "critical", "nextRun": "ISO" } ] }`
+
+### `POST /api/crons`
+Body: `{ "name": "weekday", "schedule": "0 8 * * 1-5", "prompt": "briefing", "critical": false }`
+→ `200 { "cron": { … } }` or `400 { "error": "<schedule explanation>" }`
+
+### `DELETE /api/crons/:id`
+### `POST /api/crons/:id/run` — fire the job now → `{ "output": "…" }`
+### `POST /api/crons/:id/enable` / `.../disable`
+
+SSE also emits a `cron` event when a scheduled job fires.
+
 ## Errors
 
 Non-2xx responses: `{ "error": "message" }`. `401` = missing/invalid token.

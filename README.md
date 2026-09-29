@@ -8,10 +8,11 @@ persistent Markdown memory — controllable from a **web control UI** and **Tele
 with zero native dependencies and mobile-first power management.
 
 ```
-🦀 Chat with it   →  Web Control UI (phone browser) + Telegram bot
+🦀 Chat with it   →  Web Control UI (phone browser) + Telegram bot + CLI
 ⚡ It does things  →  shell exec, files, web fetch, termux-* device APIs
 🧠 It remembers    →  MEMORY.md + daily logs you can open and edit
-🫀 It acts on its own → heartbeat checklist + battery-adaptive schedule
+🌊 It streams      →  token-by-token typewriter replies (Anthropic / OpenAI-compatible)
+🫀 It acts on its own → heartbeat checklist, user cron jobs, battery-adaptive schedule
 📦 It just runs     →  zero runtime dependencies, no proot, no systemd needed
 ```
 
@@ -68,16 +69,32 @@ Then open the control UI at `http://127.0.0.1:7788/` (token printed by
 
 ```
 termcrab onboard        setup wizard (provider, model, telegram, name)
-termcrab gateway        run the gateway (HTTP API + SSE + channels + heartbeat)
+termcrab gateway        run the gateway (HTTP API + SSE + channels + heartbeat + cron)
 termcrab supervisor     run the gateway with auto-restart watchdog
-termcrab agent [msg]    chat one-shot or interactive REPL
+termcrab agent [msg]    chat one-shot or interactive REPL (streamed output)
 termcrab doctor         diagnose the installation (fix suggestions included)
 termcrab heartbeat      run one proactive tick now
-termcrab skills         list / show skills
+termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prompt "..." | rm | on | off | run
+termcrab skills         list / show / import skills (OpenClaw-style SKILL.md folders)
 termcrab memory         show / search memory
 termcrab boot install   auto-start on device boot (Termux:Boot)
 termcrab config         get/set configuration
 ```
+
+## Automate & extend
+
+```bash
+# Cron (5-field or @macros) - runs through the agent, delivers to Telegram if paired
+termcrab cron add --schedule "0 8 * * 1-5" --prompt "weekday briefing" --name weekday
+termcrab cron ls
+
+# Import skills from any folder or git repo (OpenClaw-compatible SKILL.md format)
+termcrab skills import https://github.com/org/awesome-skills.git
+termcrab skills import ./my-skill-dir --force
+```
+
+On Android, cron + heartbeat respect your battery: jobs pause below
+`heartbeat.pauseBelow`% unless marked `--critical`.
 
 ## Providers
 

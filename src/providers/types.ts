@@ -34,10 +34,16 @@ export interface ChatResult {
   stopReason: 'end' | 'tool' | 'length' | 'unknown';
 }
 
+export interface ChatOpts {
+  signal?: AbortSignal;
+  /** Incremental text deltas for typewriter UX (streaming providers). */
+  onDelta?: (chunk: string) => void;
+}
+
 export interface Provider {
   readonly name: string;
   readonly model: string;
-  chat(req: ChatRequest, opts?: { signal?: AbortSignal }): Promise<ChatResult>;
+  chat(req: ChatRequest, opts?: ChatOpts): Promise<ChatResult>;
 }
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -51,6 +57,12 @@ export class ProviderError extends Error {
     super(message);
     this.name = 'ProviderError';
   }
+}
+
+export function isAbortError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const name = (err as { name?: string }).name;
+  return name === 'AbortError' || name === 'TimeoutError';
 }
 
 async function readError(res: Response): Promise<string> {

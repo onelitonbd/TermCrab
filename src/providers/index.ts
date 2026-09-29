@@ -3,6 +3,7 @@ import { createAnthropic } from './anthropic.js';
 import { createMock } from './mock.js';
 import { createOpenAi } from './openai.js';
 import { FetchLike, Provider } from './types.js';
+import { isAbortError } from './types.js';
 
 export * from './types.js';
 
@@ -27,6 +28,7 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
         model: cfg.model,
         maxTokens: cfg.maxTokens,
         temperature: cfg.temperature,
+        stream: cfg.stream,
       },
       fetchImpl,
     );
@@ -39,6 +41,7 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
       model: cfg.model,
       maxTokens: cfg.maxTokens,
       temperature: cfg.temperature,
+      stream: cfg.stream,
     },
     fetchImpl,
   );

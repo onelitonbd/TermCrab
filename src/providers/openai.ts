@@ -1,4 +1,5 @@
 import {
+  ChatOpts,
   ChatRequest,
   ChatResult,
   FetchLike,
@@ -6,7 +7,9 @@ import {
   ProviderError,
   readError,
   ToolDef,
+  isAbortError,
 } from './types.js';
+import { sseData } from './sse.js';
 
 interface OpenAiCfg {
   baseUrl: string;
@@ -14,6 +17,7 @@ interface OpenAiCfg {
   model: string;
   maxTokens?: number;
   temperature?: number;
+  stream?: boolean;
 }
 
 function joinUrl(base: string, path: string): string {
@@ -31,77 +35,184 @@ function toOpenAiTools(tools: ToolDef[]): unknown[] | undefined {
   }));
 }
 
-/** Works for OpenAI, OpenRouter, Groq, DeepSeek, Ollama (/v1), and most compatible servers. */
+function buildMessages(req: ChatRequest): unknown[] {
+  const messages: unknown[] = [{ role: 'system', content: req.system }];
+  for (const m of req.messages) {
+    if (m.role === 'user') messages.push({ role: 'user', content: m.content });
+    else if (m.role === 'tool') {
+      messages.push({ role: 'tool', tool_call_id: m.toolCallId, content: m.content.slice(0, 100000) });
+    } else {
+      const msg: Record<string, unknown> = { role: 'assistant', content: m.content || null };
+      if (m.toolCalls?.length) {
+        msg.tool_calls = m.toolCalls.map((c) => ({
+          id: c.id,
+          type: 'function',
+          function: { name: c.name, arguments: JSON.stringify(c.args ?? {}) },
+        }));
+      }
+      messages.push(msg);
+    }
+  }
+  return messages;
+}
+
+function parseToolArgs(raw: string): Record<string, unknown> {
+  if (!raw.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+interface ToolAcc {
+  id: string;
+  name: string;
+  args: string;
+}
+
+/**
+ * Works for OpenAI, OpenRouter, Groq, DeepSeek, Ollama (/v1), and most compatible
+ * servers - including SSE streaming of text and tool-call fragments.
+ */
 export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Provider {
+  function finalize(
+    text: string,
+    tools: Map<number, ToolAcc>,
+    finish: string,
+  ): ChatResult {
+    const toolCalls: ChatResult['toolCalls'] = [...tools.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, t]) => ({ id: t.id || `call_${t.name}`, name: t.name, args: parseToolArgs(t.args) }));
+    const stopReason: ChatResult['stopReason'] =
+      toolCalls.length || finish === 'tool_calls'
+        ? 'tool'
+        : finish === 'length'
+          ? 'length'
+          : finish === 'stop'
+            ? 'end'
+            : 'unknown';
+    return { text, toolCalls, stopReason };
+  }
+
+  async function basic(req: ChatRequest, opts?: ChatOpts): Promise<ChatResult> {
+    const body: Record<string, unknown> = {
+      model: cfg.model,
+      messages: buildMessages(req),
+      max_tokens: req.maxTokens ?? cfg.maxTokens,
+      temperature: req.temperature ?? cfg.temperature,
+    };
+    const tools = toOpenAiTools(req.tools);
+    if (tools) body.tools = tools;
+
+    const res = await fetchImpl(joinUrl(cfg.baseUrl, '/chat/completions'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${cfg.apiKey || 'not-needed'}`,
+      },
+      body: JSON.stringify(body),
+      signal: opts?.signal,
+    });
+    if (!res.ok) throw new ProviderError(`openai HTTP ${res.status}`, res.status, await readError(res));
+    const data = (await res.json()) as {
+      choices?: {
+        message?: { content?: string | null; tool_calls?: { id: string; function: { name: string; arguments: string } }[] };
+        finish_reason?: string;
+      }[];
+    };
+    const choice = data.choices?.[0];
+    const msg = choice?.message;
+    let text = msg?.content ?? '';
+    if (Array.isArray(text)) text = JSON.stringify(text);
+    const toolsOut = new Map<number, ToolAcc>();
+    for (const tc of msg?.tool_calls ?? []) {
+      toolsOut.set(toolsOut.size, { id: tc.id, name: tc.function.name, args: tc.function.arguments || '{}' });
+    }
+    return finalize(text || '', toolsOut, choice?.finish_reason ?? '');
+  }
+
+  async function stream(req: ChatRequest, opts: ChatOpts): Promise<ChatResult> {
+    const body: Record<string, unknown> = {
+      model: cfg.model,
+      messages: buildMessages(req),
+      max_tokens: req.maxTokens ?? cfg.maxTokens,
+      temperature: req.temperature ?? cfg.temperature,
+      stream: true,
+    };
+    const tools = toOpenAiTools(req.tools);
+    if (tools) body.tools = tools;
+
+    const res = await fetchImpl(joinUrl(cfg.baseUrl, '/chat/completions'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${cfg.apiKey || 'not-needed'}`,
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    });
+    if (!res.ok) throw new ProviderError(`openai HTTP ${res.status}`, res.status, await readError(res));
+    if (!res.body) throw new ProviderError('openai: empty stream body');
+
+    let text = '';
+    let finish = '';
+    const acc = new Map<number, ToolAcc>();
+
+    for await (const data of sseData(res)) {
+      if (data === '[DONE]') break;
+      let frame: {
+        choices?: { delta?: { content?: string; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[];
+      };
+      try {
+        frame = JSON.parse(data);
+      } catch {
+        continue;
+      }
+      const choice = frame.choices?.[0];
+      if (choice?.delta?.content) {
+        text += choice.delta.content;
+        opts.onDelta?.(choice.delta.content);
+      }
+      for (const tc of choice?.delta?.tool_calls ?? []) {
+        const i = tc.index ?? 0;
+        let a = acc.get(i);
+        if (!a) {
+          a = { id: '', name: '', args: '' };
+          acc.set(i, a);
+        }
+        if (tc.id) a.id = tc.id;
+        if (tc.function?.name) a.name += tc.function.name;
+        if (tc.function?.arguments) a.args += tc.function.arguments;
+      }
+      if (choice?.finish_reason) finish = choice.finish_reason;
+    }
+
+    return finalize(text, acc, finish);
+  }
+
   return {
     name: 'openai-compatible',
     model: cfg.model,
     async chat(req, opts) {
-      const messages: unknown[] = [{ role: 'system', content: req.system }];
-      for (const m of req.messages) {
-        if (m.role === 'user') messages.push({ role: 'user', content: m.content });
-        else if (m.role === 'tool') {
-          messages.push({ role: 'tool', tool_call_id: m.toolCallId, content: m.content.slice(0, 100000) });
-        } else {
-          const msg: Record<string, unknown> = { role: 'assistant', content: m.content || null };
-          if (m.toolCalls?.length) {
-            msg.tool_calls = m.toolCalls.map((c) => ({
-              id: c.id,
-              type: 'function',
-              function: { name: c.name, arguments: JSON.stringify(c.args ?? {}) },
-            }));
-          }
-          messages.push(msg);
-        }
-      }
-
-      const body: Record<string, unknown> = {
-        model: cfg.model,
-        messages,
-        max_tokens: req.maxTokens ?? cfg.maxTokens,
-        temperature: req.temperature ?? cfg.temperature,
-      };
-      const tools = toOpenAiTools(req.tools);
-      if (tools) body.tools = tools;
-
-      const res = await fetchImpl(joinUrl(cfg.baseUrl, '/chat/completions'), {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${cfg.apiKey || 'not-needed'}`,
-        },
-        body: JSON.stringify(body),
-        signal: opts?.signal,
-      });
-      if (!res.ok) throw new ProviderError(`openai HTTP ${res.status}`, res.status, await readError(res));
-      const data = (await res.json()) as {
-        choices?: {
-          message?: {
-            content?: string | null;
-            tool_calls?: { id: string; function: { name: string; arguments: string } }[];
-          };
-          finish_reason?: string;
-        }[];
-      };
-      const choice = data.choices?.[0];
-      const msg = choice?.message;
-      let text = msg?.content ?? '';
-      const toolCalls: ChatResult['toolCalls'] = [];
-      for (const tc of msg?.tool_calls ?? []) {
-        let args: Record<string, unknown> = {};
+      if (opts?.onDelta && cfg.stream !== false) {
+        let emitted = 0;
+        const counting: ChatOpts = {
+          signal: opts.signal,
+          onDelta: (chunk) => {
+            emitted++;
+            opts.onDelta?.(chunk);
+          },
+        };
         try {
-          const parsed = JSON.parse(tc.function.arguments || '{}');
-          if (parsed && typeof parsed === 'object') args = parsed as Record<string, unknown>;
-        } catch {
-          args = {};
+          return await stream(req, counting);
+        } catch (err) {
+          if (isAbortError(err) || emitted > 0) throw err;
+          return basic(req, opts);
         }
-        toolCalls.push({ id: tc.id || `call_${toolCalls.length}`, name: tc.function.name, args });
       }
-      if (Array.isArray(text)) text = JSON.stringify(text); // some servers return array content
-      const stopReason =
-        choice?.finish_reason === 'tool_calls' || toolCalls.length ? 'tool' : choice?.finish_reason === 'length' ? 'length' : choice?.finish_reason === 'stop' ? 'end' : 'unknown';
-      if (!text) text = '';
-      return { text, toolCalls, stopReason };
+      return basic(req, opts);
     },
   };
 }

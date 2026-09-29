@@ -11,6 +11,8 @@ export interface ProviderCfg {
   model: string;
   maxTokens?: number;
   temperature?: number;
+  /** Stream tokens over SSE (default true). Set false to force request-per-reply. */
+  stream?: boolean;
 }
 
 export interface Config {

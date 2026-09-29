@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0 — 2026-09-29 (Daily Driver)
+
+### Added
+- **Streaming responses**: SSE token streaming for Anthropic + OpenAI-compatible
+  providers, delta events → typewriter UI and live terminal output; automatic
+  fallback to non-streaming when a stream dies before any output (`provider.stream=false` to disable)
+- **Cron scheduler**: dependency-free 5-field cron (`*`, `-`, `/`, lists, `@daily` etc.)
+  with `termcrab cron add|ls|rm|on|off|run`, next-run previews, battery-aware skipping,
+  gateway loop (20s resolution) and REST API (`/api/crons`)
+- **Skills importer**: `termcrab skills import <folder|git-url>` — drop-in compatible
+  with OpenClaw-style `SKILL.md` folders; sanitizes hostile names, `--force` to overwrite
+- **Android notifications**: ongoing "gateway alive" notification + per-run alerts via
+  `termux-notification` (no-op elsewhere), auto-cancelled on shutdown
+- **Session picker** in the web control UI (list, switch, load transcripts)
+- Cron events surfaced over SSE (`cron` listener in UI)
+
+### Changed
+- Roadmap: WhatsApp channel moved to v0.3 (needs a zero-dep-compliant Baileys spike)
+
 ## 0.1.0 — 2026-09-29 (Shell Start)
 
 First public milestone.

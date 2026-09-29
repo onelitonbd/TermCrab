@@ -54,15 +54,23 @@ phones as always-on servers, (3) privacy-first users who refuse cloud assistants
 
 ## 4. Roadmap — how we get there
 
-### v0.2 — "Daily driver" (weeks 1–2)
-- WhatsApp channel (Baileys) + Signal (signal-cli) — where non-tech users live
-- Skills registry import: read any OpenClaw-style `SKILL.md` (drop-in folder) —
-  instant access to thousands of community skills, zero lock-in
-- Streaming tokens over SSE → typewriter UI; per-channel sessions UI in the control panel
-- Cron: user-defined schedules beyond the single heartbeat (e.g. `0 7 * * *` briefings)
-- Termux:GUI companion notification (foreground service) for unkillable status
+### v0.2 — "Daily driver" ✅ SHIPPED (2026-09-29, this release)
+- [x] **Provider streaming** → typewriter UI + live CLI output (Anthropic & OpenAI-compatible SSE)
+- [x] **Cron scheduler** — user-defined schedules (`termcrab cron add …`), battery-aware,
+      REST API + next-run previews
+- [x] **OpenClaw-style skills import** — `termcrab skills import <folder|git-url>`
+      (instant access to existing SKILL.md ecosystems, zero lock-in)
+- [x] **Termux notifications** — ongoing gateway status + per-run alerts
+- [x] Session picker + transcript loading in the control UI
 
-### v0.3 — "Smarter crab" (weeks 3–6)
+### v0.3 — "Where the users live" (weeks 2–4)
+- WhatsApp channel — **spike first**: Baileys vs zero-dep policy (bundle as optional
+  extension so core stays dependency-free), plus Signal (signal-cli) evaluation
+- Cron UI management in the control panel; per-channel session grouping
+- Voice: `termux-speech-to-text` / `termux-tts-speak` + wake-word experiment
+- Termux:GUI foreground service experiment (unkillable status)
+
+### v0.3 — "Smarter crab" (weeks 4–6)
 - On-device inference tier: llama.cpp via `pkg install llama.cpp` with small
   tool-capable models for summarize/classify; cloud for reasoning (tiered tasks)
 - Voice: `termux-speech-to-text` / `termux-tts-speak` + wake-word experiment

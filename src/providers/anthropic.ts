@@ -1,4 +1,5 @@
 import {
+  ChatOpts,
   ChatRequest,
   ChatResult,
   FetchLike,
@@ -6,7 +7,9 @@ import {
   ProviderError,
   readError,
   ToolDef,
+  isAbortError,
 } from './types.js';
+import { sseData } from './sse.js';
 
 interface AnthropicCfg {
   baseUrl: string;
@@ -14,6 +17,7 @@ interface AnthropicCfg {
   model: string;
   maxTokens?: number;
   temperature?: number;
+  stream?: boolean;
 }
 
 function joinUrl(base: string, path: string): string {
@@ -66,49 +70,143 @@ function toAnthropicMessages(messages: ChatRequest['messages']): unknown[] {
   return out;
 }
 
+function mapStop(reason: string | null | undefined): ChatResult['stopReason'] {
+  if (reason === 'tool_use') return 'tool';
+  if (reason === 'max_tokens') return 'length';
+  if (reason === 'end_turn') return 'end';
+  return 'unknown';
+}
+
+function parseToolArgs(raw: string): Record<string, unknown> {
+  if (!raw.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function createAnthropic(cfg: AnthropicCfg, fetchImpl: FetchLike = fetch): Provider {
+  async function basic(req: ChatRequest, opts?: ChatOpts): Promise<ChatResult> {
+    const body = {
+      model: cfg.model,
+      max_tokens: req.maxTokens ?? cfg.maxTokens ?? 4096,
+      temperature: req.temperature ?? cfg.temperature,
+      system: req.system,
+      messages: toAnthropicMessages(req.messages),
+      tools: toAnthropicTools(req.tools),
+    };
+    const res = await fetchImpl(joinUrl(cfg.baseUrl, '/messages'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': cfg.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+      signal: opts?.signal,
+    });
+    if (!res.ok) throw new ProviderError(`anthropic HTTP ${res.status}`, res.status, await readError(res));
+    const data = (await res.json()) as {
+      content: { type: string; text?: string; id?: string; name?: string; input?: unknown }[];
+      stop_reason: string | null;
+    };
+    let text = '';
+    const toolCalls: ChatResult['toolCalls'] = [];
+    for (const block of data.content ?? []) {
+      if (block.type === 'text' && block.text) text += block.text;
+      else if (block.type === 'tool_use' && block.id && block.name) {
+        toolCalls.push({ id: block.id, name: block.name, args: (block.input ?? {}) as Record<string, unknown> });
+      }
+    }
+    return { text, toolCalls, stopReason: mapStop(data.stop_reason) };
+  }
+
+  async function stream(req: ChatRequest, opts: ChatOpts): Promise<ChatResult> {
+    const body = {
+      model: cfg.model,
+      max_tokens: req.maxTokens ?? cfg.maxTokens ?? 4096,
+      temperature: req.temperature ?? cfg.temperature,
+      system: req.system,
+      messages: toAnthropicMessages(req.messages),
+      tools: toAnthropicTools(req.tools),
+      stream: true,
+    };
+    const res = await fetchImpl(joinUrl(cfg.baseUrl, '/messages'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': cfg.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    });
+    if (!res.ok) throw new ProviderError(`anthropic HTTP ${res.status}`, res.status, await readError(res));
+    if (!res.body) throw new ProviderError('anthropic: empty stream body');
+
+    let text = '';
+    let stop: string | null = null;
+    const tools = new Map<number, { id: string; name: string; args: string }>();
+
+    for await (const data of sseData(res)) {
+      let ev: { type?: string; index?: number; content_block?: { type?: string; id?: string; name?: string }; delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string } };
+      try {
+        ev = JSON.parse(data);
+      } catch {
+        continue;
+      }
+      switch (ev.type) {
+        case 'content_block_start':
+          if (ev.content_block?.type === 'tool_use' && typeof ev.index === 'number') {
+            tools.set(ev.index, { id: ev.content_block.id || `tool_${ev.index}`, name: ev.content_block.name || '', args: '' });
+          }
+          break;
+        case 'content_block_delta':
+          if (ev.delta?.type === 'text_delta' && ev.delta.text) {
+            text += ev.delta.text;
+            opts.onDelta?.(ev.delta.text);
+          } else if (ev.delta?.type === 'input_json_delta' && typeof ev.index === 'number') {
+            const acc = tools.get(ev.index);
+            if (acc) acc.args += ev.delta.partial_json ?? '';
+          }
+          break;
+        case 'message_delta':
+          stop = ev.delta?.stop_reason ?? stop;
+          break;
+        default:
+          break;
+      }
+    }
+
+    const toolCalls: ChatResult['toolCalls'] = [...tools.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, t]) => ({ id: t.id, name: t.name, args: parseToolArgs(t.args) }));
+    return { text, toolCalls, stopReason: toolCalls.length ? 'tool' : mapStop(stop) };
+  }
+
   return {
     name: 'anthropic',
     model: cfg.model,
     async chat(req, opts) {
-      const body = {
-        model: cfg.model,
-        max_tokens: req.maxTokens ?? cfg.maxTokens ?? 4096,
-        temperature: req.temperature ?? cfg.temperature,
-        system: req.system,
-        messages: toAnthropicMessages(req.messages),
-        tools: toAnthropicTools(req.tools),
-      };
-      const res = await fetchImpl(joinUrl(cfg.baseUrl, '/messages'), {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': cfg.apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-        signal: opts?.signal,
-      });
-      if (!res.ok) throw new ProviderError(`anthropic HTTP ${res.status}`, res.status, await readError(res));
-      const data = (await res.json()) as {
-        content: { type: string; text?: string; id?: string; name?: string; input?: unknown }[];
-        stop_reason: string | null;
-      };
-      let text = '';
-      const toolCalls: ChatResult['toolCalls'] = [];
-      for (const block of data.content ?? []) {
-        if (block.type === 'text' && block.text) text += block.text;
-        else if (block.type === 'tool_use' && block.id && block.name) {
-          toolCalls.push({
-            id: block.id,
-            name: block.name,
-            args: (block.input ?? {}) as Record<string, unknown>,
-          });
+      if (opts?.onDelta && cfg.stream !== false) {
+        let emitted = 0;
+        const counting: ChatOpts = {
+          signal: opts.signal,
+          onDelta: (chunk) => {
+            emitted++;
+            opts.onDelta?.(chunk);
+          },
+        };
+        try {
+          return await stream(req, counting);
+        } catch (err) {
+          if (isAbortError(err) || emitted > 0) throw err;
+          return basic(req, opts);
         }
       }
-      const stopReason =
-        data.stop_reason === 'tool_use' ? 'tool' : data.stop_reason === 'max_tokens' ? 'length' : data.stop_reason === 'end_turn' ? 'end' : 'unknown';
-      return { text, toolCalls, stopReason };
+      return basic(req, opts);
     },
   };
 }
