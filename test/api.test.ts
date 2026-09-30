@@ -335,6 +335,23 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('(empty reply|agent error)'), 'error replies styled as errors');
     });
 
+    await t.test('v0.24: Tools page redesign — hero, tabs, live chips', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('data-ttab="jobs"') && html.includes('data-ttab="skills"'), 'tools tabs');
+      assert.ok(html.includes('id="tlPane-jobs"') && html.includes('id="tlPane-skills"'), 'tool panes');
+      assert.ok(html.includes('id="tlRefresh"'), 'hero refresh button');
+      for (const id of ['chipTJobs', 'chipTChats', 'chipTSkills', 'chipTWake']) assert.ok(html.includes('id="' + id + '"'), 'chip ' + id);
+      assert.ok(html.includes('showToolTab') && html.includes('refreshTools'), 'tab switcher wired');
+      assert.ok(!html.includes('cronPanel') && !html.includes('voicePanel') && !html.includes('skPanel') && !html.includes('chatPanel'), 'collapsed details removed');
+      // every control from the old layout must survive the redesign
+      for (const id of ['cronForm', 'cronList', 'sessList', 'sessExport', 'sessRename', 'purgeDays', 'sessPurge',
+        'sayTxt', 'sayGo', 'listenGo', 'bootInfo', 'bootInstall', 'wakeStart', 'wakeStop', 'wakeInfo', 'wakeTxt', 'wakeGo',
+        'skList', 'skSrc', 'skForce', 'skImport', 'skView']) {
+        assert.ok(html.includes('id="' + id + '"'), 'keeps ' + id);
+      }
+      assert.ok(html.includes('id="skView" class="hidden"'), 'skill viewer starts hidden');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');

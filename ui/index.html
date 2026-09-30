@@ -754,6 +754,18 @@
   #cronForm input[name="schedule"] { width: 128px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   #cronForm input[name="prompt"] { flex: 1; min-width: 150px; }
 
+  /* ---- tools page (redesign) ---- */
+  .tlHero { background: radial-gradient(130% 150% at 12% 15%, rgba(137, 87, 229, 0.17), transparent 55%), var(--card); }
+  .tlHero .smallBtn { min-height: 30px; padding: 0 11px; font-size: 12.5px; }
+  .tlForm { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; }
+  .tlForm .pBar { margin: 0; }
+  .tlCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+  .tlCardHead { font-size: 11.5px; letter-spacing: 0.11em; color: var(--muted); font-weight: 750; }
+  .tlNote { color: var(--muted); font-size: 12.5px; line-height: 1.55; margin: 12px 0 0; }
+  #cronList, #cronForm { padding-left: 0; padding-right: 0; }
+  #cronForm { border: 1px solid var(--line); background: var(--card); border-radius: 14px; padding: 12px; margin-top: 12px; gap: 8px; }
+  #cronList { padding-bottom: 0; }
+
   .pRow {
     background: var(--bg-accent);
     border: 1px solid var(--line);
@@ -1431,32 +1443,71 @@
   </section>
 
   <section class="view" id="view-tools" hidden>
-    <details class="panel" id="cronPanel">
-      <summary>Scheduled jobs</summary>
+    <div class="pageHead"><h2 class="memTitle">Tools</h2></div>
+    <p class="pageNote">Scheduled jobs, saved chats, voice controls and skills — everything your crab does outside this chat, all on this machine.</p>
+
+    <div class="memHero tlHero">
+      <div class="memMascot" aria-hidden="true">
+        <svg viewBox="0 0 120 120" width="86" height="86">
+          <path d="M46 34v-9a9 9 0 0 1 9-9h10a9 9 0 0 1 9 9v9" stroke="#9cbcff" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <rect x="19" y="34" width="82" height="56" rx="11" fill="#3f6fe0"/>
+          <path d="M19 45h82v14H19z" fill="#5b8dff"/>
+          <rect x="53" y="41" width="14" height="22" rx="5" fill="#f4f8ff"/>
+          <rect x="31" y="68" width="26" height="7" rx="3.5" fill="#9cbcff"/>
+          <rect x="31" y="79" width="26" height="7" rx="3.5" fill="#9cbcff"/>
+          <circle cx="82" cy="75" r="9" fill="#8957e5"/>
+          <path d="M82 70.5v4.5l3 2.5" stroke="#f4f8ff" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div style="min-width:0">
+        <div class="memHeroTitle">Toolbox</div>
+        <div class="memHeroSub">jobs, chats, voice &amp; skills — all local</div>
+        <button id="tlRefresh" class="ghost smallBtn" type="button">Refresh</button>
+      </div>
+    </div>
+    <div class="memGrid">
+      <div class="memChip"><div class="k">Jobs</div><div class="v" id="chipTJobs">…</div></div>
+      <div class="memChip"><div class="k">Chats</div><div class="v" id="chipTChats">…</div></div>
+      <div class="memChip"><div class="k">Skills</div><div class="v" id="chipTSkills">…</div></div>
+      <div class="memChip"><div class="k">Wake</div><div class="v" id="chipTWake">…</div></div>
+    </div>
+
+    <div class="memTabs" role="tablist" aria-label="Tools sections">
+      <button class="memTab on" data-ttab="jobs" type="button">Jobs</button>
+      <button class="memTab" data-ttab="chats" type="button">Chats</button>
+      <button class="memTab" data-ttab="voice" type="button">Voice</button>
+      <button class="memTab" data-ttab="skills" type="button">Skills</button>
+    </div>
+
+    <div class="memPane" id="tlPane-jobs">
+      <div class="memSectionLabel">SCHEDULED JOBS</div>
       <div id="cronList"><div class="nx">loading…</div></div>
       <form id="cronForm">
         <input name="name" placeholder="name" maxlength="40" />
         <input name="schedule" placeholder="0 8 * * *" required title="5-field cron or @daily" />
         <input name="prompt" placeholder="what should the agent do?" required />
-        <button type="submit">Add</button>
+        <button type="submit">Add job</button>
       </form>
-    </details>
-    <details class="panel" id="chatPanel">
-      <summary>Saved chats</summary>
-      <div class="pBody">
-        <div id="sessList"><div class="nx">loading…</div></div>
+      <p class="tlNote">Cron takes 5 fields (minute hour day month weekday), or a shortcut like @daily / @hourly / @reboot. The agent wakes on schedule and works on this machine.</p>
+    </div>
+
+    <div class="memPane" id="tlPane-chats" hidden>
+      <div class="memSectionLabel">SAVED CHATS</div>
+      <div id="sessList" class="listCol"><div class="nx">loading…</div></div>
+      <div class="tlForm">
         <div class="pBar">
           <button id="sessExport" class="ghost">Export selected</button>
           <button id="sessRename" class="ghost">Rename</button>
           <input type="text" id="purgeDays" placeholder="days" style="max-width:74px" value="30" />
           <button id="sessPurge" class="ghost danger">Clean old</button>
         </div>
-        <div class="pNote">Export saves the selected chat as a text file. "Clean old" deletes chats older than N days to free space.</div>
       </div>
-    </details>
-    <details class="panel" id="voicePanel">
-      <summary>Voice and boot</summary>
-      <div class="pBody">
+      <p class="tlNote">Export saves the selected chat as a text file. "Clean old" deletes chats older than N days to free space.</p>
+    </div>
+
+    <div class="memPane" id="tlPane-voice" hidden>
+      <div class="tlCard">
+        <div class="tlCardHead">SPEAK &amp; DICTATE</div>
         <div class="pBar">
           <input type="text" id="sayTxt" placeholder="speak this text aloud…" />
           <button id="sayGo" class="ghost">Say it</button>
@@ -1465,10 +1516,16 @@
           <button id="listenGo" class="ghost">Dictate</button>
           <span class="pNote">tap, speak, and the words land in the chat box (needs Termux:API)</span>
         </div>
+      </div>
+      <div class="tlCard">
+        <div class="tlCardHead">STARTUP</div>
         <div class="pBar">
           <span class="pNote" id="bootInfo">boot: …</span>
           <button id="bootInstall" class="ghost">Start at boot</button>
         </div>
+      </div>
+      <div class="tlCard">
+        <div class="tlCardHead">WAKE LOOP</div>
         <div class="pBar">
           <button id="wakeStart" class="ghost">Start wake loop</button>
           <button id="wakeStop" class="ghost hidden">Stop wake loop</button>
@@ -1478,21 +1535,23 @@
           <input type="text" id="wakeTxt" placeholder='type a wake command, e.g. "crab what time is it"' />
           <button id="wakeGo" class="ghost">Try it</button>
         </div>
-        <div class="pNote">The wake loop hears the keyword ("crab" by default), then your command in the next breath. Typed commands work too — no mic needed.</div>
+        <p class="pNote" style="margin:0">The wake loop hears the keyword ("crab" by default), then your command in the next breath. Typed commands work too — no mic needed.</p>
       </div>
-    </details>
-    <details class="panel" id="skPanel">
-      <summary>Skills</summary>
-      <div class="pBody">
-        <div id="skList"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memPane" id="tlPane-skills" hidden>
+      <div class="memSectionLabel">INSTALLED SKILLS</div>
+      <div id="skList" class="listCol"><div class="nx">loading…</div></div>
+      <div class="tlForm">
         <div class="pBar">
           <input type="text" id="skSrc" placeholder="import from folder path or git url" />
           <label class="pNote"><input type="checkbox" id="skForce" style="vertical-align:middle" /> force</label>
           <button id="skImport">Import</button>
         </div>
-        <pre id="skView" class="hidden"></pre>
       </div>
-    </details>
+      <p class="tlNote">Skills add extra abilities the agent can load on demand — give it a folder path or a git URL. "force" overwrites a skill that already exists under the same name.</p>
+      <pre id="skView" class="hidden"></pre>
+    </div>
   </section>
 
   <section class="view" id="view-settings" hidden>
@@ -2402,6 +2461,7 @@
       const data = await api('/api/crons');
       const list = $('cronList');
       const crons = data.crons || [];
+      const chJ = $('chipTJobs'); if (chJ) chJ.textContent = String(crons.length);
       if (!crons.length) {
         list.innerHTML = '<div class="nx">No cron jobs yet — add one below (e.g. @daily or 0 8 * * 1-5).</div>';
         return;
@@ -2451,7 +2511,20 @@
     }
   });
 
-  $('cronPanel').addEventListener('toggle', () => { if ($('cronPanel').open) refreshCrons(); });
+  // ---- Tools tabs (page redesign) ----
+  function showToolTab(name) {
+    document.querySelectorAll('[data-ttab]').forEach((b) => b.classList.toggle('on', b.dataset.ttab === name));
+    ['jobs', 'chats', 'voice', 'skills'].forEach((t) => { const p = $('tlPane-' + t); if (p) p.hidden = t !== name; });
+    if (name === 'jobs') refreshCrons();
+    else if (name === 'chats') refreshSessPanel();
+    else if (name === 'voice') { refreshBoot(); refreshWake(); }
+    else if (name === 'skills') refreshSkills();
+  }
+  document.querySelectorAll('[data-ttab]').forEach((b) => { b.onclick = () => showToolTab(b.dataset.ttab); });
+  function refreshTools() {
+    refreshCrons(); refreshSessPanel(); refreshBoot(); refreshWake(); refreshSkills();
+  }
+  $('tlRefresh').onclick = () => refreshTools();
 
   // ---- Web control parity panels (v0.5 P0 #0) ----
   const DOC_ICON = { ok: 'pass', warn: 'warn', fail: 'fail', info: 'note' };
@@ -2943,6 +3016,7 @@
       const list = $('skList');
       list.innerHTML = '';
       const skills = d.skills || [];
+      const chS = $('chipTSkills'); if (chS) chS.textContent = String(skills.length);
       if (!skills.length) {
         const e0 = document.createElement('div'); e0.className = 'nx';
         e0.textContent = 'no skills yet — import one below.';
@@ -2975,7 +3049,6 @@
       list.appendChild(d);
     }
   }
-  $('skPanel').addEventListener('toggle', () => { if ($('skPanel').open) refreshSkills(); });
   $('skImport').onclick = async () => {
     const src = $('skSrc').value.trim();
     if (!src) return;
@@ -3037,7 +3110,6 @@
       refreshBoot();
     } catch (e) { addMsg('sys', 'boot install failed: ' + e.message); }
   };
-  $('voicePanel').addEventListener('toggle', () => { if ($('voicePanel').open) refreshBoot(); });
 
   // ---- Wake loop (phase 3) ----
   async function refreshWake() {
@@ -3050,6 +3122,7 @@
         : (w.micReady ? 'wake: listening…' : 'wake: off');
       $('wakeStart').classList.toggle('hidden', w.running);
       $('wakeStop').classList.toggle('hidden', !w.running);
+      const chW = $('chipTWake'); if (chW) chW.textContent = w.running ? 'on' : 'off';
     } catch (e) { info.textContent = 'wake: ' + e.message; }
   }
   $('wakeStart').onclick = async () => {
@@ -3081,7 +3154,6 @@
     } catch (e) { addMsg('sys', 'wake feed failed: ' + e.message); }
   };
   $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
-  $('voicePanel').addEventListener('toggle', () => { if ($('voicePanel').open) refreshWake(); });
 
   // ---- Modal (shared popup: add provider / add API key) ----
   let modalOnSave = null;
@@ -3335,6 +3407,7 @@
       const box = $('sessList');
       box.innerHTML = '';
       const list = data.sessions || [];
+      const chC = $('chipTChats'); if (chC) chC.textContent = String(list.length);
       if (!list.length) {
         box.innerHTML = '<div class="nx">no chats yet</div>';
         return;
@@ -3358,7 +3431,6 @@
       }
     } catch (e) { $('sessList').innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
   }
-  $('chatPanel').addEventListener('toggle', () => { if ($('chatPanel').open) refreshSessPanel(); });
   $('sessExport').onclick = async () => {
     const sel = $('session').value;
     if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
@@ -3522,6 +3594,7 @@
     const primary = document.querySelector('#view-' + name + ' details[data-primary]');
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
+    if (name === 'tools') refreshTools();
     if (name === 'providers') showProvidersRoot();
     if (name === 'models') showModelsRoot();
     if (name === 'chat') log.scrollTop = log.scrollHeight;

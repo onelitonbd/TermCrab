@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.24.0 — 2026-09-30 (Tools page redesign)
+
+- Tools no longer opens as four collapsed drawers: it now follows the Memory-page look — title, a purple Toolbox hero with a big toolbox mascot, a Refresh button, and four live status chips (jobs, chats, skills, wake) that fill in as data loads.
+- Four tabs — Jobs, Chats, Voice, Skills — replace the closed panels. Each tab loads its own data the moment it opens, and entering Tools refreshes everything at once.
+- Voice is grouped into labelled cards (speak & dictate, startup, wake loop) instead of one bare pile of buttons.
+- The add-job form gets its own bordered card with a plain-language note on cron formats; chats and skills get matching action cards under their lists.
+- Every existing control keeps working: add/pause/run/delete jobs, export/rename/purge chats, say/dictate/start-at-boot/wake-loop, skill import and view.
+
 ## 0.23.1 — 2026-09-30 (No more silent empty replies)
 
 - If the model sends back nothing, Crabby now retries once — and if it's still empty you get a clear red notice ("[empty reply] …") instead of a blank bubble with no explanation.
