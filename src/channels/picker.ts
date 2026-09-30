@@ -128,7 +128,7 @@ export function modelMenu(cfg: Config, fetched: string[] | null): string {
   });
   if (choices.length > cap) lines.push(`... and ${choices.length - cap} more - use the exact id.`);
   if (fresh.length) lines.push('', 'Models marked new come from the live catalog and get saved when you pick them.');
-  lines.push('', 'Reply `/model 2` or `/model <model-id>` to switch.');
+  lines.push('', choices.length > 1 ? 'Reply `/model 2` or `/model <model-id>` to switch.' : 'Reply `/model <model-id>` to switch.');
   return lines.join('\n');
 }
 

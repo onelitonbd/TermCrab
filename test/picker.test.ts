@@ -138,6 +138,8 @@ test('model menu: saved models numbered, current marked', () => {
   assert.match(out, /1\. `gpt-4o-mini`/);
   assert.match(out, /2\. `gpt-4o` - current/);
   assert.match(out, /`\/model 2` or `\/model <model-id>`/);
+  cfg.providers[0]!.models = ['gpt-4o-mini'];
+  assert.match(modelMenu(cfg, null), /`\/model <model-id>` to switch/, 'single choice does not suggest a number');
 });
 
 test('model menu: live catalog extras are marked new', () => {
