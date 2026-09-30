@@ -85,17 +85,18 @@ test('config get gateway.token creates the password on a fresh install', async (
   assert.equal(second.out.trim(), token, 'second run returns the SAME saved password');
 });
 
-test('termcrab gateway on a fresh home creates a password before listening', async () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tcfg-gw-'));
-  const port = await new Promise<number>((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const p = (srv.address() as net.AddressInfo).port;
-      srv.close(() => resolve(p));
-    });
+test('config get will not lock a fresh panel that runs open (default port)', async (t) => {
+  // The CLI probes the port from config (7788 when nothing is saved yet), so
+  // the open panel must be on the default port for this scenario to exist.
+  const canBind = await new Promise<boolean>((resolve) => {
+    const probe = net.createServer();
+    probe.once('error', () => resolve(false));
+    probe.listen(7788, '127.0.0.1', () => probe.close(() => resolve(true)));
   });
-  const child = spawn(process.execPath, [CLI, 'gateway', '--port', String(port)], {
+  if (!canBind) { t.skip('port 7788 is busy in this environment'); return; }
+
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tcfg-gw-'));
+  const child = spawn(process.execPath, [CLI, 'gateway'], {
     env: { ...process.env, TCRAB_HOME: home },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -103,23 +104,49 @@ test('termcrab gateway on a fresh home creates a password before listening', asy
   child.stdout.on('data', (d) => { out += String(d); });
   child.stderr.on('data', (d) => { out += String(d); });
   try {
-    const ok = await new Promise<boolean>((resolve) => {
-      const t = setTimeout(() => resolve(false), 15000);
+    const started = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), 15000);
       const check = () => {
-        if (/control UI token: [0-9a-f]{48}/.test(out)) { clearTimeout(t); resolve(true); }
+        if (/the panel opens without a login/.test(out)) { clearTimeout(timer); resolve(true); }
       };
       child.stdout.on('data', check);
-      child.on('exit', () => { clearTimeout(t); resolve(false); });
+      child.on('exit', () => { clearTimeout(timer); resolve(false); });
       check();
     });
-    assert.ok(ok, `gateway should print a generated password; saw: ${out.slice(0, 400)}`);
-    assert.match(out, /no panel password was set - created one and saved it/);
-    const cfg = JSON.parse(fs.readFileSync(path.join(home, 'config.json'), 'utf8')) as {
-      gateway: { token: string };
+    assert.ok(started, `gateway should announce open mode; saw: ${out.slice(0, 400)}`);
+
+    // The open panel answers without any password and says so on /api/health.
+    const health = (await (await fetch('http://127.0.0.1:7788/api/health')).json()) as {
+      authRequired?: boolean;
     };
-    assert.match(cfg.gateway.token, /^[0-9a-f]{48}$/, 'password persisted to the fresh config');
+    assert.equal(health.authRequired, false, 'open panel reports authRequired=false');
+    const status = await fetch('http://127.0.0.1:7788/api/status');
+    assert.equal(status.status, 200, 'API reachable without any password');
+
+    // The login screen's own command must NOT lock a running open panel.
+    const cg = await runCli(['config', 'get', 'gateway.token'], home);
+    assert.equal(cg.out.trim(), '', 'prints empty while the panel runs open');
+    assert.match(cg.err, /panel runs without a login/);
+    assert.ok(!fs.existsSync(path.join(home, 'config.json')), 'no config file created by a read');
+    const health2 = (await (await fetch('http://127.0.0.1:7788/api/health')).json()) as {
+      authRequired?: boolean;
+    };
+    assert.equal(health2.authRequired, false, 'a read command must never lock the open panel');
   } finally {
     child.kill('SIGTERM');
     await new Promise((r) => child.on('exit', r));
   }
+});
+
+test('config get on a deliberately-open config stays empty (no resurrection)', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tcfg-open-'));
+  process.env.TCRAB_HOME = home;
+  const cfg = defaults();
+  cfg.gateway.token = ''; // chosen: run without a password
+  saveConfig(cfg);
+  const r = await runCli(['config', 'get', 'gateway.token'], home);
+  assert.equal(r.out.trim(), '', 'prints empty, like the setting is');
+  assert.match(r.err, /panel runs without a login/);
+  const after = loadConfig();
+  assert.equal(after.gateway.token, '', 'must NOT generate a password here');
 });

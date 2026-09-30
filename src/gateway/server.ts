@@ -39,7 +39,7 @@ import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
 import { WakeService } from './wake-service.js';
 import { normalizeProvider, seedWorkspace } from '../onboard.js';
-import { DEFAULT_MODEL_HINTS, generateToken } from '../core/config.js';
+import { DEFAULT_MODEL_HINTS } from '../core/config.js';
 import {
   activeBaseUrl,
   activeLabel,
@@ -517,6 +517,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           uptimeSec: Math.floor(process.uptime()),
           provider: providerLabel(config),
           telegram: Boolean(telegram),
+          // Lets the login screen skip its gate when no password is set.
+          authRequired: Boolean(config.gateway.token),
         });
         return;
       }
@@ -825,6 +827,11 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           applyConfigSet(config, key, value);
           log.info(`config set via UI: ${key}`);
+          if (key === 'gateway.token' && !value && !isLoopback) {
+            log.warn(
+              `panel password removed while reachable from the network (${host}) - anyone on this network can use it. Set one: termcrab config set gateway.token generate`,
+            );
+          }
           json(res, 200, { ok: true, config: redactConfig(config) });
           return;
         }
@@ -1259,7 +1266,6 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
               ...(config.channels.telegram?.notifyChatId ? { notifyChatId: config.channels.telegram.notifyChatId } : {}),
             };
           }
-          if (!config.gateway.token) config.gateway.token = generateToken();
           saveConfig(config);
           seedWorkspace(config.agent.name);
           json(res, 200, {
@@ -1335,7 +1341,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             `config: host/port changed on disk (${prevHost}:${prevPort} -> ${fresh.gateway.host}:${fresh.gateway.port}) - restart termcrab to switch`,
           );
         }
-        if (config.gateway.token !== prevToken) log.info('config: password changed on disk - now in effect');
+        if (config.gateway.token !== prevToken) {
+          if (!config.gateway.token) {
+            if (!isLoopback) {
+              log.warn(
+                `panel password removed while reachable from the network (${host}) - anyone on this network can use it. Set one: termcrab config set gateway.token generate`,
+              );
+            } else {
+              log.info('panel password removed - the panel now opens without a login');
+            }
+          } else {
+            log.info('config: password changed on disk - now in effect');
+          }
+        }
       }, 120);
     });
   } catch {

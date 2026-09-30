@@ -3,13 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { parseArgs } from 'node:util';
-import { loadConfig, saveConfig, cfgGet, cfgSet, describeConfigLocation, generateToken } from './core/config.js';
+import { loadConfig, saveConfig, cfgGet, cfgSet, describeConfigLocation, generateToken, configExists } from './core/config.js';
 import { ensureLayout, home, workspaceDir, memoryDir, configPath } from './core/paths.js';
 import { log, setLogLevel } from './core/logger.js';
 import { onboard, OnboardFlags } from './onboard.js';
 import { startGateway, version } from './gateway/server.js';
 import { runSupervisor } from './mobile/supervisor.js';
-import { runDoctor, renderChecks, verifyTelegram, execExists, buildShareReport, probeGatewayToken } from './mobile/doctor.js';
+import { runDoctor, renderChecks, verifyTelegram, execExists, buildShareReport, probeGatewayToken, probePanelHealth } from './mobile/doctor.js';
 import { installBootScript, bootStatus, isTermux } from './mobile/boot.js';
 import { importSkills } from './skills/importer.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
@@ -197,12 +197,6 @@ export async function main(argv: string[]): Promise<void> {
       });
       const config = loadConfig();
       ensureLayout();
-      if (!config.gateway.token) {
-        // Fresh install started the panel directly: never run passwordless.
-        config.gateway.token = generateToken();
-        saveConfig(config);
-        log.info('no panel password was set - created one and saved it');
-      }
       const handle = await startGateway({
         config,
         host: values.host,
@@ -212,7 +206,8 @@ export async function main(argv: string[]): Promise<void> {
       const openHost = boundHost === '0.0.0.0' || boundHost === '::' ? 'localhost' : boundHost;
       log.info(`gateway listening on http://${openHost}:${handle.port}/  (provider: ${providerLabel(config)})`);
       if (openHost !== boundHost) log.info('openable from other devices on this network (use this machine\'s IP address)');
-      log.info(`control UI token: ${config.gateway.token}`);
+      if (config.gateway.token) log.info(`control UI token: ${config.gateway.token}`);
+      else log.info('no password set - the panel opens without a login (this device only)');
       log.info('press Ctrl+C to stop');
 
       let stopping = false;
@@ -886,13 +881,28 @@ export async function main(argv: string[]): Promise<void> {
         }
         let v = cfgGet(cfg, key);
         if (key === 'gateway.token' && (typeof v !== 'string' || !v)) {
-          // Fresh install: nothing saved yet. Create the password right here
-          // so this command — the one the login screen points at — never
-          // comes back empty.
-          cfg.gateway.token = generateToken();
-          saveConfig(cfg);
-          v = cfg.gateway.token;
-          console.error(`no panel password existed - created one and saved it (config: ${describeConfigLocation()})`);
+          // Empty password: ask a running panel first, so a panel deliberately
+          // running open is never locked by this read-only command.
+          const health = await probePanelHealth(cfg);
+          if (health) {
+            console.error(
+              health.authRequired
+                ? 'this config has no password, but the running panel asks for one - it is using a different config; restart it from here: termcrab gateway'
+                : 'no password set - the panel runs without a login (set one: termcrab config set gateway.token generate)',
+            );
+          } else if (!configExists()) {
+            // Brand-new install, nothing saved yet, no panel running: create
+            // the password right here so the login hint never prints empty.
+            cfg.gateway.token = generateToken();
+            saveConfig(cfg);
+            v = cfg.gateway.token;
+            console.error(`no panel password existed - created one and saved it (config: ${describeConfigLocation()})`);
+          } else {
+            // Config exists with no password on purpose ("run without login").
+            console.error(
+              'no password set - the panel runs without a login (set one: termcrab config set gateway.token generate)',
+            );
+          }
         }
         console.log(typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v));
         if (key === 'gateway.token' && typeof v === 'string' && v) {

@@ -62,6 +62,25 @@ async function runningPanelVersion(cfg: Config): Promise<string | null> {
   }
 }
 
+/**
+ * Ask a running panel whether it needs a password. Returns null when nothing
+ * is answering (or the health reply is unusable).
+ */
+export async function probePanelHealth(
+  cfg: Config,
+): Promise<{ authRequired: boolean } | null> {
+  try {
+    const res = await fetch(`http://${panelHost(cfg)}:${cfg.gateway.port}/api/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { authRequired?: boolean };
+    return { authRequired: data.authRequired === true };
+  } catch {
+    return null;
+  }
+}
+
 function installedVersion(): string {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')) as { version?: string };
@@ -133,13 +152,25 @@ export async function runDoctor(): Promise<Check[]> {
 
   // Web panel password - the exact thing that locks people out of the UI.
   if (!cfg.gateway.token) {
-    checks.push({
-      id: 'panel-password',
-      label: 'web panel password',
-      status: 'warn',
-      detail: 'not set',
-      fix: 'run: termcrab config set gateway.token generate   then restart the panel',
-    });
+    const host = cfg.gateway.host;
+    const exposed = Boolean(host) && host !== '127.0.0.1' && host !== '::1' && host !== 'localhost';
+    if (exposed) {
+      checks.push({
+        id: 'panel-password',
+        label: 'web panel password',
+        status: 'warn',
+        detail: `no password, but reachable from your network (${host})`,
+        fix: 'set one now: termcrab config set gateway.token generate',
+      });
+    } else {
+      checks.push({
+        id: 'panel-password',
+        label: 'web panel password',
+        status: 'info',
+        detail: 'none set - the panel runs without a login (this device only)',
+        fix: 'to require a password: termcrab config set gateway.token generate',
+      });
+    }
   } else {
     const probe = await probeGatewayToken(cfg, cfg.gateway.token);
     if (probe === 'ok') {

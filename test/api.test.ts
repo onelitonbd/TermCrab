@@ -67,6 +67,13 @@ test('web control parity API', async (t) => {
       assert.match(body.hint ?? '', /termcrab config get gateway\.token/);
     });
 
+    await t.test('health announces whether a password is required', async () => {
+      const res = await fetch(`${base}/api/health`);
+      assert.equal(res.status, 200, 'health is public');
+      const data = (await res.json()) as { authRequired?: boolean };
+      assert.equal(data.authRequired, true, 'this panel has a password -> gate stays');
+    });
+
     await t.test('GET /api/config masks secrets', async () => {
       const { status, data } = await req('/api/config');
       assert.equal(status, 200);
@@ -506,6 +513,8 @@ test('web control parity API', async (t) => {
       // login screen shows the server's plain-English refusal hint, not a generic error
       assert.ok(html.includes('e && e.hint'), 'login shows server hint');
       assert.ok(html.includes("hint || 'Invalid or missing token'"), 'hint preferred over generic text');
+      // open panel (no password): the login gate walks straight in
+      assert.ok(html.includes('authRequired === false'), 'login gate skipped when panel runs open');
       // loads when the page opens
       assert.ok(html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); }"), 'loads on open');
       // agents card keeps its ids (create/edit flow untouched)

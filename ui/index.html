@@ -4234,7 +4234,13 @@
   }
 
 async function bootstrap() {
-    if (!state.token) { showOverlay(); return; }
+    if (!state.token) {
+      // No saved password: walk straight in when the panel runs open
+      // (no password configured); show the gate only when one is required.
+      let open = false;
+      try { open = (await (await fetch('/api/health')).json()).authRequired === false; } catch { /* offline -> gate */ }
+      if (!open) { showOverlay(); return; }
+    }
     try {
       await api('/api/skills'); // validates token
       hideOverlay();

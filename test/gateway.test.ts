@@ -97,3 +97,18 @@ test('doctor reports the web panel password state', async () => {
   assert.match(c.detail ?? '', /no panel is answering/);
   assert.match(c.fix ?? '', /termcrab gateway/);
 });
+
+test('doctor treats a missing password as a choice when bound to this device', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdoc-open-'));
+  process.env.TCRAB_HOME = dir;
+  const { loadConfig } = await import('../src/core/config.js');
+  const cfg = loadConfig();
+  assert.equal(cfg.gateway.token, '', 'fresh defaults: no password');
+  const { runDoctor } = await import('../src/mobile/doctor.js');
+  const checks = await runDoctor();
+  const c = checks.find((x) => x.id === 'panel-password');
+  assert.ok(c, 'panel-password check exists');
+  assert.equal(c.status, 'info', 'loopback + no password is a valid choice, not a failure');
+  assert.match(c.detail ?? '', /without a login/);
+  assert.match(c.fix ?? '', /config set gateway\.token generate/);
+});

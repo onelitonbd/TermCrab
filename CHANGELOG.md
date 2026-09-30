@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.4 - 2026-09-30
+
+- The panel can now run with NO password, on request: clear it with `termcrab config set gateway.token ""` and the login screen walks straight in - no gate, no typing. The choice is yours per device.
+- The login screen asks the panel first (/api/health now reports whether a password is required) and only shows the gate when one actually is; a stored password from earlier keeps working as before.
+- `termcrab config get gateway.token` on an empty password never locks a panel that is deliberately running open: it asks the running panel first. It only creates a password when there is no config yet AND no panel running (the fresh-install dead end from 0.30.3).
+- `termcrab gateway` no longer force-creates a password on a fresh home - it starts open on this device and says so in the log. Binding to the network (other devices) still refuses to start without a password, and clearing the password while bound to the network logs a loud warning.
+- Doctor: no password on a device-only panel = info ("runs without a login"), no password on a network-exposed panel = warning.
+- Tests: 293 total (292 pass, 1 skip) - fresh-open E2E (health says authRequired=false, API answers without a password, config get cannot lock it), deliberate-open stays empty, doctor choice branch, UI gate pin.
+
+
 ## 0.30.3 - 2026-09-30
 
 - Fresh installs are no longer a dead end: `termcrab config get gateway.token` used to print an empty line when no password existed yet (nothing had created one). It now generates a password, saves it, prints it, and says what it did.
