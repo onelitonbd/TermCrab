@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27.0 - 2026-09-30
+
+- Chat header, sidebar history, session picker, and the Tools > Chats list now show a distinct icon per session source (Web, Telegram, WhatsApp, Schedule, Subagent, Dream, Heartbeat) followed by a friendly name - raw `web:` / `telegram:` prefixes are never rendered.
+- Every toolbox tool has its own icon. When the agent calls a tool, the live line shows the icon, the tool name, and a small argument preview; completion or failure appears as a separate status badge appended without clearing the line.
+- History reload now re-renders stored tool calls from the session JSONL (with done status rebuilt from tool entries), so tool lines survive a page refresh and a full gateway restart - everything derives from stored session data plus static icon maps.
+- 246-test suite green (245 pass, 1 skip); browser-level verification: 32/32 checks on a fresh load and again after a gateway restart.
+
+
 ## 0.26.0 — 2026-09-30 (Every catalog tool is now real)
 
 All 33 "planned" entries from the toolbox catalog are implemented, tested one by one, and now show green "active" badges:
