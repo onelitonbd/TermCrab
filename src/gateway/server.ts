@@ -45,6 +45,11 @@ import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
+import { registerSender, recordInbound } from '../channels/conversations.js';
+import { getPortal } from './portal.js';
+import { listSuggestions, dismiss } from '../agent/suggestions.js';
+import { listAsks, answer as answerAsk } from '../agent/ask.js';
+import { getProgress } from '../agent/progress.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
@@ -423,6 +428,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     );
   }
 
+  // conversations_* tools talk through these senders.
+  if (telegram) {
+    const tg = telegram;
+    registerSender('telegram', async (address, text) => {
+      await tg.send(Number(address), text);
+    });
+  }
+  if (whatsapp) {
+    const wa = whatsapp;
+    registerSender('whatsapp', async (address, text) => {
+      await wa.send(address, text);
+    });
+  }
+
   /** Shared inbound handler for text channels (telegram/whatsapp). */
   async function handleChannelMessage(
     channel: 'telegram' | 'whatsapp',
@@ -431,6 +450,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     userId: string | number,
     displayName: string,
   ): Promise<string> {
+    recordInbound(channel, String(chatId), text);
     const baseSession = `${channel}:${chatId}`;
 
     if (text === '/new') {
@@ -515,6 +535,46 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       // Static: control UI
       if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
         serveFile(res, path.join(uiDir(), 'index.html'));
+        return;
+      }
+
+      // Portal: token-gated reverse proxy to an exposed local server.
+      if (pathname.startsWith('/portal/')) {
+        if (!checkToken(config, extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string }))) {
+          json(res, 401, { error: 'unauthorized' });
+          return;
+        }
+        const u = new URL(url, 'http://localhost');
+        const rest = pathname.slice('/portal/'.length);
+        const id = rest.split('/')[0] ?? '';
+        const portal = getPortal(id);
+        if (!portal) {
+          json(res, 404, { error: `no portal: ${id}` });
+          return;
+        }
+        u.searchParams.delete('token');
+        const sub = rest.slice(id.length) || '/';
+        const target = `http://127.0.0.1:${portal.port}${sub}${u.search}`;
+        try {
+          const method = req.method ?? 'GET';
+          const hasBody = method !== 'GET' && method !== 'HEAD';
+          const body = hasBody ? await readBody(req) : undefined;
+          const fwd = await fetch(target, {
+            method,
+            headers: {
+              'content-type': String(req.headers['content-type'] ?? 'application/octet-stream'),
+            },
+            body: hasBody ? (body ?? undefined) : undefined,
+            redirect: 'manual',
+            signal: AbortSignal.timeout(30_000),
+          });
+          res.writeHead(fwd.status, {
+            'content-type': fwd.headers.get('content-type') ?? 'application/octet-stream',
+          });
+          res.end(Buffer.from(await fwd.arrayBuffer()));
+        } catch (err) {
+          json(res, 502, { error: 'portal upstream failed: ' + (err instanceof Error ? err.message : String(err)) });
+        }
         return;
       }
       if (req.method === 'GET' && pathname === '/api/health') {
@@ -727,6 +787,38 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             description: t.def.description,
           }));
           json(res, 200, { tools: defs });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/tasks') {
+          json(res, 200, { suggestions: listSuggestions('pending') });
+          return;
+        }
+        if (req.method === 'DELETE' && pathname.startsWith('/api/tasks/')) {
+          const ok = dismiss(pathname.slice('/api/tasks/'.length));
+          json(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'not found' });
+          return;
+        }
+        if (req.method === 'GET' && pathname === '/api/ask') {
+          json(res, 200, { pending: listAsks() });
+          return;
+        }
+        if (req.method === 'POST' && pathname.startsWith('/api/ask/')) {
+          const rest = pathname.slice('/api/ask/'.length);
+          if (!rest.endsWith('/answer')) {
+            json(res, 404, { error: 'not found' });
+            return;
+          }
+          const id = rest.slice(0, -'/answer'.length);
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { answer?: string }) : {};
+          const ok = answerAsk(id, String(body.answer ?? ''));
+          json(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'no such pending ask' });
+          return;
+        }
+        if (req.method === 'GET' && pathname === '/api/progress') {
+          const sid = new URL(url, 'http://localhost').searchParams.get('session') ?? '';
+          json(res, 200, { card: getProgress(sid) });
           return;
         }
 

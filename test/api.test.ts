@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import http from 'node:http';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -371,6 +372,55 @@ test('web control parity API', async (t) => {
       }
       assert.ok(tools.every((t) => typeof t.name === 'string' && typeof t.description === 'string' && t.description.length > 5),
         'every tool carries a description');
+    });
+
+    await t.test('v0.26: operator endpoints — tasks, ask, progress, tools registry', async () => {
+      const tools = await req('/api/tools', 'GET');
+      assert.equal(tools.status, 200);
+      const names = ((tools.data.tools ?? []) as { name: string }[]).map((t) => t.name);
+      assert.ok(names.length >= 40, 'registry grew with the toolbox, got ' + names.length);
+      for (const n of ['edit', 'apply_patch', 'web_search', 'automations', 'ask_user', 'sessions_spawn', 'secrets', 'progress_card', 'portal']) {
+        assert.ok(names.includes(n), 'live tool ' + n);
+      }
+
+      const tasks = await req('/api/tasks', 'GET');
+      assert.equal(tasks.status, 200);
+      assert.ok(Array.isArray(tasks.data.suggestions), 'pending suggestions list');
+      const miss = await req('/api/tasks/tzzz', 'DELETE');
+      assert.equal(miss.status, 404, 'unknown suggestion is a 404');
+
+      const askList = await req('/api/ask', 'GET');
+      assert.equal(askList.status, 200);
+      assert.ok(Array.isArray(askList.data.pending), 'pending asks');
+      const askMiss = await req('/api/ask/tzzz/answer', 'POST', { answer: 'hi' });
+      assert.equal(askMiss.status, 404, 'unknown ask is a 404');
+
+      const prog = await req('/api/progress?session=nope', 'GET');
+      assert.equal(prog.status, 200);
+      assert.equal(prog.data.card, null, 'no card yet');
+    });
+
+    await t.test('v0.26: portal proxies a local server through the gateway', async () => {
+      const upstream = http.createServer((_req, res) => {
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.end('portal-upstream-ok');
+      });
+      await new Promise<void>((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+      const upPort = (upstream.address() as { port: number }).port;
+      const { addPortal, removePortal } = await import('../src/gateway/portal.js');
+      addPortal('tbtest', upPort);
+      try {
+        const noAuth = await fetch(base + '/portal/tbtest/');
+        assert.equal(noAuth.status, 401, 'portal requires the gateway token');
+        const ok = await fetch(base + '/portal/tbtest/?token=test-token');
+        assert.equal(ok.status, 200);
+        assert.equal(await ok.text(), 'portal-upstream-ok');
+        const gone = await fetch(base + '/portal/nope/?token=test-token');
+        assert.equal(gone.status, 404);
+      } finally {
+        removePortal('tbtest');
+        upstream.close();
+      }
     });
 
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
