@@ -434,6 +434,26 @@ test('web control parity API', async (t) => {
       assert.ok(!html.includes('Drive operator web UI'), 'screen description updated to what it does');
     });
 
+    await t.test('v0.27: session & tool icons derive from stored ids + JSONL', async () => {
+      const html = fs.readFileSync(path.join(process.cwd(), 'ui', 'index.html'), 'utf8');
+      assert.ok(html.includes('SESSION_SOURCES'), 'session source icon map');
+      assert.ok(html.includes('TOOL_ICONS'), 'per-tool icon map');
+      assert.ok(html.includes('function sessionLabel'), 'sessionLabel helper');
+      assert.ok(html.includes('function sessionIconHtml'), 'sessionIconHtml helper');
+      assert.ok(html.includes('function toolIconHtml'), 'toolIconHtml helper');
+      assert.ok(html.includes('function addToolLine'), 'shared tool line builder');
+      assert.ok(html.includes('toolIc'), 'tool line icon span');
+      assert.ok(html.includes('toolSt'), 'tool status appended as span (no innerHTML wipe)');
+      assert.ok(html.includes('health.append(ic, label)'), 'chat header: icon + friendly label');
+      assert.ok(html.includes("id.innerHTML = sessionIconHtml(sess.id)"), 'sidebar history rows');
+      assert.ok(html.includes("id.innerHTML = sessionIconHtml(s.id)"), 'session panel rows');
+      assert.ok(html.includes('sessionLabel(s.id)'), 'hidden session picker option text');
+      assert.ok(/addToolLine\(c\.name/.test(html), 'history reload re-renders m.toolCalls');
+      assert.ok(html.includes('doneIds'), 'done status rebuilt from role:tool entries');
+      // no raw web:/telegram: prefix is ever put back into visible labels as-is
+      assert.ok(!html.includes("textContent = id.length > 26 ? id.slice(0, 25)"), 'old raw-id chat label gone');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');
