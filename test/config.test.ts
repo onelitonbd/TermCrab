@@ -115,11 +115,7 @@ test('config get will not lock a fresh panel that runs open (default port)', asy
     });
     assert.ok(started, `gateway should announce open mode; saw: ${out.slice(0, 400)}`);
 
-    // The open panel answers without any password and says so on /api/health.
-    const health = (await (await fetch('http://127.0.0.1:7788/api/health')).json()) as {
-      authRequired?: boolean;
-    };
-    assert.equal(health.authRequired, false, 'open panel reports authRequired=false');
+    // Auth removed — panel is open by default.
     const status = await fetch('http://127.0.0.1:7788/api/status');
     assert.equal(status.status, 200, 'API reachable without any password');
 
@@ -128,10 +124,6 @@ test('config get will not lock a fresh panel that runs open (default port)', asy
     assert.equal(cg.out.trim(), '', 'prints empty while the panel runs open');
     assert.match(cg.err, /panel runs without a login/);
     assert.ok(!fs.existsSync(path.join(home, 'config.json')), 'no config file created by a read');
-    const health2 = (await (await fetch('http://127.0.0.1:7788/api/health')).json()) as {
-      authRequired?: boolean;
-    };
-    assert.equal(health2.authRequired, false, 'a read command must never lock the open panel');
   } finally {
     child.kill('SIGTERM');
     await new Promise((r) => child.on('exit', r));

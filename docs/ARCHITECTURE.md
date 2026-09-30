@@ -92,14 +92,14 @@ test/*.test.ts             # node:test suite
 ## Security invariants
 
 1. Gateway binds `127.0.0.1` by default; **non-loopback + empty token = refuse to start**
-2. All `/api/*` except `/api/health` require a bearer/query token (constant-time compare)
+2. **Login system removed** — all `/api/*` endpoints are open (loopback binding is the only gate)
 3. Telegram: empty allowlist = channel off; foreign senders get a lock notice
 4. File tools resolve symlinks and stay inside `TCRAB_HOME` + cwd; `exec` is optional
 5. Bionic guard + TMPDIR fix run before any other module (import order is load-bearing)
 6. `browser` tool is read-only CDP (no Playwright dep); `code_exec` runs in a `vm` sandbox with no network/fs/require — both disabled by default
 7. MCP servers run as stdio JSON-RPC subprocesses; tools are namespaced `mcp_<server>_<tool>` and listed in the agent's tool catalog
 8. Phone tools (Termux:API): sms_send, camera, location, clipboard, battery, contacts, wifi_info, notification — zero extra deps, pure subprocess calls
-9. Inbound webhooks: POST /api/hooks/:id with token auth triggers an agent run with the payload as context
+9. Inbound webhooks: POST /api/hooks/:id triggers an agent run with the payload as context
 10. Canvas/A2UI: agent pushes live HTML widgets to the Control UI via the `canvas` tool; widgets broadcast over SSE and render in the browser panel
 
 ## Why zero dependencies

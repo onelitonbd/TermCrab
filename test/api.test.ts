@@ -54,25 +54,8 @@ test('web control parity API', async (t) => {
   };
 
   try {
-    await t.test('unauthorized requests are rejected', async () => {
-      const res = await fetch(`${base}/api/config`);
-      assert.equal(res.status, 401);
-      // A wrong password gets a plain-English hint the login screen can show.
-      const wrong = await fetch(`${base}/api/config`, { headers: { authorization: 'Bearer wrong' } });
-      assert.equal(wrong.status, 401);
-      const body = (await wrong.json()) as { error: string; hint?: string };
-      assert.equal(body.error, 'unauthorized');
-      // No config file in this test home -> the generic pointer to the
-      // self-checking command; either way the login screen gets a real hint.
-      assert.match(body.hint ?? '', /termcrab config get gateway\.token/);
-    });
-
-    await t.test('health announces whether a password is required', async () => {
-      const res = await fetch(`${base}/api/health`);
-      assert.equal(res.status, 200, 'health is public');
-      const data = (await res.json()) as { authRequired?: boolean };
-      assert.equal(data.authRequired, true, 'this panel has a password -> gate stays');
-    });
+    // Auth removed — unauthorized/health authRequired tests removed.
+    // All /api/* endpoints are now open.
 
     await t.test('GET /api/config masks secrets', async () => {
       const { status, data } = await req('/api/config');
@@ -228,10 +211,7 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('await loadSession(currentSession(), true)'), 'auto-load current session in bootstrap');
     });
 
-    await t.test('auto-update endpoint requires the token', async () => {
-      const res = await fetch(base + '/api/update/apply', { method: 'POST' });
-      assert.equal(res.status, 401);
-    });
+    // Auth removed — auto-update token test removed.
 
     await t.test('v0.16: dark theme, markdown replies, full-width answers', async () => {
       const html = await (await fetch(base + '/')).text();
@@ -426,12 +406,11 @@ test('web control parity API', async (t) => {
       const { addPortal, removePortal } = await import('../src/gateway/portal.js');
       addPortal('tbtest', upPort);
       try {
-        const noAuth = await fetch(base + '/portal/tbtest/');
-        assert.equal(noAuth.status, 401, 'portal requires the gateway token');
-        const ok = await fetch(base + '/portal/tbtest/?token=test-token');
+        // Auth removed — portal is now open.
+        const ok = await fetch(base + '/portal/tbtest/');
         assert.equal(ok.status, 200);
         assert.equal(await ok.text(), 'portal-upstream-ok');
-        const gone = await fetch(base + '/portal/nope/?token=test-token');
+        const gone = await fetch(base + '/portal/nope/');
         assert.equal(gone.status, 404);
       } finally {
         removePortal('tbtest');
@@ -511,10 +490,7 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('setSaved'), 'inline saved badge');
       assert.ok(!html.includes("addMsg('sys', r.unchanged"), 'no chat-message save feedback');
       // login screen shows the server's plain-English refusal hint, not a generic error
-      assert.ok(html.includes('e && e.hint'), 'login shows server hint');
-      assert.ok(html.includes("hint || 'Invalid or missing token'"), 'hint preferred over generic text');
-      // open panel (no password): the login gate walks straight in
-      assert.ok(html.includes('authRequired === false'), 'login gate skipped when panel runs open');
+      // Auth removed — login gate tests removed.
       // loads when the page opens
       assert.ok(html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); }"), 'loads on open');
       // agents card keeps its ids (create/edit flow untouched)
@@ -549,33 +525,13 @@ test('config file password change hot-applies to the running gateway', async () 
   saveConfig(config);
   const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });
   const base = `http://127.0.0.1:${port}`;
-  const authed = (t: string) =>
-    fetch(`${base}/api/config`, { headers: { authorization: `Bearer ${t}` } });
+  // Auth removed — token validation tests removed.
+  // All /api/* endpoints are now open without token.
 
   try {
-    assert.equal((await authed('old-token-000')).status, 200);
-
-    // Another terminal rewrites the password: raw file write, no saveConfig
-    // in this process — exactly what `termcrab config set` looks like from here.
-    const onDisk = loadConfig();
-    onDisk.gateway.token = 'new-token-999';
-    fs.writeFileSync(path.join(home, 'config.json'), `${JSON.stringify(onDisk, null, 2)}\n`);
-
-    let got = 0;
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 100));
-      got = (await authed('new-token-999')).status;
-      if (got === 200) break;
-    }
-    assert.equal(got, 200, 'new on-disk password should be accepted without a restart');
-    assert.equal((await authed('old-token-000')).status, 401, 'old password should stop working');
-
-    // The `termcrab config get gateway.token` self-check agrees.
-    const cfg = loadConfig();
-    assert.equal(await probeGatewayToken(cfg, 'new-token-999'), 'ok');
-    assert.equal(await probeGatewayToken(cfg, 'old-token-000'), 'mismatch');
+    const res = await fetch(`${base}/api/config`);
+    assert.equal(res.status, 200, 'config is open without token');
   } finally {
     await handle.stop();
   }
-  assert.equal(await probeGatewayToken(loadConfig(), 'new-token-999'), 'offline');
 });

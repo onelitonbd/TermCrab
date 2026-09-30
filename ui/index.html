@@ -1713,22 +1713,7 @@
   </div>
 </div>
 
-<div id="overlay">
-  <div class="card">
-    <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
-      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
-      <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
-      <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
-    </svg>
-    <h2>TermCrab</h2>
-    <p>Paste the gateway token (printed in the terminal, or run <code>termcrab config get gateway.token</code>).</p>
-    <input id="token" type="password" placeholder="gateway token" autocomplete="off" />
-    <button id="connect">Connect</button>
-    <p id="authErr" class="err"></p>
-  </div>
-</div>
+<!-- Login removed — panel is open by default. -->
 
 <script>
 (() => {
@@ -1953,14 +1938,6 @@
     }
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
     const res = await fetch(path, Object.assign({}, opts, { headers }));
-    if (res.status === 401) {
-      let hint = '';
-      try { hint = (await res.json()).hint || ''; } catch { /* body may be empty */ }
-      showOverlay(hint || 'Invalid or missing token');
-      const err = new Error('unauthorized');
-      err.hint = hint;
-      throw err;
-    }
     if (!res.ok) {
       let msg = 'HTTP ' + res.status;
       try { msg = (await res.json()).error || msg; } catch {}
@@ -1968,12 +1945,6 @@
     }
     return res.json();
   }
-
-  function showOverlay(err) {
-    $('overlay').classList.remove('hidden');
-    $('authErr').textContent = err || '';
-  }
-  function hideOverlay() { $('overlay').classList.add('hidden'); }
 
   // ---- Models page: fetch a provider's catalog, tick to save, all live ----
   let mdlFetched = null; // null until Fetch succeeds, then the provider's model ids
@@ -4234,16 +4205,8 @@
   }
 
 async function bootstrap() {
-    if (!state.token) {
-      // No saved password: walk straight in when the panel runs open
-      // (no password configured); show the gate only when one is required.
-      let open = false;
-      try { open = (await (await fetch('/api/health')).json()).authRequired === false; } catch { /* offline -> gate */ }
-      if (!open) { showOverlay(); return; }
-    }
+    // Login removed — walk straight in.
     try {
-      await api('/api/skills'); // validates token
-      hideOverlay();
       updateChatLabel();
       refreshModelBtn();
       refreshHero();
@@ -4282,16 +4245,10 @@ async function bootstrap() {
         }
       } catch { /* welcome is best-effort */ }
     } catch (e) {
-      showOverlay((e && e.hint) || 'Token rejected');
+      console.error('bootstrap error:', e);
     }
   }
-  $('connect').onclick = () => {
-    state.token = $('token').value.trim();
-    localStorage.setItem('tc_token', state.token);
-    bootstrap();
-  };
-  $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('connect').click(); });
-
+  // Login removed — connect button and token input no longer needed.
   bootstrap();
 })();
 </script>

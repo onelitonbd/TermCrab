@@ -3,7 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange, readConfigFileToken } from '../core/config.js';
+import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange } from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -30,7 +30,7 @@ import { resolveProvider } from '../providers/index.js';
 import { createMcpClient } from '../providers/mcp.js';
 import { SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
-import { extractAuth, checkToken, authHint } from './auth.js';
+// Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
@@ -517,12 +517,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
-      // Portal: token-gated reverse proxy to an exposed local server.
+      // Portal: reverse proxy to an exposed local server.
       if (pathname.startsWith('/portal/')) {
-        if (!checkToken(config, extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string }))) {
-          json(res, 401, { error: 'unauthorized' });
-          return;
-        }
         const u = new URL(url, 'http://localhost');
         const rest = pathname.slice('/portal/'.length);
         const id = rest.split('/')[0] ?? '';
@@ -564,8 +560,6 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           uptimeSec: Math.floor(process.uptime()),
           provider: providerLabel(config),
           telegram: Boolean(telegram),
-          // Lets the login screen skip its gate when no password is set.
-          authRequired: Boolean(config.gateway.token),
         });
         return;
       }
@@ -579,12 +573,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           json(res, 404, { error: 'hook not found' });
           return;
         }
-        // Validate hook token
-        const presented = extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string });
-        if (presented !== hook.token) {
-          json(res, 401, { error: 'unauthorized' });
-          return;
-        }
+        // Validate hook token (login system removed — hooks are open)
+        // TODO: re-enable hook token validation when auth is restored
         // Read the webhook payload
         const raw = await readBody(req);
         const payload = raw ? JSON.parse(raw) : {};
@@ -603,23 +593,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
-      // Everything else under /api requires a valid token.
+      // Everything else under /api is open (login system removed for now).
       if (pathname.startsWith('/api/')) {
-        const presented = extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string });
-        if (!checkToken(config, presented)) {
-          // Say WHY on the login screen: does the pasted password match the
-          // file? Do the file and this running panel even agree?
-          let diskToken: string | null = null;
-          try {
-            diskToken = readConfigFileToken();
-          } catch {
-            diskToken = null;
-          }
-          const hint = authHint(presented, config.gateway.token, diskToken);
-          json(res, 401, hint ? { error: 'unauthorized', hint } : { error: 'unauthorized' });
-          return;
-        }
-
         if (req.method === 'GET' && pathname === '/api/events') {
           res.writeHead(200, {
             'content-type': 'text/event-stream',
