@@ -22,11 +22,11 @@ src/
 │   └── events.ts          # in-process bus -> SSE subscribers
 ├── agent/
 │   ├── loop.ts            # the agent run: prompt -> model -> tools -> repeat
-│   │                        #   + failover chain + compaction trigger
+│   │                        #   + failover chain + compaction trigger + queue-aware
 │   ├── prompt.ts          # system prompt (SOUL + memory + skills index + env)
 │   ├── tools.ts           # tool registry + path guard + shell resolver
 │   ├── memory.ts          # MEMORY.md + daily logs + lexical search + compacted digests
-│   ├── sessions.ts        # JSONL transcripts with rolling window + compaction
+│   ├── sessions.ts        # JSONL transcripts + compaction + SessionQueue (FIFO)
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
 ├── channels/
 │   ├── api.ts             # Telegram Bot API client (global fetch)
@@ -71,18 +71,21 @@ test/*.test.ts             # node:test suite
 
 ## Agent run sequence
 
-1. Channel (web/CLI/telegram) receives a message → `runTurn(ctx, …)`
-2. User entry appended to the session JSONL
-3. **Compaction check**: if session entries exceed `agent.compactThreshold` (default 60),
+1. Channel (web/CLI/telegram) receives a message → enqueued in `SessionQueue` (per-session FIFO)
+2. `POST /api/chat` returns `202` with `turnId` immediately; client polls `GET /api/chat/:sessionId/:turnId`
+3. `processQueuedTurn` dequeues and calls `runTurn(ctx, …)` with an `AbortController`
+4. User entry appended to the session JSONL
+5. **Queue mode**: `followup` (default) waits for running turn; `steer`/`interrupt` abort it
+6. **Compaction check**: if session entries exceed `agent.compactThreshold` (default 60),
    old entries are summarized into `memory/compacted/<sessionId>.md` and the session is trimmed
-4. System prompt assembled: identity (SOUL.md) + memory head + skills index + env blurb
-5. Loop (max `agent.maxIterations`, default 8):
+7. System prompt assembled: identity (SOUL.md) + memory head + skills index + env blurb
+8. Loop (max `agent.maxIterations`, default 8):
    - transcript → provider messages (orphan tool results dropped)
    - provider chat call (180s timeout) via **failover chain** (primary → fallbacks on 429/5xx)
    - tool calls executed (policy/roots enforced) → results appended
    - repeat until a pure text answer
-6. Events stream to SSE subscribers (`tool:start`, `delta`, `run:end`, …)
-7. Final answer persisted; channel replies (Telegram chunks + HTML-escapes)
+9. Events stream to SSE subscribers (`tool:start`, `delta`, `run:end`, …)
+10. Final answer persisted; channel replies (Telegram chunks + HTML-escapes)
 
 ## Security invariants
 

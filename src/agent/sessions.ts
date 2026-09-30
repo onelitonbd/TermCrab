@@ -212,3 +212,163 @@ export class SessionStore {
 export function newRunId(): string {
   return crypto.randomBytes(6).toString('hex');
 }
+
+// ---------------------------------------------------------------------------
+// Session queue: per-session FIFO with steer/interrupt/followup/collect modes.
+// ---------------------------------------------------------------------------
+
+export type QueueMode = 'steer' | 'followup' | 'collect' | 'interrupt';
+
+export interface QueuedTurn {
+  id: string;
+  sessionId: string;
+  userMessage: string;
+  channel?: string;
+  agent?: string;
+  tier?: 'cloud' | 'local';
+  enqueuedAt: number;
+  status: 'queued' | 'running' | 'done' | 'error' | 'interrupted';
+  output?: string;
+  error?: string;
+}
+
+export class SessionQueue {
+  private queues = new Map<string, QueuedTurn[]>();
+  private running = new Map<string, QueuedTurn>();
+  private abortControllers = new Map<string, AbortController>();
+  private listeners = new Map<string, Set<(turn: QueuedTurn) => void>>();
+
+  /** Enqueue a turn. Returns the queued turn with its id. */
+  enqueue(turn: Omit<QueuedTurn, 'id' | 'enqueuedAt' | 'status'>): QueuedTurn {
+    const full: QueuedTurn = {
+      ...turn,
+      id: crypto.randomBytes(4).toString('hex'),
+      enqueuedAt: Date.now(),
+      status: 'queued',
+    };
+    const q = this.queues.get(full.sessionId) ?? [];
+    q.push(full);
+    this.queues.set(full.sessionId, q);
+    return full;
+  }
+
+  /** Dequeue the next turn for a session (FIFO). */
+  dequeue(sessionId: string): QueuedTurn | null {
+    const q = this.queues.get(sessionId);
+    if (!q || q.length === 0) return null;
+    return q.shift()!;
+  }
+
+  /** Mark a turn as running and associate an abort controller. */
+  markRunning(turnId: string, sessionId: string, ctrl: AbortController): void {
+    this.abortControllers.set(`${sessionId}:${turnId}`, ctrl);
+    const q = this.queues.get(sessionId) ?? [];
+    const turn = q.find((t) => t.id === turnId);
+    if (turn) {
+      turn.status = 'running';
+      this.running.set(sessionId, turn);
+    }
+  }
+
+  /** Mark a turn as done with output. */
+  markDone(turnId: string, sessionId: string, output: string): void {
+    this.abortControllers.delete(`${sessionId}:${turnId}`);
+    const turn = this.running.get(sessionId);
+    if (turn && turn.id === turnId) {
+      turn.status = 'done';
+      turn.output = output;
+      this.running.delete(sessionId);
+      this.notify(sessionId, turn);
+    }
+  }
+
+  /** Mark a turn as errored. */
+  markError(turnId: string, sessionId: string, error: string): void {
+    this.abortControllers.delete(`${sessionId}:${turnId}`);
+    const turn = this.running.get(sessionId);
+    if (turn && turn.id === turnId) {
+      turn.status = 'error';
+      turn.error = error;
+      this.running.delete(sessionId);
+      this.notify(sessionId, turn);
+    }
+  }
+
+  /** Interrupt the currently running turn for a session. */
+  interrupt(sessionId: string): boolean {
+    const turn = this.running.get(sessionId);
+    if (!turn) return false;
+    const ctrl = this.abortControllers.get(`${sessionId}:${turn.id}`);
+    if (ctrl) ctrl.abort();
+    turn.status = 'interrupted';
+    this.running.delete(sessionId);
+    this.abortControllers.delete(`${sessionId}:${turn.id}`);
+    this.notify(sessionId, turn);
+    return true;
+  }
+
+  /** Get the currently running turn for a session. */
+  getRunning(sessionId: string): QueuedTurn | null {
+    return this.running.get(sessionId) ?? null;
+  }
+
+  /** Get the queue length for a session. */
+  getQueueLength(sessionId: string): number {
+    return this.queues.get(sessionId)?.length ?? 0;
+  }
+
+  /** Get all queued (not running) turns for a session. */
+  getQueued(sessionId: string): QueuedTurn[] {
+    return this.queues.get(sessionId) ?? [];
+  }
+
+  /** Wait for the current running turn to finish (or timeout). */
+  async waitForTurn(sessionId: string, timeoutMs = 120_000): Promise<QueuedTurn | null> {
+    const turn = this.running.get(sessionId);
+    if (!turn) return null;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.unsubscribe(sessionId, listener);
+        resolve(null);
+      }, timeoutMs);
+      const listener = (t: QueuedTurn) => {
+        if (t.id === turn.id) {
+          clearTimeout(timer);
+          this.unsubscribe(sessionId, listener);
+          resolve(t);
+        }
+      };
+      this.subscribe(sessionId, listener);
+    });
+  }
+
+  /** Subscribe to turn completion events for a session. */
+  subscribe(sessionId: string, listener: (turn: QueuedTurn) => void): () => void {
+    const set = this.listeners.get(sessionId) ?? new Set();
+    set.add(listener);
+    this.listeners.set(sessionId, set);
+    return () => set.delete(listener);
+  }
+
+  private unsubscribe(sessionId: string, listener: (turn: QueuedTurn) => void): void {
+    this.listeners.get(sessionId)?.delete(listener);
+  }
+
+  private notify(sessionId: string, turn: QueuedTurn): void {
+    for (const listener of this.listeners.get(sessionId) ?? []) {
+      try {
+        listener(turn);
+      } catch {
+        /* ignore listener errors */
+      }
+    }
+  }
+
+  /** Clear all queues and running state (for testing). */
+  clear(): void {
+    this.queues.clear();
+    this.running.clear();
+    this.abortControllers.clear();
+    this.listeners.clear();
+  }
+}

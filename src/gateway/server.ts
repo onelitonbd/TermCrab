@@ -27,7 +27,7 @@ import { countMemoryFacts } from '../agent/status.js';
 import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
-import { SessionStore } from '../agent/sessions.js';
+import { SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { extractAuth, checkToken, authHint } from './auth.js';
 import { bus, BusEvent } from './events.js';
@@ -278,7 +278,40 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       localProvider = undefined;
     }
   }
-  const agent: AgentCtx = { config, memory, skills, sessions, localProvider };
+  const agentQueue = new SessionQueue();
+  const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue };
+
+  /** Process a queued turn: run it and mark done/error in the queue. */
+  async function processQueuedTurn(
+    agentCtx: AgentCtx,
+    queue: SessionQueue,
+    turnId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const turn = queue.getQueued(sessionId).find((t) => t.id === turnId)
+      ?? queue.getRunning(sessionId);
+    if (!turn || turn.id !== turnId) return;
+
+    const abortCtrl = new AbortController();
+    queue.markRunning(turnId, sessionId, abortCtrl);
+
+    try {
+      const output = await runTurn(agentCtx, {
+        sessionId: turn.sessionId,
+        userMessage: turn.userMessage,
+        channel: turn.channel,
+        agent: turn.agent,
+        tier: turn.tier,
+        signal: abortCtrl.signal,
+        skipQueue: true,
+        onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+      });
+      queue.markDone(turnId, sessionId, output);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      queue.markError(turnId, sessionId, msg);
+    }
+  }
 
   // ---- Wake loop (voice or typed), visible to the panel over SSE ----
   const wake = new WakeService({
@@ -571,14 +604,55 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const sessionId = body.sessionId || 'web:main';
           const agentName = body.agent ? sanitizeAgentName(body.agent) ?? undefined : undefined;
-          const text = await runTurn(agent, {
+
+          // Enqueue the turn and return immediately with a turn id
+          const turn = agentQueue.enqueue({
             sessionId,
             userMessage: message,
             channel: 'web',
             agent: agentName,
-            onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
           });
-          json(res, 200, { text, sessionId: agentName ? `${agentName}:${sessionId}` : sessionId });
+
+          // Process the turn in the background
+          void processQueuedTurn(agent, agentQueue, turn.id, sessionId);
+
+          json(res, 202, {
+            turnId: turn.id,
+            sessionId: agentName ? `${agentName}:${sessionId}` : sessionId,
+            status: 'queued',
+          });
+          return;
+        }
+
+        // Poll turn status
+        const turnMatch = pathname.match(/^\/api\/chat\/([^/]+)\/([^/]+)$/);
+        if (turnMatch && req.method === 'GET') {
+          const sid = decodeURIComponent(turnMatch[1]!);
+          const turnId = turnMatch[2]!;
+          const running = agentQueue.getRunning(sid);
+          const queued = agentQueue.getQueued(sid);
+          const turn = running?.id === turnId ? running : queued.find((t) => t.id === turnId);
+          if (!turn) {
+            json(res, 404, { error: 'turn not found' });
+            return;
+          }
+          json(res, 200, {
+            turnId: turn.id,
+            sessionId: sid,
+            status: turn.status,
+            output: turn.output,
+            error: turn.error,
+            queueLength: agentQueue.getQueueLength(sid),
+          });
+          return;
+        }
+
+        // Interrupt a running turn
+        const interruptMatch = pathname.match(/^\/api\/chat\/([^/]+)\/interrupt$/);
+        if (interruptMatch && req.method === 'POST') {
+          const sid = decodeURIComponent(interruptMatch[1]!);
+          const interrupted = agentQueue.interrupt(sid);
+          json(res, 200, { ok: interrupted, sessionId: sid });
           return;
         }
 
