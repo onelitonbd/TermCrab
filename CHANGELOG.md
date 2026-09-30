@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0 - 2026-09-30
+
+- Settings page rebuilt from scratch: a hero "Control room" header, then six grouped cards in plain language (Your crab, AI brain, On-device, Doors & keys, Daily rhythm, Housekeeping) instead of one flat wall of config keys.
+- Every value now gets the control it deserves: switches for on/off, number fields with units and range checks for minutes/hours/battery, a dropdown for the AI service, hidden password fields for secrets, comma-separated lists for allowlists - and the raw dotted key survives only as a hover tooltip for power users.
+- Save feedback happens on the page itself: a small green "Saved" badge fades in next to the row (red for failures, with the toggle rolling back) - no more chat messages for a settings click. Invalid numbers are refused locally before anything is written.
+- Agents moved into the same visual language as one titled card; the create/edit flow keeps every existing id and behavior. The welcome banner now points at the new sections.
+- Browser-level verification: 22/22 checks (grouping, controls, save payload, validation, agents, zero JS errors); suite 285 tests (284 pass, 1 skip).
+
+
 ## 0.29.0 - 2026-09-30
 
 - Telegram can control the brain now: `/provider` lists every saved provider (keys, model count, the one in use) and `/provider 2` (or a name/id) switches - endpoint, key and a sensible default model move together, saved to disk so it survives restarts.
