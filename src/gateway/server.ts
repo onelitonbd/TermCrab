@@ -13,6 +13,7 @@ import {
   logsDir,
   memoryDir,
   pidPath,
+  sessionsDir,
   stateDir,
   uiDir,
   workspaceDir,
@@ -28,6 +29,7 @@ import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { createMcpClient } from '../providers/mcp.js';
+import { listRuns, getRun, clearRuns } from '../core/tracing.js';
 import { SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
@@ -280,6 +282,37 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const agentQueue = new SessionQueue();
+
+  // ---- Config hot-reload: watch config.json for external changes ----
+  const configFile = configPath();
+  let configReloadTimer: ReturnType<typeof setTimeout> | null = null;
+  const scheduleConfigReload = (): void => {
+    if (configReloadTimer) clearTimeout(configReloadTimer);
+    configReloadTimer = setTimeout(() => {
+      const fresh = readExternalConfigChange();
+      if (fresh) {
+        // Merge fresh config into the live config object
+        const live = config as unknown as Record<string, unknown>;
+        for (const k of Object.keys(live)) delete live[k];
+        Object.assign(live, fresh);
+        log.info('config: hot-reloaded from disk');
+        // Re-resolve provider if it changed
+        if (fresh.provider && fresh.provider.type !== 'mock') {
+          try {
+            const newProvider = resolveProvider(fresh.provider, fetch);
+            agent.provider = newProvider;
+            log.info('config: provider updated');
+          } catch (err) {
+            log.warn('config: provider update failed:', err instanceof Error ? err.message : String(err));
+          }
+        }
+      }
+    }, 500); // debounce: wait for file writes to settle
+    configReloadTimer.unref();
+  };
+  if (fs.existsSync(configFile)) {
+    fs.watch(configFile, () => scheduleConfigReload());
+  }
 
   // ---- MCP servers (stdio JSON-RPC) ----
   const mcpClients = new Map<string, import('../providers/mcp.js').McpClient>();
@@ -564,6 +597,28 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
+      // Tracing: list recent runs or get one by id
+      if (pathname === '/api/traces' && req.method === 'GET') {
+        const runs = listRuns();
+        json(res, 200, { runs });
+        return;
+      }
+      const traceMatch = pathname.match(/^\/api\/traces\/([^/]+)$/);
+      if (traceMatch && req.method === 'GET') {
+        const run = getRun(traceMatch[1]!);
+        if (!run) {
+          json(res, 404, { error: 'run not found' });
+          return;
+        }
+        json(res, 200, run);
+        return;
+      }
+      if (pathname === '/api/traces' && req.method === 'DELETE') {
+        clearRuns();
+        json(res, 200, { ok: true });
+        return;
+      }
+
       // Inbound webhooks: external services can POST to /api/hooks/:id
       const hookMatch = pathname.match(/^\/api\/hooks\/([^/]+)$/);
       if (hookMatch && req.method === 'POST') {
@@ -698,6 +753,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           const id = decodeURIComponent(sessionMatch[1]!);
           sessions.reset(id);
           json(res, 200, { ok: true });
+          return;
+        }
+
+        // Replay a session: re-execute user messages with full tool trace
+        const replayMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/replay$/);
+        if (replayMatch && req.method === 'POST') {
+          const id = decodeURIComponent(replayMatch[1]!);
+          const entries = sessions.read(id);
+          if (!entries.length) {
+            json(res, 404, { error: 'no chat found with that id' });
+            return;
+          }
+          const newId = `replayed:${id}`;
+          const newEntries = entries.filter((e) => e.role === 'user');
+          // Create new session file with user messages
+          const newFile = path.join(sessionsDir(), `${newId}.jsonl`);
+          fs.writeFileSync(newFile, newEntries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+          json(res, 200, { ok: true, originalId: id, replayedId: newId, userMessages: newEntries.length });
           return;
         }
 

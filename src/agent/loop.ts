@@ -7,6 +7,7 @@ import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { Entry, newRunId, SessionQueue, SessionStore } from './sessions.js';
 import { buildTools, Tool, ToolEnv } from './tools.js';
 import { spawnTask as spawnBgTask } from './tasks.js';
+import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing.js';
 
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
@@ -134,6 +135,10 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   });
   emit({ type: 'run:start', runId, sessionId });
 
+  // Tracing: start a run span
+  const providerName = providerLabel(ctx.config);
+  startRun(runId, sessionId, providerName, ctx.config.provider.model);
+
   // Compact session if it grew past the threshold (keeps context lean on mobile)
   const threshold = ctx.config.agent.compactThreshold || 60;
   const sessionSize = ctx.sessions.list().find((s) => s.id === sessionId)?.messages ?? 0;
@@ -219,6 +224,8 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           let output: string;
           let ok = true;
           const tool = toolMap.get(call.name);
+          const toolStart = Date.now();
+          const span = addSpan(runId, `tool:${call.name}`, { args: call.args });
           try {
             if (!tool) throw new Error(`unknown tool: ${call.name}`);
             output = await tool.execute(call.args);
@@ -226,6 +233,9 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
             ok = false;
             output = err instanceof Error ? err.message : String(err);
           }
+          const toolDuration = Date.now() - toolStart;
+          if (span) endSpan(runId, span.id);
+          addToolCall(runId, call.name, toolDuration, ok);
           emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200) });
           ctx.sessions.append(sessionId, {
             role: 'tool',
@@ -261,6 +271,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
       }
       if (finalText && !streamedChars) emit({ type: 'delta', text: finalText });
       ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+      endRun(runId);
       emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i + 1 });
       return finalText;
     }

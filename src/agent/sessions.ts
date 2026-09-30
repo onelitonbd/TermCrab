@@ -213,6 +213,29 @@ export function newRunId(): string {
   return crypto.randomBytes(6).toString('hex');
 }
 
+/**
+ * Replay a session: re-execute user messages with full tool trace.
+ * Returns the new session id (replayed:<original>).
+ */
+export function replaySession(
+  sessionId: string,
+  entries: Entry[],
+  onEvent: (entry: Entry) => void,
+): string {
+  const newId = `replayed:${sessionId}`;
+  const file = path.join(sessionsDir(), `${sanitizeSessionId(newId)}.jsonl`);
+  fs.writeFileSync(file, '', 'utf8'); // clear
+
+  for (const entry of entries) {
+    if (entry.role === 'user') {
+      // Re-append user message
+      fs.appendFileSync(file, `${JSON.stringify(entry)}\n`, 'utf8');
+      onEvent(entry);
+    }
+  }
+  return newId;
+}
+
 // ---------------------------------------------------------------------------
 // Session queue: per-session FIFO with steer/interrupt/followup/collect modes.
 // ---------------------------------------------------------------------------

@@ -15,7 +15,8 @@ src/
 │   ├── paths.ts           # TCRAB_HOME resolution, package root discovery, layout
 │   ├── config.ts          # config.json load/save/merge, dotted get/set
 │   ├── frontmatter.ts     # dependency-free YAML-ish frontmatter parser
-│   └── logger.ts          # leveled logger
+│   ├── logger.ts          # leveled logger
+│   └── tracing.ts         # run spans, token counts, tool latencies
 ├── gateway/
 │   ├── server.ts          # HTTP API + SSE + static UI + channel/heartbeat wiring
 │   ├── auth.ts            # constant-time token checks (header or query)
@@ -27,7 +28,7 @@ src/
 │   ├── tools.ts           # tool registry + path guard + shell resolver + browser (CDP) + code_exec (vm sandbox)
 │   ├── toolbox.ts         # extended tools: edit, patch, web_search, automations, sessions_*, subagents, phone tools (Termux:API)
 │   ├── memory.ts          # MEMORY.md + daily logs + lexical search + compacted digests
-│   ├── sessions.ts        # JSONL transcripts + compaction + SessionQueue (FIFO)
+│   ├── sessions.ts        # JSONL transcripts + compaction + SessionQueue (FIFO) + replay
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
 ├── channels/
 │   ├── api.ts             # Telegram Bot API client (global fetch)
@@ -101,6 +102,9 @@ test/*.test.ts             # node:test suite
 8. Phone tools (Termux:API): sms_send, camera, location, clipboard, battery, contacts, wifi_info, notification — zero extra deps, pure subprocess calls
 9. Inbound webhooks: POST /api/hooks/:id triggers an agent run with the payload as context
 10. Canvas/A2UI: agent pushes live HTML widgets to the Control UI via the `canvas` tool; widgets broadcast over SSE and render in the browser panel
+11. Config hot-reload: gateway watches config.json and applies changes without restart
+12. Tracing: run spans, token counts, tool latencies exported to /api/traces
+13. Session replay: POST /api/sessions/:id/replay re-executes user messages with full tool trace
 
 ## Why zero dependencies
 
