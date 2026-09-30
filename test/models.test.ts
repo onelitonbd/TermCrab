@@ -6,7 +6,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { startGateway, GatewayHandle } from '../src/gateway/server.js';
-import { defaults } from '../src/core/config.js';
+import { defaults, loadConfig } from '../src/core/config.js';
 
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -151,6 +151,56 @@ test('models API: fetch / register / use, everything live', async (t) => {
   } finally {
     await new Promise<void>((resolve) => upstream.close(() => resolve()));
     await handle.stop();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+/** v0.21.1: everything ticked lands in the config file and survives a restart. */
+test('saved models persist to disk across a gateway restart', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tmdl2-'));
+  process.env.TCRAB_HOME = home;
+  try {
+    const config = defaults();
+    config.gateway.token = 'test-token';
+    const port1 = await freePort();
+    const handle1: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port: port1 });
+    const req1 = async (p: string, method = 'GET', body?: unknown) => {
+      const res = await fetch(`http://127.0.0.1:${port1}${p}`, {
+        method,
+        headers: {
+          authorization: 'Bearer test-token',
+          ...(body ? { 'content-type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return { status: res.status, data: (await res.json()) as Record<string, unknown> };
+    };
+
+    const created = await req1('/api/providers', 'POST', { name: 'KeepMe', baseUrl: 'http://127.0.0.1:9/v1' });
+    const pid = (created.data.provider as Record<string, unknown>).id as string;
+    await req1(`/api/providers/${pid}/models`, 'POST', { model: 'model-alpha' });
+    await req1(`/api/providers/${pid}/models`, 'POST', { model: 'model-beta' });
+    await handle1.stop();
+
+    // 1) the file on disk holds every ticked model
+    const reloaded = loadConfig();
+    const fromDisk = reloaded.providers.find((x) => x.id === pid);
+    assert.ok(fromDisk, 'provider written to disk');
+    assert.deepEqual(fromDisk!.models, ['model-alpha', 'model-beta'], 'all selected models saved in the config file');
+
+    // 2) a brand-new gateway process still serves them
+    const port2 = await freePort();
+    const handle2: GatewayHandle = await startGateway({ config: reloaded, host: '127.0.0.1', port: port2 });
+    try {
+      const res = await fetch(`http://127.0.0.1:${port2}/api/providers/${pid}`, {
+        headers: { authorization: 'Bearer test-token' },
+      });
+      const body = (await res.json()) as { provider: { models?: string[] } };
+      assert.deepEqual(body.provider.models, ['model-alpha', 'model-beta'], 'models visible after restart');
+    } finally {
+      await handle2.stop();
+    }
+  } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
 });

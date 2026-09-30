@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.1 — 2026-09-30 (Model saving actually reaches the backend)
+
+- Fixed the save bug: the Models page sent its save requests in a shorthand the browser helper did not understand, so they quietly went out as read-only requests — the page said "saved" but nothing was written, and a refresh lost everything. All save requests now go out correctly.
+- Ticking a model now saves it to the backend straight away; the Save button retries anything that failed and confirms with a fresh read from the backend — after saving, the page always shows exactly what the system holds on disk.
+- If a save cannot reach the backend, the row says so plainly and keeps your tick so one press of Save retries it.
+- New regression test: everything ticked is written to the config file and still there after a full restart.
+
 ## 0.21.0 — 2026-09-30 (Save button + modern model icon)
 
 - The Models page now has a **Save** button: tick the models you want, then press Save — everything marked is written to the system instantly, with a confirmation that it is ready to use right away (no restart). The button shows how many changes are waiting, e.g. "Save (3)", and unticking a saved model removes it on Save too.

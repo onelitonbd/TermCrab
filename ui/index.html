@@ -1369,7 +1369,16 @@
     } else ok();
   });
 
-  async function api(path, opts = {}) {
+  async function api(path, opts = {}, body) {
+    if (typeof opts === 'string') {
+      // Shorthand: api(path, 'POST', {…}) — JSON body, correct method.
+      // (Before this fix the string was swallowed and a GET went out instead.)
+      opts = { method: opts };
+      if (body !== undefined) {
+        opts.body = JSON.stringify(body);
+        opts.headers = { 'content-type': 'application/json' };
+      }
+    }
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
     const res = await fetch(path, Object.assign({}, opts, { headers }));
     if (res.status === 401) { showOverlay('Invalid or missing token'); throw new Error('unauthorized'); }
@@ -1412,15 +1421,33 @@
       cb.type = 'checkbox';
       cb.className = 'mdlTick';
       cb.checked = mdlReg.includes(m);
-      cb.onchange = () => {
+      cb.onchange = async () => {
         if (cb.checked) mdlMarked.add(m);
         else mdlMarked.delete(m);
         updateMdlSave();
-        const n = mdlPending().length;
         $('mdlFetchNote').classList.remove('errText');
-        $('mdlFetchNote').textContent = n
-          ? n + (n === 1 ? ' change' : ' changes') + ' waiting — press Save to keep them (saved instantly, no restart).'
-          : mdlReg.length + (mdlReg.length === 1 ? ' model saved' : ' models saved');
+        // Every tick is saved to the backend straight away; the Save button
+        // below stays as a retry for anything that failed, and as confirmation.
+        try {
+          let res;
+          if (cb.checked) {
+            res = await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m });
+          } else {
+            res = await api('/api/providers/' + state.mdlProvId + '/models/' + encodeURIComponent(m), 'DELETE');
+          }
+          if (res && Array.isArray(res.models)) mdlReg = res.models.slice().sort();
+          const n = mdlPending().length;
+          $('mdlFetchNote').textContent = n
+            ? n + (n === 1 ? ' change' : ' changes') + ' not saved yet — press Save to retry.'
+            : cb.checked
+              ? 'Saved — ' + m + ' is in the system (saved instantly, no restart needed).'
+              : 'Removed — ' + m + ' no longer saved.';
+          updateMdlSave();
+        } catch (e) {
+          $('mdlFetchNote').textContent = 'Could not save automatically: ' + e.message + ' — press Save to retry.';
+          $('mdlFetchNote').classList.add('errText');
+          updateMdlSave();
+        }
       };
       const id = document.createElement('span');
       id.className = 'mdlId';
@@ -1539,7 +1566,18 @@
     const dels = mdlReg.filter((m) => !mdlMarked.has(m)).sort();
     if (!adds.length && !dels.length) {
       $('mdlFetchNote').classList.remove('errText');
-      $('mdlFetchNote').textContent = 'Everything is already saved.';
+      try {
+        const chk = await api('/api/providers/' + state.mdlProvId);
+        const saved = (chk.provider && Array.isArray(chk.provider.models)) ? chk.provider.models.slice().sort() : mdlReg.slice().sort();
+        mdlReg = saved;
+        mdlMarked = new Set(saved);
+        updateMdlSave();
+        renderMdlList();
+        $('mdlFetchNote').textContent = 'Everything is already saved (' + saved.length + (saved.length === 1 ? ' model' : ' models') + ' in the system).';
+      } catch (e) {
+        $('mdlFetchNote').textContent = e.message;
+        $('mdlFetchNote').classList.add('errText');
+      }
       return;
     }
     const btn = $('mdlSave');
@@ -1549,7 +1587,11 @@
     try {
       for (const m of adds) await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m });
       for (const m of dels) await api('/api/providers/' + state.mdlProvId + '/models/' + encodeURIComponent(m), 'DELETE');
-      mdlReg = [...mdlMarked].sort();
+      // Read back from the backend — the server file is the source of truth.
+      const chk = await api('/api/providers/' + state.mdlProvId);
+      const saved = (chk.provider && Array.isArray(chk.provider.models)) ? chk.provider.models.slice().sort() : [...mdlMarked].sort();
+      mdlReg = saved;
+      mdlMarked = new Set(saved);
       $('mdlFetchNote').textContent = 'Saved — ' + mdlReg.length + (mdlReg.length === 1 ? ' model is' : ' models are') + ' ready to use right now (no restart needed).';
       updateMdlSave();
       renderMdlList();

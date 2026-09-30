@@ -271,6 +271,9 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes("$('mdlSave').onclick = saveMdl"), 'save button wired to instant save');
       assert.ok(html.includes('let mdlMarked = new Set()'), 'ticks are staged until Save');
       assert.ok(html.includes('ready to use right now (no restart needed)'), 'save confirms instant availability');
+      assert.ok(html.includes("typeof opts === 'string'"), 'api() supports the (path, method, body) shorthand');
+      assert.ok(html.includes('Could not save automatically'), 'failed auto-save tells the user to press Save');
+      assert.ok(html.includes('Read back from the backend'), 'save verifies against the backend source of truth');
       assert.ok(html.includes('id="modelBtn"') && html.includes('id="modelBtnLabel"'), 'rounded model button in the composer');
       assert.ok(html.includes('d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9'), 'modern sparkle icon on the model button');
       assert.ok(!html.includes('M13.5 4.5 8 1.5'), 'old cube icon gone');
