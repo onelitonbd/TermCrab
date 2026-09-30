@@ -766,6 +766,15 @@
   #cronForm { border: 1px solid var(--line); background: var(--card); border-radius: 14px; padding: 12px; margin-top: 12px; gap: 8px; }
   #cronList { padding-bottom: 0; }
 
+  .tlGrid { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 560px) { .tlGrid { grid-template-columns: repeat(5, 1fr); } }
+  .toolItem { display: flex; gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; }
+  .toolItem .tn { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 700; color: var(--strong); flex-shrink: 0; overflow-wrap: anywhere; }
+  .toolItem .td { color: var(--muted); font-size: 12.5px; line-height: 1.45; flex: 1; min-width: 0; }
+  .toolItem .badge { font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px; flex-shrink: 0; }
+  .toolItem.on { border-color: rgba(63, 185, 80, 0.35); }
+  .toolItem.on .badge { color: var(--ok); border-color: rgba(63, 185, 80, 0.45); background: rgba(63, 185, 80, 0.1); }
+
   .pRow {
     background: var(--bg-accent);
     border: 1px solid var(--line);
@@ -1444,7 +1453,7 @@
 
   <section class="view" id="view-tools" hidden>
     <div class="pageHead"><h2 class="memTitle">Tools</h2></div>
-    <p class="pageNote">Scheduled jobs, saved chats, voice controls and skills — everything your crab does outside this chat, all on this machine.</p>
+    <p class="pageNote">Your crab’s toolbox — the live tool catalog, scheduled jobs, saved chats, voice and skills. Everything runs on this machine.</p>
 
     <div class="memHero tlHero">
       <div class="memMascot" aria-hidden="true">
@@ -1465,21 +1474,28 @@
         <button id="tlRefresh" class="ghost smallBtn" type="button">Refresh</button>
       </div>
     </div>
-    <div class="memGrid">
+    <div class="memGrid tlGrid">
       <div class="memChip"><div class="k">Jobs</div><div class="v" id="chipTJobs">…</div></div>
+      <div class="memChip"><div class="k">Tools</div><div class="v" id="chipTTools">…</div></div>
       <div class="memChip"><div class="k">Chats</div><div class="v" id="chipTChats">…</div></div>
       <div class="memChip"><div class="k">Skills</div><div class="v" id="chipTSkills">…</div></div>
       <div class="memChip"><div class="k">Wake</div><div class="v" id="chipTWake">…</div></div>
     </div>
 
     <div class="memTabs" role="tablist" aria-label="Tools sections">
-      <button class="memTab on" data-ttab="jobs" type="button">Jobs</button>
+      <button class="memTab on" data-ttab="tools" type="button">Tools</button>
+      <button class="memTab" data-ttab="jobs" type="button">Jobs</button>
       <button class="memTab" data-ttab="chats" type="button">Chats</button>
       <button class="memTab" data-ttab="voice" type="button">Voice</button>
       <button class="memTab" data-ttab="skills" type="button">Skills</button>
     </div>
 
-    <div class="memPane" id="tlPane-jobs">
+    <div class="memPane" id="tlPane-tools">
+      <p class="tlNote" style="margin-top:0">Green "active" tools are live on this machine right now. "planned" entries are on the roadmap — not built yet.</p>
+      <div id="toolCat" aria-live="polite"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memPane" id="tlPane-jobs" hidden>
       <div class="memSectionLabel">SCHEDULED JOBS</div>
       <div id="cronList"><div class="nx">loading…</div></div>
       <form id="cronForm">
@@ -2515,16 +2531,130 @@
   function showToolTab(name) {
     document.querySelectorAll('[data-ttab]').forEach((b) => b.classList.toggle('on', b.dataset.ttab === name));
     ['jobs', 'chats', 'voice', 'skills'].forEach((t) => { const p = $('tlPane-' + t); if (p) p.hidden = t !== name; });
-    if (name === 'jobs') refreshCrons();
+    if (name === 'tools') refreshToolCatalog();
+    else if (name === 'jobs') refreshCrons();
     else if (name === 'chats') refreshSessPanel();
     else if (name === 'voice') { refreshBoot(); refreshWake(); }
     else if (name === 'skills') refreshSkills();
   }
   document.querySelectorAll('[data-ttab]').forEach((b) => { b.onclick = () => showToolTab(b.dataset.ttab); });
   function refreshTools() {
-    refreshCrons(); refreshSessPanel(); refreshBoot(); refreshWake(); refreshSkills();
+    refreshToolCatalog(); refreshCrons(); refreshSessPanel(); refreshBoot(); refreshWake(); refreshSkills();
   }
   $('tlRefresh').onclick = () => refreshTools();
+  // Catalog: user-facing toolbox map. `real` = the live tool that proves the
+  // capability today; entries without one render as "planned" until built.
+  const TOOL_CATALOG = [
+    { g: 'File & Edit', items: [
+      { n: 'read', d: 'Read files', real: 'read_file' },
+      { n: 'write', d: 'Write files', real: 'write_file' },
+      { n: 'edit', d: 'Exact single-file replacements' },
+      { n: 'apply_patch', d: 'Patch files' },
+      { n: 'list_dir', d: 'List folders', real: 'list_dir' },
+    ]},
+    { g: 'Shell & Process', items: [
+      { n: 'exec', d: 'Run shell', real: 'exec' },
+      { n: 'process', d: 'Control background exec' },
+      { n: 'terminal', d: 'List/read/resize/close operator-opened session terminals' },
+    ]},
+    { g: 'Web', items: [
+      { n: 'web_search', d: 'Web search' },
+      { n: 'web_fetch', d: 'Fetch/extract URL', real: 'web_fetch' },
+      { n: 'view_image', d: 'Inspect images in model context' },
+    ]},
+    { g: 'UI & Automation', items: [
+      { n: 'screen', d: 'Drive operator web UI' },
+      { n: 'automations', d: 'Schedule/wake/reminders' },
+      { n: 'dashboard', d: 'Manage dashboard widgets/tabs' },
+      { n: 'portal', d: 'Expose local HTTP server' },
+    ]},
+    { g: 'Messaging & Sessions', items: [
+      { n: 'conversations_list', d: 'List external conversation addresses' },
+      { n: 'conversations_send', d: 'Send directly to an external conversation' },
+      { n: 'conversations_turn', d: 'Send and wait for a correlated reply' },
+      { n: 'sessions_list', d: 'List visible sessions' },
+      { n: 'sessions_history', d: 'Read visible session/subagent history' },
+      { n: 'sessions_search', d: 'Search past sessions' },
+      { n: 'sessions_send', d: 'Message other session/subagent' },
+      { n: 'sessions_spawn', d: 'Spawn subagent' },
+      { n: 'sessions_yield', d: 'End turn; await subagent events' },
+      { n: 'sessions', d: 'Session settings/ownership/reset/delete' },
+      { n: 'subagents', d: 'Subagent status' },
+      { n: 'agents_wait', d: 'Wait for collector subagents' },
+    ]},
+    { g: 'Session & Agent Management', items: [
+      { n: 'session_status', d: 'Session/model/usage/time/status' },
+      { n: 'ask_user', d: 'Ask structured questions and wait for answer' },
+      { n: 'suggest_task', d: 'Record follow-up task cards' },
+      { n: 'dismiss_task', d: 'Withdraw pending suggestion cards' },
+    ]},
+    { g: 'Memory & Context', items: [
+      { n: 'memory_get', d: 'Read memory files', real: 'read_file' },
+      { n: 'memory_search', d: 'Search memory files', real: 'search_memory' },
+      { n: 'remember', d: 'Save facts to long-term memory', real: 'remember' },
+      { n: 'intent', d: 'Manage standing intents' },
+      { n: 'create_goal / get_goal / update_goal', d: 'Goal tracking' },
+    ]},
+    { g: 'Skills & Configuration', items: [
+      { n: 'load_skill', d: 'Load skill instructions', real: 'load_skill' },
+      { n: 'skill_workshop', d: 'Author/update/repair skills' },
+      { n: 'github_identity_status', d: 'Inspect GitHub account/credential health' },
+      { n: 'secrets', d: 'Protected credentials metadata/request/delete' },
+    ]},
+    { g: 'Progress', items: [
+      { n: 'progress_card', d: 'Maintain session progress card' },
+    ]},
+    { g: 'Utilities', items: [
+      { n: 'get_time', d: 'Current date & time', real: 'get_time' },
+    ]},
+  ];
+  async function refreshToolCatalog() {
+    const box = $('toolCat');
+    if (!box) return;
+    try {
+      const d = await api('/api/tools');
+      const live = new Set((d.tools || []).map((t) => t.name));
+      const desc = new Map((d.tools || []).map((t) => [t.name, t.description]));
+      const chT = $('chipTTools');
+      if (chT) chT.textContent = String(live.size);
+      const covered = new Set();
+      box.innerHTML = '';
+      const renderGroup = (title, items) => {
+        const sec = document.createElement('div');
+        const lab = document.createElement('div');
+        lab.className = 'memSectionLabel';
+        lab.textContent = title;
+        const list = document.createElement('div');
+        list.className = 'listCol';
+        for (const it of items) {
+          const row = document.createElement('div');
+          row.className = 'toolItem ' + (it.on ? 'on' : 'off');
+          const nm = document.createElement('span'); nm.className = 'tn'; nm.textContent = it.n;
+          const de = document.createElement('span'); de.className = 'td'; de.textContent = it.d;
+          const bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = it.on ? 'active' : 'planned';
+          row.append(nm, de, bd);
+          list.appendChild(row);
+        }
+        sec.append(lab, list);
+        box.appendChild(sec);
+      };
+      for (const grp of TOOL_CATALOG) {
+        const items = grp.items.map((i) => {
+          const key = i.real || i.n;
+          const on = live.has(key);
+          if (on) covered.add(key);
+          return { n: i.n, d: i.d, on };
+        });
+        renderGroup(grp.g, items);
+      }
+      const orphans = [...live].filter((n) => !covered.has(n));
+      if (orphans.length) {
+        renderGroup('Current tools', orphans.map((n) => ({ n, d: desc.get(n) || '', on: true })));
+      }
+    } catch (e) {
+      box.innerHTML = '<div class="nx err">catalog load failed: ' + e.message + '</div>';
+    }
+  }
 
   // ---- Web control parity panels (v0.5 P0 #0) ----
   const DOC_ICON = { ok: 'pass', warn: 'warn', fail: 'fail', info: 'note' };

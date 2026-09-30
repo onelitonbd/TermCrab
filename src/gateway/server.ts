@@ -18,6 +18,7 @@ import {
   workspaceDir,
 } from '../core/paths.js';
 import { AgentCtx, runTurn, providerLabel } from '../agent/loop.js';
+import { buildTools } from '../agent/tools.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
 import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
@@ -717,6 +718,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         if (req.method === 'GET' && pathname === '/api/skills') {
           json(res, 200, { skills: skills.list() });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/tools') {
+          const defs = buildTools({ config, memory, skills }).map((t) => ({
+            name: t.def.name,
+            description: t.def.description,
+          }));
+          json(res, 200, { tools: defs });
           return;
         }
 

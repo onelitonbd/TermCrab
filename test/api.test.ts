@@ -352,6 +352,26 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('id="skView" class="hidden"'), 'skill viewer starts hidden');
     });
 
+    await t.test('v0.25: Tools catalog tab — live tools + planned roadmap', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('data-ttab="tools"'), 'Tools tab present');
+      assert.ok(html.includes('id="tlPane-tools"') && html.includes('id="toolCat"'), 'catalog pane');
+      assert.ok(html.includes('id="chipTTools"'), 'live tools chip');
+      assert.ok(html.includes('TOOL_CATALOG') && html.includes('refreshToolCatalog'), 'catalog logic');
+      for (const t of ['skill_workshop', 'progress_card', 'sessions_spawn', 'ask_user', 'conversations_send', 'create_goal', 'apply_patch', 'web_search']) {
+        assert.ok(html.includes(t), 'catalog lists ' + t);
+      }
+      const r = await req('/api/tools', 'GET');
+      assert.equal(r.status, 200, '/api/tools answers');
+      const tools = (r.data.tools ?? []) as { name: string; description: string }[];
+      const names = tools.map((t) => t.name);
+      for (const n of ['read_file', 'write_file', 'exec', 'web_fetch', 'remember', 'search_memory', 'load_skill', 'get_time', 'list_dir']) {
+        assert.ok(names.includes(n), 'live tool ' + n);
+      }
+      assert.ok(tools.every((t) => typeof t.name === 'string' && typeof t.description === 'string' && t.description.length > 5),
+        'every tool carries a description');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.25.0 — 2026-09-30 (Tools catalog tab)
+
+- The Tools page now opens on a new first tab named "Tools": a full catalog of the agent's toolbox, grouped exactly as requested — File & Edit, Shell & Process, Web, UI & Automation, Messaging & Sessions, Session & Agent Management, Memory & Context, Skills & Configuration, Progress, Utilities.
+- Every entry shows a status badge: "active" (green) tools are confirmed live by the new GET /api/tools endpoint straight from the device's real tool registry; "planned" entries are on the roadmap and honestly marked as not built yet.
+- A fifth status chip ("Tools") shows the live tool count, and the chip row now fits five boxes on wide screens.
+- Extra current tools (list_dir, remember, load_skill, get_time) were folded into the matching groups so the catalog always reflects the whole live registry; any future tool not in the catalog gets appended automatically under "Current tools".
+
 ## 0.24.0 — 2026-09-30 (Tools page redesign)
 
 - Tools no longer opens as four collapsed drawers: it now follows the Memory-page look — title, a purple Toolbox hero with a big toolbox mascot, a Refresh button, and four live status chips (jobs, chats, skills, wake) that fill in as data loads.
