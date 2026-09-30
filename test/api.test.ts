@@ -6,7 +6,8 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { startGateway, GatewayHandle } from '../src/gateway/server.js';
-import { defaults, loadConfig } from '../src/core/config.js';
+import { defaults, loadConfig, saveConfig } from '../src/core/config.js';
+import { probeGatewayToken } from '../src/mobile/doctor.js';
 
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -511,4 +512,50 @@ test('web control parity API', async (t) => {
   } finally {
     await handle.stop();
   }
+});
+
+/**
+ * v0.30.1: a password changed from another terminal must reach the running
+ * gateway without a restart (this is the "config get returns a token the panel
+ * rejects" bug). Also proves the CLI's probe helper reports the same truth.
+ */
+test('config file password change hot-applies to the running gateway', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'thot-'));
+  process.env.TCRAB_HOME = home;
+  const port = await freePort();
+  const config = defaults();
+  config.provider = { type: 'mock', model: 'mock-1', apiKey: 'sk-test' };
+  config.gateway = { host: '127.0.0.1', port, token: 'old-token-000' };
+  saveConfig(config);
+  const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });
+  const base = `http://127.0.0.1:${port}`;
+  const authed = (t: string) =>
+    fetch(`${base}/api/config`, { headers: { authorization: `Bearer ${t}` } });
+
+  try {
+    assert.equal((await authed('old-token-000')).status, 200);
+
+    // Another terminal rewrites the password: raw file write, no saveConfig
+    // in this process — exactly what `termcrab config set` looks like from here.
+    const onDisk = loadConfig();
+    onDisk.gateway.token = 'new-token-999';
+    fs.writeFileSync(path.join(home, 'config.json'), `${JSON.stringify(onDisk, null, 2)}\n`);
+
+    let got = 0;
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      got = (await authed('new-token-999')).status;
+      if (got === 200) break;
+    }
+    assert.equal(got, 200, 'new on-disk password should be accepted without a restart');
+    assert.equal((await authed('old-token-000')).status, 401, 'old password should stop working');
+
+    // The `termcrab config get gateway.token` self-check agrees.
+    const cfg = loadConfig();
+    assert.equal(await probeGatewayToken(cfg, 'new-token-999'), 'ok');
+    assert.equal(await probeGatewayToken(cfg, 'old-token-000'), 'mismatch');
+  } finally {
+    await handle.stop();
+  }
+  assert.equal(await probeGatewayToken(loadConfig(), 'new-token-999'), 'offline');
 });

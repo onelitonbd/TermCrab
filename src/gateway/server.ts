@@ -3,7 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, ProviderEntry, cfgSet, saveConfig, configExists } from '../core/config.js';
+import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange } from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -1299,6 +1299,39 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   // PID file (supervisor + doctor use it)
   fs.writeFileSync(pidPath(), String(process.pid), 'utf8');
 
+  // Hot-apply config changes made OUTSIDE this process (`termcrab config set`
+  // in another terminal, an editor). The persisted baseline in config.ts
+  // makes the gateway ignore its own saves, so the web panel's live writes
+  // never fight this watcher — only outside changes are adopted.
+  let cfgWatchTimer: NodeJS.Timeout | undefined;
+  let cfgWatcher: fs.FSWatcher | undefined;
+  try {
+    cfgWatcher = fs.watch(configPath(), () => {
+      if (cfgWatchTimer) clearTimeout(cfgWatchTimer);
+      cfgWatchTimer = setTimeout(() => {
+        const fresh = readExternalConfigChange();
+        if (!fresh) return;
+        const prevToken = config.gateway.token;
+        const prevHost = config.gateway.host;
+        const prevPort = config.gateway.port;
+        const live = config as unknown as Record<string, unknown>;
+        for (const k of Object.keys(live)) delete live[k];
+        Object.assign(live, fresh);
+        // A listening socket cannot move itself — keep the bound address.
+        config.gateway.host = prevHost;
+        config.gateway.port = prevPort;
+        if (fresh.gateway.host !== prevHost || fresh.gateway.port !== prevPort) {
+          log.info(
+            `config: host/port changed on disk (${prevHost}:${prevPort} -> ${fresh.gateway.host}:${fresh.gateway.port}) - restart termcrab to switch`,
+          );
+        }
+        if (config.gateway.token !== prevToken) log.info('config: password changed on disk - now in effect');
+      }, 120);
+    });
+  } catch {
+    /* config file does not exist yet — nothing to watch */
+  }
+
   // One update at a time.
   let applyRunning = false;
 
@@ -1346,6 +1379,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     port,
     agent,
     stop: async () => {
+      if (cfgWatcher) cfgWatcher.close();
+      if (cfgWatchTimer) clearTimeout(cfgWatchTimer);
       stopHeartbeat();
       stopCron();
       stopDream();

@@ -131,12 +131,25 @@ function deepMerge<T>(base: T, patch: unknown): T {
   return out as T;
 }
 
+/** Raw file contents this process last read or wrote (detects outside edits). */
+let lastPersistedRaw: string | null = null;
+
 export function loadConfig(): Config {
   ensureLayout();
   const p = configPath();
-  if (!fs.existsSync(p)) return defaults();
+  if (!fs.existsSync(p)) {
+    lastPersistedRaw = null;
+    return defaults();
+  }
+  let rawText: string;
   try {
-    const raw = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<Config>;
+    rawText = fs.readFileSync(p, 'utf8');
+  } catch {
+    return defaults();
+  }
+  lastPersistedRaw = rawText;
+  try {
+    const raw = JSON.parse(rawText) as Partial<Config>;
     const merged = deepMerge(defaults(), raw);
     // Never keep an invalid provider type.
     const t = merged.provider?.type;
@@ -150,7 +163,33 @@ export function loadConfig(): Config {
 export function saveConfig(cfg: Config): void {
   ensureLayout();
   const p = configPath();
-  fs.writeFileSync(p, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
+  const raw = `${JSON.stringify(cfg, null, 2)}\n`;
+  fs.writeFileSync(p, raw, 'utf8');
+  lastPersistedRaw = raw;
+}
+
+/**
+ * Load the config file only if it changed OUTSIDE this process (another
+ * terminal's `termcrab config set`, an editor, the CLI). Returns null when the
+ * file still matches what this process last read or wrote — so a long-running
+ * gateway ignores its own saves but picks up external ones. A half-written
+ * file (JSON not parseable yet) also returns null; the next change event
+ * retries it.
+ */
+export function readExternalConfigChange(): Config | null {
+  let rawText: string;
+  try {
+    rawText = fs.readFileSync(configPath(), 'utf8');
+  } catch {
+    return null;
+  }
+  if (lastPersistedRaw !== null && rawText === lastPersistedRaw) return null;
+  try {
+    JSON.parse(rawText);
+  } catch {
+    return null;
+  }
+  return loadConfig();
 }
 
 export function generateToken(): string {

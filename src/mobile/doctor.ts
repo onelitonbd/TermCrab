@@ -4,7 +4,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { loadConfig } from '../core/config.js';
+import { loadConfig, Config } from '../core/config.js';
 import { home, configPath, pidPath } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
@@ -40,6 +40,27 @@ async function portFree(port: number, host: string): Promise<boolean> {
     srv.once('error', () => resolve(false));
     srv.listen(port, host, () => srv.close(() => resolve(true)));
   });
+}
+
+/**
+ * Ask the gateway running on this machine whether it accepts `token`.
+ * 'ok' = accepted, 'mismatch' = running with a different password,
+ * 'offline' = nothing reachable to ask.
+ */
+export async function probeGatewayToken(cfg: Config, token: string): Promise<'ok' | 'mismatch' | 'offline'> {
+  const host = cfg.gateway.host;
+  const probeHost = !host || host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+  try {
+    const res = await fetch(`http://${probeHost}:${cfg.gateway.port}/api/config`, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(1500),
+    });
+    if (res.status === 200) return 'ok';
+    if (res.status === 401) return 'mismatch';
+    return 'offline';
+  } catch {
+    return 'offline';
+  }
 }
 
 export async function runDoctor(): Promise<Check[]> {

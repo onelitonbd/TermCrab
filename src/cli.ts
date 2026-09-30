@@ -9,7 +9,7 @@ import { log, setLogLevel } from './core/logger.js';
 import { onboard, OnboardFlags } from './onboard.js';
 import { startGateway, version } from './gateway/server.js';
 import { runSupervisor } from './mobile/supervisor.js';
-import { runDoctor, renderChecks, verifyTelegram, execExists, buildShareReport } from './mobile/doctor.js';
+import { runDoctor, renderChecks, verifyTelegram, execExists, buildShareReport, probeGatewayToken } from './mobile/doctor.js';
 import { installBootScript, bootStatus, isTermux } from './mobile/boot.js';
 import { importSkills } from './skills/importer.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
@@ -880,6 +880,20 @@ export async function main(argv: string[]): Promise<void> {
         }
         const v = cfgGet(cfg, key);
         console.log(typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v));
+        if (key === 'gateway.token' && typeof v === 'string' && v) {
+          // Say right here whether the running panel actually accepts it —
+          // this exact command is what the login screen tells people to run.
+          const probe = await probeGatewayToken(cfg, v);
+          if (probe === 'ok') {
+            console.error('ok: the running panel accepts this password');
+          } else if (probe === 'mismatch') {
+            console.error(
+              `warning: the running panel is using a DIFFERENT password than this file - restart it (termcrab gateway, or termcrab supervisor if you use always-on mode) and run this again`,
+            );
+          } else {
+            console.error(`(could not double-check: nothing is answering on port ${cfg.gateway.port})`);
+          }
+        }
         return;
       }
       if (sub === 'set') {

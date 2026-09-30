@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.30.1 - 2026-09-30
+
+- Fixed: the web panel password you get from `termcrab config get gateway.token` could be rejected by a panel that was already running. The gateway used to read its settings once at startup and never again, so a password changed from a terminal (or anywhere outside the running panel) only reached the panel after a restart.
+- The running gateway now watches its config file and applies outside changes live - change the password in a terminal and it takes effect within a second, no restart needed. Changes the panel itself makes keep working exactly as before, and host/port still need a restart (the gateway says so when they change).
+- `termcrab config get gateway.token` now double-checks itself: right after printing the password it asks the running panel if it accepts it, and prints one plain-English line - "ok: the running panel accepts this password", a warning that the panel is using a different password (with the restart command), or a note that nothing is answering on that port. This is the exact command the login screen tells you to run, so the answer now shows up right where the confusion happens.
+- Tests: 286 total (285 pass, 1 skip) - new end-to-end test proves an on-disk password change is accepted without a restart, the old password stops working, and the self-check reports ok/mismatch/offline correctly.
+
+
 ## 0.30.0 - 2026-09-30
 
 - Settings page rebuilt from scratch: a hero "Control room" header, then six grouped cards in plain language (Your crab, AI brain, On-device, Doors & keys, Daily rhythm, Housekeeping) instead of one flat wall of config keys.
