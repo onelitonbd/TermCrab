@@ -276,6 +276,9 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('Read back from the backend'), 'save verifies against the backend source of truth');
       assert.ok(html.includes('id="modelBtn"') && html.includes('id="modelBtnLabel"'), 'rounded model button in the composer');
       assert.ok(html.includes('d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9'), 'modern sparkle icon on the model button');
+      assert.ok(html.includes('.iconBtn.modelBtn {'), 'model pill beats the base .iconBtn sizing (icon stays visible)');
+      assert.ok(html.includes('class="mpTitleIcon"'), 'sparkle icon in the model selection popup title');
+      assert.ok(html.includes('class="mpRowIcon"'), 'sparkle icon on every model row in the popup');
       assert.ok(!html.includes('M13.5 4.5 8 1.5'), 'old cube icon gone');
       assert.ok(html.includes('id="modelPick"'), 'model picker popup');
       assert.ok(html.includes("api('/api/models/use', 'POST'"), 'picking a model switches the live brain');

@@ -290,9 +290,10 @@
   #composer textarea:focus { border: 0; box-shadow: none; }
   .composerRow { display: flex; align-items: center; gap: 8px; padding: 3px 2px 0; }
   .composerSp { flex: 1; }
-  .modelBtn { width: auto; min-width: 40px; padding: 0 12px; gap: 7px; border-radius: 999px; }
+  .iconBtn.modelBtn { width: auto; min-width: 40px; padding: 0 12px; gap: 7px; border-radius: 999px; }
+  .modelBtn svg { color: var(--accent); flex-shrink: 0; }
   #modelBtnLabel { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-  @media (max-width: 430px) { .modelBtn { width: 40px; padding: 0; } #modelBtnLabel { display: none; } }
+  @media (max-width: 430px) { .iconBtn.modelBtn { width: 40px; padding: 0; } #modelBtnLabel { display: none; } }
   .iconBtn {
     width: 40px;
     height: 40px;
@@ -403,10 +404,13 @@
   }
   .mdlId { font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; }
   /* ---- composer model picker ---- */
+  #mpTitle .mpTitleIcon { vertical-align: -3px; margin-right: 7px; color: var(--accent); }
   #mpProv { width: 100%; margin-top: 10px; }
   .mpList { max-height: min(46vh, 360px); overflow-y: auto; margin-top: 10px; }
   .mpRow {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 9px;
     width: 100%;
     text-align: left;
     background: var(--card);
@@ -417,6 +421,8 @@
     font-size: 13.5px;
     overflow-wrap: anywhere;
   }
+  .mpRow .mpRowIcon { flex-shrink: 0; color: var(--accent); }
+  .mpRow span { overflow-wrap: anywhere; }
   .mpRow:hover { border-color: var(--accent); color: var(--strong); }
   #mpErr { color: var(--danger); }
 
@@ -1144,7 +1150,7 @@
 
 <div id="modelPick" class="hidden">
   <div class="card">
-    <h3 id="mpTitle">Chat with a model</h3>
+    <h3 id="mpTitle"><svg class="mpTitleIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/><path d="M19 3v3M20.5 4.5h-3M5 17v3M6.5 18.5h-3"/></svg>Chat with a model</h3>
     <p class="pNote">Pick a provider — only models you saved on the Models page appear here.</p>
     <select id="mpProv" aria-label="Provider"></select>
     <div id="mpList" class="listCol mpList"></div>
@@ -1638,7 +1644,10 @@
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'mpRow';
-        row.textContent = m;
+        row.innerHTML = '<svg class="mpRowIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/></svg>';
+        const span = document.createElement('span');
+        span.textContent = m;
+        row.appendChild(span);
         row.onclick = async () => {
           row.disabled = true;
           try {

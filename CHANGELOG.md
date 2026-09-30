@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.21.2 — 2026-09-30 (The model icon is actually visible now)
+
+- Fixed a stylesheet clash that squeezed the composer's model button down to a bare circle: the label spilled out next to it and the sparkle icon was pushed out of place, so it looked like plain text with no icon. The pill now sizes itself correctly and the icon shows in blue.
+- The model selection popup itself now has icons too: a sparkle in the title and a small sparkle beside every model in the list — no more text-only rows.
+
 ## 0.21.1 — 2026-09-30 (Model saving actually reaches the backend)
 
 - Fixed the save bug: the Models page sent its save requests in a shorthand the browser helper did not understand, so they quietly went out as read-only requests — the page said "saved" but nothing was written, and a refresh lost everything. All save requests now go out correctly.
