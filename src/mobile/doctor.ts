@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { loadConfig, Config } from '../core/config.js';
-import { home, configPath, pidPath } from '../core/paths.js';
+import { home, configPath, pidPath, PACKAGE_ROOT } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
 
@@ -42,16 +42,43 @@ async function portFree(port: number, host: string): Promise<boolean> {
   });
 }
 
+/** Address to ask when probing the panel bound to cfg.gateway.host. */
+function panelHost(cfg: Config): string {
+  const host = cfg.gateway.host;
+  return !host || host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+}
+
+/** Version the running panel reports (public /api/health), or null if unreachable. */
+async function runningPanelVersion(cfg: Config): Promise<string | null> {
+  try {
+    const res = await fetch(`http://${panelHost(cfg)}:${cfg.gateway.port}/api/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { version?: string };
+    return data.version || null;
+  } catch {
+    return null;
+  }
+}
+
+function installedVersion(): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')) as { version?: string };
+    return pkg.version || '?';
+  } catch {
+    return '?';
+  }
+}
+
 /**
  * Ask the gateway running on this machine whether it accepts `token`.
  * 'ok' = accepted, 'mismatch' = running with a different password,
  * 'offline' = nothing reachable to ask.
  */
 export async function probeGatewayToken(cfg: Config, token: string): Promise<'ok' | 'mismatch' | 'offline'> {
-  const host = cfg.gateway.host;
-  const probeHost = !host || host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
   try {
-    const res = await fetch(`http://${probeHost}:${cfg.gateway.port}/api/config`, {
+    const res = await fetch(`http://${panelHost(cfg)}:${cfg.gateway.port}/api/config`, {
       headers: { authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(1500),
     });
@@ -103,6 +130,55 @@ export async function runDoctor(): Promise<Check[]> {
       : 'missing',
     fix: fs.existsSync(configPath()) ? 'run: termcrab onboard' : 'run: termcrab onboard',
   });
+
+  // Web panel password - the exact thing that locks people out of the UI.
+  if (!cfg.gateway.token) {
+    checks.push({
+      id: 'panel-password',
+      label: 'web panel password',
+      status: 'warn',
+      detail: 'not set',
+      fix: 'run: termcrab config set gateway.token generate   then restart the panel',
+    });
+  } else {
+    const probe = await probeGatewayToken(cfg, cfg.gateway.token);
+    if (probe === 'ok') {
+      const running = await runningPanelVersion(cfg);
+      const installed = installedVersion();
+      if (running && installed !== '?' && running !== installed) {
+        checks.push({
+          id: 'panel-password',
+          label: 'web panel password',
+          status: 'warn',
+          detail: `accepts it, but the panel is still running v${running} - this install is v${installed}`,
+          fix: 'restart the panel: close it, then run termcrab gateway',
+        });
+      } else {
+        checks.push({
+          id: 'panel-password',
+          label: 'web panel password',
+          status: 'ok',
+          detail: 'the running panel accepts it',
+        });
+      }
+    } else if (probe === 'mismatch') {
+      checks.push({
+        id: 'panel-password',
+        label: 'web panel password',
+        status: 'fail',
+        detail: 'the running panel is using a DIFFERENT password than this file',
+        fix: 'restart the panel: close it, then run termcrab gateway - afterwards run: termcrab config get gateway.token',
+      });
+    } else {
+      checks.push({
+        id: 'panel-password',
+        label: 'web panel password',
+        status: 'info',
+        detail: `saved in config, but no panel is answering on port ${cfg.gateway.port}`,
+        fix: 'start the panel: termcrab gateway',
+      });
+    }
+  }
 
   // Temp dir
   const tmp = os.tmpdir();

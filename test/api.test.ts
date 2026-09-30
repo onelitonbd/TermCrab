@@ -57,6 +57,14 @@ test('web control parity API', async (t) => {
     await t.test('unauthorized requests are rejected', async () => {
       const res = await fetch(`${base}/api/config`);
       assert.equal(res.status, 401);
+      // A wrong password gets a plain-English hint the login screen can show.
+      const wrong = await fetch(`${base}/api/config`, { headers: { authorization: 'Bearer wrong' } });
+      assert.equal(wrong.status, 401);
+      const body = (await wrong.json()) as { error: string; hint?: string };
+      assert.equal(body.error, 'unauthorized');
+      // No config file in this test home -> the generic pointer to the
+      // self-checking command; either way the login screen gets a real hint.
+      assert.match(body.hint ?? '', /termcrab config get gateway\.token/);
     });
 
     await t.test('GET /api/config masks secrets', async () => {
@@ -495,6 +503,9 @@ test('web control parity API', async (t) => {
       // feedback happens on the settings page itself, not in the chat
       assert.ok(html.includes('setSaved'), 'inline saved badge');
       assert.ok(!html.includes("addMsg('sys', r.unchanged"), 'no chat-message save feedback');
+      // login screen shows the server's plain-English refusal hint, not a generic error
+      assert.ok(html.includes('e && e.hint'), 'login shows server hint');
+      assert.ok(html.includes("hint || 'Invalid or missing token'"), 'hint preferred over generic text');
       // loads when the page opens
       assert.ok(html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); }"), 'loads on open');
       // agents card keeps its ids (create/edit flow untouched)

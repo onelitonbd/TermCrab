@@ -60,3 +60,40 @@ test('session store reset backs up and list orders by recency', () => {
   assert.equal(store.read('a').length, 0);
   assert.ok(store.list().length === 0 || store.list().every((s) => s.id !== 'a'));
 });
+
+test('authHint explains a refused login in plain English', async () => {
+  const { authHint } = await import('../src/gateway/auth.js');
+  // File and panel agree; pasted password is wrong (same length -> generic).
+  assert.match(authHint('token-tokeX', 'token-token', 'token-token')!, /Wrong password/);
+  // Truncated paste: lengths differ, so say so.
+  assert.match(authHint('abc', 'token-token', 'token-token')!, /3 letters.*11/s);
+  // File unreadable: still give the generic pointer, never nothing.
+  assert.match(authHint('nope', 'token-token', null)!, /Wrong password/);
+  // Pasted what the file says, but the panel started before it changed.
+  assert.match(authHint('file-token', 'mem-token', 'file-token')!, /restart the panel/);
+  // File and panel disagree, pasted matches neither.
+  assert.match(authHint('other', 'mem-token', 'file-token')!, /different passwords/);
+  // Nothing useful to say.
+  assert.equal(authHint(null, 'token-token', 'token-token'), null);
+  assert.equal(authHint('', 'token-token', 'token-token'), null);
+  assert.equal(authHint('Bearer token-token', '', 'file-token'), null);
+  // Bearer prefix and whitespace are ignored, same as the real check.
+  assert.match(authHint('  Bearer abc  ', 'token-token', 'token-token')!, /3 letters/);
+});
+
+test('doctor reports the web panel password state', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdoc-'));
+  process.env.TCRAB_HOME = dir;
+  const { loadConfig, saveConfig } = await import('../src/core/config.js');
+  const cfg = loadConfig();
+  cfg.gateway.token = 'doctor-token';
+  saveConfig(cfg);
+  const { runDoctor } = await import('../src/mobile/doctor.js');
+  const checks = await runDoctor();
+  const c = checks.find((x) => x.id === 'panel-password');
+  assert.ok(c, 'panel-password check exists');
+  // No panel is running in this test home -> informational with a start hint.
+  assert.equal(c.status, 'info');
+  assert.match(c.detail ?? '', /no panel is answering/);
+  assert.match(c.fix ?? '', /termcrab gateway/);
+});

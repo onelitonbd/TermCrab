@@ -192,6 +192,17 @@ export function readExternalConfigChange(): Config | null {
   return loadConfig();
 }
 
+/** Read just the panel password from the config file. Never changes any state. */
+export function readConfigFileToken(): string | null {
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath(), 'utf8')) as Partial<Config>;
+    const t = raw.gateway?.token;
+    return typeof t === 'string' && t ? t : null;
+  } catch {
+    return null;
+  }
+}
+
 export function generateToken(): string {
   return crypto.randomBytes(24).toString('hex');
 }

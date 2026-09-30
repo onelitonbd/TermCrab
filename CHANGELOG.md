@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.30.2 - 2026-09-30
+
+- When the login screen refuses a password, it now says WHY instead of a generic "invalid token". The panel compares what you pasted against the settings file and its own running password, and shows one plain-English line: you pasted only part of the password (it tells you the letter counts), the panel was started before the password changed (restart it), the panel and the settings file disagree (restart it), or simply wrong (run termcrab config get gateway.token).
+- `termcrab doctor` now has a "web panel password" check: it asks the running panel if it accepts the saved password, and also notices when the panel is still running an older version than what is installed (the classic "I updated but forgot to restart" trap) - each with the exact fix command.
+- Tests: 288 total (287 pass, 1 skip) - new coverage for every refusal explanation, the doctor check, and the hint the login screen receives.
+
+
 ## 0.30.1 - 2026-09-30
 
 - Fixed: the web panel password you get from `termcrab config get gateway.token` could be rejected by a panel that was already running. The gateway used to read its settings once at startup and never again, so a password changed from a terminal (or anywhere outside the running panel) only reached the panel after a restart.

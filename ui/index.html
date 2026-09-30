@@ -1953,7 +1953,14 @@
     }
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
     const res = await fetch(path, Object.assign({}, opts, { headers }));
-    if (res.status === 401) { showOverlay('Invalid or missing token'); throw new Error('unauthorized'); }
+    if (res.status === 401) {
+      let hint = '';
+      try { hint = (await res.json()).hint || ''; } catch { /* body may be empty */ }
+      showOverlay(hint || 'Invalid or missing token');
+      const err = new Error('unauthorized');
+      err.hint = hint;
+      throw err;
+    }
     if (!res.ok) {
       let msg = 'HTTP ' + res.status;
       try { msg = (await res.json()).error || msg; } catch {}
@@ -4268,8 +4275,8 @@ async function bootstrap() {
           w.append(t, b, wz);
         }
       } catch { /* welcome is best-effort */ }
-    } catch {
-      showOverlay('Token rejected');
+    } catch (e) {
+      showOverlay((e && e.hint) || 'Token rejected');
     }
   }
   $('connect').onclick = () => {

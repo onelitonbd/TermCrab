@@ -3,7 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange } from '../core/config.js';
+import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange, readConfigFileToken } from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -29,7 +29,7 @@ import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
-import { extractAuth, checkToken } from './auth.js';
+import { extractAuth, checkToken, authHint } from './auth.js';
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
@@ -523,8 +523,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
       // Everything else under /api requires a valid token.
       if (pathname.startsWith('/api/')) {
-        if (!checkToken(config, extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string }))) {
-          json(res, 401, { error: 'unauthorized' });
+        const presented = extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string });
+        if (!checkToken(config, presented)) {
+          // Say WHY on the login screen: does the pasted password match the
+          // file? Do the file and this running panel even agree?
+          let diskToken: string | null = null;
+          try {
+            diskToken = readConfigFileToken();
+          } catch {
+            diskToken = null;
+          }
+          const hint = authHint(presented, config.gateway.token, diskToken);
+          json(res, 401, hint ? { error: 'unauthorized', hint } : { error: 'unauthorized' });
           return;
         }
 
