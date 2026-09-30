@@ -55,6 +55,10 @@ export interface Config {
     failover: boolean;
     /** Queue mode: followup (default) | steer | collect | interrupt. */
     queueMode: 'followup' | 'steer' | 'collect' | 'interrupt';
+    /** Allow browser automation tool (Playwright/CDP, read-only). */
+    allowBrowser: boolean;
+    /** Allow sandboxed code execution (QuickJS). */
+    allowCodeExec: boolean;
   };
   /** Fallback providers for failover chain (tried in order when primary fails). */
   fallbackProviders: ProviderCfg[];
@@ -113,7 +117,7 @@ export function defaults(): Config {
     provider: { type: 'mock', model: DEFAULT_MODEL_HINTS.mock! },
     providers: [],
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup' },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false },
     fallbackProviders: [],
     channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },
     heartbeat: { enabled: true, minutes: 60, pauseBelow: 20 },

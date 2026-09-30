@@ -24,7 +24,7 @@ src/
 │   ├── loop.ts            # the agent run: prompt -> model -> tools -> repeat
 │   │                        #   + failover chain + compaction trigger + queue-aware
 │   ├── prompt.ts          # system prompt (SOUL + memory + skills index + env)
-│   ├── tools.ts           # tool registry + path guard + shell resolver
+│   ├── tools.ts           # tool registry + path guard + shell resolver + browser (CDP) + code_exec (vm sandbox)
 │   ├── memory.ts          # MEMORY.md + daily logs + lexical search + compacted digests
 │   ├── sessions.ts        # JSONL transcripts + compaction + SessionQueue (FIFO)
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
@@ -94,6 +94,7 @@ test/*.test.ts             # node:test suite
 3. Telegram: empty allowlist = channel off; foreign senders get a lock notice
 4. File tools resolve symlinks and stay inside `TCRAB_HOME` + cwd; `exec` is optional
 5. Bionic guard + TMPDIR fix run before any other module (import order is load-bearing)
+6. `browser` tool is read-only CDP (no Playwright dep); `code_exec` runs in a `vm` sandbox with no network/fs/require — both disabled by default
 
 ## Why zero dependencies
 
