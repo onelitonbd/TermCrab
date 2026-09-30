@@ -88,6 +88,8 @@ export interface Config {
     /** Hybrid embedding search when @huggingface/transformers (or @xenova) is installed. */
     embeddings: boolean;
   };
+  /** Homepage widget visibility, managed by the dashboard tool. */
+  dashboard?: { widgets: Record<string, boolean> };
   update: { checkOnStart: boolean };
 }
 

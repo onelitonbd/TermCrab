@@ -6,6 +6,8 @@ import { workspaceDir } from '../core/paths.js';
 import { isLikelyAndroid } from '../mobile/bionic.js';
 import { MemoryStore } from './memory.js';
 import { SkillStore } from '../skills/loader.js';
+import { listIntents } from './intents.js';
+import { listGoals } from './goals.js';
 
 export interface PromptCtx {
   config: Config;
@@ -83,6 +85,15 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   const { name, soul } = readSoul(ctx.agentName);
   const displayName = ctx.agentName ? name : ctx.config.agent.name || name;
 
+  const intents = listIntents();
+  const intentsBlurb = intents.length
+    ? `\n# Standing intents (always follow these)\n${intents.map((i) => `- ${i.text}`).join('\n')}\n`
+    : '';
+  const openGoals = listGoals().filter((g) => g.status === 'open').slice(0, 5);
+  const goalsBlurb = openGoals.length
+    ? `\n# Active goals\n${openGoals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n')}\n`
+    : '';
+
   const agentNote = ctx.agentName
     ? `\n# Active agent profile\nYou are currently running as the named agent "${ctx.agentName}". Stay in this role.\n`
     : '';
@@ -97,8 +108,7 @@ ${soul || `You are ${displayName}, friendly, practical, and concise.`}
 ${memory || '(empty - use the remember tool to record durable facts)'}
 
 # Skills index (load a skill with load_skill before using it)
-${skills}
-
+${skills}${intentsBlurb}${goalsBlurb}
 # Rules
 - Be concise by default; structured answers for research.
 - Before running shell commands, state briefly what you are doing.

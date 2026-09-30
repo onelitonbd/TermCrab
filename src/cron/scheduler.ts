@@ -1,7 +1,7 @@
 import { log } from '../core/logger.js';
 import { bus, BusEvent } from '../gateway/events.js';
 import { AgentCtx, runTurn } from '../agent/loop.js';
-import { findDue, loadCronState, loadCrons, saveCronState } from './store.js';
+import { findDue, loadCronState, loadCrons, saveCronState, setCronEnabled } from './store.js';
 import { decideHeartbeat, readBattery } from '../mobile/power.js';
 import { notify } from '../mobile/notify.js';
 
@@ -52,6 +52,7 @@ export async function cronTick(deps: CronRunnerDeps): Promise<string[]> {
       if (deps.deliver) await deps.deliver(`⏲️ ${job.name}\n${output}`);
       await notify(`⏰ ${job.name}`, output.slice(0, 120));
       ran.push(job.id);
+      if (job.oneShot) setCronEnabled(job.id, false);
       bus.emit({ type: 'cron', id: job.id, name: job.name, ok: true, preview: output.slice(0, 160) });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

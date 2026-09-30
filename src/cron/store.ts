@@ -12,6 +12,8 @@ export interface CronJob {
   enabled: boolean;
   /** Skip the low-battery pause when true. */
   critical: boolean;
+  /** Fire once then auto-disable (reminders). */
+  oneShot?: boolean;
   createdAt: number;
 }
 
@@ -37,7 +39,7 @@ export function saveCrons(jobs: CronJob[]): void {
   fs.writeFileSync(file(), `${JSON.stringify(jobs, null, 2)}\n`, 'utf8');
 }
 
-export function addCron(input: { name: string; schedule: string; prompt: string; critical?: boolean }): CronJob {
+export function addCron(input: { name: string; schedule: string; prompt: string; critical?: boolean; oneShot?: boolean }): CronJob {
   parseCron(input.schedule); // validates, throws CronParseError
   if (!input.prompt.trim()) throw new CronParseError('prompt is required');
   const jobs = loadCrons();
@@ -48,6 +50,7 @@ export function addCron(input: { name: string; schedule: string; prompt: string;
     prompt: input.prompt.trim(),
     enabled: true,
     critical: Boolean(input.critical),
+    oneShot: Boolean(input.oneShot),
     createdAt: Date.now(),
   };
   jobs.push(job);

@@ -7,6 +7,8 @@ import { Config } from '../core/config.js';
 import { home } from '../core/paths.js';
 import { MemoryStore } from './memory.js';
 import { SkillStore } from '../skills/loader.js';
+import { spawn } from 'node:child_process';
+import { extraTools } from './toolbox.js';
 import { ToolDef } from '../providers/types.js';
 
 const execFileAsync = promisify(execFile);
@@ -18,6 +20,14 @@ export interface ToolEnv {
   /** Root the agent may read/write without exec (state dir + cwd). */
   extraRoots?: string[];
   fetchImpl?: typeof fetch;
+  /** Chat sessions (for the sessions_* tools); omitted in bare unit builds. */
+  sessions?: import('./sessions.js').SessionStore;
+  /** Session id of the current turn (progress card, session_status). */
+  sessionId?: string;
+  /** Human-readable provider label for session_status. */
+  providerLabel?: string;
+  /** Spawn a background subagent turn (wired by the agent loop). */
+  spawnTask?: (sessionId: string, prompt: string) => import('./tasks.js').Task;
 }
 
 export interface Tool {
@@ -26,6 +36,30 @@ export interface Tool {
 }
 
 const MAX_OUTPUT = 20_000;
+
+/** Background exec registry (process tool). Module-level so it survives turns. */
+export interface BgProcess {
+  id: string;
+  pid: number;
+  cmd: string;
+  started: number;
+  buf: string;
+  exit?: { code: number | null; signal?: string | null };
+}
+export const PROCS = new Map<string, BgProcess>();
+let procSeq = 0;
+
+/** Interactive shell sessions over pipes (terminal tool; no PTY available). */
+export interface TermSession {
+  id: string;
+  cmd: string;
+  started: number;
+  buf: string;
+  readPos: number;
+  child: import('node:child_process').ChildProcessWithoutNullStreams;
+}
+export const TERMS = new Map<string, TermSession>();
+let termSeq = 0;
 
 function str(args: Record<string, unknown>, key: string, required = true): string {
   const v = args[key];
@@ -223,6 +257,7 @@ export function buildTools(env: ToolEnv): Tool[] {
         properties: {
           command: { type: 'string', description: 'Command line to execute' },
           timeoutSec: { type: 'number', description: 'Timeout seconds (default 30, max 120)' },
+          background: { type: 'boolean', description: 'Run detached and return a process id (manage with the process tool)' },
         },
         required: ['command'],
       },
@@ -232,6 +267,26 @@ export function buildTools(env: ToolEnv): Tool[] {
         throw new Error('exec is disabled (set agent.allowExec=true in config to enable)');
       }
       const command = str(args, 'command');
+      if (args.background === true) {
+        const shell = resolveShell();
+        const id = `p${(++procSeq).toString(36)}`;
+        const child = spawn(shell, ['-c', command], { stdio: ['ignore', 'pipe', 'pipe'] });
+        const rec: BgProcess = { id, pid: child.pid ?? -1, cmd: command, started: Date.now(), buf: '' };
+        PROCS.set(id, rec);
+        const cap = (chunk: Buffer) => {
+          rec.buf = (rec.buf + chunk.toString('utf8')).slice(-100_000);
+        };
+        child.stdout.on('data', cap);
+        child.stderr.on('data', cap);
+        child.on('close', (code, signal) => {
+          rec.exit = { code, signal };
+        });
+        child.on('error', (err) => {
+          rec.buf += `\n[spawn error] ${err.message}`;
+          rec.exit = { code: null };
+        });
+        return `[background] id=${id} pid=${rec.pid} — read output with the process tool`;
+      }
       const timeout = Math.min(typeof args.timeoutSec === 'number' ? args.timeoutSec * 1000 : 30_000, 120_000);
       const shell = resolveShell();
       try {
@@ -295,6 +350,102 @@ export function buildTools(env: ToolEnv): Tool[] {
   });
 
   tools.push(webFetchTool(env));
+
+  tools.push({
+    def: {
+      name: 'process',
+      description: 'Control background exec: list/output/kill processes started with exec background=true.',
+      schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['list', 'output', 'kill'] },
+          id: { type: 'string', description: 'output/kill' },
+        },
+        required: ['action'],
+      },
+    },
+    async execute(args) {
+      const action = str(args, 'action');
+      if (action === 'list') {
+        if (!PROCS.size) return 'no background processes';
+        return [...PROCS.values()]
+          .map((p) => `${p.id} pid=${p.pid} ${p.exit ? `exited(${p.exit.code ?? 'signal'})` : 'running'} · ${p.cmd.slice(0, 80)}`)
+          .join('\n');
+      }
+      const id = str(args, 'id');
+      const rec = PROCS.get(id);
+      if (!rec) throw new Error('process not found');
+      if (action === 'output') {
+        const head = `[${id} ${rec.exit ? 'exited ' + rec.exit.code : 'running'}]\n`;
+        return head + (rec.buf.slice(-8000) || '(no output yet)');
+      }
+      if (action === 'kill') {
+        if (rec.exit) return `${id} already exited`;
+        try {
+          process.kill(rec.pid, 'SIGTERM');
+        } catch {
+          /* already gone */
+        }
+        return `sent SIGTERM to ${id} (pid ${rec.pid})`;
+      }
+      throw new Error('action must be list/output/kill');
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'terminal',
+      description: 'Interactive shell sessions over pipes: spawn/read/write/close/list (no PTY, so no resize).',
+      schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['spawn', 'read', 'write', 'close', 'list'] },
+          id: { type: 'string', description: 'read/write/close' },
+          command: { type: 'string', description: 'spawn: command to run (default: $SHELL)' },
+          input: { type: 'string', description: 'write: raw bytes to send (include \\n for Enter)' },
+        },
+        required: ['action'],
+      },
+    },
+    async execute(args) {
+      const action = str(args, 'action');
+      if (action === 'list') {
+        if (!TERMS.size) return 'no terminal sessions';
+        return [...TERMS.values()].map((t) => `${t.id} ${t.child.exitCode === null ? 'open' : 'closed'} · ${t.cmd}`).join('\n');
+      }
+      if (action === 'spawn') {
+        const command = str(args, 'command', false) || resolveShell();
+        const id = `t${(++termSeq).toString(36)}`;
+        const child = spawn(resolveShell(), ['-c', command], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const rec: TermSession = { id, cmd: command, started: Date.now(), buf: '', readPos: 0, child };
+        child.stdout.on('data', (c: Buffer) => { rec.buf = (rec.buf + c.toString('utf8')).slice(-100_000); });
+        child.stderr.on('data', (c: Buffer) => { rec.buf = (rec.buf + c.toString('utf8')).slice(-100_000); });
+        TERMS.set(id, rec);
+        return `terminal ${id} open (${command}) — read/write with the terminal tool, close when done`;
+      }
+      const id = str(args, 'id');
+      const rec = TERMS.get(id);
+      if (!rec) throw new Error('terminal not found');
+      if (action === 'read') {
+        const fresh = rec.buf.slice(rec.readPos);
+        rec.readPos = rec.buf.length;
+        return fresh || '(no new output)';
+      }
+      if (action === 'write') {
+        rec.child.stdin.write(str(args, 'input'));
+        return `wrote ${String(args.input ?? '').length} bytes to ${id}`;
+      }
+      if (action === 'close') {
+        rec.child.stdin.end();
+        rec.child.kill('SIGTERM');
+        TERMS.delete(id);
+        return `terminal ${id} closed`;
+      }
+      throw new Error('action must be spawn/read/write/close/list');
+    },
+  });
+
+  tools.push(...extraTools(env));
 
   return tools;
 }

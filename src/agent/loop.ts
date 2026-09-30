@@ -6,6 +6,7 @@ import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { Entry, newRunId, SessionStore } from './sessions.js';
 import { buildTools, Tool, ToolEnv } from './tools.js';
+import { spawnTask as spawnBgTask } from './tasks.js';
 
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
@@ -110,7 +111,20 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     opts.tier === 'local' && ctx.localProvider
       ? ctx.localProvider
       : (ctx.provider ?? resolveProvider(ctx.config.provider, ctx.fetchImpl));
-  const toolEnv: ToolEnv = { config: ctx.config, memory: ctx.memory, skills: ctx.skills };
+  const toolEnv: ToolEnv = {
+    config: ctx.config,
+    memory: ctx.memory,
+    skills: ctx.skills,
+    sessions: ctx.sessions,
+    sessionId,
+    providerLabel: providerLabel(ctx.config),
+    spawnTask: (sid, prompt) =>
+      spawnBgTask({
+        run: (s2, p2) => runTurn(ctx, { sessionId: s2, userMessage: p2, channel: 'subagent' }),
+        sessionId: sid,
+        prompt,
+      }),
+  };
   const tools = buildTools(toolEnv);
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));
   const system = buildSystemPrompt({

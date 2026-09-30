@@ -45,6 +45,15 @@ export class SessionStore {
     return out;
   }
 
+  delete(sessionId: string): boolean {
+    try {
+      fs.unlinkSync(this.file(sessionId));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   reset(sessionId: string): void {
     const f = this.file(sessionId);
     if (fs.existsSync(f)) {
