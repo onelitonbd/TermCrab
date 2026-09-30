@@ -1,6 +1,6 @@
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
-import { providerSummary, resolveProvider } from '../providers/index.js';
+import { providerSummary, resolveProvider, resolveProviderChain } from '../providers/index.js';
 import { ChatResult, Provider, ProviderMessage } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
@@ -107,10 +107,27 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   });
   emit({ type: 'run:start', runId, sessionId });
 
-  const provider =
-    opts.tier === 'local' && ctx.localProvider
-      ? ctx.localProvider
-      : (ctx.provider ?? resolveProvider(ctx.config.provider, ctx.fetchImpl));
+  // Compact session if it grew past the threshold (keeps context lean on mobile)
+  const threshold = ctx.config.agent.compactThreshold || 60;
+  const sessionSize = ctx.sessions.list().find((s) => s.id === sessionId)?.messages ?? 0;
+  if (sessionSize > threshold + 10) {
+    const digest = ctx.sessions.compact(sessionId, threshold);
+    if (digest) {
+      log.info(`session ${sessionId} compacted (${sessionSize} -> ${threshold} entries)`);
+    }
+  }
+
+  // Resolve provider: local tier > failover chain > single provider
+  let provider: Provider;
+  if (opts.tier === 'local' && ctx.localProvider) {
+    provider = ctx.localProvider;
+  } else if (ctx.provider) {
+    provider = ctx.provider;
+  } else if (ctx.config.agent.failover && ctx.config.fallbackProviders.length > 0) {
+    provider = resolveProviderChain(ctx.config.provider, ctx.config.fallbackProviders, ctx.fetchImpl);
+  } else {
+    provider = resolveProvider(ctx.config.provider, ctx.fetchImpl);
+  }
   const toolEnv: ToolEnv = {
     config: ctx.config,
     memory: ctx.memory,

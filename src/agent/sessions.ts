@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { sessionsDir, ensureLayout } from '../core/paths.js';
+import { sessionsDir, ensureLayout, home } from '../core/paths.js';
 
 export type Entry =
   | { role: 'user'; content: string; ts: number; channel?: string }
@@ -143,6 +143,69 @@ export class SessionStore {
     const tmp = `${f}.tmp`;
     fs.writeFileSync(tmp, `${kept.join('\n')}\n`, 'utf8');
     fs.renameSync(tmp, f);
+  }
+
+  /**
+   * Compact a session: summarize old entries into a digest file, then trim.
+   * Returns the summary text (or empty string if no compaction was needed).
+   * The digest is written to memory/compacted/<sessionId>.md so the agent
+   * can still search it via search_memory.
+   */
+  compact(sessionId: string, maxEntries = 60): string {
+    const f = this.file(sessionId);
+    if (!fs.existsSync(f)) return '';
+    const lines = fs.readFileSync(f, 'utf8').split('\n').filter((l) => l.trim());
+    if (lines.length <= maxEntries + 10) return '';
+
+    const overflowCount = lines.length - maxEntries;
+    const overflow = lines.slice(0, overflowCount);
+    const kept = lines.slice(overflowCount);
+
+    // Build a simple digest of the overflow (no LLM needed — just extract key lines).
+    const digest = this.buildDigest(overflow, sessionId);
+
+    // Write digest to memory/compacted/<sessionId>.md
+    const compactedDir = path.join(home(), 'memory', 'compacted');
+    fs.mkdirSync(compactedDir, { recursive: true });
+    const digestFile = path.join(compactedDir, `${sessionId}.md`);
+    const timestamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const digestEntry = `\n\n## Compacted ${timestamp}\n${digest}\n`;
+    fs.appendFileSync(digestFile, digestEntry, 'utf8');
+
+    // Trim the session file
+    const tmp = `${f}.tmp`;
+    fs.writeFileSync(tmp, `${kept.join('\n')}\n`, 'utf8');
+    fs.renameSync(tmp, f);
+
+    return digest;
+  }
+
+  /**
+   * Build a simple text digest from session lines. Extracts user/assistant
+   * messages and tool results, skipping empty or redundant entries.
+   */
+  private buildDigest(lines: string[], sessionId: string): string {
+    const parts: string[] = [];
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line) as {
+          role?: string;
+          content?: string;
+          name?: string;
+          result?: string;
+        };
+        if (entry.role === 'user' && entry.content) {
+          parts.push(`User: ${entry.content.slice(0, 200)}`);
+        } else if (entry.role === 'assistant' && entry.content) {
+          parts.push(`Assistant: ${entry.content.slice(0, 200)}`);
+        } else if (entry.role === 'tool' && entry.name) {
+          parts.push(`Tool(${entry.name}): ${String(entry.result ?? '').slice(0, 100)}`);
+        }
+      } catch {
+        /* skip malformed lines */
+      }
+    }
+    return parts.join('\n');
   }
 }
 

@@ -103,6 +103,13 @@ export class MemoryStore {
           files.push(path.join(daily, f));
         }
       }
+      // Compacted session digests
+      const compacted = path.join(this.root, 'compacted');
+      if (fs.existsSync(compacted)) {
+        for (const f of fs.readdirSync(compacted).sort().reverse().slice(0, 10)) {
+          files.push(path.join(compacted, f));
+        }
+      }
 
       for (const file of files) {
         let text: string;

@@ -22,10 +22,11 @@ src/
 │   └── events.ts          # in-process bus -> SSE subscribers
 ├── agent/
 │   ├── loop.ts            # the agent run: prompt -> model -> tools -> repeat
+│   │                        #   + failover chain + compaction trigger
 │   ├── prompt.ts          # system prompt (SOUL + memory + skills index + env)
 │   ├── tools.ts           # tool registry + path guard + shell resolver
-│   ├── memory.ts          # MEMORY.md + daily logs + lexical search
-│   ├── sessions.ts        # JSONL transcripts with rolling window
+│   ├── memory.ts          # MEMORY.md + daily logs + lexical search + compacted digests
+│   ├── sessions.ts        # JSONL transcripts with rolling window + compaction
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
 ├── channels/
 │   ├── api.ts             # Telegram Bot API client (global fetch)
@@ -72,14 +73,16 @@ test/*.test.ts             # node:test suite
 
 1. Channel (web/CLI/telegram) receives a message → `runTurn(ctx, …)`
 2. User entry appended to the session JSONL
-3. System prompt assembled: identity (SOUL.md) + memory head + skills index + env blurb
-4. Loop (max `agent.maxIterations`, default 8):
+3. **Compaction check**: if session entries exceed `agent.compactThreshold` (default 60),
+   old entries are summarized into `memory/compacted/<sessionId>.md` and the session is trimmed
+4. System prompt assembled: identity (SOUL.md) + memory head + skills index + env blurb
+5. Loop (max `agent.maxIterations`, default 8):
    - transcript → provider messages (orphan tool results dropped)
-   - provider chat call (180s timeout)
+   - provider chat call (180s timeout) via **failover chain** (primary → fallbacks on 429/5xx)
    - tool calls executed (policy/roots enforced) → results appended
    - repeat until a pure text answer
-5. Events stream to SSE subscribers (`tool:start`, `delta`, `run:end`, …)
-6. Final answer persisted; channel replies (Telegram chunks + HTML-escapes)
+6. Events stream to SSE subscribers (`tool:start`, `delta`, `run:end`, …)
+7. Final answer persisted; channel replies (Telegram chunks + HTML-escapes)
 
 ## Security invariants
 

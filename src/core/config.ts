@@ -49,7 +49,13 @@ export interface Config {
     allowExec: boolean;
     maxIterations: number;
     timezone: string;
+    /** Compact session when entries exceed this threshold (default 60). */
+    compactThreshold: number;
+    /** Enable model failover chain (default true). */
+    failover: boolean;
   };
+  /** Fallback providers for failover chain (tried in order when primary fails). */
+  fallbackProviders: ProviderCfg[];
   channels: {
     telegram?: {
       token: string;
@@ -105,7 +111,8 @@ export function defaults(): Config {
     provider: { type: 'mock', model: DEFAULT_MODEL_HINTS.mock! },
     providers: [],
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '' },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true },
+    fallbackProviders: [],
     channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },
     heartbeat: { enabled: true, minutes: 60, pauseBelow: 20 },
     localProvider: {
