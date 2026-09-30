@@ -286,6 +286,29 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('showModelsRoot()'), 'models page loads only when opened');
     });
 
+    await t.test('v0.22: memory page redesign — hero, tabs, schedule, dreams scene, settings', async () => {
+      const html = await (await fetch(base + '/')).text();
+      for (const tab of ['overview', 'memories', 'dreams', 'msettings']) {
+        assert.ok(html.includes('data-memtab="' + tab + '"'), 'tab ' + tab);
+        assert.ok(html.includes('id="memPane-' + tab + '"'), 'pane ' + tab);
+      }
+      assert.ok(html.includes('class="memHero"'), 'hero status card');
+      assert.ok(html.includes('id="memAwake"') && html.includes('id="memEngine"'), 'hero title + engine line');
+      assert.ok(html.includes('SLEEP SCHEDULE'), 'sleep schedule section');
+      assert.ok(html.includes('class="phaseCard"') && html.includes('id="phMeta"'), 'phase card with real schedule');
+      assert.ok(html.includes('class="dreamScene"') && html.includes('id="sceneStatus"'), 'dreams scene');
+      for (const d of ['scene', 'diary', 'adv']) {
+        assert.ok(html.includes('data-dtab="' + d + '"'), 'dream sub-tab ' + d);
+      }
+      assert.ok(html.includes('id="segEngine"') && html.includes('id="segDream"'), 'engine + dreaming segmented controls');
+      assert.ok(html.includes('id="memQ"') && html.includes('id="memHits"'), 'search kept');
+      assert.ok(html.includes('id="memEdit"') && html.includes('id="memSave"'), 'memory file editor kept');
+      assert.ok(html.includes('id="dreamList"'), 'dream diary kept');
+      assert.ok(!html.includes('id="memPanel"'), 'old collapsed panel removed');
+      assert.ok(html.includes('dream.enabled') && html.includes('memory.embeddings'), 'settings write to the backend live');
+      assert.ok(html.includes('id="memRefresh"') && html.includes('id="dreamRefresh"'), 'refresh buttons');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');

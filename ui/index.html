@@ -362,6 +362,138 @@
     white-space: nowrap;
   }
   .smallBtn { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
+  /* ---- memory page (redesign) ---- */
+  .memTitle { font-size: 30px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; margin: 0; }
+  .memTabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 8px 0 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .memTab {
+    position: relative;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-weight: 650;
+    font-size: 14.5px;
+    padding: 11px 13px;
+    min-height: 0;
+    border-radius: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .memTab:hover { background: transparent; color: var(--text); }
+  .memTab.on { color: var(--strong); }
+  .memTab.on:hover { background: transparent; color: var(--strong); }
+  .memTab.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2.5px; background: var(--accent); border-radius: 3px; }
+  .memHero {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: radial-gradient(130% 150% at 12% 15%, rgba(88, 166, 255, 0.17), transparent 55%), var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 16px;
+  }
+  .memMascot { flex-shrink: 0; display: flex; }
+  .memHeroTitle { font-size: 21px; font-weight: 800; color: var(--strong); letter-spacing: -0.01em; }
+  .memHeroSub { color: var(--muted); font-size: 13.5px; margin: 5px 0 12px; }
+  .memGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0 4px; }
+  @media (min-width: 560px) { .memGrid { grid-template-columns: repeat(4, 1fr); } }
+  .memChip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .memChip .k { font-size: 10.5px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+  .memChip .v { font-size: 16px; font-weight: 750; color: var(--strong); margin-top: 4px; overflow-wrap: anywhere; }
+  .memSectionLabel { font-size: 11.5px; letter-spacing: 0.11em; color: var(--muted); font-weight: 750; margin: 18px 0 9px; }
+  .phaseCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 15px; }
+  .phaseTop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .phName { font-weight: 750; color: var(--strong); font-size: 15.5px; }
+  .phState { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 650; color: var(--text); white-space: nowrap; }
+  .dotOk { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .dotOff { background: var(--muted); }
+  .phDesc { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 7px 0 8px; }
+  .phMeta { color: var(--text); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .statusPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .memSearchRow { display: flex; gap: 8px; align-items: stretch; }
+  .memSearchRow input { flex: 1; min-width: 0; }
+  .memSearchRow .go { flex-shrink: 0; }
+  .memHit { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; }
+  .memHit .fh { display: flex; gap: 8px; align-items: center; margin-bottom: 5px; }
+  .memHit .fh .chip {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(88, 166, 255, 0.12);
+    border-radius: 999px;
+    padding: 2px 9px;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .memHit .fh .sc { font-size: 11.5px; color: var(--muted); }
+  .memHit .hl { color: var(--text); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .dreamScene {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 26px 16px 20px;
+    text-align: center;
+    background:
+      radial-gradient(70% 55% at 78% 18%, rgba(240, 193, 75, 0.16), transparent 62%),
+      radial-gradient(130% 90% at 50% 115%, rgba(88, 166, 255, 0.16), transparent 62%),
+      #07070a;
+  }
+  .moon {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 32%, #ffe9a8, #efbe4a 72%);
+    box-shadow: 0 0 42px rgba(240, 193, 75, 0.45);
+  }
+  .zz { position: absolute; color: var(--danger); font-weight: 800; opacity: 0; animation: zzfloat 3.4s ease-in-out infinite; }
+  .zz1 { font-size: 15px; right: 96px; top: 96px; animation-delay: 0s; }
+  .zz2 { font-size: 19px; right: 74px; top: 76px; animation-delay: 1.1s; }
+  .zz3 { font-size: 23px; right: 48px; top: 52px; animation-delay: 2.2s; }
+  @keyframes zzfloat {
+    0% { transform: translateY(8px); opacity: 0; }
+    35% { opacity: 0.95; }
+    100% { transform: translateY(-16px); opacity: 0; }
+  }
+  .sceneCrab { display: flex; justify-content: center; margin-top: 44px; position: relative; z-index: 1; }
+  .sceneStatus { font-size: 12.5px; letter-spacing: 0.16em; color: var(--muted); font-weight: 750; margin-top: 12px; }
+  .sceneLine { color: var(--ok); font-size: 13.5px; margin-top: 7px; min-height: 18px; }
+  .scenePills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .memSeg { display: inline-flex; background: var(--fill); border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px; gap: 3px; }
+  .memSeg button {
+    background: transparent;
+    color: var(--muted);
+    border: 0;
+    border-radius: 999px;
+    min-height: 34px;
+    padding: 0 15px;
+    font-size: 13.5px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .memSeg button:hover { background: transparent; color: var(--text); }
+  .memSeg button.on { background: var(--strong); color: #101418; }
+  .memSeg button.on:hover { background: var(--strong); color: #101418; }
+  .setCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 15px; }
+  .setCard h4 { margin: 0 0 5px; font-size: 15.5px; font-weight: 750; color: var(--strong); }
+  .setCard .d { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 12px; }
+  .setCard textarea { width: 100%; min-height: 170px; resize: vertical; }
   /* ---- models page ---- */
   .mdlBar { display: flex; gap: 8px; align-items: center; margin: 2px 0 8px; }
   .mdlBar input { flex: 1; min-width: 0; }
@@ -995,25 +1127,161 @@
     </div>
   </section>
   <section class="view" id="view-memory" hidden>
-    <details class="panel" id="memPanel" data-primary open>
-      <summary>Memory</summary>
-      <div class="pBody">
-        <div class="pBar">
-          <input type="search" id="memQ" placeholder="search memory (e.g. which editor do I like)" />
-          <button id="memSearch" class="ghost">Search</button>
-          <span class="pNote" id="memStats"></span>
+    <div class="pageHead"><h2 class="memTitle">Memory</h2></div>
+    <p class="pageNote">Choose how TermCrab stores, searches, and maintains agent memory.</p>
+    <div class="memTabs" role="tablist">
+      <button class="memTab on" data-memtab="overview" type="button">Overview</button>
+      <button class="memTab" data-memtab="memories" type="button">Memories</button>
+      <button class="memTab" data-memtab="dreams" type="button">Dreams</button>
+      <button class="memTab" data-memtab="msettings" type="button">Settings</button>
+    </div>
+
+    <div class="memPane" id="memPane-overview">
+      <div class="memHero">
+        <div class="memMascot"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true">
+          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
+          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
+          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#5b8dff"/>
+          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#9cbcff" opacity="0.4"/>
+          <circle cx="47" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="73" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="49" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="75" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="51" cy="58" r="1.6" fill="#ffffff"/>
+          <circle cx="77" cy="58" r="1.6" fill="#ffffff"/>
+          <path d="M50 77c6 6 14 6 20 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+        </svg></div>
+        <div style="min-width: 0">
+          <div class="memHeroTitle" id="memAwake">Memory is awake</div>
+          <div class="memHeroSub" id="memEngine">memory-core</div>
+          <button id="memRefresh" class="ghost smallBtn" type="button">Refresh status</button>
         </div>
-        <div id="memHits"></div>
-        <div class="pBar">
-          <input type="text" id="memFact" placeholder="remember a fact…" />
-          <button id="memRemember" class="ghost">Remember</button>
-        </div>
-        <textarea id="memEdit" placeholder="MEMORY.md — the full file, editable here or anywhere"></textarea>
-        <div class="pBar"><button id="memSave" class="ghost">Save memory file</button><span class="pNote">plain file on disk — nothing hidden</span></div>
-        <div class="pBar"><span class="pNote" id="dreamInfo">loading…</span></div>
-        <div id="dreamList"></div>
       </div>
-    </details>
+      <div class="memGrid">
+        <div class="memChip"><div class="k">Facts</div><div class="v" id="chipFacts">&hellip;</div></div>
+        <div class="memChip"><div class="k">Index</div><div class="v" id="chipVec">&hellip;</div></div>
+        <div class="memChip"><div class="k">Daily files</div><div class="v" id="chipFiles">&hellip;</div></div>
+        <div class="memChip"><div class="k">Size</div><div class="v" id="chipSize">&hellip;</div></div>
+      </div>
+      <div class="memSectionLabel">SLEEP SCHEDULE</div>
+      <div class="listCol" id="memPhases">
+        <div class="phaseCard">
+          <div class="phaseTop">
+            <span class="phName">Dream sweep</span>
+            <span class="phState"><span class="dotOk" id="phDot"></span><span id="phStateText">Enabled</span></span>
+          </div>
+          <div class="phDesc">Sorts fresh short-term notes, promotes what matters into long-term memory (MEMORY.md), and writes the dream diary.</div>
+          <div class="phMeta" id="phMeta">loading&hellip;</div>
+        </div>
+      </div>
+      <details class="panel" style="margin-top: 12px">
+        <summary>How dreaming works</summary>
+        <div class="pBody pNote" style="line-height: 1.6">
+          While the agent runs, facts land in short-term daily notes. During a dream sweep those notes are scored:
+          the keepers are promoted into MEMORY.md (long-term), the rest fade, and a short line is written to the dream
+          diary. Nothing is sent anywhere — all of it stays as plain files on this device.
+        </div>
+      </details>
+    </div>
+
+    <div class="memPane" id="memPane-memories" hidden>
+      <div class="memSearchRow">
+        <input type="search" id="memQ" placeholder="Search this agent's memories" />
+        <button id="memSearch" class="go" type="button">Search</button>
+      </div>
+      <div id="memHits" class="listCol" style="margin-top: 10px">
+        <div class="memHit"><div class="hl" style="color: var(--muted)">Search for a person, project, decision, or anything else this agent remembers.</div></div>
+      </div>
+      <div class="memSectionLabel">QUICK REMEMBER</div>
+      <div class="memSearchRow">
+        <input type="text" id="memFact" placeholder="remember a fact&hellip;" />
+        <button id="memRemember" class="ghost go" type="button">Remember</button>
+      </div>
+      <div class="pNote" id="memQuickNote" style="margin-top: 8px"></div>
+    </div>
+
+    <div class="memPane" id="memPane-dreams" hidden>
+      <div class="memSearchRow" style="align-items: center">
+        <button id="dreamRefresh" class="ghost smallBtn" type="button">Refresh</button>
+        <span class="pNote" id="dreamDefault" style="flex: 1">loading&hellip;</span>
+        <span class="statusPill" id="dreamPill"><span class="dotOk"></span><span id="dreamPillText">DREAMING</span></span>
+      </div>
+      <div class="memTabs" style="margin-top: 10px">
+        <button class="memTab on" data-dtab="scene" type="button">Scene</button>
+        <button class="memTab" data-dtab="diary" type="button">Diary</button>
+        <button class="memTab" data-dtab="adv" type="button">Advanced</button>
+      </div>
+      <div class="memPane" id="dtab-scene">
+        <div class="dreamScene">
+          <div class="moon"></div>
+          <span class="zz zz1">z</span><span class="zz zz2">z</span><span class="zz zz3">z</span>
+          <div class="sceneCrab"><svg viewBox="0 0 120 110" width="150" height="138" aria-hidden="true">
+          <path d="M30 82c-8 5-12 11-12 18M40 90c-5 6-7 11-6 16" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M90 82c8 5 12 11 12 18M80 90c5 6 7 11 6 16" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M24 52c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
+          <path d="M96 52c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
+          <ellipse cx="60" cy="64" rx="40" ry="30" fill="#5b8dff"/>
+          <ellipse cx="60" cy="74" rx="25" ry="15" fill="#9cbcff" opacity="0.4"/>
+          <path d="M42 60c3.5 4.5 9 4.5 12.5 0M65.5 60c3.5 4.5 9 4.5 12.5 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+          <path d="M52 76c5 4 11 4 16 0" stroke="#101418" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        </svg></div>
+          <div class="sceneStatus" id="sceneStatus">DREAMING ACTIVE</div>
+          <div class="sceneLine" id="sceneLine">&hellip;</div>
+          <div class="scenePills">
+            <span class="statusPill"><span class="dotOk"></span><span id="scenePillSweep">SWEEP 24h</span></span>
+            <span class="statusPill"><span class="dotOk"></span><span id="scenePillNext">NEXT --:--</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="memPane" id="dtab-diary" hidden>
+        <div class="pNote" id="dreamLast" style="margin-bottom: 8px">loading&hellip;</div>
+        <div id="dreamList" class="listCol"></div>
+      </div>
+      <div class="memPane" id="dtab-adv" hidden>
+        <div class="setCard">
+          <h4>Dreaming</h4>
+          <div class="d">Turn the nightly consolidation on or off and set how often it runs. Changes save instantly.</div>
+          <div class="memSeg" id="segDream">
+            <button type="button" data-on="1">On</button>
+            <button type="button" data-on="0">Off</button>
+          </div>
+          <div class="memSearchRow" style="margin-top: 12px">
+            <input type="text" id="advEvery" inputmode="numeric" placeholder="every N hours" maxlength="4" />
+            <button id="advApply" class="ghost go" type="button">Apply</button>
+          </div>
+          <div class="pNote" id="advNote" style="margin-top: 8px"></div>
+          <div class="pBar" style="margin-top: 14px">
+            <button id="dreamRun" type="button">Run a dream now</button>
+          </div>
+          <div class="pNote" id="dreamRunNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="memPane" id="memPane-msettings" hidden>
+      <div class="memSectionLabel" style="margin-top: 4px">ENGINE</div>
+      <div class="setCard">
+        <h4>Memory engine</h4>
+        <div class="d">Hybrid search uses vectors plus text matching; lexical is plain text matching only (works everywhere, no embeddings needed).</div>
+        <div class="memSeg" id="segEngine">
+          <button type="button" data-emb="1">Hybrid search</button>
+          <button type="button" data-emb="0">Lexical only</button>
+        </div>
+        <div class="pNote" id="engNote" style="margin-top: 10px"></div>
+      </div>
+      <div class="memSectionLabel">MEMORY FILE</div>
+      <div class="setCard">
+        <h4>MEMORY.md</h4>
+        <div class="d">The full long-term file, editable here or anywhere else — plain text on disk, nothing hidden.</div>
+        <textarea id="memEdit" placeholder="MEMORY.md"></textarea>
+        <div class="pBar" style="margin-top: 10px">
+          <button id="memSave" type="button">Save memory file</button>
+          <span class="pNote" id="memFileNote">plain file on disk</span>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="view" id="view-tools" hidden>
@@ -2154,66 +2422,171 @@
     } finally { $('docRun').disabled = false; }
   };
 
-  async function refreshDreams() {
-    try {
-      const d = await api('/api/dreams');
-      $('dreamInfo').textContent = d.lastDreamAt
-        ? 'last: ' + new Date(d.lastDreamAt).toLocaleString()
-        : 'no dreams yet — the Dream button runs one';
-      const list = $('dreamList');
-      list.innerHTML = '';
-      if (!d.history || !d.history.length) {
-        const e = document.createElement('div');
-        e.className = 'pNote';
-        e.textContent = 'nothing learned yet';
-        list.appendChild(e);
-        return;
-      }
-      for (const h of d.history) {
-        const row = document.createElement('div');
-        row.className = 'dreamRow';
-        const dt = document.createElement('span');
-        dt.className = 'd';
-        dt.textContent = h.day;
-        row.append(dt, document.createTextNode(h.line));
-        list.appendChild(row);
-      }
-    } catch (e) { $('dreamInfo').textContent = 'dream history: ' + e.message; }
+  // ---- Memory page (redesign): tabs, hero, schedule, dreams scene ----
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
   }
+  function showMemTab(name) {
+    document.querySelectorAll('[data-memtab]').forEach((b) => b.classList.toggle('on', b.dataset.memtab === name));
+    for (const t of ['overview', 'memories', 'dreams', 'msettings']) {
+      const pane = $('memPane-' + t);
+      if (pane) pane.hidden = t !== name;
+    }
+    if (name === 'overview' || name === 'dreams') { refreshMem(); refreshDreams(); }
+  }
+  function showDTab(name) {
+    document.querySelectorAll('[data-dtab]').forEach((b) => b.classList.toggle('on', b.dataset.dtab === name));
+    for (const t of ['scene', 'diary', 'adv']) {
+      const pane = $('dtab-' + t);
+      if (pane) pane.hidden = t !== name;
+    }
+  }
+  document.querySelectorAll('[data-memtab]').forEach((b) => { b.onclick = () => showMemTab(b.dataset.memtab); });
+  document.querySelectorAll('[data-dtab]').forEach((b) => { b.onclick = () => showDTab(b.dataset.dtab); });
+
+  function nextDreamAt(last, every) {
+    if (!last) return null;
+    let next = Number(last) + every * 3600000;
+    while (next < Date.now()) next += every * 3600000;
+    return next;
+  }
+  function hhmm(ts) { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
   async function refreshMem() {
     try {
       const d = await api('/api/memory');
-      $('memStats').textContent =
-        `${d.stats.memoryBytes}B · ${d.stats.dailyFiles} daily · ` +
-        (d.index && d.index.enabled ? d.index.vectors + ' vectors' : 'lexical only');
+      let st = null;
+      try { st = await api('/api/status'); } catch { /* hero still fills from memory */ }
+      const hybrid = !!(d.index && d.index.enabled);
+      $('memEngine').textContent = 'memory-core \u00b7 ' + (hybrid ? 'hybrid search' : 'lexical only');
+      $('chipFacts').textContent = st && st.memory && st.memory.facts != null ? String(st.memory.facts) : '\u2014';
+      $('chipVec').textContent = hybrid ? String(d.index.vectors) + ' vectors' : 'lexical';
+      $('chipFiles').textContent = String(d.stats.dailyFiles);
+      $('chipSize').textContent = fmtBytes(d.stats.memoryBytes);
       $('memEdit').value = d.content || '';
-    } catch (e) { addMsg('sys', 'memory load failed: ' + e.message); }
+    } catch (e) {
+      $('memEngine').textContent = 'memory-core \u00b7 unavailable (' + e.message + ')';
+    }
   }
-  $('memPanel').addEventListener('toggle', () => { if ($('memPanel').open) { refreshMem(); refreshDreams(); } });
+
+  async function refreshDreams() {
+    try {
+      const d = await api('/api/dreams');
+      let cfg = null;
+      try { cfg = await api('/api/config'); } catch { /* fall back to defaults */ }
+      const dr = (cfg && cfg.config && cfg.config.dream) || {};
+      const enabled = dr.enabled !== false;
+      const every = Math.max(1, Number(dr.everyHours) || 24);
+      const last = d.lastDreamAt || null;
+      const next = enabled ? nextDreamAt(last, every) : null;
+
+      $('dreamDefault').textContent = 'every ' + every + 'h \u00b7 ' + (last ? 'last ' + new Date(last).toLocaleString() : 'no dreams yet');
+      $('dreamPillText').textContent = enabled ? 'DREAMING ON' : 'DREAMING OFF';
+      $('dreamPill').querySelector('.dotOk').classList.toggle('dotOff', !enabled);
+
+      $('phDot').classList.toggle('dotOff', !enabled);
+      $('phStateText').textContent = enabled ? 'Enabled' : 'Paused';
+      $('phMeta').textContent = 'every ' + every + 'h \u00b7 ' +
+        (next ? 'next ' + hhmm(next) : enabled ? 'first sweep pending' : 'turned off') +
+        (last ? ' \u00b7 last ' + new Date(last).toLocaleString() : '');
+
+      $('sceneStatus').textContent = enabled ? 'DREAMING ACTIVE' : 'DREAMING PAUSED';
+      $('sceneLine').textContent = enabled
+        ? (last ? 'last sweep ' + new Date(last).toLocaleString() : 'waiting for the first sweep')
+        : 'turn dreaming on in Advanced';
+      $('scenePillSweep').textContent = 'SWEEP ' + every + 'h';
+      $('scenePillNext').textContent = next ? 'NEXT ' + hhmm(next) : 'NEXT --:--';
+
+      $('dreamLast').textContent = last
+        ? 'last dream: ' + new Date(last).toLocaleString()
+        : 'no dreams yet \u2014 run one from Advanced';
+      const list = $('dreamList');
+      list.innerHTML = '';
+      if (!d.history || !d.history.length) {
+        const e = document.createElement('div');
+        e.className = 'nx';
+        e.textContent = 'nothing learned yet';
+        list.appendChild(e);
+      } else {
+        for (const h of d.history) {
+          const row = document.createElement('div');
+          row.className = 'dreamRow';
+          const dt = document.createElement('span');
+          dt.className = 'd';
+          dt.textContent = h.day;
+          row.append(dt, document.createTextNode(h.line));
+          list.appendChild(row);
+        }
+      }
+
+      $('advEvery').value = String(every);
+      document.querySelectorAll('#segDream button').forEach((b) => b.classList.toggle('on', (b.dataset.on === '1') === enabled));
+      const emb = !cfg || !cfg.config || !cfg.config.memory || cfg.config.memory.embeddings !== false;
+      document.querySelectorAll('#segEngine button').forEach((b) => b.classList.toggle('on', (b.dataset.emb === '1') === emb));
+      $('engNote').textContent = emb
+        ? 'Using default: hybrid search (vectors + text).'
+        : 'Using default: lexical only (text matching).';
+    } catch (e) {
+      $('dreamDefault').textContent = 'dream history: ' + e.message;
+    }
+  }
+
+  $('memRefresh').onclick = () => { refreshMem(); refreshDreams(); };
+  $('dreamRefresh').onclick = () => { refreshMem(); refreshDreams(); };
+
   $('memSearch').onclick = async () => {
     const q = $('memQ').value.trim();
     if (!q) return;
-    $('memHits').textContent = 'searching…';
+    const box = $('memHits');
+    box.innerHTML = '<div class="nx">searching\u2026</div>';
     try {
       const r = await api('/api/memory/search', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ query: q }),
       });
-      const box = $('memHits');
       box.innerHTML = '';
-      if (!(r.hits || []).length) { box.textContent = 'no matches'; return; }
+      if (!(r.hits || []).length) {
+        const none = document.createElement('div');
+        none.className = 'memHit';
+        const hl = document.createElement('div');
+        hl.className = 'hl';
+        hl.style.color = 'var(--muted)';
+        hl.textContent = 'No matches.';
+        none.appendChild(hl);
+        box.appendChild(none);
+        return;
+      }
       for (const h of r.hits) {
-        const div = document.createElement('div'); div.className = 'hit';
-        const f = document.createElement('div'); f.className = 'f';
-        f.textContent = `[${h.file}]` + (h.score != null ? ` · score ${Number(h.score).toFixed(1)}` : '');
-        const l = document.createElement('div'); l.textContent = h.line;
-        div.append(f, l);
+        const div = document.createElement('div');
+        div.className = 'memHit';
+        const fh = document.createElement('div');
+        fh.className = 'fh';
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = h.file;
+        fh.appendChild(chip);
+        if (h.score != null) {
+          const sc = document.createElement('span');
+          sc.className = 'sc';
+          sc.textContent = 'score ' + Number(h.score).toFixed(1);
+          fh.appendChild(sc);
+        }
+        const l = document.createElement('div');
+        l.className = 'hl';
+        l.textContent = h.line;
+        div.append(fh, l);
         box.appendChild(div);
       }
-    } catch (e) { $('memHits').textContent = 'search failed: ' + e.message; }
+    } catch (e) {
+      box.innerHTML = '';
+      box.textContent = 'search failed: ' + e.message;
+    }
   };
+
   $('memRemember').onclick = async () => {
     const fact = $('memFact').value.trim();
     if (!fact) return;
@@ -2223,11 +2596,14 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ fact }),
       });
-      addMsg('sys', 'Memory: ' + r.result);
+      $('memQuickNote').textContent = r.result || (r.ok ? 'Remembered.' : 'Saved.');
       if (r.ok) $('memFact').value = '';
       refreshMem();
-    } catch (e) { addMsg('sys', 'remember failed: ' + e.message); }
+    } catch (e) {
+      $('memQuickNote').textContent = 'remember failed: ' + e.message;
+    }
   };
+
   $('memSave').onclick = async () => {
     try {
       const r = await api('/api/memory', {
@@ -2235,10 +2611,65 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content: $('memEdit').value }),
       });
-      addMsg('sys', `MEMORY.md saved (${r.stats.memoryBytes}B)`);
+      $('memFileNote').textContent = 'saved (' + fmtBytes(r.stats.memoryBytes) + ')';
       refreshMem();
-    } catch (e) { addMsg('sys', 'save failed: ' + e.message); }
+    } catch (e) {
+      $('memFileNote').textContent = 'save failed: ' + e.message;
+    }
   };
+
+  // Dreams > Advanced: instant config writes, no restart.
+  document.querySelectorAll('#segDream button').forEach((b) => {
+    b.onclick = async () => {
+      try {
+        await api('/api/config', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ key: 'dream.enabled', value: b.dataset.on === '1' ? 'true' : 'false' }),
+        });
+        $('advNote').textContent = 'Saved \u2014 dreaming is now ' + (b.dataset.on === '1' ? 'on' : 'off') + '.';
+        refreshDreams();
+      } catch (e) { $('advNote').textContent = e.message; }
+    };
+  });
+  $('advApply').onclick = async () => {
+    const n = Number($('advEvery').value);
+    if (!n || n < 1 || n > 720) { $('advNote').textContent = 'enter hours between 1 and 720'; return; }
+    try {
+      await api('/api/config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key: 'dream.everyHours', value: String(Math.floor(n)) }),
+      });
+      $('advNote').textContent = 'Saved \u2014 sweep every ' + Math.floor(n) + 'h.';
+      refreshDreams();
+    } catch (e) { $('advNote').textContent = e.message; }
+  };
+  $('dreamRun').onclick = async () => {
+    try {
+      await api('/api/dream', { method: 'POST' });
+      $('dreamRunNote').textContent = 'Dream started \u2014 the diary fills in a moment.';
+      setTimeout(() => refreshDreams(), 5000);
+    } catch (e) { $('dreamRunNote').textContent = e.message; }
+  };
+
+  // Settings > engine: instant config write, no restart.
+  document.querySelectorAll('#segEngine button').forEach((b) => {
+    b.onclick = async () => {
+      try {
+        await api('/api/config', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ key: 'memory.embeddings', value: b.dataset.emb === '1' ? 'true' : 'false' }),
+        });
+        $('engNote').textContent = b.dataset.emb === '1'
+          ? 'Saved \u2014 hybrid search on (vectors + text).'
+          : 'Saved \u2014 lexical only.';
+        refreshMem();
+        refreshDreams();
+      } catch (e) { $('engNote').textContent = e.message; }
+    };
+  });
 
   async function refreshAgents() {
     try {

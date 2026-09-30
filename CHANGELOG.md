@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.22.0 — 2026-09-30 (Memory page redesign)
+
+- The Memory page is rebuilt around four tabs — Overview, Memories, Dreams and Settings — with a proper page title and description instead of one collapsed panel.
+- **Overview:** a hero status card (crab mascot, "Memory is awake", live engine line, Refresh button), four stat chips (facts, index, daily files, size), a real Sleep Schedule card showing when the next dream sweep runs and whether it is on, and a short "How dreaming works" explainer.
+- **Memories:** focused search with results shown as clean cards (file chip + score + line), plus a quick "Remember a fact" box with inline confirmation.
+- **Dreams:** status bar with live pill (DREAMING ON/OFF), and three sub-tabs — Scene (a night scene with moon, sleeping crab and the live sweep status), Diary (the dream history), and Advanced (turn dreaming on/off, set the interval, run a dream now — everything saves instantly, no restart).
+- **Settings:** engine segmented control (hybrid search vs lexical only) writing live to config, and the full MEMORY.md editor with save confirmation.
+- No fake features: every number, schedule and toggle comes from the real backend.
+
 ## 0.21.2 — 2026-09-30 (The model icon is actually visible now)
 
 - Fixed a stylesheet clash that squeezed the composer's model button down to a bare circle: the label spilled out next to it and the sparkle icon was pushed out of place, so it looked like plain text with no icon. The pill now sizes itself correctly and the icon shows in blue.
