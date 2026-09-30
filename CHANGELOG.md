@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.23.0 — 2026-09-30 (Homepage becomes the agent's home)
+
+- Empty state is now a real hero: a large floating crab mascot with a soft glow, a greeting, a live status pill (brain, memory count) and one-tap suggestion chips — two start a chat, two jump to Status/Providers. It disappears the moment the conversation starts.
+- AI replies now carry a small "CRABBY" identity line above them (follows the active talk-as agent).
+- A thinking indicator (bouncing dots + "Crabby is thinking…") shows while a reply is coming; the status pill and the stop button pulse gently while busy.
+- Sidebar gets a brand block on top; nav rows are rounder pills; the header status is now a compact green-dot pill instead of raw text.
+- Composer gets depth: a fade into black, and a blue focus glow when writing.
+- First-run welcome moved into the hero (same guidance, same buttons); the random "connected" system line is gone.
+
 ## 0.22.0 — 2026-09-30 (Memory page redesign)
 
 - The Memory page is rebuilt around four tabs — Overview, Memories, Dreams and Settings — with a proper page title and description instead of one collapsed panel.

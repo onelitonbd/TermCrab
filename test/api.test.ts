@@ -224,7 +224,7 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('function renderMarkdown'), 'markdown renderer shipped');
       assert.ok(html.includes('// ==== end markdown renderer ===='), 'renderer end marker');
       assert.ok(html.includes('class="mdCode"'), 'code block markup builder');
-      assert.ok(html.includes("if (cls === 'bot') div.innerHTML = renderMarkdown(text)"), 'AI replies rendered as markdown');
+      assert.ok(html.includes("if (cls === 'bot') {") && html.includes('div.innerHTML = renderMarkdown(text);'), 'AI replies rendered as markdown');
       assert.ok(html.includes('align-self: stretch'), 'AI replies span the full width');
       assert.ok(!html.includes('#ff5c5c'), 'old coral accent removed');
     });
@@ -307,6 +307,25 @@ test('web control parity API', async (t) => {
       assert.ok(!html.includes('id="memPanel"'), 'old collapsed panel removed');
       assert.ok(html.includes('dream.enabled') && html.includes('memory.embeddings'), 'settings write to the backend live');
       assert.ok(html.includes('id="memRefresh"') && html.includes('id="dreamRefresh"'), 'refresh buttons');
+    });
+
+    await t.test('v0.23: agent-home redesign — hero, thinking, identity, depth', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(html.includes('id="hero"'), 'agent hero empty state');
+      assert.ok(html.includes('id="heroStatus"') && html.includes('refreshHero'), 'live status pill in the hero');
+      assert.ok(html.includes('data-ask="What can you do?"'), 'ask chip');
+      assert.ok(html.includes('data-go="providers"') && html.includes('data-go="status"'), 'navigation chips');
+      assert.ok(html.includes('class="chipBtn"'), 'suggestion chips');
+      assert.ok(html.includes('class="sideBrand"'), 'brand block in the sidebar');
+      assert.ok(html.includes("who.className = 'msgWho'"), 'AI replies get an identity line');
+      assert.ok(html.includes('Crabby is thinking'), 'thinking indicator');
+      assert.ok(html.includes("document.body.classList.add('busy')"), 'busy state drives the pulse');
+      assert.ok(html.includes('syncHero'), 'hero hides when the conversation starts');
+      assert.ok(html.includes('#composerBox:focus-within'), 'composer focus glow');
+      assert.ok(html.includes('#health::before'), 'status pill dot');
+      assert.ok(html.includes('nothing phones home'), 'privacy line in the hero');
+      assert.ok(!html.includes('connected - your agent runs'), 'old auto sys noise removed');
+      assert.ok(html.includes('<span>Chat history</span>'), 'history label kept');
     });
 
     await t.test('listen (dictation) always answers with ok or a reason', async () => {

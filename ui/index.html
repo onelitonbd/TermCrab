@@ -362,6 +362,113 @@
     white-space: nowrap;
   }
   .smallBtn { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
+  /* ---- homepage (agent home) ---- */
+  .sideBrand { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px; }
+  .sideBrand span { font-weight: 800; font-size: 15.5px; color: var(--strong); letter-spacing: -0.01em; }
+  .nav button { border-radius: 10px; }
+  #health {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line-strong);
+    background: var(--fill);
+    border-radius: 999px;
+    padding: 3px 11px;
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--text);
+  }
+  #health::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  body.busy #health::before { background: var(--accent); animation: pulseDot 1s ease-in-out infinite; }
+  @keyframes pulseDot { 50% { opacity: 0.3; } }
+  #hero {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 34px 18px 10px;
+    overflow: hidden;
+  }
+  #hero[hidden] { display: none !important; }
+  .heroGlow {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(88, 166, 255, 0.15), transparent 65%);
+    pointer-events: none;
+  }
+  .heroCrab { position: relative; animation: crabFloat 5.2s ease-in-out infinite; }
+  @keyframes crabFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  .heroHi { position: relative; font-size: 25px; font-weight: 800; color: var(--strong); letter-spacing: -0.02em; margin: 16px 0 6px; }
+  .heroSub { position: relative; color: var(--muted); font-size: 14px; max-width: 350px; margin: 0; line-height: 1.55; }
+  .heroStatus {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 14px 0 0;
+    border: 1px solid var(--line-strong);
+    background: var(--fill);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--text);
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .heroStatus::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .heroChips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 20px; max-width: 470px; }
+  .chipBtn {
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    border-radius: 999px;
+    min-height: 38px;
+    padding: 0 15px;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  .chipBtn:hover { border-color: var(--accent); color: var(--strong); transform: translateY(-1px); }
+  #heroNote { position: relative; margin-top: 18px; text-align: left; max-width: 460px; color: var(--text); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+  #heroNote button { margin-top: 8px; margin-right: 8px; }
+  .msgWho {
+    align-self: flex-start;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 750;
+    color: var(--accent);
+    padding-left: 4px;
+    margin-top: 8px;
+  }
+  .think { display: flex; align-items: center; gap: 9px; padding: 4px 6px; color: var(--muted); font-size: 13px; }
+  .think i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: tdots 1.15s ease-in-out infinite;
+    display: inline-block;
+  }
+  .think i:nth-child(2) { animation-delay: 0.15s; }
+  .think i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes tdots { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-4px); opacity: 1; } }
+  #typing:empty { display: none; }
+  #composer { background: linear-gradient(to top, #000000 74%, rgba(0, 0, 0, 0)); }
+  #composerBox { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  #composerBox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.13), 0 14px 34px rgba(0, 0, 0, 0.55); }
+  body.busy #send { animation: breathe 1.5s ease-in-out infinite; }
+  @keyframes breathe { 50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(218, 54, 51, 0.16); } }
   /* ---- memory page (redesign) ---- */
   .memTitle { font-size: 30px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; margin: 0; }
   .memTabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 8px 0 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1001,6 +1108,17 @@
 </head>
 <body>
 <aside id="side">
+  <div class="sideBrand">
+    <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
+      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M3.2 7.4 6.6 9.6M28.8 7.4 25.4 9.6" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+      <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+    </svg>
+    <span>TermCrab</span>
+  </div>
   <nav class="nav" aria-label="Sections">
     <button data-goto="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Status</button>
     <button data-goto="providers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="19" height="7" x="2.5" y="2.5" rx="1.5"/><rect width="19" height="7" x="2.5" y="14" rx="1.5"/><path d="M6 6h.01M6 17.5h.01"/></svg>Providers</button>
@@ -1047,6 +1165,34 @@
 <main id="views">
   <section class="view" id="view-chat">
     <select id="session" class="hidden" title="session"><option value="web:main">main</option></select>
+    <div id="hero">
+      <div class="heroGlow"></div>
+      <div class="heroCrab"><svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true">
+          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
+          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
+          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#5b8dff"/>
+          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#9cbcff" opacity="0.4"/>
+          <circle cx="47" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="73" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="49" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="75" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="51" cy="58" r="1.6" fill="#ffffff"/>
+          <circle cx="77" cy="58" r="1.6" fill="#ffffff"/>
+          <path d="M50 77c6 6 14 6 20 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+        </svg></div>
+      <h2 class="heroHi">Hey — I'm Crabby.</h2>
+      <p class="heroSub">Your own agent, living on this device. Conversations, memory and dreams stay private — nothing phones home.</p>
+      <p class="heroStatus" id="heroStatus">awake</p>
+      <div class="heroChips">
+        <button class="chipBtn" type="button" data-ask="What can you do?">What can you do?</button>
+        <button class="chipBtn" type="button" data-ask="What do you remember?">What do you remember?</button>
+        <button class="chipBtn" type="button" data-go="status">Check your status</button>
+        <button class="chipBtn" type="button" data-go="providers">Set up a brain</button>
+      </div>
+      <div id="heroNote" hidden></div>
+    </div>
     <div id="log"></div>
     <div id="typing"></div>
   </section>
@@ -1617,12 +1763,26 @@
   }
   // ==== end markdown renderer ====
 
+  function syncHero() {
+    const h = $('hero');
+    if (h) h.hidden = log.children.length > 0;
+  }
+
   function addMsg(cls, text) {
     const div = document.createElement('div');
     div.className = `msg ${cls}`;
-    if (cls === 'bot') div.innerHTML = renderMarkdown(text);
-    else div.textContent = text;
+    if (cls === 'bot') {
+      div.innerHTML = renderMarkdown(text);
+      const who = document.createElement('div');
+      who.className = 'msgWho';
+      const sel = $('agentSel');
+      who.textContent = sel && sel.value ? sel.selectedOptions[0].textContent : 'Crabby';
+      log.appendChild(who);
+    } else {
+      div.textContent = text;
+    }
     log.appendChild(div);
+    syncHero();
     log.scrollTop = log.scrollHeight;
     return div;
   }
@@ -1966,9 +2126,23 @@
   $('mpCancel').onclick = () => $('modelPick').classList.add('hidden');
   $('mpProv').onchange = () => { $('mpErr').textContent = ''; loadMpModels(); };
 
+  document.querySelectorAll('[data-ask]').forEach((b) => {
+    b.onclick = () => { $('input').value = b.dataset.ask || ''; send(); };
+  });
+  document.querySelectorAll('[data-go]').forEach((b) => {
+    b.onclick = () => switchView(b.dataset.go);
+  });
+  async function refreshHero() {
+    try {
+      const s = await api('/api/status');
+      const facts = s.memory ? (s.memory.facts || 0) : 0;
+      $('heroStatus').textContent = 'awake \u00b7 ' + s.provider + ' \u00b7 ' + facts + (facts === 1 ? ' memory' : ' memories');
+    } catch { $('heroStatus').textContent = 'awake'; }
+  }
+
   function updateChatLabel() {
     const id = currentSession() || 'web:main';
-    $('health').textContent = 'Chat: ' + (id.length > 30 ? id.slice(0, 29) + '…' : id);
+    $('health').textContent = id.length > 26 ? id.slice(0, 25) + '…' : id;
   }
 
   // ---- Top-bar menu (talk-as picker + quick actions) ----
@@ -2061,7 +2235,10 @@
   async function send() {
     const text = $('input').value.trim();
     if (!text || state.busy) return;
-    state.busy = true; setSendMode(true);
+    state.busy = true;
+    document.body.classList.add('busy');
+    setSendMode(true);
+    $('typing').innerHTML = '<div class="think"><i></i><i></i><i></i><span>Crabby is thinking\u2026</span></div>';
     state.abort = new AbortController();
     $('input').value = '';
     addMsg('user', text);
@@ -2087,7 +2264,10 @@
       state.live = null;
       state.liveRaw = '';
       state.abort = null;
-      state.busy = false; setSendMode(false);
+      state.busy = false;
+      document.body.classList.remove('busy');
+      setSendMode(false);
+      $('typing').innerHTML = '';
       log.scrollTop = log.scrollHeight;
       refreshSessions();
     }
@@ -2136,9 +2316,10 @@
         if (m.role === 'user') addMsg('user', m.content);
         else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
       }
-      if (!log.children.length && !quiet) addMsg('sys', `session "${id}" is empty`);
     } catch (e) {
       addMsg('sys', 'failed to load session: ' + e.message);
+    } finally {
+      syncHero();
     }
   }
 
@@ -3459,6 +3640,7 @@ async function bootstrap() {
       hideOverlay();
       updateChatLabel();
       refreshModelBtn();
+      refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
       const deepLink = state.pendingSession;
@@ -3468,11 +3650,9 @@ async function bootstrap() {
       // First-run welcome: if no real brain is configured yet, say what to do.
       try {
         const s = await api('/api/setup');
-        if (s.setupNeeded && !log.querySelector('.welcome')) {
-          const w = document.createElement('div');
-          w.className = 'msg sys welcome';
-          w.style.textAlign = 'left';
-          w.style.maxWidth = 'min(520px, 94%)';
+        if (s.setupNeeded && $('heroNote').hidden) {
+          const w = $('heroNote');
+          w.hidden = false;
           const t = document.createElement('div');
           t.textContent =
             `Welcome — v${s.version} is running. Two steps to wake your crab:\n` +
@@ -3490,11 +3670,8 @@ async function bootstrap() {
           wz.textContent = 'Or open the Providers page';
           wz.onclick = () => switchView('providers');
           w.append(t, b, wz);
-          log.insertBefore(w, log.firstChild);
-          log.scrollTop = 0;
         }
       } catch { /* welcome is best-effort */ }
-      addMsg('sys', 'connected - your agent runs on your own machine. Nothing phones home.');
     } catch {
       showOverlay('Token rejected');
     }
