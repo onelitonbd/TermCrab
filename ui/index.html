@@ -1,0 +1,4299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>TermCrab</title>
+<style>
+  :root {
+    color-scheme: dark;
+    /* True black dark theme: pure-black canvas, faint surfaces and lines,
+       bright text, blue accent, green primary buttons. */
+    --bg: #000000;
+    --bg-accent: #000000;
+    --elevated: #0e0e0e;
+    --card: #0e0e0e;
+    --fill: #171717;
+    --line: #222222;
+    --line-strong: #303030;
+    --line-hover: #444444;
+    --text: #e9e9e9;
+    --strong: #ffffff;
+    --muted: #939393;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --primary: #238636;
+    --primary-hover: #2ea043;
+    --teal: #8957e5;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --danger: #f85149;
+    --info: #58a6ff;
+    --destructive: #da3633;
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+    --ring: 0 0 0 2px var(--bg), 0 0 0 3px rgba(88, 166, 255, 0.8);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: row;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    max-width: 1080px;
+    margin: 0 auto;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+  [hidden] { display: none !important; }
+
+  /* ---- gateway topbar (OpenClaw shell: 58 px mobile chrome) ---- */
+  header {
+    background: var(--bg-accent);
+    color: var(--strong);
+    padding: 10px 14px;
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  header svg { flex-shrink: 0; }
+  .plate { min-width: 0; flex: 1; }
+  .plate h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; color: var(--strong); }
+  #health {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+  }
+  /* online/offline pill removed by request — Status screen shows live state */
+
+  /* ---- screens ---- */
+  #views { flex: 1; min-height: 0; }
+  .view {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 12px 18px;
+  }
+  #view-chat:not([hidden]) { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+
+
+  #log {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 12px 6px;
+    scroll-behavior: smooth;
+  }
+  .msg {
+    max-width: min(46ch, 88%);
+    padding: 9px 13px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    font-size: 15px;
+    animation: settle 0.18s ease-out;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: rgba(56, 139, 253, 0.10);
+    border: 1px solid rgba(56, 139, 253, 0.4);
+    color: var(--strong);
+    border-radius: 16px 16px 5px 16px;
+  }
+  .msg.bot {
+    /* AI answers take the full screen width (chat apps on mobile, 2026):
+       the reply is the content, not a bubble. */
+    align-self: stretch;
+    max-width: 100%;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    border-radius: var(--r-md);
+    padding: 2px 4px 8px;
+    white-space: normal;
+  }
+  .msg.sys {
+    align-self: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+    background: transparent;
+    max-width: 92%;
+  }
+  .msg.welcome {
+    align-self: stretch;
+    max-width: 100%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px var(--r-lg) var(--r-lg) 4px;
+    text-align: left;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .tools { align-self: flex-start; color: var(--muted); font-size: 12.5px; padding: 0 4px; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+  .err { color: var(--danger) !important; }
+
+  /* ---- markdown in AI replies (GitHub-style, tuned for phones) ---- */
+  .msg.bot > :first-child { margin-top: 0; }
+  .msg.bot > :last-child { margin-bottom: 0; }
+  .msg.bot p { margin: 0 0 10px; }
+  .msg.bot h1, .msg.bot h2, .msg.bot h3, .msg.bot h4, .msg.bot h5, .msg.bot h6 {
+    margin: 14px 0 6px;
+    line-height: 1.3;
+    font-weight: 650;
+    color: var(--strong);
+  }
+  /* headings stay small on phones so they never overpower the answer */
+  .msg.bot h1 { font-size: 1.2em; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .msg.bot h2 { font-size: 1.12em; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .msg.bot h3 { font-size: 1.05em; }
+  .msg.bot h4, .msg.bot h5, .msg.bot h6 { font-size: 1em; }
+  .msg.bot a { color: var(--accent); text-decoration: underline; }
+  .msg.bot ul, .msg.bot ol { margin: 0 0 10px; padding-left: 1.5em; }
+  .msg.bot li { margin: 0 0 4px; }
+  .msg.bot li::marker { color: var(--muted); }
+  .msg.bot li input[type="checkbox"] { accent-color: var(--accent); margin-right: 6px; }
+  .msg.bot blockquote {
+    margin: 0 0 10px;
+    padding: 2px 12px;
+    border-left: 3px solid var(--line-strong);
+    color: var(--muted);
+  }
+  .msg.bot hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+  .msg.bot img { max-width: 100%; border-radius: var(--r-sm); display: block; margin: 4px 0 10px; }
+  .msg.bot code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.9em;
+    background: rgba(110, 118, 129, 0.4);
+    padding: 0.15em 0.4em;
+    border-radius: 6px;
+  }
+  .msg.bot .mdTable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    margin: 0 0 12px;
+  }
+  .msg.bot table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .msg.bot th, .msg.bot td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; }
+  .msg.bot th { background: var(--card); font-weight: 600; color: var(--strong); white-space: nowrap; }
+  .msg.bot tr:last-child td { border-bottom: 0; }
+  .msg.bot .mdCode {
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    margin: 0 0 12px;
+    overflow: hidden;
+  }
+  .msg.bot .mdCodeBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px 5px 11px;
+    border-bottom: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .msg.bot .mdCopy {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .msg.bot .mdCopy:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
+  .msg.bot pre {
+    margin: 0;
+    padding: 11px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .msg.bot pre code {
+    background: none;
+    padding: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre;
+    color: var(--text);
+  }
+  #typing {
+    min-height: 20px;
+    padding: 0 14px 4px;
+    font-size: 12.5px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* ---- composer ---- */
+  #composer {
+    display: none;
+    flex-direction: column;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  body[data-view="chat"] #composer { display: flex; }
+  /* two-layer rounded composer: message on top, rounded icon buttons below */
+  #composerBox {
+    border: 1px solid var(--line-strong);
+    border-radius: 18px;
+    background: var(--card);
+    padding: 5px 7px 7px;
+    display: flex;
+    flex-direction: column;
+  }
+  #composerBox:focus-within { border-color: var(--line-hover); box-shadow: var(--ring); }
+  #composer textarea {
+    flex: 1;
+    resize: none;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 140px;
+    padding: 9px 9px 4px;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--strong);
+    font-family: inherit;
+  }
+  #composer textarea:focus { border: 0; box-shadow: none; }
+  .composerRow { display: flex; align-items: center; gap: 8px; padding: 3px 2px 0; }
+  .composerSp { flex: 1; }
+  .iconBtn.modelBtn { width: auto; min-width: 40px; padding: 0 12px; gap: 7px; border-radius: 999px; }
+  .modelBtn svg { color: var(--accent); flex-shrink: 0; }
+  #modelBtnLabel { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  @media (max-width: 430px) { .iconBtn.modelBtn { width: 40px; padding: 0; } #modelBtnLabel { display: none; } }
+  .iconBtn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .iconBtn:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
+  .iconBtn:disabled { opacity: 0.4; }
+  .iconBtn:disabled:hover { background: transparent; color: var(--text); border-color: var(--line-strong); }
+  .iconBtn.primary { background: var(--primary); border-color: transparent; color: #ffffff; }
+  .iconBtn.primary:hover { background: var(--primary-hover); color: #ffffff; }
+  .iconBtn.primary:disabled { background: var(--primary); opacity: 0.45; }
+  .iconBtn.stopMode { background: var(--destructive); border-color: transparent; color: #ffffff; }
+  .iconBtn.stopMode:hover { background: var(--danger); color: #ffffff; border-color: transparent; }
+
+  /* ---- providers page ---- */
+  .pageHead { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
+  .pageHead h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 650; color: var(--strong); letter-spacing: -0.01em; }
+  .pageHead .iconBtn { flex-shrink: 0; }
+  .pageNote { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .listCol { display: flex; flex-direction: column; gap: 8px; }
+  .provRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 12px 13px;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    color: var(--text);
+    font-size: 14.5px;
+    min-height: 44px;
+  }
+  .provRow:hover { border-color: var(--line-hover); background: var(--fill); }
+  .provTx { flex: 1; min-width: 0; }
+  .provTx .pn { font-weight: 650; color: var(--strong); font-size: 15px; }
+  .provTx .pu { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .provMeta { color: var(--muted); font-size: 12.5px; flex-shrink: 0; }
+  .provChev { color: var(--muted); flex-shrink: 0; font-size: 18px; line-height: 1; }
+  .provStatic { cursor: default; }
+  .provStatic:hover { background: var(--card); border-color: var(--line); }
+  .keyRow { cursor: default; }
+  .keyRow .kn { font-weight: 600; color: var(--strong); font-size: 14.5px; }
+  .keyRow .kv { color: var(--muted); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; margin-top: 2px; }
+  .keyBadges { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+  .inUse {
+    color: var(--ok);
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid var(--ok);
+    border-radius: 999px;
+    padding: 3px 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .smallBtn { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
+  /* ---- homepage (agent home) ---- */
+  .sideBrand { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px; }
+  .sideBrand span { font-weight: 800; font-size: 15.5px; color: var(--strong); letter-spacing: -0.01em; }
+  .nav button { border-radius: 10px; }
+  #health {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line-strong);
+    background: var(--fill);
+    border-radius: 999px;
+    padding: 3px 11px;
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--text);
+  }
+  #health::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  body.busy #health::before { background: var(--accent); animation: pulseDot 1s ease-in-out infinite; }
+  @keyframes pulseDot { 50% { opacity: 0.3; } }
+  #hero {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 34px 18px 10px;
+    overflow: hidden;
+  }
+  #hero[hidden] { display: none !important; }
+  .heroGlow {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(88, 166, 255, 0.15), transparent 65%);
+    pointer-events: none;
+  }
+  .heroCrab { position: relative; animation: crabFloat 5.2s ease-in-out infinite; }
+  @keyframes crabFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  .heroHi { position: relative; font-size: 25px; font-weight: 800; color: var(--strong); letter-spacing: -0.02em; margin: 16px 0 6px; }
+  .heroSub { position: relative; color: var(--muted); font-size: 14px; max-width: 350px; margin: 0; line-height: 1.55; }
+  .heroStatus {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 14px 0 0;
+    border: 1px solid var(--line-strong);
+    background: var(--fill);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--text);
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .heroStatus::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .heroChips { position: relative; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 20px; max-width: 470px; }
+  .chipBtn {
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    border-radius: 999px;
+    min-height: 38px;
+    padding: 0 15px;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  .chipBtn:hover { border-color: var(--accent); color: var(--strong); transform: translateY(-1px); }
+  #heroNote { position: relative; margin-top: 18px; text-align: left; max-width: 460px; color: var(--text); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+  #heroNote button { margin-top: 8px; margin-right: 8px; }
+  .msgWho {
+    align-self: flex-start;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 750;
+    color: var(--accent);
+    padding-left: 4px;
+    margin-top: 8px;
+  }
+  .think { display: flex; align-items: center; gap: 9px; padding: 4px 6px; color: var(--muted); font-size: 13px; }
+  .think i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: tdots 1.15s ease-in-out infinite;
+    display: inline-block;
+  }
+  .think i:nth-child(2) { animation-delay: 0.15s; }
+  .think i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes tdots { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-4px); opacity: 1; } }
+  #typing:empty { display: none; }
+  #composer { background: linear-gradient(to top, #000000 74%, rgba(0, 0, 0, 0)); }
+  #composerBox { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  #composerBox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.13), 0 14px 34px rgba(0, 0, 0, 0.55); }
+  body.busy #send { animation: breathe 1.5s ease-in-out infinite; }
+  @keyframes breathe { 50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(218, 54, 51, 0.16); } }
+  /* ---- memory page (redesign) ---- */
+  .memTitle { font-size: 30px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; margin: 0; }
+  .memTabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 8px 0 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .memTab {
+    position: relative;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-weight: 650;
+    font-size: 14.5px;
+    padding: 11px 13px;
+    min-height: 0;
+    border-radius: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .memTab:hover { background: transparent; color: var(--text); }
+  .memTab.on { color: var(--strong); }
+  .memTab.on:hover { background: transparent; color: var(--strong); }
+  .memTab.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2.5px; background: var(--accent); border-radius: 3px; }
+  .memHero {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: radial-gradient(130% 150% at 12% 15%, rgba(88, 166, 255, 0.17), transparent 55%), var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 16px;
+  }
+  .memMascot { flex-shrink: 0; display: flex; }
+  .memHeroTitle { font-size: 21px; font-weight: 800; color: var(--strong); letter-spacing: -0.01em; }
+  .memHeroSub { color: var(--muted); font-size: 13.5px; margin: 5px 0 12px; }
+  .memGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0 4px; }
+  @media (min-width: 560px) { .memGrid { grid-template-columns: repeat(4, 1fr); } }
+  .memChip { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .memChip .k { font-size: 10.5px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+  .memChip .v { font-size: 16px; font-weight: 750; color: var(--strong); margin-top: 4px; overflow-wrap: anywhere; }
+  .memSectionLabel { font-size: 11.5px; letter-spacing: 0.11em; color: var(--muted); font-weight: 750; margin: 18px 0 9px; }
+  .phaseCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 15px; }
+  .phaseTop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .phName { font-weight: 750; color: var(--strong); font-size: 15.5px; }
+  .phState { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 650; color: var(--text); white-space: nowrap; }
+  .dotOk { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .dotOff { background: var(--muted); }
+  .phDesc { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 7px 0 8px; }
+  .phMeta { color: var(--text); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .statusPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .memSearchRow { display: flex; gap: 8px; align-items: stretch; }
+  .memSearchRow input { flex: 1; min-width: 0; }
+  .memSearchRow .go { flex-shrink: 0; }
+  .memHit { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; }
+  .memHit .fh { display: flex; gap: 8px; align-items: center; margin-bottom: 5px; }
+  .memHit .fh .chip {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(88, 166, 255, 0.12);
+    border-radius: 999px;
+    padding: 2px 9px;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .memHit .fh .sc { font-size: 11.5px; color: var(--muted); }
+  .memHit .hl { color: var(--text); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .dreamScene {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 26px 16px 20px;
+    text-align: center;
+    background:
+      radial-gradient(70% 55% at 78% 18%, rgba(240, 193, 75, 0.16), transparent 62%),
+      radial-gradient(130% 90% at 50% 115%, rgba(88, 166, 255, 0.16), transparent 62%),
+      #07070a;
+  }
+  .moon {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 32%, #ffe9a8, #efbe4a 72%);
+    box-shadow: 0 0 42px rgba(240, 193, 75, 0.45);
+  }
+  .zz { position: absolute; color: var(--danger); font-weight: 800; opacity: 0; animation: zzfloat 3.4s ease-in-out infinite; }
+  .zz1 { font-size: 15px; right: 96px; top: 96px; animation-delay: 0s; }
+  .zz2 { font-size: 19px; right: 74px; top: 76px; animation-delay: 1.1s; }
+  .zz3 { font-size: 23px; right: 48px; top: 52px; animation-delay: 2.2s; }
+  @keyframes zzfloat {
+    0% { transform: translateY(8px); opacity: 0; }
+    35% { opacity: 0.95; }
+    100% { transform: translateY(-16px); opacity: 0; }
+  }
+  .sceneCrab { display: flex; justify-content: center; margin-top: 44px; position: relative; z-index: 1; }
+  .sceneStatus { font-size: 12.5px; letter-spacing: 0.16em; color: var(--muted); font-weight: 750; margin-top: 12px; }
+  .sceneLine { color: var(--ok); font-size: 13.5px; margin-top: 7px; min-height: 18px; }
+  .scenePills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .memSeg { display: inline-flex; background: var(--fill); border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px; gap: 3px; }
+  .memSeg button {
+    background: transparent;
+    color: var(--muted);
+    border: 0;
+    border-radius: 999px;
+    min-height: 34px;
+    padding: 0 15px;
+    font-size: 13.5px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .memSeg button:hover { background: transparent; color: var(--text); }
+  .memSeg button.on { background: var(--strong); color: #101418; }
+  .memSeg button.on:hover { background: var(--strong); color: #101418; }
+  .setCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 15px; }
+  .setCard h4 { margin: 0 0 5px; font-size: 15.5px; font-weight: 750; color: var(--strong); }
+  .setCard .d { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 12px; }
+  .setCard textarea { width: 100%; min-height: 170px; resize: vertical; }
+
+  /* ---- settings page v0.30: grouped rows + the right control per value ---- */
+  #setSections { display: flex; flex-direction: column; }
+  #setSections .memSectionLabel:first-child { margin-top: 14px; }
+  .setRow { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--line); }
+  .setRow:first-of-type { border-top: 0; padding-top: 0; }
+  .setRowMain { min-width: 0; flex: 1; }
+  .setRowLabel { font-size: 13.5px; font-weight: 640; color: var(--text); }
+  .setRowHint { margin-top: 2px; font-size: 12px; }
+  .setRowCtl { flex-shrink: 0; display: flex; align-items: center; gap: 8px; max-width: 54%; }
+  .setRowCtl input[type="text"], .setRowCtl input[type="password"] { width: 230px; max-width: 100%; }
+  .setRowCtl select { max-width: 330px; }
+  .setRowCtl .setNum { width: 92px; }
+  .setSuf { color: var(--muted); font-size: 12px; min-width: 48px; }
+  .setSaved { font-size: 11.5px; font-weight: 750; color: var(--ok); opacity: 0; transition: opacity .18s ease; white-space: nowrap; }
+  .setSaved.show { opacity: 1; }
+  .setSaved.err { color: var(--danger); }
+  .setTgl { position: relative; display: inline-flex; cursor: pointer; }
+  .setTgl input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .setTglTrack { width: 40px; height: 22px; border-radius: 999px; background: var(--fill); border: 1px solid var(--line-strong); position: relative; transition: background .15s ease, border-color .15s ease; }
+  .setTglTrack::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .15s ease, background .15s ease; }
+  .setTgl input:checked + .setTglTrack { background: #238636; border-color: #2ea043; }
+  .setTgl input:checked + .setTglTrack::after { transform: translateX(18px); background: #e6edf3; }
+  .setTgl input:focus-visible + .setTglTrack { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 640px) {
+    .setRow { flex-direction: column; align-items: stretch; gap: 8px; }
+    .setRowCtl { max-width: 100%; }
+    .setRowCtl input[type="text"], .setRowCtl input[type="password"], .setRowCtl select { flex: 1; width: auto; max-width: none; }
+  }
+  /* ---- models page ---- */
+  .mdlBar { display: flex; gap: 8px; align-items: center; margin: 2px 0 8px; }
+  .mdlBar input { flex: 1; min-width: 0; }
+  #mdlFetchNote.errText { color: var(--danger); }
+  .mdlScroll { max-height: min(52vh, 430px); overflow-y: auto; padding-right: 2px; }
+  .mdlRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 9px 12px;
+    cursor: pointer;
+  }
+  .mdlRow:hover { border-color: var(--line-hover); }
+  .mdlTick {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--fill);
+    position: relative;
+    cursor: pointer;
+  }
+  .mdlTick:checked { background: var(--primary); border-color: var(--primary); }
+  .mdlTick:checked::after {
+    content: "";
+    position: absolute;
+    left: 5.5px;
+    top: 1.5px;
+    width: 4px;
+    height: 9px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .mdlId { font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; }
+  /* ---- composer model picker ---- */
+  #mpTitle .mpTitleIcon { vertical-align: -3px; margin-right: 7px; color: var(--accent); }
+  #mpProv { width: 100%; margin-top: 10px; }
+  .mpList { max-height: min(46vh, 360px); overflow-y: auto; margin-top: 10px; }
+  .mpRow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    text-align: left;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    overflow-wrap: anywhere;
+  }
+  .mpRow .mpRowIcon { flex-shrink: 0; color: var(--accent); }
+  .mpRow span { overflow-wrap: anywhere; }
+  .mpRow:hover { border-color: var(--accent); color: var(--strong); }
+  #mpErr { color: var(--danger); }
+
+  /* ---- controls ---- */
+  button {
+    background: var(--primary);
+    color: #fafafa;
+    font-weight: 600;
+    border: 0;
+    border-radius: var(--r-md);
+    padding: 0 15px;
+    min-height: 44px;
+    cursor: pointer;
+    font-size: 14.5px;
+    font-family: inherit;
+  }
+  button:hover { background: var(--primary-hover); color: #ffffff; }
+  button.ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    font-weight: 500;
+  }
+  button.ghost:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button:disabled:hover { background: var(--primary); color: #fafafa; }
+  button.ghost:disabled:hover { background: transparent; color: var(--text); }
+  button.danger { color: var(--danger); }
+  button.danger:hover { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
+  :focus-visible { outline: none; box-shadow: var(--ring); }
+  header :focus-visible, .nav button.on:focus-visible { box-shadow: 0 0 0 2px var(--bg-accent), 0 0 0 3px rgba(88, 166, 255, 0.9); }
+
+  input[type="text"], input[type="password"], input[type="search"], select, textarea {
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--strong);
+    background: var(--fill);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    padding: 10px 11px;
+    min-width: 0;
+  }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--line-hover); box-shadow: var(--ring); }
+  select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 26px; }
+
+  /* ---- panels ---- */
+  details.panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  details.panel > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 15px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--strong);
+    letter-spacing: -0.01em;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 48px;
+  }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-right: 1.8px solid var(--muted);
+    border-bottom: 1.8px solid var(--muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+    margin-right: 3px;
+  }
+  details.panel[open] > summary { border-bottom: 1px solid var(--line); }
+  details.panel[open] > summary::after { transform: rotate(-135deg); margin-top: -4px; }
+  details.panel > summary:hover { background: rgba(255, 255, 255, 0.02); }
+  .pBody { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 9px; }
+  #cronList, #cronForm { padding-left: 14px; padding-right: 14px; }
+  #cronList { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
+  #cronForm { display: flex; gap: 7px; flex-wrap: wrap; padding-bottom: 14px; }
+  #cronForm input[name="name"] { width: 110px; flex-shrink: 0; }
+  #cronForm input[name="schedule"] { width: 128px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  #cronForm input[name="prompt"] { flex: 1; min-width: 150px; }
+
+  /* ---- tools page (redesign) ---- */
+  .tlHero { background: radial-gradient(130% 150% at 12% 15%, rgba(137, 87, 229, 0.17), transparent 55%), var(--card); }
+  .tlHero .smallBtn { min-height: 30px; padding: 0 11px; font-size: 12.5px; }
+  .tlForm { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 12px; }
+  .tlForm .pBar { margin: 0; }
+  .tlCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+  .tlCardHead { font-size: 11.5px; letter-spacing: 0.11em; color: var(--muted); font-weight: 750; }
+  .tlNote { color: var(--muted); font-size: 12.5px; line-height: 1.55; margin: 12px 0 0; }
+  #cronList, #cronForm { padding-left: 0; padding-right: 0; }
+  #cronForm { border: 1px solid var(--line); background: var(--card); border-radius: 14px; padding: 12px; margin-top: 12px; gap: 8px; }
+  #cronList { padding-bottom: 0; }
+
+  .tlGrid { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 560px) { .tlGrid { grid-template-columns: repeat(5, 1fr); } }
+  .toolItem { display: flex; gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; }
+  .toolItem .tn { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 700; color: var(--strong); flex-shrink: 0; overflow-wrap: anywhere; }
+  .toolItem .td { color: var(--muted); font-size: 12.5px; line-height: 1.45; flex: 1; min-width: 0; }
+  .toolItem .badge { font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px; flex-shrink: 0; }
+  .toolItem.on { border-color: rgba(63, 185, 80, 0.35); }
+  .toolItem.on .badge { color: var(--ok); border-color: rgba(63, 185, 80, 0.45); background: rgba(63, 185, 80, 0.1); }
+
+  .uiCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+  .uiCardHead { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); font-weight: 750; }
+  .uiRow { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text); line-height: 1.45; }
+  .uiRow .sp { flex: 1; min-width: 0; }
+  .uiRow .sub { color: var(--muted); font-size: 12px; }
+  .uiRow .ghost { min-height: 28px; padding: 0 9px; font-size: 12px; border-radius: 7px; flex-shrink: 0; }
+  .progK { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: var(--muted); min-width: 52px; flex-shrink: 0; }
+
+  .sessIc { display: inline-flex; vertical-align: -2.5px; margin-right: 5px; flex-shrink: 0; }
+  .sessIc svg { display: block; }
+  #health { display: inline-flex; align-items: center; }
+  .toolIc { display: inline-flex; color: var(--accent); flex-shrink: 0; }
+  .toolIc svg { display: block; }
+  .toolNm { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 650; color: var(--strong); font-size: 12.5px; }
+  .toolMeta { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62%; }
+  .toolSt { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+  .toolSt.bad { color: var(--danger); }
+  .histRow .hid, .sessRow .id { display: inline-flex; align-items: center; max-width: 100%; overflow: hidden; }
+
+  .pRow {
+    background: var(--bg-accent);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 9px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .pRow .k { font-weight: 600; font-size: 13.5px; min-width: 150px; flex-shrink: 0; color: var(--strong); }
+  .pRow .nx, .nx { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+  .pRow .sp, .sp { flex: 1; }
+  .pRow.stack { flex-direction: column; align-items: stretch; gap: 5px; }
+  .pRow.stack .line { display: flex; gap: 7px; align-items: center; }
+  .pRow.stack .line input { flex: 1; }
+  .pRow button, .pBody button { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: var(--r-sm); }
+  .pBody > input[type="text"], .pBody > input[type="search"] { width: 100%; }
+  .pBar { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .pBar input[type="text"], .pBar input[type="search"] { flex: 1; }
+  .pNote { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .pBody textarea {
+    width: 100%;
+    min-height: 110px;
+    max-height: 300px;
+    background: var(--fill);
+    font-size: 13.5px;
+    line-height: 1.55;
+    resize: vertical;
+  }
+  .pBody pre {
+    background: var(--fill);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 10px 11px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-size: 12.5px;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    color: var(--text);
+  }
+  .how { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+  .how b { color: var(--strong); }
+
+  .cronRow, .sessRow {
+    background: var(--bg-accent);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 9px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .cronRow .nm, .sessRow .id { font-weight: 600; color: var(--strong); }
+  .cronRow .sc { font-variant-numeric: tabular-nums; color: var(--teal); font-weight: 600; font-size: 12.5px; }
+  .cronRow .nx, .sessRow .meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .cronRow button, .sessRow button { min-height: 34px; padding: 0 10px; font-size: 12.5px; border-radius: var(--r-sm); }
+  .cronRow.off { opacity: 0.55; }
+  .hit {
+    background: var(--bg-accent);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px var(--r-md) var(--r-md) 3px;
+    padding: 8px 10px;
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  .hit .f { color: var(--accent); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+  .dreamRow {
+    background: var(--bg-accent);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 7px;
+  }
+  .dreamRow .d { color: var(--teal); font-weight: 600; font-size: 12px; margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .st { font-size: 11.5px; font-weight: 700; border-radius: var(--r-sm); padding: 2px 7px; flex-shrink: 0; }
+  .doc-ok { color: var(--ok); background: rgba(63, 185, 80, 0.1); }
+  .doc-warn { color: var(--warn); background: rgba(245, 158, 11, 0.1); }
+  .doc-fail { color: var(--danger); background: rgba(248, 113, 113, 0.1); }
+  .doc-info { color: var(--info); background: rgba(88, 166, 255, 0.1); }
+  .okc { color: var(--ok); } .warnc { color: var(--warn); } .failc { color: var(--danger); } .infoc { color: var(--muted); }
+  .hidden { display: none !important; }
+
+  /* ---- sidebar (OpenClaw-style left nav + chat history) ---- */
+  #side {
+    width: 264px;
+    flex-shrink: 0;
+    background: var(--bg-accent);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    padding: 10px 10px calc(16px + env(safe-area-inset-bottom));
+    gap: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 14px;
+    min-height: 42px;
+    padding: 0 12px;
+    border-radius: var(--r-sm);
+    width: 100%;
+  }
+  .nav button svg { flex-shrink: 0; width: 17px; height: 17px; }
+  .nav button.on { color: var(--strong); background: var(--fill); }
+  .nav button.on::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+  }
+  .nav button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+  .nav button.on:hover { color: var(--strong); background: var(--fill); }
+  .sideLabel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 16px 8px 6px;
+    border-top: 1px solid var(--line);
+    margin-top: 10px;
+  }
+  #newChatBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    border-radius: var(--r-sm);
+    flex-shrink: 0;
+  }
+  #newChatBtn svg { display: block; }
+  #histList { display: flex; flex-direction: column; gap: 2px; }
+  .histRow {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 500;
+    min-height: 46px;
+    width: 100%;
+    padding: 6px 12px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+  }
+  .histRow .hid {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: inherit;
+  }
+  .histRow .hmeta {
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .histRow.on { background: var(--fill); color: var(--strong); }
+  .histRow:hover { background: rgba(255, 255, 255, 0.05); color: var(--strong); }
+  .histRow.on .hmeta { color: var(--text); }
+
+  /* ---- main column (topbar + screen + composer) ---- */
+  .main {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: 780px;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #navBtn {
+    display: none;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    color: var(--strong);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  #navBtn:hover { background: var(--fill); }
+  #navScrim { display: none; }
+  #navScrim[hidden] { display: none !important; }
+
+  @media (max-width: 719px) {
+    body { max-width: none; border-left: 0; border-right: 0; }
+    #side {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: min(300px, 84vw);
+      transform: translateX(-100%);
+      transition: transform 0.18s ease;
+      padding-top: calc(12px + env(safe-area-inset-top));
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+    }
+    body.nav-open #side { transform: none; }
+    #navBtn { display: inline-flex; }
+    #navScrim {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 10, 0.6);
+      z-index: 29;
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
+    .main { max-width: none; }
+  }
+  @media (min-width: 720px) {
+    #side { transform: none !important; }
+  }
+
+  /* ---- top-bar three-dot menu ---- */
+  #menuWrap { position: relative; flex-shrink: 0; }
+  #menuBtn {
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    color: var(--strong);
+  }
+  #menuBtn:hover { background: var(--fill); }
+  #menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 216px;
+    background: var(--elevated);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+    padding: 6px;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  #menu.hidden { display: none !important; }
+  .menuRow { display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px; }
+  .menuLbl { font-size: 12.5px; color: var(--muted); font-weight: 600; flex-shrink: 0; }
+  .menuRow select {
+    flex: 1;
+    width: 100%;
+    max-width: none;
+    height: 36px;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: var(--r-sm);
+  }
+  .menuBtn {
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    text-align: left;
+    min-height: 44px;
+    width: 100%;
+    padding: 0 12px;
+    border-radius: var(--r-sm);
+    font-weight: 500;
+    font-size: 14.5px;
+    font-family: inherit;
+  }
+  .menuBtn:hover { background: var(--fill); color: var(--strong); }
+
+  /* ---- sheets (token gate + popup modal) ---- */
+  #overlay, #modal, #modelPick {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 7, 10, 0.78);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 40;
+    padding: 0;
+    animation: fade 0.15s ease-out;
+  }
+  #overlay .card, #modal .card, #modelPick .card {
+    background: var(--elevated);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 640px;
+    border-top: 1px solid var(--line-strong);
+  }
+  #overlay h2 { margin: 6px 0 4px; font-size: 20px; letter-spacing: -0.01em; color: var(--strong); }
+  #overlay p, #modal p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
+  #overlay input, #modal input, #modal select { width: 100%; margin: 12px 0; }
+  #overlay button { width: 100%; min-height: 48px; }
+  #modal .card { max-height: 92vh; overflow-y: auto; }
+  #modal h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; color: var(--strong); }
+  #modal label.pNote { display: block; margin: 4px 0; }
+  #modal .pBar { margin-top: 14px; }
+  #modal .pBar .sp { flex: 1; }
+  #modal #modalErr { color: var(--danger) !important; }
+
+  @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    #log { scroll-behavior: auto; }
+    .msg, #overlay, #modal, details.panel > summary::after { animation: none; transition: none; }
+  }
+  @media (max-width: 380px) {
+    .pRow .k { min-width: 110px; }
+  }
+</style>
+</head>
+<body>
+<aside id="side">
+  <div class="sideBrand">
+    <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
+      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M3.2 7.4 6.6 9.6M28.8 7.4 25.4 9.6" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+      <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+    </svg>
+    <span>TermCrab</span>
+  </div>
+  <nav class="nav" aria-label="Sections">
+    <button data-goto="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Status</button>
+    <button data-goto="providers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="19" height="7" x="2.5" y="2.5" rx="1.5"/><rect width="19" height="7" x="2.5" y="14" rx="1.5"/><path d="M6 6h.01M6 17.5h.01"/></svg>Providers</button>
+    <button data-goto="models"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Models</button>
+    <button data-goto="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="5" y="5" rx="1.5"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2.5v2M15 19.5v2M2.5 15h2M19.5 15h2M2.5 9h2M19.5 9h2M9 2.5v2M9 19.5v2"/></svg>Memory</button>
+    <button data-goto="tools"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.93-3.93a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0z"/><path d="m19.66 17.73-3.17-3.17a2.5 2.5 0 0 0-3.54 0l-1.41 1.41a2.5 2.5 0 0 1-3.54-3.54l3.17-3.17a2.5 2.5 0 0 1 3.54 0l1.41 1.41a2.5 2.5 0 0 0 3.54 0l3.17-3.17a2.5 2.5 0 0 1 3.54 3.54l-3.17 3.17a2.5 2.5 0 0 0 0 3.54"/></svg>Tools</button>
+    <button data-goto="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</button>
+  </nav>
+  <div class="sideLabel"><span>Chat history</span><button id="newChatBtn" class="ghost" title="New chat" aria-label="New chat"><svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 2.5v10M2.5 7.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+  <div id="histList"><div class="nx" style="padding:4px 8px">loading…</div></div>
+</aside>
+<div class="main">
+<header>
+  <button id="navBtn" class="ghost" aria-label="Open menu" title="Menu">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+  <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
+    <path d="M9.5 15.5 6 12.5 4.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M3.2 7.4 6.6 9.6" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28.8 7.4 25.4 9.6" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round"/>
+    <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
+    <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+    <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+  </svg>
+  <div class="plate">
+    <h1>TermCrab</h1>
+    <div id="health">Chat: web:main</div>
+  </div>
+  <div id="menuWrap">
+    <button id="menuBtn" class="ghost" aria-label="More actions" title="More actions">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="3.4" r="1.6" fill="currentColor"/><circle cx="9" cy="9" r="1.6" fill="currentColor"/><circle cx="9" cy="14.6" r="1.6" fill="currentColor"/></svg>
+    </button>
+    <div id="menu" class="hidden" role="menu">
+      <div class="menuRow"><span class="menuLbl">Talk as</span><select id="agentSel" title="active agent"><option value="">default</option></select></div>
+      <button class="menuBtn" id="btnNew" title="Reset this chat">Reset</button>
+      <button class="menuBtn" id="btnHb" title="Run a check-in now">Check in</button>
+      <button class="menuBtn" id="btnDream" title="Learn from chats now">Dream</button>
+    </div>
+  </div>
+</header>
+
+<main id="views">
+  <section class="view" id="view-chat">
+    <select id="session" class="hidden" title="session"><option value="web:main">main</option></select>
+    <div id="hero">
+      <div class="heroGlow"></div>
+      <div class="heroCrab"><svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true">
+          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
+          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
+          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#5b8dff"/>
+          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#9cbcff" opacity="0.4"/>
+          <circle cx="47" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="73" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="49" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="75" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="51" cy="58" r="1.6" fill="#ffffff"/>
+          <circle cx="77" cy="58" r="1.6" fill="#ffffff"/>
+          <path d="M50 77c6 6 14 6 20 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+        </svg></div>
+      <h2 class="heroHi">Hey — I'm Crabby.</h2>
+      <p class="heroSub">Your own agent, living on this device. Conversations, memory and dreams stay private — nothing phones home.</p>
+      <p class="heroStatus" id="heroStatus">awake</p>
+      <div class="heroChips">
+        <button class="chipBtn" type="button" data-ask="What can you do?">What can you do?</button>
+        <button class="chipBtn" type="button" data-ask="What do you remember?">What do you remember?</button>
+        <button class="chipBtn" type="button" data-go="status">Check your status</button>
+        <button class="chipBtn" type="button" data-go="providers">Set up a brain</button>
+      </div>
+      <div id="heroNote" hidden></div>
+    </div>
+    <div id="log"></div>
+    <div id="typing"></div>
+    <div id="progCard" class="uiCard" hidden></div>
+    <div id="taskCards" class="uiCard" hidden></div>
+  </section>
+
+  <section class="view" id="view-status" hidden>
+    <details class="panel" id="helpPanel" data-primary open>
+      <summary>Start here</summary>
+      <div class="pBody">
+        <div class="pRow" id="liveStatus">loading status…</div>
+        <div class="pBar">
+          <button id="toProviders" class="ghost">Providers</button>
+          <button id="updCheck" class="ghost">Check for updates</button>
+          <button id="updApply" class="ghost" title="Download the update, install it, and restart the server">Auto update</button>
+          <span class="pNote" id="updInfo"></span>
+        </div>
+        <p class="how"><b>This is your crab.</b> Chat with it — it answers and does things on this device. Use the menu at the top left to move between sections: <b>Status</b> is this screen (health and fixes), <b>Memory</b> is what it remembers, <b>Tools</b> holds schedules, skills, voice and saved chats, <b>Settings</b> holds everything you can change, named in plain words.</p>
+      </div>
+    </details>
+    <details class="panel" id="docPanel">
+      <summary>Doctor</summary>
+      <div class="pBody">
+        <div class="pBar"><button id="docRun">Run checks</button><span class="pNote" id="docTime"></span></div>
+        <div id="docList"><div class="nx">not run yet</div></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="view" id="view-providers" hidden>
+    <div class="pageHead" id="provHead">
+      <button class="iconBtn" id="provBack" type="button" title="Back" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <h2>Providers</h2>
+      <button class="iconBtn" id="provAdd" type="button" title="Add provider" aria-label="Add provider">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <p class="pageNote" id="provNote">OpenAI-compatible services only (OpenAI, OpenRouter, Groq, DeepSeek, Ollama and friends). Keys stay on this device — nothing connects until you press Use on a key.</p>
+    <div id="provList" class="listCol"><div class="nx">loading…</div></div>
+    <div id="keyPage" hidden>
+      <div class="pageHead">
+        <button class="iconBtn" id="keyBack" type="button" title="Back" aria-label="Back">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <h2 id="keyPageName">Provider</h2>
+        <button class="iconBtn" id="keyAdd" type="button" title="Add API key" aria-label="Add API key">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="pageNote">Keys stay on this device. Use makes a key the one your crab talks with — you can keep several here.</p>
+      <div id="keyList" class="listCol"><div class="nx">loading…</div></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-models" hidden>
+    <div class="pageHead">
+      <button class="iconBtn" id="mdlBack" type="button" title="Back" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <h2>Models</h2>
+    </div>
+    <p class="pageNote">Pick a provider, press Fetch to pull its model list, tick the models you want, then press Save. Saved models are usable by the chat right away — no restart needed.</p>
+    <div id="mdlProvList" class="listCol"><div class="nx">loading…</div></div>
+    <div id="mdlPickPage" hidden>
+      <div class="pageHead">
+        <button class="iconBtn" id="mdlPickBack" type="button" title="Back" aria-label="Back">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <h2 id="mdlPickName">Provider</h2>
+      </div>
+      <div class="mdlBar">
+        <input id="mdlSearch" type="search" placeholder="Search models…" aria-label="Search models" />
+        <button id="mdlFetch" class="smallBtn ghost" type="button">Fetch</button>
+        <button id="mdlSave" class="smallBtn" type="button">Save</button>
+      </div>
+      <p class="pageNote" id="mdlFetchNote"></p>
+      <div id="mdlList" class="listCol mdlScroll"></div>
+    </div>
+  </section>
+  <section class="view" id="view-memory" hidden>
+    <div class="pageHead"><h2 class="memTitle">Memory</h2></div>
+    <p class="pageNote">Choose how TermCrab stores, searches, and maintains agent memory.</p>
+    <div class="memTabs" role="tablist">
+      <button class="memTab on" data-memtab="overview" type="button">Overview</button>
+      <button class="memTab" data-memtab="memories" type="button">Memories</button>
+      <button class="memTab" data-memtab="dreams" type="button">Dreams</button>
+      <button class="memTab" data-memtab="msettings" type="button">Settings</button>
+    </div>
+
+    <div class="memPane" id="memPane-overview">
+      <div class="memHero">
+        <div class="memMascot"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true">
+          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
+          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
+          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#5b8dff"/>
+          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#9cbcff" opacity="0.4"/>
+          <circle cx="47" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="73" cy="59" r="9.5" fill="#f4f8ff"/>
+          <circle cx="49" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="75" cy="60" r="4.6" fill="#101418"/>
+          <circle cx="51" cy="58" r="1.6" fill="#ffffff"/>
+          <circle cx="77" cy="58" r="1.6" fill="#ffffff"/>
+          <path d="M50 77c6 6 14 6 20 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+        </svg></div>
+        <div style="min-width: 0">
+          <div class="memHeroTitle" id="memAwake">Memory is awake</div>
+          <div class="memHeroSub" id="memEngine">memory-core</div>
+          <button id="memRefresh" class="ghost smallBtn" type="button">Refresh status</button>
+        </div>
+      </div>
+      <div class="memGrid">
+        <div class="memChip"><div class="k">Facts</div><div class="v" id="chipFacts">&hellip;</div></div>
+        <div class="memChip"><div class="k">Index</div><div class="v" id="chipVec">&hellip;</div></div>
+        <div class="memChip"><div class="k">Daily files</div><div class="v" id="chipFiles">&hellip;</div></div>
+        <div class="memChip"><div class="k">Size</div><div class="v" id="chipSize">&hellip;</div></div>
+      </div>
+      <div class="memSectionLabel">SLEEP SCHEDULE</div>
+      <div class="listCol" id="memPhases">
+        <div class="phaseCard">
+          <div class="phaseTop">
+            <span class="phName">Dream sweep</span>
+            <span class="phState"><span class="dotOk" id="phDot"></span><span id="phStateText">Enabled</span></span>
+          </div>
+          <div class="phDesc">Sorts fresh short-term notes, promotes what matters into long-term memory (MEMORY.md), and writes the dream diary.</div>
+          <div class="phMeta" id="phMeta">loading&hellip;</div>
+        </div>
+      </div>
+      <details class="panel" style="margin-top: 12px">
+        <summary>How dreaming works</summary>
+        <div class="pBody pNote" style="line-height: 1.6">
+          While the agent runs, facts land in short-term daily notes. During a dream sweep those notes are scored:
+          the keepers are promoted into MEMORY.md (long-term), the rest fade, and a short line is written to the dream
+          diary. Nothing is sent anywhere — all of it stays as plain files on this device.
+        </div>
+      </details>
+    </div>
+
+    <div class="memPane" id="memPane-memories" hidden>
+      <div class="memSearchRow">
+        <input type="search" id="memQ" placeholder="Search this agent's memories" />
+        <button id="memSearch" class="go" type="button">Search</button>
+      </div>
+      <div id="memHits" class="listCol" style="margin-top: 10px">
+        <div class="memHit"><div class="hl" style="color: var(--muted)">Search for a person, project, decision, or anything else this agent remembers.</div></div>
+      </div>
+      <div class="memSectionLabel">QUICK REMEMBER</div>
+      <div class="memSearchRow">
+        <input type="text" id="memFact" placeholder="remember a fact&hellip;" />
+        <button id="memRemember" class="ghost go" type="button">Remember</button>
+      </div>
+      <div class="pNote" id="memQuickNote" style="margin-top: 8px"></div>
+    </div>
+
+    <div class="memPane" id="memPane-dreams" hidden>
+      <div class="memSearchRow" style="align-items: center">
+        <button id="dreamRefresh" class="ghost smallBtn" type="button">Refresh</button>
+        <span class="pNote" id="dreamDefault" style="flex: 1">loading&hellip;</span>
+        <span class="statusPill" id="dreamPill"><span class="dotOk"></span><span id="dreamPillText">DREAMING</span></span>
+      </div>
+      <div class="memTabs" style="margin-top: 10px">
+        <button class="memTab on" data-dtab="scene" type="button">Scene</button>
+        <button class="memTab" data-dtab="diary" type="button">Diary</button>
+        <button class="memTab" data-dtab="adv" type="button">Advanced</button>
+      </div>
+      <div class="memPane" id="dtab-scene">
+        <div class="dreamScene">
+          <div class="moon"></div>
+          <span class="zz zz1">z</span><span class="zz zz2">z</span><span class="zz zz3">z</span>
+          <div class="sceneCrab"><svg viewBox="0 0 120 110" width="150" height="138" aria-hidden="true">
+          <path d="M30 82c-8 5-12 11-12 18M40 90c-5 6-7 11-6 16" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M90 82c8 5 12 11 12 18M80 90c5 6 7 11 6 16" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M24 52c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
+          <path d="M96 52c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
+          <ellipse cx="60" cy="64" rx="40" ry="30" fill="#5b8dff"/>
+          <ellipse cx="60" cy="74" rx="25" ry="15" fill="#9cbcff" opacity="0.4"/>
+          <path d="M42 60c3.5 4.5 9 4.5 12.5 0M65.5 60c3.5 4.5 9 4.5 12.5 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+          <path d="M52 76c5 4 11 4 16 0" stroke="#101418" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        </svg></div>
+          <div class="sceneStatus" id="sceneStatus">DREAMING ACTIVE</div>
+          <div class="sceneLine" id="sceneLine">&hellip;</div>
+          <div class="scenePills">
+            <span class="statusPill"><span class="dotOk"></span><span id="scenePillSweep">SWEEP 24h</span></span>
+            <span class="statusPill"><span class="dotOk"></span><span id="scenePillNext">NEXT --:--</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="memPane" id="dtab-diary" hidden>
+        <div class="pNote" id="dreamLast" style="margin-bottom: 8px">loading&hellip;</div>
+        <div id="dreamList" class="listCol"></div>
+      </div>
+      <div class="memPane" id="dtab-adv" hidden>
+        <div class="setCard">
+          <h4>Dreaming</h4>
+          <div class="d">Turn the nightly consolidation on or off and set how often it runs. Changes save instantly.</div>
+          <div class="memSeg" id="segDream">
+            <button type="button" data-on="1">On</button>
+            <button type="button" data-on="0">Off</button>
+          </div>
+          <div class="memSearchRow" style="margin-top: 12px">
+            <input type="text" id="advEvery" inputmode="numeric" placeholder="every N hours" maxlength="4" />
+            <button id="advApply" class="ghost go" type="button">Apply</button>
+          </div>
+          <div class="pNote" id="advNote" style="margin-top: 8px"></div>
+          <div class="pBar" style="margin-top: 14px">
+            <button id="dreamRun" type="button">Run a dream now</button>
+          </div>
+          <div class="pNote" id="dreamRunNote"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="memPane" id="memPane-msettings" hidden>
+      <div class="memSectionLabel" style="margin-top: 4px">ENGINE</div>
+      <div class="setCard">
+        <h4>Memory engine</h4>
+        <div class="d">Hybrid search uses vectors plus text matching; lexical is plain text matching only (works everywhere, no embeddings needed).</div>
+        <div class="memSeg" id="segEngine">
+          <button type="button" data-emb="1">Hybrid search</button>
+          <button type="button" data-emb="0">Lexical only</button>
+        </div>
+        <div class="pNote" id="engNote" style="margin-top: 10px"></div>
+      </div>
+      <div class="memSectionLabel">MEMORY FILE</div>
+      <div class="setCard">
+        <h4>MEMORY.md</h4>
+        <div class="d">The full long-term file, editable here or anywhere else — plain text on disk, nothing hidden.</div>
+        <textarea id="memEdit" placeholder="MEMORY.md"></textarea>
+        <div class="pBar" style="margin-top: 10px">
+          <button id="memSave" type="button">Save memory file</button>
+          <span class="pNote" id="memFileNote">plain file on disk</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-tools" hidden>
+    <div class="pageHead"><h2 class="memTitle">Tools</h2></div>
+    <p class="pageNote">Your crab’s toolbox — the live tool catalog, scheduled jobs, saved chats, voice and skills. Everything runs on this machine.</p>
+
+    <div class="memHero tlHero">
+      <div class="memMascot" aria-hidden="true">
+        <svg viewBox="0 0 120 120" width="86" height="86">
+          <path d="M46 34v-9a9 9 0 0 1 9-9h10a9 9 0 0 1 9 9v9" stroke="#9cbcff" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <rect x="19" y="34" width="82" height="56" rx="11" fill="#3f6fe0"/>
+          <path d="M19 45h82v14H19z" fill="#5b8dff"/>
+          <rect x="53" y="41" width="14" height="22" rx="5" fill="#f4f8ff"/>
+          <rect x="31" y="68" width="26" height="7" rx="3.5" fill="#9cbcff"/>
+          <rect x="31" y="79" width="26" height="7" rx="3.5" fill="#9cbcff"/>
+          <circle cx="82" cy="75" r="9" fill="#8957e5"/>
+          <path d="M82 70.5v4.5l3 2.5" stroke="#f4f8ff" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div style="min-width:0">
+        <div class="memHeroTitle">Toolbox</div>
+        <div class="memHeroSub">jobs, chats, voice &amp; skills — all local</div>
+        <button id="tlRefresh" class="ghost smallBtn" type="button">Refresh</button>
+      </div>
+    </div>
+    <div class="memGrid tlGrid">
+      <div class="memChip"><div class="k">Jobs</div><div class="v" id="chipTJobs">…</div></div>
+      <div class="memChip"><div class="k">Tools</div><div class="v" id="chipTTools">…</div></div>
+      <div class="memChip"><div class="k">Chats</div><div class="v" id="chipTChats">…</div></div>
+      <div class="memChip"><div class="k">Skills</div><div class="v" id="chipTSkills">…</div></div>
+      <div class="memChip"><div class="k">Wake</div><div class="v" id="chipTWake">…</div></div>
+    </div>
+
+    <div class="memTabs" role="tablist" aria-label="Tools sections">
+      <button class="memTab on" data-ttab="tools" type="button">Tools</button>
+      <button class="memTab" data-ttab="jobs" type="button">Jobs</button>
+      <button class="memTab" data-ttab="chats" type="button">Chats</button>
+      <button class="memTab" data-ttab="voice" type="button">Voice</button>
+      <button class="memTab" data-ttab="skills" type="button">Skills</button>
+    </div>
+
+    <div class="memPane" id="tlPane-tools">
+      <p class="tlNote" style="margin-top:0">Green "active" tools are live on this machine right now. "planned" entries are on the roadmap — not built yet.</p>
+      <div id="toolCat" aria-live="polite"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memPane" id="tlPane-jobs" hidden>
+      <div class="memSectionLabel">SCHEDULED JOBS</div>
+      <div id="cronList"><div class="nx">loading…</div></div>
+      <form id="cronForm">
+        <input name="name" placeholder="name" maxlength="40" />
+        <input name="schedule" placeholder="0 8 * * *" required title="5-field cron or @daily" />
+        <input name="prompt" placeholder="what should the agent do?" required />
+        <button type="submit">Add job</button>
+      </form>
+      <p class="tlNote">Cron takes 5 fields (minute hour day month weekday), or a shortcut like @daily / @hourly / @reboot. The agent wakes on schedule and works on this machine.</p>
+    </div>
+
+    <div class="memPane" id="tlPane-chats" hidden>
+      <div class="memSectionLabel">SAVED CHATS</div>
+      <div id="sessList" class="listCol"><div class="nx">loading…</div></div>
+      <div class="tlForm">
+        <div class="pBar">
+          <button id="sessExport" class="ghost">Export selected</button>
+          <button id="sessRename" class="ghost">Rename</button>
+          <input type="text" id="purgeDays" placeholder="days" style="max-width:74px" value="30" />
+          <button id="sessPurge" class="ghost danger">Clean old</button>
+        </div>
+      </div>
+      <p class="tlNote">Export saves the selected chat as a text file. "Clean old" deletes chats older than N days to free space.</p>
+    </div>
+
+    <div class="memPane" id="tlPane-voice" hidden>
+      <div class="tlCard">
+        <div class="tlCardHead">SPEAK &amp; DICTATE</div>
+        <div class="pBar">
+          <input type="text" id="sayTxt" placeholder="speak this text aloud…" />
+          <button id="sayGo" class="ghost">Say it</button>
+        </div>
+        <div class="pBar">
+          <button id="listenGo" class="ghost">Dictate</button>
+          <span class="pNote">tap, speak, and the words land in the chat box (needs Termux:API)</span>
+        </div>
+      </div>
+      <div class="tlCard">
+        <div class="tlCardHead">STARTUP</div>
+        <div class="pBar">
+          <span class="pNote" id="bootInfo">boot: …</span>
+          <button id="bootInstall" class="ghost">Start at boot</button>
+        </div>
+      </div>
+      <div class="tlCard">
+        <div class="tlCardHead">WAKE LOOP</div>
+        <div class="pBar">
+          <button id="wakeStart" class="ghost">Start wake loop</button>
+          <button id="wakeStop" class="ghost hidden">Stop wake loop</button>
+          <span class="pNote" id="wakeInfo">wake: off</span>
+        </div>
+        <div class="pBar">
+          <input type="text" id="wakeTxt" placeholder='type a wake command, e.g. "crab what time is it"' />
+          <button id="wakeGo" class="ghost">Try it</button>
+        </div>
+        <p class="pNote" style="margin:0">The wake loop hears the keyword ("crab" by default), then your command in the next breath. Typed commands work too — no mic needed.</p>
+      </div>
+    </div>
+
+    <div class="memPane" id="tlPane-skills" hidden>
+      <div class="memSectionLabel">INSTALLED SKILLS</div>
+      <div id="skList" class="listCol"><div class="nx">loading…</div></div>
+      <div class="tlForm">
+        <div class="pBar">
+          <input type="text" id="skSrc" placeholder="import from folder path or git url" />
+          <label class="pNote"><input type="checkbox" id="skForce" style="vertical-align:middle" /> force</label>
+          <button id="skImport">Import</button>
+        </div>
+      </div>
+      <p class="tlNote">Skills add extra abilities the agent can load on demand — give it a folder path or a git URL. "force" overwrites a skill that already exists under the same name.</p>
+      <pre id="skView" class="hidden"></pre>
+    </div>
+  </section>
+
+  <section class="view" id="view-settings" hidden>
+    <div class="pageHead"><h2 class="memTitle">Settings</h2></div>
+    <p class="pageNote">Plain words, real switches - grouped by what they do, not by config keys. Every change saves straight to this device.</p>
+
+    <div class="memHero stHero">
+      <div class="memMascot" aria-hidden="true">
+        <svg viewBox="0 0 120 120" width="86" height="86">
+          <circle cx="60" cy="60" r="27" fill="none" stroke="#9cbcff" stroke-width="7"/>
+          <circle cx="60" cy="60" r="10" fill="#5b8dff"/>
+          <path d="M60 16v13M60 91v13M16 60h13M91 60h13M29 29l9 9M82 82l9 9M91 29l-9 9M38 82l-9 9" stroke="#9cbcff" stroke-width="7" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div style="min-width:0">
+        <div class="memHeroTitle">Control room</div>
+        <div class="memHeroSub">one file on this device - no cloud, no account</div>
+        <div class="pNote" id="cfgPath">loading...</div>
+      </div>
+    </div>
+
+    <div id="setSections"><div class="nx">loading...</div></div>
+
+    <div class="memSectionLabel">AGENTS</div>
+    <div class="setCard" id="agCard">
+      <h4>Named agents</h4>
+      <div class="d">Extra personalities that live in <code>workspace/agents/</code>. Start a message with @name to talk to one.</div>
+      <div id="agList"><div class="nx">loading...</div></div>
+      <div class="pBar">
+        <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
+        <select id="agTemplate" title="starter personality">
+          <option value="">starter: blank</option>
+          <option value="brief">starter: brief</option>
+          <option value="teacher">starter: teacher</option>
+          <option value="researcher">starter: researcher</option>
+        </select>
+        <button id="agCreate">Create</button>
+      </div>
+      <div class="pNote" id="agEditName"></div>
+      <textarea id="agSoul" placeholder="SOUL.md - select an agent to edit its personality"></textarea>
+      <div class="pBar"><button id="agSave" class="ghost">Save personality</button></div>
+    </div>
+  </section>
+</main>
+
+<div id="composer">
+  <div id="composerBox">
+    <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
+    <div class="composerRow">
+      <button id="attachBtn" class="iconBtn" type="button" title="Attach a text file" aria-label="Attach a file">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l6-6a2.5 2.5 0 0 1 3.5 3.5l-6 6a1.5 1.5 0 0 1-2-2l5.5-5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="modelBtn" class="iconBtn modelBtn" type="button" title="Choose a model" aria-label="Choose a model">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/><path d="M19 3v3M20.5 4.5h-3M5 17v3M6.5 18.5h-3"/></svg>
+        <span id="modelBtnLabel">model</span>
+      </button>
+      <span class="composerSp"></span>
+      <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt" />
+</div>
+
+</div>
+<div id="navScrim" hidden></div>
+
+<div id="modal" class="hidden">
+  <div class="card">
+    <h3 id="modalTitle"></h3>
+    <div id="modalFields"></div>
+    <div class="pBar" style="margin-top: 14px">
+      <span class="sp"></span>
+      <button id="modalCancel" class="ghost">Cancel</button>
+      <button id="modalSave">Save</button>
+    </div>
+    <div class="pNote" id="modalErr"></div>
+  </div>
+</div>
+
+<div id="modelPick" class="hidden">
+  <div class="card">
+    <h3 id="mpTitle"><svg class="mpTitleIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/><path d="M19 3v3M20.5 4.5h-3M5 17v3M6.5 18.5h-3"/></svg>Chat with a model</h3>
+    <p class="pNote">Pick a provider — only models you saved on the Models page appear here.</p>
+    <select id="mpProv" aria-label="Provider"></select>
+    <div id="mpList" class="listCol mpList"></div>
+    <div class="pBar" style="margin-top: 14px">
+      <span class="sp"></span>
+      <button id="mpCancel" class="ghost">Close</button>
+    </div>
+    <div class="pNote" id="mpErr"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
+      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+      <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
+    </svg>
+    <h2>TermCrab</h2>
+    <p>Paste the gateway token (printed in the terminal, or run <code>termcrab config get gateway.token</code>).</p>
+    <input id="token" type="password" placeholder="gateway token" autocomplete="off" />
+    <button id="connect">Connect</button>
+    <p id="authErr" class="err"></p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const log = $('log');
+  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null, abort: null, lastView: 'chat', provFrom: 'status', provId: '', mdlFrom: 'status', mdlProvId: '' };
+  const currentSession = () => $('session').value || 'web:main';
+
+
+  // ==== markdown renderer (zero-dependency, mobile-first) ====
+  function mdEsc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function mdSafeUrl(u) {
+    const url = String(u).trim();
+    if (/^https?:\/\/[^\s<>"']+$/i.test(url)) return url;
+    if (/^mailto:[^\s<>"']+$/i.test(url)) return url;
+    return null;
+  }
+  function mdInline(raw, depth) {
+    const codes = [];
+    let s = String(raw).replace(/`([^`\n]+)`/g, (m, c) => {
+      codes.push(c);
+      return '\x00C' + (codes.length - 1) + '\x00';
+    });
+    const links = [];
+    s = s.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (m, alt, url) => {
+      links.push({ label: alt, url, img: true });
+      return '\x00L' + (links.length - 1) + '\x00';
+    });
+    s = s.replace(/\[([^\]]+)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g, (m, label, url) => {
+      links.push({ label, url, img: false });
+      return '\x00L' + (links.length - 1) + '\x00';
+    });
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<>"')\]]+)/g, (m, pre, url) => {
+      links.push({ label: url, url, img: false });
+      return pre + '\x00L' + (links.length - 1) + '\x00';
+    });
+    s = mdEsc(s);
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, '$1<em>$2</em>');
+    s = s.replace(/(^|[^_\w])_([^_\n]+)_(?![_\w])/g, '$1<em>$2</em>');
+    s = s.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+    s = s.replace(/\n/g, '<br>');
+    s = s.replace(/\x00C(\d+)\x00/g, (m, i) => '<code>' + mdEsc(codes[Number(i)] ?? '') + '</code>');
+    s = s.replace(/\x00L(\d+)\x00/g, (m, i) => {
+      const l = links[Number(i)];
+      if (!l) return '';
+      const safe = mdSafeUrl(l.url);
+      if (l.img) {
+        if (!safe) return mdEsc(l.label);
+        return '<img src="' + mdEsc(safe) + '" alt="' + mdEsc(l.label) + '" loading="lazy">';
+      }
+      const label = depth < 3 ? mdInline(l.label, depth + 1) : mdEsc(l.label);
+      if (!safe) return label;
+      return '<a href="' + mdEsc(safe) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    });
+    return s;
+  }
+  function renderMarkdown(src) {
+    if (src == null) return '';
+    let text = String(src).replace(/\r\n?/g, '\n');
+    const fences = [];
+    // 1) pull out fenced code blocks (```lang ... ```), including an
+    //    unterminated one — that just means the reply is still streaming.
+    text = text.replace(/```([^\n]*)\n([\s\S]*?)```/g, (m, lang, code) => {
+      fences.push({ lang: lang.trim(), code });
+      return '\n\x00F' + (fences.length - 1) + '\x00\n';
+    });
+    const leftover = text.indexOf('```');
+    const atLineStart = leftover !== -1 && (leftover === 0 || text[leftover - 1] === '\n');
+    if (atLineStart) {
+      const rest = text.slice(leftover + 3);
+      const nl = rest.indexOf('\n');
+      const lang = nl === -1 ? rest : rest.slice(0, nl);
+      const code = nl === -1 ? '' : rest.slice(nl + 1);
+      fences.push({ lang: lang.trim(), code });
+      text = text.slice(0, leftover) + '\n\x00F' + (fences.length - 1) + '\x00\n';
+    }
+    const fenceHtml = (idx) => {
+      const f = fences[idx] || { lang: '', code: '' };
+      const label = /^[a-z0-9+#._-]{1,24}$/i.test(f.lang) ? f.lang : 'code';
+      const code = f.code.replace(/\n$/, '');
+      return '<div class="mdCode"><div class="mdCodeBar"><span>' + mdEsc(label) +
+        '</span><button type="button" class="mdCopy">Copy</button></div><pre><code>' +
+        mdEsc(code) + '</code></pre></div>';
+    };
+    const isSepRow = (line) => {
+      const cells = line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((c) => c.trim());
+      return cells.length > 0 && cells.every((c) => /^:?-{2,}:?$/.test(c));
+    };
+    const rowCells = (line) => line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((c) => c.trim());
+    const listHtml = (block) => {
+      const lines = block.split('\n');
+      const first = lines[0].match(/^(\s*)([-*+]|\d+[.)])\s+/);
+      if (!first) return '';
+      const ordered = /\d/.test(first[2]);
+      const items = [];
+      let cur = null;
+      for (const line of lines) {
+        const m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+        const indentedMarker = m && m[1].length >= 2;
+        if (m && !indentedMarker) {
+          if (cur) items.push(cur);
+          cur = { parts: [m[3]], nested: [] };
+        } else if (m && indentedMarker && cur) {
+          cur.nested.push(line.replace(/^\s{2}/, ''));
+        } else if (cur) {
+          if (/^\s{2,}\S/.test(line)) cur.nested.push(line.replace(/^\s{2}/, ''));
+          else cur.parts.push(line);
+        }
+      }
+      if (cur) items.push(cur);
+      const tag = ordered ? 'ol' : 'ul';
+      let html = '<' + tag + '>';
+      for (const it of items) {
+        let body = it.parts.join('\n');
+        let check = '';
+        const task = body.match(/^\[([ xX])\]\s+([\s\S]*)$/);
+        if (task) {
+          const checked = task[1].toLowerCase() === 'x' ? ' checked' : '';
+          check = '<input type="checkbox" disabled' + checked + '>';
+          body = task[2];
+        }
+        html += '<li>' + check + mdInline(body, 0) + '</li>';
+        if (it.nested.length) html = html.replace(/<\/li>$/, listHtml(it.nested.join('\n')) + '</li>');
+      }
+      return html + '</' + tag + '>';
+    };
+    // 2) walk the blocks and render each one
+    const blocks = text.split(/\n{2,}/);
+    const parts = [];
+    for (const raw of blocks) {
+      const block = raw.replace(/^\n+|\n+$/g, '');
+      if (!block.trim()) continue;
+      const fm = block.match(/^\x00F(\d+)\x00$/);
+      if (fm) { parts.push(fenceHtml(Number(fm[1]))); continue; }
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(block.trim())) { parts.push('<hr>'); continue; }
+      const hm = block.match(/^#{1,6}\s+([\s\S]*)$/);
+      if (hm) {
+        const level = (block.match(/^#+/) || ['#'])[0].length;
+        parts.push('<h' + level + '>' + mdInline(hm[1], 0) + '</h' + level + '>');
+        continue;
+      }
+      const lines = block.split('\n');
+      if (lines.length && lines.every((l) => /^>\s?/.test(l) || !l.trim())) {
+        const inner = lines.map((l) => l.replace(/^>\s?/, '')).join('\n');
+        parts.push('<blockquote>' + renderMarkdown(inner) + '</blockquote>');
+        continue;
+      }
+      if (lines.length >= 2 && /\|/.test(lines[0]) && isSepRow(lines[1])) {
+        const head = rowCells(lines[0]);
+        const body = lines.slice(2).filter((l) => /\S/.test(l)).map(rowCells);
+        let t = '<div class="mdTable"><table><thead><tr>';
+        t += head.map((c) => '<th>' + mdInline(c, 0) + '</th>').join('');
+        t += '</tr></thead><tbody>';
+        for (const row of body) {
+          t += '<tr>' + head.map((_, i) => '<td>' + mdInline(row[i] ?? '', 0) + '</td>').join('') + '</tr>';
+        }
+        parts.push(t + '</tbody></table></div>');
+        continue;
+      }
+      if (/^\s*([-*+]|\d+[.)])\s+/.test(block)) { parts.push(listHtml(block)); continue; }
+      parts.push('<p>' + mdInline(block, 0) + '</p>');
+    }
+    return parts.join('');
+  }
+  // ==== end markdown renderer ====
+
+  function syncHero() {
+    const h = $('hero');
+    if (h) h.hidden = log.children.length > 0;
+  }
+
+  function addMsg(cls, text) {
+    const div = document.createElement('div');
+    div.className = `msg ${cls}`;
+    if (cls === 'bot') {
+      div.innerHTML = renderMarkdown(text);
+      if (/^\[(empty reply|agent error)\]/.test(String(text).trim())) div.classList.add('err');
+      const who = document.createElement('div');
+      who.className = 'msgWho';
+      const sel = $('agentSel');
+      who.textContent = sel && sel.value ? sel.selectedOptions[0].textContent : 'Crabby';
+      log.appendChild(who);
+    } else {
+      div.textContent = text;
+    }
+    log.appendChild(div);
+    syncHero();
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  // one delegated listener: every "Copy" button in a code block
+  log.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.mdCopy') : null;
+    if (!btn) return;
+    const box = btn.closest('.mdCode');
+    const pre = box && box.querySelector('pre');
+    if (!pre) return;
+    const ok = () => {
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pre.textContent).then(ok, ok);
+    } else ok();
+  });
+
+  async function api(path, opts = {}, body) {
+    if (typeof opts === 'string') {
+      // Shorthand: api(path, 'POST', {…}) — JSON body, correct method.
+      // (Before this fix the string was swallowed and a GET went out instead.)
+      opts = { method: opts };
+      if (body !== undefined) {
+        opts.body = JSON.stringify(body);
+        opts.headers = { 'content-type': 'application/json' };
+      }
+    }
+    const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
+    const res = await fetch(path, Object.assign({}, opts, { headers }));
+    if (res.status === 401) {
+      let hint = '';
+      try { hint = (await res.json()).hint || ''; } catch { /* body may be empty */ }
+      showOverlay(hint || 'Invalid or missing token');
+      const err = new Error('unauthorized');
+      err.hint = hint;
+      throw err;
+    }
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { msg = (await res.json()).error || msg; } catch {}
+      throw new Error(msg);
+    }
+    return res.json();
+  }
+
+  function showOverlay(err) {
+    $('overlay').classList.remove('hidden');
+    $('authErr').textContent = err || '';
+  }
+  function hideOverlay() { $('overlay').classList.add('hidden'); }
+
+  // ---- Models page: fetch a provider's catalog, tick to save, all live ----
+  let mdlFetched = null; // null until Fetch succeeds, then the provider's model ids
+  let mdlReg = [];       // models saved on the open provider
+  let mdlMarked = new Set(); // tick state staged until Save
+
+  function renderMdlList() {
+    const box = $('mdlList');
+    if (!box) return;
+    const q = (($('mdlSearch') && $('mdlSearch').value) || '').trim().toLowerCase();
+    let all;
+    if (!mdlFetched) all = mdlReg.slice();
+    else all = mdlReg.filter((m) => !mdlFetched.includes(m)).concat(mdlFetched);
+    const rows = all.filter((m) => !q || m.toLowerCase().includes(q));
+    box.innerHTML = '';
+    if (!rows.length) {
+      box.innerHTML = '<div class="nx">' + (mdlFetched || mdlReg.length ? 'No models match your search.' : 'Nothing here yet — press Fetch.') + '</div>';
+      return;
+    }
+    for (const m of rows) {
+      const label = document.createElement('label');
+      label.className = 'mdlRow';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'mdlTick';
+      cb.checked = mdlReg.includes(m);
+      cb.onchange = async () => {
+        if (cb.checked) mdlMarked.add(m);
+        else mdlMarked.delete(m);
+        updateMdlSave();
+        $('mdlFetchNote').classList.remove('errText');
+        // Every tick is saved to the backend straight away; the Save button
+        // below stays as a retry for anything that failed, and as confirmation.
+        try {
+          let res;
+          if (cb.checked) {
+            res = await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m });
+          } else {
+            res = await api('/api/providers/' + state.mdlProvId + '/models/' + encodeURIComponent(m), 'DELETE');
+          }
+          if (res && Array.isArray(res.models)) mdlReg = res.models.slice().sort();
+          const n = mdlPending().length;
+          $('mdlFetchNote').textContent = n
+            ? n + (n === 1 ? ' change' : ' changes') + ' not saved yet — press Save to retry.'
+            : cb.checked
+              ? 'Saved — ' + m + ' is in the system (saved instantly, no restart needed).'
+              : 'Removed — ' + m + ' no longer saved.';
+          updateMdlSave();
+        } catch (e) {
+          $('mdlFetchNote').textContent = 'Could not save automatically: ' + e.message + ' — press Save to retry.';
+          $('mdlFetchNote').classList.add('errText');
+          updateMdlSave();
+        }
+      };
+      const id = document.createElement('span');
+      id.className = 'mdlId';
+      id.textContent = m;
+      label.append(cb, id);
+      box.appendChild(label);
+    }
+  }
+
+  async function loadModelsRoot() {
+    const box = $('mdlProvList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers');
+      const list = d.providers || [];
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">No providers yet — add one on the Providers page first.</div>';
+        return;
+      }
+      for (const p of list) {
+        const row = document.createElement('div');
+        row.className = 'provRow';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'pn';
+        n.textContent = p.name;
+        const u = document.createElement('div');
+        u.className = 'pu';
+        u.textContent = p.baseUrl;
+        tx.append(n, u);
+        const meta = document.createElement('span');
+        meta.className = 'provMeta';
+        const c = p.modelCount || 0;
+        meta.textContent = c + (c === 1 ? ' saved model' : ' saved models');
+        const chev = document.createElement('span');
+        chev.className = 'provChev';
+        chev.textContent = '›';
+        row.append(tx, meta, chev);
+        row.onclick = () => openModelFetch(p.id, p.name);
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '<div class="nx">' + e.message + '</div>';
+    }
+  }
+
+  function showModelsRoot() {
+    state.mdlProvId = '';
+    $('mdlPickPage').hidden = true;
+    $('mdlProvList').hidden = false;
+    loadModelsRoot();
+  }
+
+  async function openModelFetch(id, name) {
+    state.mdlProvId = id;
+    $('mdlProvList').hidden = true;
+    $('mdlPickPage').hidden = false;
+    $('mdlPickName').textContent = name;
+    $('mdlSearch').value = '';
+    $('mdlFetchNote').classList.remove('errText');
+    mdlFetched = null;
+    mdlReg = [];
+    $('mdlList').innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers/' + id);
+      mdlReg = (d.provider && d.provider.models) || [];
+      mdlMarked = new Set(mdlReg);
+      updateMdlSave();
+      const cnt = mdlReg.length;
+      $('mdlFetchNote').textContent = cnt
+        ? cnt + (cnt === 1 ? ' model saved' : ' models saved') + ' · press Fetch for the full list from the provider.'
+        : 'Press Fetch to load every model this provider offers.';
+      renderMdlList();
+    } catch (e) {
+      $('mdlList').innerHTML = '<div class="nx">' + e.message + '</div>';
+    }
+  }
+
+  async function fetchMdl() {
+    const id = state.mdlProvId;
+    if (!id) return;
+    const btn = $('mdlFetch');
+    btn.disabled = true;
+    $('mdlFetchNote').classList.remove('errText');
+    $('mdlFetchNote').textContent = 'Asking the provider…';
+    try {
+      const d = await api('/api/providers/' + id + '/models');
+      mdlFetched = d.models || [];
+      $('mdlFetchNote').textContent = mdlFetched.length + ' models available · tick one to save it instantly.';
+    } catch (e) {
+      $('mdlFetchNote').textContent = e.message;
+      $('mdlFetchNote').classList.add('errText');
+    } finally {
+      btn.disabled = false;
+      renderMdlList();
+    }
+  }
+
+  $('mdlBack').onclick = () => switchView(state.mdlFrom || 'status');
+  $('mdlPickBack').onclick = showModelsRoot;
+  function mdlPending() {
+    const adds = [...mdlMarked].filter((m) => !mdlReg.includes(m));
+    const dels = mdlReg.filter((m) => !mdlMarked.has(m));
+    return adds.concat(dels);
+  }
+
+  function updateMdlSave() {
+    const n = mdlPending().length;
+    $('mdlSave').textContent = n ? 'Save (' + n + ')' : 'Save';
+  }
+
+  async function saveMdl() {
+    const adds = [...mdlMarked].filter((m) => !mdlReg.includes(m)).sort();
+    const dels = mdlReg.filter((m) => !mdlMarked.has(m)).sort();
+    if (!adds.length && !dels.length) {
+      $('mdlFetchNote').classList.remove('errText');
+      try {
+        const chk = await api('/api/providers/' + state.mdlProvId);
+        const saved = (chk.provider && Array.isArray(chk.provider.models)) ? chk.provider.models.slice().sort() : mdlReg.slice().sort();
+        mdlReg = saved;
+        mdlMarked = new Set(saved);
+        updateMdlSave();
+        renderMdlList();
+        $('mdlFetchNote').textContent = 'Everything is already saved (' + saved.length + (saved.length === 1 ? ' model' : ' models') + ' in the system).';
+      } catch (e) {
+        $('mdlFetchNote').textContent = e.message;
+        $('mdlFetchNote').classList.add('errText');
+      }
+      return;
+    }
+    const btn = $('mdlSave');
+    btn.disabled = true;
+    $('mdlFetchNote').classList.remove('errText');
+    $('mdlFetchNote').textContent = 'Saving…';
+    try {
+      for (const m of adds) await api('/api/providers/' + state.mdlProvId + '/models', 'POST', { model: m });
+      for (const m of dels) await api('/api/providers/' + state.mdlProvId + '/models/' + encodeURIComponent(m), 'DELETE');
+      // Read back from the backend — the server file is the source of truth.
+      const chk = await api('/api/providers/' + state.mdlProvId);
+      const saved = (chk.provider && Array.isArray(chk.provider.models)) ? chk.provider.models.slice().sort() : [...mdlMarked].sort();
+      mdlReg = saved;
+      mdlMarked = new Set(saved);
+      $('mdlFetchNote').textContent = 'Saved — ' + mdlReg.length + (mdlReg.length === 1 ? ' model is' : ' models are') + ' ready to use right now (no restart needed).';
+      updateMdlSave();
+      renderMdlList();
+    } catch (e) {
+      $('mdlFetchNote').textContent = e.message;
+      $('mdlFetchNote').classList.add('errText');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('mdlFetch').onclick = fetchMdl;
+  $('mdlSave').onclick = saveMdl;
+  $('mdlSearch').addEventListener('input', renderMdlList);
+
+  // ---- Composer model picker: choose provider, then one of its saved models ----
+  async function refreshModelBtn() {
+    if (!state.token) return;
+    try {
+      const d = await api('/api/config');
+      const m = (d.config && d.config.provider && d.config.provider.model) || '';
+      $('modelBtnLabel').textContent = m || 'model';
+      $('modelBtn').title = 'Model in use: ' + (m || 'none');
+    } catch { /* keep the old label */ }
+  }
+
+  async function loadMpModels() {
+    const id = $('mpProv').value;
+    const box = $('mpList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    if (!id) {
+      box.innerHTML = '<div class="nx">Pick a provider.</div>';
+      return;
+    }
+    try {
+      const d = await api('/api/providers/' + id);
+      const models = (d.provider && d.provider.models) || [];
+      if (!models.length) {
+        box.innerHTML = '<div class="nx">No saved models for this provider yet — open Models in the sidebar, press Fetch and tick some.</div>';
+        return;
+      }
+      box.innerHTML = '';
+      for (const m of models) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'mpRow';
+        row.innerHTML = '<svg class="mpRowIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/></svg>';
+        const span = document.createElement('span');
+        span.textContent = m;
+        row.appendChild(span);
+        row.onclick = async () => {
+          row.disabled = true;
+          try {
+            await api('/api/models/use', 'POST', { providerId: id, model: m });
+            $('modelPick').classList.add('hidden');
+            await refreshModelBtn();
+            refreshLiveStatus();
+          } catch (e) {
+            $('mpErr').textContent = e.message;
+            row.disabled = false;
+          }
+        };
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      $('mpErr').textContent = e.message;
+    }
+  }
+
+  async function openModelPick() {
+    $('mpErr').textContent = '';
+    $('modelPick').classList.remove('hidden');
+    $('mpList').innerHTML = '<div class="nx">loading…</div>';
+    $('mpProv').innerHTML = '';
+    try {
+      const d = await api('/api/providers');
+      const list = d.providers || [];
+      if (!list.length) {
+        $('mpList').innerHTML = '<div class="nx">No providers yet — add one on the Providers page first.</div>';
+        return;
+      }
+      for (const p of list) {
+        const o = document.createElement('option');
+        o.value = p.id;
+        o.textContent = p.name + ' — ' + p.baseUrl;
+        $('mpProv').appendChild(o);
+      }
+      if (d.active && d.active.matchedId) $('mpProv').value = d.active.matchedId;
+      await loadMpModels();
+    } catch (e) {
+      $('mpList').innerHTML = '';
+      $('mpErr').textContent = e.message;
+    }
+  }
+
+  $('modelBtn').onclick = openModelPick;
+  $('mpCancel').onclick = () => $('modelPick').classList.add('hidden');
+  $('mpProv').onchange = () => { $('mpErr').textContent = ''; loadMpModels(); };
+
+  document.querySelectorAll('[data-ask]').forEach((b) => {
+    b.onclick = () => { $('input').value = b.dataset.ask || ''; send(); };
+  });
+  document.querySelectorAll('[data-go]').forEach((b) => {
+    b.onclick = () => switchView(b.dataset.go);
+  });
+  async function refreshHero() {
+    try {
+      const s = await api('/api/status');
+      const facts = s.memory ? (s.memory.facts || 0) : 0;
+      $('heroStatus').textContent = 'awake \u00b7 ' + s.provider + ' \u00b7 ' + facts + (facts === 1 ? ' memory' : ' memories');
+    } catch { $('heroStatus').textContent = 'awake'; }
+  }
+
+  // ---- session sources & tool icons (rendered from stored ids — survives refresh/restart) ----
+  function svgWrap(d, color, size) {
+    return '<svg viewBox="0 0 24 24" width="' + (size || 14) + '" height="' + (size || 14) +
+      '" fill="none" stroke="' + (color || 'currentColor') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      d + '</svg>';
+  }
+  const SESSION_SOURCES = {
+    web: { label: 'Web', color: '#58a6ff', d: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.8 3.4 2.8 14.6 0 18M12 3c-2.8 3.4-2.8 14.6 0 18"/>' },
+    telegram: { label: 'Telegram', color: '#35b9f0', d: '<path d="M21 4L3 10.5l6.8 3.7L14 21z"/><path d="M21 4l-11.2 10.2"/>' },
+    whatsapp: { label: 'WhatsApp', color: '#25d366', d: '<path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.7-1.2A9 9 0 1 0 12 3z"/><path d="M8.5 9c0 4 3 7 7 7"/>' },
+    cron: { label: 'Schedule', color: '#8957e5', d: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>' },
+    sub: { label: 'Subagent', color: '#39c5cf', d: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.6 8l3 7.5M16.4 8l-3 7.5M8.5 6h7"/>' },
+    dream: { label: 'Dream', color: '#a78bfa', d: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>' },
+    heartbeat: { label: 'Heartbeat', color: '#f85149', d: '<path d="M3 12h4l2-5 3 10 2.5-6 1.5 3h6"/>' },
+  };
+  function sessionSource(id) {
+    const raw = String(id || '');
+    const parts = raw.split(':');
+    for (let i = 0; i < parts.length; i++) {
+      const src = SESSION_SOURCES[parts[i]];
+      if (src) return { key: parts[i], rest: parts.slice(i + 1).join(':'), label: src.label, color: src.color, d: src.d };
+    }
+    if (parts.length === 1 && SESSION_SOURCES[raw]) {
+      const src = SESSION_SOURCES[raw];
+      return { key: raw, rest: '', label: src.label, color: src.color, d: src.d };
+    }
+    return null;
+  }
+  function sessionIconHtml(id) {
+    const src = sessionSource(id);
+    return svgWrap(src ? src.d : '<path d="M4 5h16v11H9l-5 4z"/>', src ? src.color : '#8b949e');
+  }
+  function sessionIconSpan(id) { return '<span class="sessIc">' + sessionIconHtml(id) + '</span>'; }
+  function sessionLabel(id) {
+    const src = sessionSource(id);
+    if (!src) return String(id || '');
+    return src.rest ? src.label + ' \u00b7 ' + src.rest : src.label;
+  }
+  const TOOL_ICONS = {
+    read_file: '<path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 16h5"/>',
+    write_file: '<path d="M6 3h8l5 5v5"/><path d="M14 3v5h5"/><path d="M6 3v18h6"/><path d="M18 16v6M15 19h6"/>',
+    edit: '<path d="M4 20l4-1L20 7l-3-3L5 16z"/><path d="M14 6l3 3"/>',
+    apply_patch: '<path d="M7 4v10M4 7h6M17 10v10M14 17h6"/>',
+    list_dir: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    exec: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>',
+    process: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+    terminal: '<rect x="3" y="5" width="12" height="9" rx="2"/><rect x="9" y="10" width="12" height="9" rx="2"/>',
+    web_fetch: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.8 3.4 2.8 14.6 0 18M12 3c-2.8 3.4-2.8 14.6 0 18"/>',
+    web_search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/>',
+    view_image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/>',
+    screen: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    automations: '<circle cx="12" cy="13" r="7"/><path d="M12 10v3l2 2M5 3L2 6M19 3l3 3"/>',
+    dashboard: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+    portal: '<path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 21h18"/><circle cx="14.5" cy="12.5" r="1.2"/>',
+    conversations_list: '<path d="M4 5h12v7H8l-4 4z"/><path d="M20 9v10l-3-3h-5"/>',
+    conversations_send: '<path d="M21 4L3 10.5l6.8 3.7L14 21z"/><path d="M21 4l-11.2 10.2"/>',
+    conversations_turn: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+    sessions_list: '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>',
+    sessions_history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    sessions_search: '<path d="M5 3h8l4 4v5"/><path d="M5 3v18h6"/><circle cx="16.5" cy="17" r="3.5"/><path d="M19 19.5L21.5 22"/>',
+    sessions_send: '<path d="M4 5h16v10H9l-5 5z"/><path d="M9 10h6M13 8l2 2-2 2"/>',
+    sessions: '<path d="M4 7h9M18 7h2M4 17h4M13 17h7"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="10.5" cy="17" r="2.5"/>',
+    subagents: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.6 8l3 7.5M16.4 8l-3 7.5M8.5 6h7"/>',
+    agents_wait: '<path d="M6 3h12M6 21h12M7 3v3c0 3 5 6 5 6s5-3 5-6V3M7 21v-3c0-3 5-6 5-6s5 3 5 6v3"/>',
+    sessions_yield: '<path d="M6 21V4"/><path d="M6 5h11l-2 4 2 4H6"/>',
+    session_status: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.5"/>',
+    ask_user: '<path d="M4 5h16v11h-8l-5 4v-4H4z"/><path d="M9.8 9.2a2.3 2.3 0 1 1 2.7 2.3c-.7.2-1 .8-1 1.5"/><circle cx="11.4" cy="14.6" r="0.7"/>',
+    suggest_task: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 10.5l2 2 4-4M8 16h8"/>',
+    dismiss_task: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/>',
+    intent: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>',
+    create_goal: '<path d="M6 21V4M6 5h12l-2.5 4L18 13H6"/><path d="M18 16v6M15 19h6"/>',
+    get_goal: '<path d="M6 21V4M6 5h12l-2.5 4L18 13H6"/><path d="M9 18l2 2 4-4"/>',
+    update_goal: '<path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M4 20v-4h4"/>',
+    skill_workshop: '<path d="M4 20L16 8M14 4l1 2.6L17.6 8 15 9.4 14 12l-1-2.6L10.4 8 13 6.6zM6.5 4l.6 1.6L8.7 6l-1.6.6L6.5 8.2l-.6-1.6L4.3 6l1.6-.4z"/>',
+    github_identity_status: '<path d="M12 3a9 9 0 0 0-2.8 17.5c.4.1.6-.2.6-.4v-1.6c-2.5.5-3-1.2-3-1.2-.4-1-1-1.3-1-1.3-.8-.6.1-.6.1-.6.9.1 1.4.9 1.4.9.8 1.4 2.1 1 2.6.8.1-.6.3-1 .6-1.2-2-.2-4.1-1-4.1-4.5 0-1 .3-1.8.9-2.4-.1-.3-.4-1.2.1-2.5 0 0 .8-.2 2.5.9a8.6 8.6 0 0 1 4.6 0c1.7-1.1 2.5-.9 2.5-.9.5 1.3.2 2.2.1 2.5.6.6.9 1.4.9 2.4 0 3.5-2.1 4.3-4.1 4.5.3.3.6.9.6 1.8v2.7c0 .2.2.5.6.4A9 9 0 0 0 12 3z"/>',
+    secrets: '<circle cx="7.5" cy="15.5" r="3.5"/><path d="M10.5 12.5L20 3M16.5 6.5l3 3M14 9l2.5 2.5"/>',
+    progress_card: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 8v6M15 8v10"/>',
+    load_skill: '<path d="M12 3l2.5 5.5 6 .5-4.5 4 1.5 6L12 16l-5.5 3 1.5-6-4.5-4 6-.5z"/>',
+    remember: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+    search_memory: '<path d="M4 6h9M4 10h6"/><circle cx="15" cy="13" r="4"/><path d="M18 16l3 3"/>',
+    get_time: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>',
+  };
+  const TOOL_ICON_FALLBACK = '<path d="M14.7 6.3a4 4 0 1 0-5.4 5.4L4 17v3h3l5.7-5.7a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2z"/>';
+  function toolIconHtml(name) {
+    return svgWrap(TOOL_ICONS[name] || TOOL_ICON_FALLBACK, 'currentColor');
+  }
+  function toolArgPreview(name, args) {
+    if (!args) return '';
+    for (const k of ['command', 'path', 'query', 'url', 'sessionId', 'title']) {
+      if (args[k]) return String(args[k]).slice(0, 80);
+    }
+    return '';
+  }
+  function addToolLine(name, args, status) {
+    const div = document.createElement('div');
+    div.className = 'tools';
+    const ic = document.createElement('span');
+    ic.className = 'toolIc';
+    ic.innerHTML = toolIconHtml(name);
+    const nm = document.createElement('span');
+    nm.className = 'toolNm';
+    nm.textContent = name;
+    div.append(ic, nm);
+    const preview = toolArgPreview(name, args);
+    if (preview) {
+      const pr = document.createElement('span');
+      pr.className = 'toolMeta';
+      pr.textContent = '(' + preview + ')';
+      div.appendChild(pr);
+    }
+    if (status) {
+      const st = document.createElement('span');
+      st.className = 'toolSt' + (status === 'failed' ? ' bad' : '');
+      st.textContent = '\u2014 ' + status;
+      div.appendChild(st);
+    }
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  function updateChatLabel() {
+    const id = currentSession() || 'web:main';
+    const health = $('health');
+    health.innerHTML = '';
+    const ic = document.createElement('span');
+    ic.className = 'sessIc';
+    ic.innerHTML = sessionIconHtml(id);
+    const label = document.createElement('span');
+    const text = sessionLabel(id);
+    label.textContent = text.length > 26 ? text.slice(0, 25) + '\u2026' : text;
+    health.append(ic, label);
+  }
+
+  // ---- Top-bar menu (talk-as picker + quick actions) ----
+  function closeMenu() {
+    $('menu').classList.add('hidden');
+  }
+  $('menuBtn').onclick = (e) => {
+    e.stopPropagation();
+    $('menu').classList.toggle('hidden');
+  };
+  document.addEventListener('click', (e) => {
+    if ($('menu').hidden) return;
+    if (!$('menu').contains(e.target) && !$('menuBtn').contains(e.target)) closeMenu();
+  });
+
+  function connectEvents() {
+    const es = new EventSource('/api/events?token=' + encodeURIComponent(state.token));
+    es.addEventListener('tool:start', (e) => {
+      const ev = JSON.parse(e.data);
+      addToolLine(ev.name, ev.args || {}, '');
+    });
+    es.addEventListener('tool:end', (e) => {
+      const ev = JSON.parse(e.data);
+      const last = [...log.querySelectorAll('.tools')].pop();
+      if (last) {
+        const st = document.createElement('span');
+        st.className = 'toolSt' + (ev.ok ? '' : ' bad');
+        st.textContent = ev.ok ? '\u2014 done' : '\u2014 failed';
+        last.appendChild(st);
+      }
+    });
+    es.addEventListener('delta', (e) => {
+      const ev = JSON.parse(e.data);
+      // typewriter: append streamed chunks, repainted as markdown
+      if (!state.live) { state.live = addMsg('bot', ''); state.liveRaw = ''; }
+      state.liveRaw = (state.liveRaw || '') + ev.text;
+      const paint = () => {
+        if (state.live) {
+          state.live.innerHTML = renderMarkdown(state.liveRaw || '');
+          log.scrollTop = log.scrollHeight;
+        }
+      };
+      const now = Date.now();
+      if (now - (state.livePaint || 0) > 120) { state.livePaint = now; paint(); }
+      clearTimeout(state.liveTimer);
+      state.liveTimer = setTimeout(() => { state.livePaint = 0; paint(); }, 150);
+    });
+    es.addEventListener('cron', (e) => {
+      const ev = JSON.parse(e.data);
+      addMsg('sys', `Schedule ${ev.name}: ${(ev.preview || '').slice(0, 200)}`);
+    });
+    es.addEventListener('heartbeat', (e) => {
+      const ev = JSON.parse(e.data);
+      addMsg('sys', ev.ran ? 'Check-in: ' + (ev.reason || 'done') : 'Check-in skipped: ' + humanReason(ev.reason));
+    });
+    es.addEventListener('ask', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const hint = d.question + (d.options && d.options.length ? '  (' + d.options.join(' / ') + ')' : '');
+        openModal('Crabby asks', [{ id: 'answer', placeholder: hint }], async () => {
+          const input = $('mf_answer');
+          const value = input ? input.value : '';
+          try {
+            await api('/api/ask/' + d.id + '/answer', 'POST', { answer: value });
+          } catch (err) {
+            addMsg('sys', 'answer failed: ' + err.message);
+          }
+          closeModal();
+        });
+      } catch { /* malformed event */ }
+    });
+    es.addEventListener('tasks', () => { refreshTaskCards(); });
+    es.addEventListener('dream', (e) => {
+      const ev = JSON.parse(e.data);
+      addMsg('sys', ev.ran
+        ? `Dream done: learned ${ev.facts ?? 0} new fact${(ev.facts ?? 0) === 1 ? '' : 's'} (${ev.reason || ''})`
+        : `Dream skipped: ${humanReason(ev.reason)}`);
+    });
+    es.addEventListener('update', (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.phase) { handleUpdatePhase(ev); return; }
+      addMsg('sys', `A newer TermCrab exists: v${ev.latest} (you have v${ev.current}). Click Auto update in Status to install it.`);
+      const ui = $('updInfo');
+      if (ui) ui.textContent = `v${ev.latest} available — click Auto update`;
+    });
+    es.addEventListener('wake', (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.state === 'started') { addMsg('sys', `Wake loop on — say "${ev.keyword}", then your command`); refreshWake(); }
+      else if (ev.state === 'stopped') { addMsg('sys', 'Wake loop stopped'); refreshWake(); }
+      else if (ev.state === 'wake') addMsg('sys', `Keyword heard — waiting for your command…`);
+      else if (ev.state === 'command') addMsg('sys', `Heard: "${ev.text}"`);
+      else if (ev.state === 'reply') addMsg('bot', ev.reply || '(no reply)');
+      else if (ev.state === 'error') addMsg('sys', 'Wake problem: ' + (ev.error || 'unknown problem'));
+      refreshWake();
+    });
+    es.onerror = () => { /* auto-reconnects */ };
+  }
+
+  const SEND_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+  const STOP_ICON = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>';
+  function setSendMode(stop) {
+    if (stop) { refreshProgressCard(); refreshTaskCards(); }
+    const b = $('send');
+    b.innerHTML = stop ? STOP_ICON : SEND_ICON;
+    b.title = stop ? 'Stop' : 'Send';
+    b.setAttribute('aria-label', stop ? 'Stop' : 'Send');
+    b.classList.toggle('stopMode', !!stop);
+  }
+
+  // ---- operator cards: progress + suggested tasks, dashboard widgets ----
+  let dashWidgets = null;
+  function dashOn(key) {
+    return !dashWidgets || dashWidgets[key] !== false;
+  }
+  async function refreshTaskCards() {
+    const box = $('taskCards');
+    if (!box) return;
+    try {
+      const d = await api('/api/tasks');
+      const list = d.suggestions || [];
+      box.innerHTML = '';
+      if (!list.length || !dashOn('tasks')) {
+        box.hidden = true;
+        return;
+      }
+      const head = document.createElement('div');
+      head.className = 'uiCardHead';
+      head.textContent = 'SUGGESTED TASKS';
+      box.appendChild(head);
+      for (const t of list) {
+        const row = document.createElement('div');
+        row.className = 'uiRow';
+        const label = document.createElement('span');
+        label.className = 'sp';
+        label.textContent = t.title + (t.detail ? ' — ' + t.detail : '');
+        const x = document.createElement('button');
+        x.className = 'ghost';
+        x.type = 'button';
+        x.textContent = 'Dismiss';
+        x.onclick = async () => {
+          try { await api('/api/tasks/' + t.id, 'DELETE'); } catch (e) { addMsg('sys', 'dismiss failed: ' + e.message); }
+          refreshTaskCards();
+        };
+        row.append(label, x);
+        box.appendChild(row);
+      }
+      box.hidden = false;
+    } catch {
+      box.hidden = true;
+    }
+  }
+  async function refreshProgressCard() {
+    const box = $('progCard');
+    if (!box) return;
+    try {
+      const sid = $('session') ? $('session').value : '';
+      const d = await api('/api/progress?session=' + encodeURIComponent(sid));
+      const card = d.card;
+      if (!card || !dashOn('progress')) {
+        box.hidden = true;
+        return;
+      }
+      box.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'uiCardHead';
+      head.textContent = 'PROGRESS' + (card.updatedAt ? ' · updated ' + new Date(card.updatedAt).toLocaleTimeString() : '');
+      box.appendChild(head);
+      for (const [key, label] of [['todo', 'TODO'], ['doing', 'DOING'], ['done', 'DONE']]) {
+        const row = document.createElement('div');
+        row.className = 'uiRow';
+        const k = document.createElement('span');
+        k.className = 'progK';
+        k.textContent = label;
+        const v = document.createElement('span');
+        v.className = 'sp';
+        const items = card[key] || [];
+        v.textContent = items.length ? items.join(' · ') : '—';
+        row.append(k, v);
+        box.appendChild(row);
+      }
+      box.hidden = false;
+    } catch {
+      box.hidden = true;
+    }
+  }
+  async function applyDashboard() {
+    try {
+      const d = await api('/api/config');
+      dashWidgets = (d.config && d.config.dashboard && d.config.dashboard.widgets) || null;
+    } catch { dashWidgets = null; }
+    const w = dashWidgets || {};
+    const hero = $('hero');
+    if (hero) hero.hidden = w.hero === false;
+    document.querySelectorAll('.heroChips').forEach((el) => { el.hidden = w.chips === false; });
+    refreshTaskCards();
+    refreshProgressCard();
+  }
+
+  async function send() {
+    const text = $('input').value.trim();
+    if (!text || state.busy) return;
+    state.busy = true;
+    document.body.classList.add('busy');
+    setSendMode(true);
+    $('typing').innerHTML = '<div class="think"><i></i><i></i><i></i><span>Crabby is thinking\u2026</span></div>';
+    state.abort = new AbortController();
+    $('input').value = '';
+    addMsg('user', text);
+    state.live = addMsg('bot', '');
+    state.liveRaw = '';
+    try {
+      const res = await api('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
+        signal: state.abort.signal,
+      });
+      if (state.live) {
+        state.liveRaw = res.text || state.liveRaw;
+        if (!state.liveRaw) {
+          // Belt-and-braces: the server now always explains an empty reply,
+          // but never show a bare placeholder if one slips through (v0.23.1).
+          state.liveRaw = 'Crabby got no text back from the model. Try again, or switch models in Providers.';
+          state.live.classList.add('err');
+        } else if (/^\[(empty reply|agent error)\]/.test(state.liveRaw.trim())) {
+          state.live.classList.add('err');
+        }
+        state.live.innerHTML = renderMarkdown(state.liveRaw);
+      }
+    } catch (err) {
+      if (err && (err.name === 'AbortError' || (state.abort && state.abort.signal.aborted))) {
+        if (state.live) { state.live.remove(); state.live = null; }
+        addMsg('sys', 'Stopped.');
+      } else if (state.live) {
+        state.live.textContent = err.message;
+        state.live.classList.add('err');
+      }
+    } finally {
+      state.live = null;
+      state.liveRaw = '';
+      state.abort = null;
+      state.busy = false;
+      document.body.classList.remove('busy');
+      setSendMode(false);
+      $('typing').innerHTML = '';
+      log.scrollTop = log.scrollHeight;
+      refreshSessions();
+    }
+  }
+
+  async function refreshSessions() {
+    try {
+      const data = await api('/api/sessions');
+      const sel = $('session');
+      const keep = state.pendingSession || sel.value || 'web:main';
+      const opts = [];
+      const seen = new Set();
+      for (const s of data.sessions || []) {
+        opts.push(s); seen.add(s.id);
+      }
+      if (!seen.has('web:main')) opts.unshift({ id: 'web:main', messages: 0 });
+      if (keep && keep !== 'web:main' && !seen.has(keep)) opts.push({ id: keep, messages: 0 });
+      sel.innerHTML = '';
+      for (const s of opts) {
+        const o = document.createElement('option');
+        o.value = s.id;
+        const labelText = sessionLabel(s.id);
+        o.textContent = labelText.length > 18 ? labelText.slice(0, 17) + '…' : labelText;
+        sel.appendChild(o);
+      }
+      sel.value = keep;
+      state.sessions = data.sessions || [];
+      if (keep && keep !== 'web:main' && !state.sessions.some((s) => s.id === keep)) {
+        state.sessions.unshift({ id: keep, messages: 0, modified: Math.floor(Date.now() / 1000) });
+      }
+      renderHistory(state.sessions);
+      updateChatLabel();
+      if (state.pendingSession) {
+        const want = state.pendingSession;
+        state.pendingSession = null;
+        if (sel.value === want) await loadSession(want);
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  async function loadSession(id, quiet) {
+    updateChatLabel();
+    try {
+      const data = await api('/api/sessions/' + encodeURIComponent(id));
+      log.innerHTML = '';
+      const messages = data.messages || [];
+      const doneIds = new Set();
+      for (const m of messages) if (m.role === 'tool' && m.toolCallId) doneIds.add(m.toolCallId);
+      for (const m of messages) {
+        if (m.role === 'assistant' && Array.isArray(m.toolCalls)) {
+          for (const c of m.toolCalls) addToolLine(c.name, c.args || {}, doneIds.has(c.id) ? 'done' : '');
+        }
+        if (m.role === 'user') addMsg('user', m.content);
+        else if (m.role === 'assistant' && m.content) addMsg('bot', m.content);
+      }
+    } catch (e) {
+      addMsg('sys', 'failed to load session: ' + e.message);
+    } finally {
+      syncHero();
+    }
+  }
+
+  $('send').onclick = () => { if (state.busy) { if (state.abort) state.abort.abort(); } else send(); };
+  $('input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  $('attachBtn').onclick = () => $('attachFile').click();
+  $('attachFile').onchange = async () => {
+    const f = $('attachFile').files && $('attachFile').files[0];
+    $('attachFile').value = '';
+    if (!f) return;
+    if (/^(image|audio|video)\//.test(f.type) || f.type === 'application/pdf' || f.type === 'application/zip') {
+      addMsg('sys', 'Attachments work with text files for now.');
+      return;
+    }
+    if (f.size > 200 * 1024) {
+      addMsg('sys', 'That file is too big to attach (200 KB max).');
+      return;
+    }
+    try {
+      const body = await f.text();
+      const inp = $('input');
+      const block = '\u2014 ' + f.name + ' \u2014\n' + body;
+      inp.value = inp.value ? inp.value + '\n\n' + block : block;
+      inp.focus();
+      addMsg('sys', 'Attached ' + f.name + ' — edit it or hit send.');
+    } catch {
+      addMsg('sys', 'Could not read that file.');
+    }
+  };
+  $('btnNew').onclick = async () => {
+    closeMenu(); switchView('chat');
+    try {
+      await api('/api/sessions/' + encodeURIComponent(currentSession()), { method: 'DELETE' });
+      addMsg('sys', 'session reset');
+      refreshSessions();
+    } catch (e) { addMsg('sys', 'reset failed: ' + e.message); }
+  };
+  $('btnHb').onclick = async () => {
+    closeMenu(); switchView('chat');
+    addMsg('sys', 'Checking in…');
+    try {
+      const r = await api('/api/heartbeat', { method: 'POST' });
+      addMsg('sys', r.ran
+        ? 'Check-in done: ' + (r.output || '').slice(0, 500)
+        : 'Check-in skipped: ' + humanReason(r.reason));
+    } catch (e) { addMsg('sys', 'check-in failed: ' + e.message); }
+  };
+  $('btnDream').onclick = async () => {
+    closeMenu(); switchView('chat');
+    addMsg('sys', 'Dream started — consolidating chats into long-term memory…');
+    try {
+      await api('/api/dream', { method: 'POST' });
+      addMsg('sys', 'Dreaming in the background (result appears above when done)');
+    } catch (e) { addMsg('sys', 'dream failed: ' + e.message); }
+  };
+
+  $('session').addEventListener('change', () => {
+    loadSession($('session').value);
+    renderHistory(state.sessions);
+    pushRoute(pathForView('chat'));
+  });
+
+  // ---- Cron management ----
+  async function refreshCrons() {
+    try {
+      const data = await api('/api/crons');
+      const list = $('cronList');
+      const crons = data.crons || [];
+      const chJ = $('chipTJobs'); if (chJ) chJ.textContent = String(crons.length);
+      if (!crons.length) {
+        list.innerHTML = '<div class="nx">No cron jobs yet — add one below (e.g. @daily or 0 8 * * 1-5).</div>';
+        return;
+      }
+      list.innerHTML = '';
+      for (const c of crons) {
+        const row = document.createElement('div');
+        row.className = 'cronRow' + (c.enabled ? '' : ' off');
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = c.name;
+        const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = c.schedule;
+        const nx = document.createElement('span'); nx.className = 'nx';
+        nx.textContent = c.nextRun ? 'next ' + new Date(c.nextRun).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'no next run';
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const toggle = document.createElement('button'); toggle.className = 'ghost'; toggle.textContent = c.enabled ? 'Pause' : 'Resume';
+        toggle.onclick = async () => { await api(`/api/crons/${c.id}/${c.enabled ? 'disable' : 'enable'}`, { method: 'POST' }); refreshCrons(); };
+        const run = document.createElement('button'); run.className = 'ghost'; run.textContent = 'Run';
+        run.onclick = async () => { run.disabled = true; addMsg('sys', `Running "${c.name}"…`); switchView('chat'); try { const r = await api(`/api/crons/${c.id}/run`, { method: 'POST' }); addMsg('bot', r.output || '(no output)'); } catch (e) { addMsg('sys', 'cron run failed: ' + e.message); } finally { run.disabled = false; } };
+        const del = document.createElement('button'); del.className = 'ghost'; del.textContent = 'Delete';
+        del.onclick = async () => { await api(`/api/crons/${c.id}`, { method: 'DELETE' }); refreshCrons(); };
+        row.append(nm, sc, nx, sp, toggle, run, del);
+        list.appendChild(row);
+      }
+    } catch (e) {
+      $('cronList').innerHTML = '<div class="nx err">failed to load crons: ' + e.message + '</div>';
+    }
+  }
+
+  $('cronForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    try {
+      const res = await api('/api/crons', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: f.namedItem('name').value.trim(),
+          schedule: f.namedItem('schedule').value.trim(),
+          prompt: f.namedItem('prompt').value.trim(),
+        }),
+      });
+      f.namedItem('name').value = '';
+      f.namedItem('schedule').value = '';
+      f.namedItem('prompt').value = '';
+      refreshCrons();
+    } catch (err) {
+      addMsg('sys', 'cron add failed: ' + err.message);
+    }
+  });
+
+  // ---- Tools tabs (page redesign) ----
+  function showToolTab(name) {
+    document.querySelectorAll('[data-ttab]').forEach((b) => b.classList.toggle('on', b.dataset.ttab === name));
+    ['tools', 'jobs', 'chats', 'voice', 'skills'].forEach((t) => { const p = $('tlPane-' + t); if (p) p.hidden = t !== name; });
+    if (name === 'tools') refreshToolCatalog();
+    else if (name === 'jobs') refreshCrons();
+    else if (name === 'chats') refreshSessPanel();
+    else if (name === 'voice') { refreshBoot(); refreshWake(); }
+    else if (name === 'skills') refreshSkills();
+  }
+  document.querySelectorAll('[data-ttab]').forEach((b) => { b.onclick = () => showToolTab(b.dataset.ttab); });
+  function refreshTools() {
+    refreshToolCatalog(); refreshCrons(); refreshSessPanel(); refreshBoot(); refreshWake(); refreshSkills();
+  }
+  $('tlRefresh').onclick = () => refreshTools();
+  // Catalog: user-facing toolbox map. `real` = the live tool that proves the
+  // capability today; entries without one render as "planned" until built.
+  const TOOL_CATALOG = [
+    { g: 'File & Edit', items: [
+      { n: 'read', d: 'Read files', real: 'read_file' },
+      { n: 'write', d: 'Write files', real: 'write_file' },
+      { n: 'edit', d: 'Exact single-file replacements' },
+      { n: 'apply_patch', d: 'Patch files' },
+      { n: 'list_dir', d: 'List folders', real: 'list_dir' },
+    ]},
+    { g: 'Shell & Process', items: [
+      { n: 'exec', d: 'Run shell', real: 'exec' },
+      { n: 'process', d: 'Control background exec' },
+      { n: 'terminal', d: 'List/read/write/close interactive shell sessions' },
+    ]},
+    { g: 'Web', items: [
+      { n: 'web_search', d: 'Web search' },
+      { n: 'web_fetch', d: 'Fetch/extract URL', real: 'web_fetch' },
+      { n: 'view_image', d: 'Inspect image files (format, dimensions, size)' },
+    ]},
+    { g: 'UI & Automation', items: [
+      { n: 'screen', d: 'Read device status screen or send a notification' },
+      { n: 'automations', d: 'Schedule/wake/reminders' },
+      { n: 'dashboard', d: 'Manage dashboard widgets/tabs' },
+      { n: 'portal', d: 'Expose local HTTP server' },
+    ]},
+    { g: 'Messaging & Sessions', items: [
+      { n: 'conversations_list', d: 'List external conversation addresses' },
+      { n: 'conversations_send', d: 'Send directly to an external conversation' },
+      { n: 'conversations_turn', d: 'Send and wait for a correlated reply' },
+      { n: 'sessions_list', d: 'List visible sessions' },
+      { n: 'sessions_history', d: 'Read visible session/subagent history' },
+      { n: 'sessions_search', d: 'Search past sessions' },
+      { n: 'sessions_send', d: 'Message other session/subagent' },
+      { n: 'sessions_spawn', d: 'Spawn subagent' },
+      { n: 'sessions_yield', d: 'End turn and report running subagent tasks' },
+      { n: 'sessions', d: 'Session settings/ownership/reset/delete' },
+      { n: 'subagents', d: 'Subagent status' },
+      { n: 'agents_wait', d: 'Wait for collector subagents' },
+    ]},
+    { g: 'Session & Agent Management', items: [
+      { n: 'session_status', d: 'Session/model/usage/time/status' },
+      { n: 'ask_user', d: 'Ask structured questions and wait for answer' },
+      { n: 'suggest_task', d: 'Record follow-up task cards' },
+      { n: 'dismiss_task', d: 'Withdraw pending suggestion cards' },
+    ]},
+    { g: 'Memory & Context', items: [
+      { n: 'memory_get', d: 'Read memory files', real: 'read_file' },
+      { n: 'memory_search', d: 'Search memory files', real: 'search_memory' },
+      { n: 'remember', d: 'Save facts to long-term memory', real: 'remember' },
+      { n: 'intent', d: 'Manage standing intents' },
+      { n: 'create_goal / get_goal / update_goal', d: 'Goal tracking', real: 'create_goal' },
+    ]},
+    { g: 'Skills & Configuration', items: [
+      { n: 'load_skill', d: 'Load skill instructions', real: 'load_skill' },
+      { n: 'skill_workshop', d: 'Author/update/repair skills' },
+      { n: 'github_identity_status', d: 'Inspect GitHub account/credential health' },
+      { n: 'secrets', d: 'Protected credentials metadata/request/delete' },
+    ]},
+    { g: 'Progress', items: [
+      { n: 'progress_card', d: 'Maintain session progress card' },
+    ]},
+    { g: 'Utilities', items: [
+      { n: 'get_time', d: 'Current date & time', real: 'get_time' },
+    ]},
+  ];
+  async function refreshToolCatalog() {
+    const box = $('toolCat');
+    if (!box) return;
+    try {
+      const d = await api('/api/tools');
+      const live = new Set((d.tools || []).map((t) => t.name));
+      const desc = new Map((d.tools || []).map((t) => [t.name, t.description]));
+      const chT = $('chipTTools');
+      if (chT) chT.textContent = String(live.size);
+      const covered = new Set();
+      box.innerHTML = '';
+      const renderGroup = (title, items) => {
+        const sec = document.createElement('div');
+        const lab = document.createElement('div');
+        lab.className = 'memSectionLabel';
+        lab.textContent = title;
+        const list = document.createElement('div');
+        list.className = 'listCol';
+        for (const it of items) {
+          const row = document.createElement('div');
+          row.className = 'toolItem ' + (it.on ? 'on' : 'off');
+          const nm = document.createElement('span'); nm.className = 'tn'; nm.textContent = it.n;
+          const de = document.createElement('span'); de.className = 'td'; de.textContent = it.d;
+          const bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = it.on ? 'active' : 'planned';
+          row.append(nm, de, bd);
+          list.appendChild(row);
+        }
+        sec.append(lab, list);
+        box.appendChild(sec);
+      };
+      for (const grp of TOOL_CATALOG) {
+        const items = grp.items.map((i) => {
+          const key = i.real || i.n;
+          const on = live.has(key);
+          if (on) covered.add(key);
+          return { n: i.n, d: i.d, on };
+        });
+        renderGroup(grp.g, items);
+      }
+      const orphans = [...live].filter((n) => !covered.has(n));
+      if (orphans.length) {
+        renderGroup('Current tools', orphans.map((n) => ({ n, d: desc.get(n) || '', on: true })));
+      }
+    } catch (e) {
+      box.innerHTML = '<div class="nx err">catalog load failed: ' + e.message + '</div>';
+    }
+  }
+
+  // ---- Web control parity panels (v0.5 P0 #0) ----
+  const DOC_ICON = { ok: 'pass', warn: 'warn', fail: 'fail', info: 'note' };
+  const getCfg = (o, dotted) => dotted.split('.').reduce((acc, k) => (acc && typeof acc === 'object' ? acc[k] : undefined), o);
+  // ---- Settings v0.30: grouped sections, plain language, right control per value ----
+  const SET_SECTIONS = [
+    { id: 'identity', label: 'YOUR CRAB', title: 'Identity', d: 'Who shows up in the chat.', fields: [
+      { key: 'agent.name', label: 'Name', hint: 'How your crab introduces itself', type: 'text' },
+    ]},
+    { id: 'brain', label: 'AI BRAIN', title: 'The brain', d: 'Which model answers you. Saved providers, keys and catalogs live on the Providers page.', fields: [
+      { key: 'provider.type', label: 'Service', type: 'select', options: [
+        ['anthropic', 'Anthropic - Claude'],
+        ['openai', 'OpenAI-compatible - OpenAI, OpenRouter, Groq, DeepSeek, Ollama'],
+        ['mock', 'Offline demo - no real answers'],
+      ]},
+      { key: 'provider.model', label: 'Model', hint: 'for example: gpt-4o-mini', type: 'text' },
+      { key: 'provider.baseUrl', label: 'Address', hint: 'where the service lives - empty means the built-in default', type: 'text' },
+      { key: 'provider.apiKey', label: 'API key', hint: 'password for your AI service - stays on this device, dots mean it is already saved', type: 'secret' },
+    ]},
+    { id: 'local', label: 'ON-DEVICE', title: 'Local brain (advanced)', d: 'A small model running on this machine for cheap, private side tasks.', fields: [
+      { key: 'localProvider.enabled', label: 'Use a local model', hint: 'off by default - turn on when you run a local server', type: 'toggle' },
+      { key: 'localProvider.baseUrl', label: 'Local address', hint: 'for example: http://127.0.0.1:8080/v1', type: 'text' },
+      { key: 'localProvider.model', label: 'Local model', hint: 'the name your local server provides', type: 'text' },
+    ]},
+    { id: 'doors', label: 'DOORS & KEYS', title: 'Who can knock', d: 'Passwords and allowlists for every door into your crab. Empty means the door stays shut.', fields: [
+      { key: 'gateway.token', label: 'Web panel password', hint: 'what this page asks for when you open it', type: 'secret' },
+      { key: 'channels.telegram.token', label: 'Telegram bot token', hint: 'from @BotFather - empty keeps Telegram off', type: 'secret' },
+      { key: 'channels.telegram.allowedUserIds', label: 'Telegram allowed people', hint: 'comma-separated user ids - empty means nobody gets in', type: 'list', numeric: true },
+      { key: 'channels.whatsapp.enabled', label: 'WhatsApp door', hint: 'needs the baileys package installed', type: 'toggle' },
+      { key: 'channels.whatsapp.allowedJids', label: 'WhatsApp allowed chats', hint: 'comma-separated chat ids - empty means off', type: 'list' },
+    ]},
+    { id: 'rhythm', label: 'DAILY RHYTHM', title: 'Sleep, learning & check-ins', d: 'How your crab spends the quiet hours.', fields: [
+      { key: 'dream.enabled', label: 'Night learning (dreaming)', hint: 'turns recent chats into long-term memory while idle', type: 'toggle' },
+      { key: 'dream.everyHours', label: 'Learn again every', suffix: 'hours', min: 1, max: 168, type: 'number' },
+      { key: 'heartbeat.enabled', label: 'Self check-ins', hint: 'lets the crab act on its own on a schedule', type: 'toggle' },
+      { key: 'heartbeat.minutes', label: 'Check in every', suffix: 'minutes', min: 5, max: 1440, type: 'number' },
+      { key: 'heartbeat.pauseBelow', label: 'Pause below battery', suffix: '%', min: 0, max: 100, type: 'number' },
+    ]},
+    { id: 'housekeeping', label: 'HOUSEKEEPING', title: 'Updates', d: 'Small chores. The memory engine itself lives in Memory -> Settings.', fields: [
+      { key: 'update.checkOnStart', label: 'Check for updates at startup', hint: 'asks GitHub on start if a newer TermCrab exists', type: 'toggle' },
+    ]},
+  ];
+
+  function cfgStatus(span, text, isErr) {
+    span.textContent = text;
+    span.classList.toggle('err', !!isErr);
+    span.classList.add('show');
+    clearTimeout(span._setT);
+    span._setT = setTimeout(() => span.classList.remove('show'), 2800);
+  }
+
+  async function postCfg(key, value, span) {
+    try {
+      const r = await api('/api/config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      });
+      cfgStatus(span, r.unchanged ? 'kept' : 'Saved');
+      return true;
+    } catch (e) {
+      cfgStatus(span, 'Failed: ' + e.message, true);
+      return false;
+    }
+  }
+
+  function cfgRow(cfg, f) {
+    const cur = getCfg(cfg, f.key);
+    const row = document.createElement('div');
+    row.className = 'setRow';
+    row.title = f.key;
+    const main = document.createElement('div');
+    main.className = 'setRowMain';
+    const lb = document.createElement('div');
+    lb.className = 'setRowLabel';
+    lb.textContent = f.label;
+    main.appendChild(lb);
+    if (f.hint) {
+      const hn = document.createElement('div');
+      hn.className = 'setRowHint nx';
+      hn.textContent = f.hint;
+      main.appendChild(hn);
+    }
+    const ctl = document.createElement('div');
+    ctl.className = 'setRowCtl';
+    const st = document.createElement('span');
+    st.className = 'setSaved';
+    const save = (value) => postCfg(f.key, value, st);
+
+    if (f.type === 'toggle') {
+      const lab = document.createElement('label');
+      lab.className = 'setTgl';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = cur === true || cur === 'true';
+      cb.setAttribute('aria-label', f.label);
+      const track = document.createElement('span');
+      track.className = 'setTglTrack';
+      cb.onchange = async () => {
+        const want = cb.checked;
+        const ok = await save(String(want));
+        if (!ok) cb.checked = !want;
+      };
+      lab.append(cb, track);
+      ctl.append(lab, st);
+    } else if (f.type === 'number') {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'setNum';
+      if (f.min != null) inp.min = String(f.min);
+      if (f.max != null) inp.max = String(f.max);
+      inp.value = cur === undefined || cur === null ? '' : String(cur);
+      inp.setAttribute('aria-label', f.label);
+      inp.onchange = async () => {
+        const n = Number(inp.value);
+        if (inp.value === '' || Number.isNaN(n)) { cfgStatus(st, 'Needs a number', true); return; }
+        if ((f.min != null && n < f.min) || (f.max != null && n > f.max)) {
+          cfgStatus(st, `${f.min}-${f.max} only`, true);
+          return;
+        }
+        await save(String(n));
+      };
+      const suf = document.createElement('span');
+      suf.className = 'setSuf';
+      suf.textContent = f.suffix || '';
+      ctl.append(inp, suf, st);
+    } else if (f.type === 'select') {
+      const sel = document.createElement('select');
+      sel.setAttribute('aria-label', f.label);
+      for (const [v, t] of f.options) {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = t;
+        sel.appendChild(o);
+      }
+      sel.value = String(cur != null ? cur : (f.options[0] ? f.options[0][0] : ''));
+      sel.onchange = () => save(sel.value);
+      ctl.append(sel, st);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = f.type === 'secret' ? 'password' : 'text';
+      inp.value = f.type === 'list'
+        ? (Array.isArray(cur) ? cur.join(', ') : String(cur != null ? cur : ''))
+        : String(cur != null ? cur : '');
+      inp.placeholder = f.type === 'secret' ? 'not set yet' : '';
+      inp.setAttribute('aria-label', f.label);
+      const btn = document.createElement('button');
+      btn.className = 'ghost smallBtn';
+      btn.type = 'button';
+      btn.textContent = 'Save';
+      const doSave = async () => {
+        let value = inp.value;
+        if (f.type === 'list') {
+          const items = inp.value.split(',').map((x) => x.trim()).filter(Boolean);
+          const vals = f.numeric ? items.map((x) => Number(x)).filter((x) => !Number.isNaN(x)) : items;
+          value = JSON.stringify(vals);
+        }
+        btn.disabled = true;
+        try { await save(value); } finally { btn.disabled = false; }
+      };
+      btn.onclick = doSave;
+      inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); doSave(); } };
+      ctl.append(inp, btn, st);
+    }
+    row.append(main, ctl);
+    return row;
+  }
+
+  async function refreshSettings() {
+    const host = $('setSections');
+    if (!host) return;
+    let data;
+    try {
+      data = await api('/api/config');
+    } catch (e) {
+      host.innerHTML = '';
+      const d = document.createElement('div');
+      d.className = 'setCard';
+      const p = document.createElement('div');
+      p.className = 'nx err';
+      p.textContent = 'Settings failed to load: ' + e.message;
+      d.appendChild(p);
+      host.appendChild(d);
+      return;
+    }
+    $('cfgPath').textContent = 'file: ' + (data.path || '?');
+    host.innerHTML = '';
+    for (const sec of SET_SECTIONS) {
+      const lbl = document.createElement('div');
+      lbl.className = 'memSectionLabel';
+      lbl.textContent = sec.label;
+      const card = document.createElement('div');
+      card.className = 'setCard';
+      card.dataset.section = sec.id;
+      const h = document.createElement('h4');
+      h.textContent = sec.title;
+      const dd = document.createElement('div');
+      dd.className = 'd';
+      dd.textContent = sec.d;
+      card.append(h, dd);
+      for (const f of sec.fields) card.appendChild(cfgRow(data.config, f));
+      host.append(lbl, card);
+    }
+  }
+
+  $('docRun').onclick = async () => {
+    $('docRun').disabled = true;
+    $('docList').textContent = 'running checks…';
+    try {
+      const t0 = Date.now();
+      const r = await api('/api/doctor', { method: 'POST' });
+      $('docTime').textContent = 'checked in ' + ((Date.now() - t0) / 1000).toFixed(1) + 's';
+      const list = $('docList');
+      list.innerHTML = '';
+      for (const c of r.checks || []) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const ic = document.createElement('span'); ic.className = 'st doc-' + c.status; ic.textContent = DOC_ICON[c.status] || 'note';
+        const lb = document.createElement('span'); lb.textContent = c.label;
+        const det = document.createElement('span'); det.className = 'nx';
+        det.textContent = (c.detail || '') + (c.fix ? ' — fix: ' + c.fix : '');
+        row.append(ic, lb, det);
+        list.appendChild(row);
+      }
+    } catch (e) {
+      $('docList').textContent = 'doctor failed: ' + e.message;
+    } finally { $('docRun').disabled = false; }
+  };
+
+  // ---- Memory page (redesign): tabs, hero, schedule, dreams scene ----
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+  function showMemTab(name) {
+    document.querySelectorAll('[data-memtab]').forEach((b) => b.classList.toggle('on', b.dataset.memtab === name));
+    for (const t of ['overview', 'memories', 'dreams', 'msettings']) {
+      const pane = $('memPane-' + t);
+      if (pane) pane.hidden = t !== name;
+    }
+    if (name === 'overview' || name === 'dreams') { refreshMem(); refreshDreams(); }
+  }
+  function showDTab(name) {
+    document.querySelectorAll('[data-dtab]').forEach((b) => b.classList.toggle('on', b.dataset.dtab === name));
+    for (const t of ['scene', 'diary', 'adv']) {
+      const pane = $('dtab-' + t);
+      if (pane) pane.hidden = t !== name;
+    }
+  }
+  document.querySelectorAll('[data-memtab]').forEach((b) => { b.onclick = () => showMemTab(b.dataset.memtab); });
+  document.querySelectorAll('[data-dtab]').forEach((b) => { b.onclick = () => showDTab(b.dataset.dtab); });
+
+  function nextDreamAt(last, every) {
+    if (!last) return null;
+    let next = Number(last) + every * 3600000;
+    while (next < Date.now()) next += every * 3600000;
+    return next;
+  }
+  function hhmm(ts) { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+
+  async function refreshMem() {
+    try {
+      const d = await api('/api/memory');
+      let st = null;
+      try { st = await api('/api/status'); } catch { /* hero still fills from memory */ }
+      const hybrid = !!(d.index && d.index.enabled);
+      $('memEngine').textContent = 'memory-core \u00b7 ' + (hybrid ? 'hybrid search' : 'lexical only');
+      $('chipFacts').textContent = st && st.memory && st.memory.facts != null ? String(st.memory.facts) : '\u2014';
+      $('chipVec').textContent = hybrid ? String(d.index.vectors) + ' vectors' : 'lexical';
+      $('chipFiles').textContent = String(d.stats.dailyFiles);
+      $('chipSize').textContent = fmtBytes(d.stats.memoryBytes);
+      $('memEdit').value = d.content || '';
+    } catch (e) {
+      $('memEngine').textContent = 'memory-core \u00b7 unavailable (' + e.message + ')';
+    }
+  }
+
+  async function refreshDreams() {
+    try {
+      const d = await api('/api/dreams');
+      let cfg = null;
+      try { cfg = await api('/api/config'); } catch { /* fall back to defaults */ }
+      const dr = (cfg && cfg.config && cfg.config.dream) || {};
+      const enabled = dr.enabled !== false;
+      const every = Math.max(1, Number(dr.everyHours) || 24);
+      const last = d.lastDreamAt || null;
+      const next = enabled ? nextDreamAt(last, every) : null;
+
+      $('dreamDefault').textContent = 'every ' + every + 'h \u00b7 ' + (last ? 'last ' + new Date(last).toLocaleString() : 'no dreams yet');
+      $('dreamPillText').textContent = enabled ? 'DREAMING ON' : 'DREAMING OFF';
+      $('dreamPill').querySelector('.dotOk').classList.toggle('dotOff', !enabled);
+
+      $('phDot').classList.toggle('dotOff', !enabled);
+      $('phStateText').textContent = enabled ? 'Enabled' : 'Paused';
+      $('phMeta').textContent = 'every ' + every + 'h \u00b7 ' +
+        (next ? 'next ' + hhmm(next) : enabled ? 'first sweep pending' : 'turned off') +
+        (last ? ' \u00b7 last ' + new Date(last).toLocaleString() : '');
+
+      $('sceneStatus').textContent = enabled ? 'DREAMING ACTIVE' : 'DREAMING PAUSED';
+      $('sceneLine').textContent = enabled
+        ? (last ? 'last sweep ' + new Date(last).toLocaleString() : 'waiting for the first sweep')
+        : 'turn dreaming on in Advanced';
+      $('scenePillSweep').textContent = 'SWEEP ' + every + 'h';
+      $('scenePillNext').textContent = next ? 'NEXT ' + hhmm(next) : 'NEXT --:--';
+
+      $('dreamLast').textContent = last
+        ? 'last dream: ' + new Date(last).toLocaleString()
+        : 'no dreams yet \u2014 run one from Advanced';
+      const list = $('dreamList');
+      list.innerHTML = '';
+      if (!d.history || !d.history.length) {
+        const e = document.createElement('div');
+        e.className = 'nx';
+        e.textContent = 'nothing learned yet';
+        list.appendChild(e);
+      } else {
+        for (const h of d.history) {
+          const row = document.createElement('div');
+          row.className = 'dreamRow';
+          const dt = document.createElement('span');
+          dt.className = 'd';
+          dt.textContent = h.day;
+          row.append(dt, document.createTextNode(h.line));
+          list.appendChild(row);
+        }
+      }
+
+      $('advEvery').value = String(every);
+      document.querySelectorAll('#segDream button').forEach((b) => b.classList.toggle('on', (b.dataset.on === '1') === enabled));
+      const emb = !cfg || !cfg.config || !cfg.config.memory || cfg.config.memory.embeddings !== false;
+      document.querySelectorAll('#segEngine button').forEach((b) => b.classList.toggle('on', (b.dataset.emb === '1') === emb));
+      $('engNote').textContent = emb
+        ? 'Using default: hybrid search (vectors + text).'
+        : 'Using default: lexical only (text matching).';
+    } catch (e) {
+      $('dreamDefault').textContent = 'dream history: ' + e.message;
+    }
+  }
+
+  $('memRefresh').onclick = () => { refreshMem(); refreshDreams(); };
+  $('dreamRefresh').onclick = () => { refreshMem(); refreshDreams(); };
+
+  $('memSearch').onclick = async () => {
+    const q = $('memQ').value.trim();
+    if (!q) return;
+    const box = $('memHits');
+    box.innerHTML = '<div class="nx">searching\u2026</div>';
+    try {
+      const r = await api('/api/memory/search', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      });
+      box.innerHTML = '';
+      if (!(r.hits || []).length) {
+        const none = document.createElement('div');
+        none.className = 'memHit';
+        const hl = document.createElement('div');
+        hl.className = 'hl';
+        hl.style.color = 'var(--muted)';
+        hl.textContent = 'No matches.';
+        none.appendChild(hl);
+        box.appendChild(none);
+        return;
+      }
+      for (const h of r.hits) {
+        const div = document.createElement('div');
+        div.className = 'memHit';
+        const fh = document.createElement('div');
+        fh.className = 'fh';
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = h.file;
+        fh.appendChild(chip);
+        if (h.score != null) {
+          const sc = document.createElement('span');
+          sc.className = 'sc';
+          sc.textContent = 'score ' + Number(h.score).toFixed(1);
+          fh.appendChild(sc);
+        }
+        const l = document.createElement('div');
+        l.className = 'hl';
+        l.textContent = h.line;
+        div.append(fh, l);
+        box.appendChild(div);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      box.textContent = 'search failed: ' + e.message;
+    }
+  };
+
+  $('memRemember').onclick = async () => {
+    const fact = $('memFact').value.trim();
+    if (!fact) return;
+    try {
+      const r = await api('/api/memory/remember', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fact }),
+      });
+      $('memQuickNote').textContent = r.result || (r.ok ? 'Remembered.' : 'Saved.');
+      if (r.ok) $('memFact').value = '';
+      refreshMem();
+    } catch (e) {
+      $('memQuickNote').textContent = 'remember failed: ' + e.message;
+    }
+  };
+
+  $('memSave').onclick = async () => {
+    try {
+      const r = await api('/api/memory', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content: $('memEdit').value }),
+      });
+      $('memFileNote').textContent = 'saved (' + fmtBytes(r.stats.memoryBytes) + ')';
+      refreshMem();
+    } catch (e) {
+      $('memFileNote').textContent = 'save failed: ' + e.message;
+    }
+  };
+
+  // Dreams > Advanced: instant config writes, no restart.
+  document.querySelectorAll('#segDream button').forEach((b) => {
+    b.onclick = async () => {
+      try {
+        await api('/api/config', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ key: 'dream.enabled', value: b.dataset.on === '1' ? 'true' : 'false' }),
+        });
+        $('advNote').textContent = 'Saved \u2014 dreaming is now ' + (b.dataset.on === '1' ? 'on' : 'off') + '.';
+        refreshDreams();
+      } catch (e) { $('advNote').textContent = e.message; }
+    };
+  });
+  $('advApply').onclick = async () => {
+    const n = Number($('advEvery').value);
+    if (!n || n < 1 || n > 720) { $('advNote').textContent = 'enter hours between 1 and 720'; return; }
+    try {
+      await api('/api/config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key: 'dream.everyHours', value: String(Math.floor(n)) }),
+      });
+      $('advNote').textContent = 'Saved \u2014 sweep every ' + Math.floor(n) + 'h.';
+      refreshDreams();
+    } catch (e) { $('advNote').textContent = e.message; }
+  };
+  $('dreamRun').onclick = async () => {
+    try {
+      await api('/api/dream', { method: 'POST' });
+      $('dreamRunNote').textContent = 'Dream started \u2014 the diary fills in a moment.';
+      setTimeout(() => refreshDreams(), 5000);
+    } catch (e) { $('dreamRunNote').textContent = e.message; }
+  };
+
+  // Settings > engine: instant config write, no restart.
+  document.querySelectorAll('#segEngine button').forEach((b) => {
+    b.onclick = async () => {
+      try {
+        await api('/api/config', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ key: 'memory.embeddings', value: b.dataset.emb === '1' ? 'true' : 'false' }),
+        });
+        $('engNote').textContent = b.dataset.emb === '1'
+          ? 'Saved \u2014 hybrid search on (vectors + text).'
+          : 'Saved \u2014 lexical only.';
+        refreshMem();
+        refreshDreams();
+      } catch (e) { $('engNote').textContent = e.message; }
+    };
+  });
+
+  async function refreshAgents() {
+    try {
+      const d = await api('/api/agents');
+      const names = d.agents || [];
+      const list = $('agList');
+      list.innerHTML = '';
+      if (!names.length) {
+        const e0 = document.createElement('div'); e0.className = 'nx';
+        e0.textContent = 'no named agents yet — create one below.';
+        list.appendChild(e0);
+      }
+      for (const nm of names) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const n = document.createElement('span'); n.className = 'k'; n.textContent = '@' + nm;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const edit = document.createElement('button'); edit.className = 'ghost'; edit.textContent = 'Edit';
+        edit.onclick = async () => {
+          try {
+            const a = await api('/api/agents/' + nm);
+            $('agSoul').value = a.soul;
+            $('agEditName').textContent = 'editing @' + nm;
+            $('agSave').dataset.name = nm;
+          } catch (e) { addMsg('sys', 'load agent failed: ' + e.message); }
+        };
+        const use = document.createElement('button'); use.className = 'ghost'; use.textContent = 'Talk to';
+        use.onclick = () => {
+          $('agentSel').value = nm;
+          addMsg('sys', 'chatting as @' + nm);
+          switchView('chat');
+        };
+        row.append(n, sp, edit, use);
+        list.appendChild(row);
+      }
+      const sel = $('agentSel');
+      const keep = sel.value;
+      sel.innerHTML = '<option value="">default</option>';
+      for (const nm of names) {
+        const o = document.createElement('option');
+        o.value = nm; o.textContent = '@' + nm;
+        sel.appendChild(o);
+      }
+      sel.value = keep;
+    } catch { /* non-fatal */ }
+  }
+  $('agCreate').onclick = async () => {
+    const name = $('agNew').value.trim();
+    if (!name) return;
+    try {
+      const tpl = $('agTemplate').value || undefined;
+      const r = await api('/api/agents', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name, template: tpl }),
+      });
+      addMsg('sys', 'Created @' + r.name);
+      $('agNew').value = '';
+      refreshAgents();
+    } catch (e) { addMsg('sys', 'create failed: ' + e.message); }
+  };
+  $('agSave').onclick = async () => {
+    const nm = $('agSave').dataset.name;
+    if (!nm) { addMsg('sys', 'Choose an agent with Edit first'); return; }
+    try {
+      await api('/api/agents/' + nm, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ soul: $('agSoul').value }),
+      });
+      addMsg('sys', 'Personality saved for @' + nm);
+    } catch (e) { addMsg('sys', 'save failed: ' + e.message); }
+  };
+
+  async function refreshSkills() {
+    try {
+      const d = await api('/api/skills');
+      const list = $('skList');
+      list.innerHTML = '';
+      const skills = d.skills || [];
+      const chS = $('chipTSkills'); if (chS) chS.textContent = String(skills.length);
+      if (!skills.length) {
+        const e0 = document.createElement('div'); e0.className = 'nx';
+        e0.textContent = 'no skills yet — import one below.';
+        list.appendChild(e0);
+        return;
+      }
+      for (const s of skills) {
+        const row = document.createElement('div'); row.className = 'pRow';
+        const n = document.createElement('span'); n.className = 'k'; n.textContent = s.name;
+        const o = document.createElement('span'); o.className = 'nx';
+        o.textContent = s.origin + (s.description ? ' · ' + String(s.description).slice(0, 60) : '');
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const view = document.createElement('button'); view.className = 'ghost'; view.textContent = 'View';
+        view.onclick = async () => {
+          try {
+            const sk = await api('/api/skills/' + s.name);
+            const v = $('skView');
+            v.classList.remove('hidden');
+            v.textContent = sk.content || '(empty)';
+          } catch (e) { addMsg('sys', 'view failed: ' + e.message); }
+        };
+        row.append(n, o, sp, view);
+        list.appendChild(row);
+      }
+    } catch (e) {
+      const list = $('skList');
+      list.innerHTML = '';
+      const d = document.createElement('div'); d.className = 'nx err';
+      d.textContent = 'skills load failed: ' + e.message;
+      list.appendChild(d);
+    }
+  }
+  $('skImport').onclick = async () => {
+    const src = $('skSrc').value.trim();
+    if (!src) return;
+    $('skImport').disabled = true;
+    try {
+      const r = await api('/api/skills/import', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ source: src, force: $('skForce').checked }),
+      });
+      const done = (r.results || []).map((x) => `${x.action}: ${x.name}`).join(', ') || 'nothing';
+      addMsg('sys', 'Import: ' + done);
+      $('skSrc').value = '';
+      refreshSkills();
+    } catch (e) { addMsg('sys', 'import failed: ' + e.message); }
+    finally { $('skImport').disabled = false; }
+  };
+
+  $('sayGo').onclick = async () => {
+    const t = $('sayTxt').value.trim();
+    if (!t) return;
+    $('sayGo').disabled = true;
+    try {
+      const r = await api('/api/say', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      });
+      addMsg('sys', r.ok ? 'Spoke via ' + r.backend : 'Voice: ' + (r.error || 'failed'));
+    } catch (e) { addMsg('sys', 'say failed: ' + e.message); }
+    finally { $('sayGo').disabled = false; }
+  };
+  $('listenGo').onclick = async () => {
+    $('listenGo').disabled = true;
+    addMsg('sys', 'Listening — speak now…');
+    try {
+      const r = await api('/api/listen', { method: 'POST' });
+      if (r.ok && r.text) {
+        $('input').value = ($('input').value ? $('input').value + ' ' : '') + r.text;
+        addMsg('sys', 'Heard: "' + r.text + '" — press Send');
+        switchView('chat');
+        $('input').focus();
+      } else {
+        addMsg('sys', r.error || 'did not hear anything');
+      }
+    } catch (e) { addMsg('sys', 'listen failed: ' + e.message); }
+    finally { $('listenGo').disabled = false; }
+  };
+  async function refreshBoot() {
+    try {
+      const b = await api('/api/boot');
+      $('bootInfo').textContent = `boot: ${b.installed ? 'installed' : 'not installed'} · termux: ${b.termux ? 'yes' : 'no'}`;
+    } catch (e) { $('bootInfo').textContent = 'boot: ' + e.message; }
+  }
+  $('bootInstall').onclick = async () => {
+    try {
+      const r = await api('/api/boot/install', { method: 'POST' });
+      addMsg('sys', `Boot script ${r.ok ? 'created' : 'updated'}: ${r.path}`);
+      refreshBoot();
+    } catch (e) { addMsg('sys', 'boot install failed: ' + e.message); }
+  };
+
+  // ---- Wake loop (phase 3) ----
+  async function refreshWake() {
+    const info = $('wakeInfo');
+    if (!info) return;
+    try {
+      const w = await api('/api/wake');
+      info.textContent = w.running
+        ? `wake: on · keyword "${w.keyword}" · ${w.commands} command(s)`
+        : (w.micReady ? 'wake: listening…' : 'wake: off');
+      $('wakeStart').classList.toggle('hidden', w.running);
+      $('wakeStop').classList.toggle('hidden', !w.running);
+      const chW = $('chipTWake'); if (chW) chW.textContent = w.running ? 'on' : 'off';
+    } catch (e) { info.textContent = 'wake: ' + e.message; }
+  }
+  $('wakeStart').onclick = async () => {
+    $('wakeStart').disabled = true;
+    try {
+      const r = await api('/api/wake/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      if (!r.ok) addMsg('sys', r.error); // success is announced by the wake SSE event
+    } catch (e) { addMsg('sys', 'wake failed: ' + e.message); }
+    finally { $('wakeStart').disabled = false; refreshWake(); }
+  };
+  $('wakeStop').onclick = async () => {
+    try { await api('/api/wake/stop', { method: 'POST' }); }
+    catch (e) { addMsg('sys', 'stop failed: ' + e.message); }
+    refreshWake();
+  };
+  $('wakeGo').onclick = async () => {
+    const t = $('wakeTxt').value.trim();
+    if (!t) return;
+    $('wakeTxt').value = '';
+    addMsg('user', t);
+    switchView('chat');
+    try {
+      const r = await api('/api/wake/feed', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      });
+      if (r.state === 'idle') addMsg('sys', '(keyword not heard — say the keyword first, then the command)');
+      else if (r.state === 'wake') addMsg('sys', 'Keyword heard — now say your command');
+    } catch (e) { addMsg('sys', 'wake feed failed: ' + e.message); }
+  };
+  $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
+
+  // ---- Modal (shared popup: add provider / add API key) ----
+  let modalOnSave = null;
+  function openModal(title, fields, onSave) {
+    $('modalTitle').textContent = title;
+    $('modalErr').textContent = '';
+    const box = $('modalFields');
+    box.innerHTML = '';
+    for (const f of fields) {
+      const i = document.createElement('input');
+      i.type = f.type || 'text';
+      i.id = 'mf_' + f.id;
+      i.placeholder = f.placeholder || '';
+      if (f.type === 'password') i.setAttribute('autocomplete', 'new-password');
+      if (f.maxlength) i.maxLength = f.maxlength;
+      box.appendChild(i);
+    }
+    modalOnSave = onSave;
+    $('modal').classList.remove('hidden');
+    const first = box.querySelector('input');
+    if (first) setTimeout(() => first.focus(), 60);
+  }
+  function closeModal() {
+    $('modal').classList.add('hidden');
+    modalOnSave = null;
+  }
+  $('modalCancel').onclick = closeModal;
+  $('modalSave').onclick = async () => {
+    if (!modalOnSave) return;
+    const btn = $('modalSave');
+    btn.disabled = true;
+    $('modalErr').textContent = '';
+    try {
+      await modalOnSave();
+      closeModal();
+    } catch (e) {
+      $('modalErr').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  // ---- Providers page: OpenAI-compatible endpoints + API keys ----
+  // Everything here only runs when the page is opened — no auto start.
+  async function loadProviders() {
+    if (!state.token) return;
+    const box = $('provList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers');
+      const list = d.providers || [];
+      box.innerHTML = '';
+      // The provider the system is using right now — even when it was added
+      // from the terminal (onboard / config set), it always shows up here.
+      if (d.active && !list.some((p) => p.inUse)) {
+        const row = document.createElement('div');
+        row.className = 'provRow provStatic';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'pn';
+        n.textContent = d.active.label;
+        const u = document.createElement('div');
+        u.className = 'pu';
+        u.textContent = (d.active.baseUrl || 'offline — no key needed') + (d.active.model ? ' · ' + d.active.model : '');
+        tx.append(n, u);
+        const badge = document.createElement('span');
+        badge.className = 'inUse';
+        badge.textContent = 'in use';
+        row.append(tx, badge);
+        box.appendChild(row);
+      }
+      for (const p of list) {
+        const row = document.createElement('div');
+        row.className = 'provRow';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'pn';
+        n.textContent = p.name;
+        const u = document.createElement('div');
+        u.className = 'pu';
+        u.textContent = p.baseUrl;
+        tx.append(n, u);
+        row.append(tx);
+        if (p.inUse) {
+          const badge = document.createElement('span');
+          badge.className = 'inUse';
+          badge.textContent = 'in use';
+          row.append(badge);
+        } else {
+          const meta = document.createElement('span');
+          meta.className = 'provMeta';
+          meta.textContent = p.keyCount + (p.keyCount === 1 ? ' key' : ' keys');
+          row.append(meta);
+        }
+        const chev = document.createElement('span');
+        chev.className = 'provChev';
+        chev.textContent = '›';
+        row.append(chev);
+        row.onclick = () => openKeys(p.id, p.name);
+        box.appendChild(row);
+      }
+      if (!list.length) {
+        const hint = document.createElement('div');
+        hint.className = 'nx';
+        hint.textContent = 'No saved providers yet — tap the + to add one.';
+        box.appendChild(hint);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      const err = document.createElement('div');
+      err.className = 'nx';
+      err.textContent = 'could not load: ' + e.message;
+      box.appendChild(err);
+    }
+  }
+  function showProvidersRoot() {
+    $('provHead').hidden = false;
+    $('provNote').hidden = false;
+    $('provList').hidden = false;
+    $('keyPage').hidden = true;
+    loadProviders();
+  }
+  async function openKeys(id, name) {
+    $('provHead').hidden = true;
+    $('provNote').hidden = true;
+    $('provList').hidden = true;
+    $('keyPage').hidden = false;
+    $('keyPageName').textContent = name;
+    state.provId = id;
+    await loadKeys();
+  }
+  async function loadKeys() {
+    const box = $('keyList');
+    box.innerHTML = '<div class="nx">loading…</div>';
+    try {
+      const d = await api('/api/providers/' + encodeURIComponent(state.provId));
+      const p = d.provider;
+      $('keyPageName').textContent = p.name;
+      const list = p.keys || [];
+      box.innerHTML = '';
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">No keys yet — tap the + to add one.</div>';
+        return;
+      }
+      for (const k of list) {
+        const row = document.createElement('div');
+        row.className = 'provRow keyRow';
+        const tx = document.createElement('div');
+        tx.className = 'provTx';
+        const n = document.createElement('div');
+        n.className = 'kn';
+        n.textContent = k.name;
+        const v = document.createElement('div');
+        v.className = 'kv';
+        v.textContent = k.masked;
+        tx.append(n, v);
+        const badges = document.createElement('div');
+        badges.className = 'keyBadges';
+        if (k.active) {
+          const b = document.createElement('span');
+          b.className = 'inUse';
+          b.textContent = 'in use';
+          badges.appendChild(b);
+        } else {
+          const use = document.createElement('button');
+          use.className = 'ghost smallBtn';
+          use.type = 'button';
+          use.textContent = 'Use';
+          use.onclick = async (e) => {
+            e.stopPropagation();
+            use.disabled = true;
+            try {
+              await api('/api/providers/' + encodeURIComponent(state.provId) + '/keys/' + encodeURIComponent(k.id) + '/use', { method: 'POST' });
+              addMsg('sys', 'Now using "' + p.name + '" with key "' + k.name + '".');
+              await loadKeys();
+              refreshLiveStatus();
+            } catch (err) {
+              addMsg('sys', 'Could not switch: ' + err.message);
+              use.disabled = false;
+            }
+          };
+          badges.appendChild(use);
+        }
+        const del = document.createElement('button');
+        del.className = 'ghost smallBtn danger';
+        del.type = 'button';
+        del.textContent = 'Delete';
+        del.onclick = async () => {
+          if (!confirm('Delete this key?')) return;
+          del.disabled = true;
+          try {
+            await api('/api/providers/' + encodeURIComponent(state.provId) + '/keys/' + encodeURIComponent(k.id), { method: 'DELETE' });
+            await loadKeys();
+          } catch (err) {
+            addMsg('sys', 'Could not delete: ' + err.message);
+            del.disabled = false;
+          }
+        };
+        badges.appendChild(del);
+        row.append(tx, badges);
+        box.appendChild(row);
+      }
+    } catch (e) {
+      box.innerHTML = '';
+      const err = document.createElement('div');
+      err.className = 'nx';
+      err.textContent = 'could not load: ' + e.message;
+      box.appendChild(err);
+    }
+  }
+  $('toProviders').onclick = () => switchView('providers');
+  $('provBack').onclick = () => switchView(state.provFrom || 'status');
+  $('keyBack').onclick = () => showProvidersRoot();
+  $('provAdd').onclick = () => openModal('Add provider', [
+    { id: 'name', placeholder: 'Name (e.g. OpenRouter)', maxlength: 40 },
+    { id: 'url', placeholder: 'Base URL (e.g. https://openrouter.ai/api/v1)' },
+  ], async () => {
+    const name = $('mf_name').value.trim();
+    const baseUrl = $('mf_url').value.trim();
+    if (!name) throw new Error('Please enter a name.');
+    if (!/^https?:\/\/.+/.test(baseUrl)) throw new Error('The address must start with http:// or https://');
+    await api('/api/providers', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, baseUrl }),
+    });
+    await loadProviders();
+  });
+  $('keyAdd').onclick = () => openModal('Add API key', [
+    { id: 'name', placeholder: 'Key name (e.g. main key)', maxlength: 40 },
+    { id: 'key', type: 'password', placeholder: 'API key' },
+  ], async () => {
+    const name = $('mf_name').value.trim();
+    const key = $('mf_key').value.trim();
+    if (!name) throw new Error('Please give this key a name.');
+    if (!key) throw new Error('Please paste the API key.');
+    await api('/api/providers/' + encodeURIComponent(state.provId) + '/keys', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, key }),
+    });
+    await loadKeys();
+  });
+
+  // ---- Chats panel (export / rename / purge) ----
+  async function refreshSessPanel() {
+    try {
+      const data = await api('/api/sessions');
+      const box = $('sessList');
+      box.innerHTML = '';
+      const list = data.sessions || [];
+      const chC = $('chipTChats'); if (chC) chC.textContent = String(list.length);
+      if (!list.length) {
+        box.innerHTML = '<div class="nx">no chats yet</div>';
+        return;
+      }
+      for (const s of list) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        row.dataset.id = s.id;
+        const id = document.createElement('span');
+        id.className = 'id';
+        id.innerHTML = sessionIconSpan(s.id);
+        const idTxt = document.createElement('span');
+        idTxt.textContent = sessionLabel(s.id);
+        id.appendChild(idTxt);
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `${s.messages} msg · ${Math.max(1, Math.round((s.bytes || 0) / 1024))} KB · ${new Date(s.modified * 1000).toISOString().slice(0, 10)}`;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const load = document.createElement('button');
+        load.className = 'ghost'; load.textContent = 'Open';
+        load.onclick = () => { $('session').value = s.id; loadSession(s.id); switchView('chat'); };
+        row.append(id, meta, sp, load);
+        box.appendChild(row);
+      }
+    } catch (e) { $('sessList').innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+  $('sessExport').onclick = async () => {
+    const sel = $('session').value;
+    if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
+    try {
+      const r = await api('/api/sessions/' + encodeURIComponent(sel) + '/export');
+      const blob = new Blob([r.markdown], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = sel.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.md';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      addMsg('sys', `Exported "${sel}" as Markdown`);
+      switchView('chat');
+    } catch (e) { addMsg('sys', 'export failed: ' + e.message); }
+  };
+  $('sessRename').onclick = async () => {
+    const sel = $('session').value;
+    if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
+    const to = prompt('New name for "' + sel + '":', sel);
+    if (!to || to === sel) return;
+    try {
+      await api('/api/sessions/' + encodeURIComponent(sel) + '/rename', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ to }),
+      });
+      addMsg('sys', `Renamed "${sel}" to "${to}"`);
+      switchView('chat');
+      $('session').value = to;
+      pushRoute(pathForView('chat'));
+      refreshSessions(); refreshSessPanel();
+    } catch (e) { addMsg('sys', 'rename failed: ' + e.message); }
+  };
+  $('sessPurge').onclick = async () => {
+    const days = Number($('purgeDays').value) || 30;
+    if (!confirm('Delete chats older than ' + days + ' day(s)? This frees space and cannot be undone.')) return;
+    try {
+      const r = await api('/api/sessions/purge', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ olderThanDays: days }),
+      });
+      addMsg('sys', `Removed ${r.removed} old chat(s), freed ${Math.round((r.freedBytes || 0) / 1024)} KB`);
+      switchView('chat');
+      refreshSessions(); refreshSessPanel();
+    } catch (e) { addMsg('sys', 'clean failed: ' + e.message); }
+  };
+
+  // ---- Update button (phase 3) ----
+  $('updCheck').onclick = async () => {
+    $('updCheck').disabled = true;
+    $('updInfo').textContent = 'checking…';
+    try {
+      const r = await api('/api/update', { method: 'POST' });
+      if (!r.ok) { $('updInfo').textContent = 'could not check: ' + (r.error || 'offline?'); }
+      else if (r.updateAvailable) {
+        $('updInfo').textContent = `v${r.latest} available (you have v${r.current}) — click Auto update`;
+        addMsg('sys', `A newer TermCrab exists: v${r.latest} (you have v${r.current}). Click Auto update to install it.`);
+      } else { $('updInfo').textContent = `you're on the latest (v${r.current})`; addMsg('sys', `You're on the latest version (v${r.current})`); }
+    } catch (e) { $('updInfo').textContent = 'check failed: ' + e.message; }
+    finally { $('updCheck').disabled = false; }
+  };
+
+  // ---- Auto update: download, install, restart by itself ----
+  let restartWatch = false;
+  function watchRestart() {
+    if (restartWatch) return;
+    restartWatch = true;
+    const started = Date.now();
+    const tick = async () => {
+      try {
+        const res = await fetch('/api/health');
+        const h = await res.json();
+        if (h.ok && Date.now() - started > 1500) {
+          $('updInfo').textContent = `updated (v${h.version}) — reloading…`;
+          addMsg('sys', `Update installed — now running v${h.version}. Reloading…`);
+          setTimeout(() => location.reload(), 1500);
+          return;
+        }
+      } catch { /* the server is still restarting */ }
+      if (Date.now() - started > 90000) {
+        $('updInfo').textContent = 'update installed — reload the page to get back in.';
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+        return;
+      }
+      setTimeout(tick, 1500);
+    };
+    setTimeout(tick, 1500);
+  }
+
+  function handleUpdatePhase(ev) {
+    const info = $('updInfo');
+    if (ev.phase === 'pull') info.textContent = 'downloading the update…';
+    else if (ev.phase === 'install') info.textContent = 'installing…';
+    else if (ev.phase === 'build') info.textContent = 'preparing…';
+    else if (ev.phase === 'restart') {
+      info.textContent = 'restarting the server…';
+      addMsg('sys', 'Update: restarting the server…');
+      watchRestart();
+      return;
+    } else if (ev.phase === 'error') {
+      info.textContent = 'update failed: ' + (ev.message || 'unknown problem');
+      addMsg('sys', 'Auto update failed: ' + (ev.message || 'unknown problem') + ' — still running the old version.');
+      $('updApply').disabled = false;
+      $('updCheck').disabled = false;
+      return;
+    }
+    addMsg('sys', 'Update: ' + (ev.message || ev.phase));
+  }
+
+  $('updApply').onclick = async () => {
+    $('updApply').disabled = true;
+    $('updCheck').disabled = true;
+    $('updInfo').textContent = 'checking for the update…';
+    try {
+      const r = await api('/api/update/apply', { method: 'POST' });
+      if (r.upToDate) {
+        $('updInfo').textContent = `you're on the latest (v${r.current})`;
+        addMsg('sys', `You're on the latest version (v${r.current}) — nothing to update.`);
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+      } else if (r.error) {
+        $('updInfo').textContent = 'update problem: ' + r.error;
+        addMsg('sys', 'Auto update: ' + r.error);
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+      } else if (r.accepted) {
+        restartWatch = false;
+        $('updInfo').textContent = 'update started…';
+        addMsg('sys', `Updating TermCrab to v${r.target} — the page reloads by itself once the server is back.`);
+      } else {
+        $('updApply').disabled = false;
+        $('updCheck').disabled = false;
+      }
+    } catch (e) {
+      $('updInfo').textContent = 'could not start the update: ' + e.message;
+      $('updApply').disabled = false;
+      $('updCheck').disabled = false;
+    }
+  };
+
+  
+  // ---- Tab shell (mobile) ----
+  const VIEWS = ['chat', 'status', 'providers', 'models', 'memory', 'tools', 'settings'];
+  function switchView(name) {
+    if (!VIEWS.includes(name)) name = 'chat';
+    if (name === 'providers' && state.lastView !== 'providers') state.provFrom = state.lastView || 'status';
+    if (name === 'models' && state.lastView !== 'models') state.mdlFrom = state.lastView || 'status';
+    state.lastView = name;
+    document.body.dataset.view = name;
+    document.body.classList.remove('nav-open');
+    $('navScrim').hidden = true;
+    for (const v of VIEWS) {
+      const sec = document.getElementById('view-' + v);
+      if (sec) sec.hidden = v !== name;
+      const btn = document.querySelector('.nav [data-goto="' + v + '"]');
+      if (btn) {
+        btn.classList.toggle('on', v === name);
+        btn.setAttribute('aria-current', v === name ? 'page' : 'false');
+      }
+    }
+    const primary = document.querySelector('#view-' + name + ' details[data-primary]');
+    if (primary && !primary.open) primary.open = true;
+    if (name === 'memory') { refreshMem(); refreshDreams(); }
+    if (name === 'tools') refreshTools();
+    if (name === 'settings') { refreshSettings(); refreshAgents(); }
+    if (name === 'providers') showProvidersRoot();
+    if (name === 'models') showModelsRoot();
+    if (name === 'chat') { log.scrollTop = log.scrollHeight; refreshTaskCards(); refreshProgressCard(); }
+    pushRoute(pathForView(name));
+  }
+  document.querySelectorAll('.nav [data-goto]').forEach((b) => {
+    b.onclick = () => switchView(b.dataset.goto);
+  });
+  // ---- Page routes: /status /providers /memory /tools /settings /chat/<id> ----
+  let applyingRoute = false;
+  function pathForView(name) {
+    if (name !== 'chat') return '/' + name;
+    const id = state.pendingSession || currentSession();
+    return !id || id === 'web:main' ? '/' : '/chat/' + encodeURIComponent(id);
+  }
+  function pushRoute(target) {
+    if (!applyingRoute && location.pathname !== target) history.pushState(null, '', target);
+  }
+  function routeTo(path) {
+    applyingRoute = true;
+    try {
+      const chat = path.match(/^\/chat\/(.+)$/);
+      if (chat) {
+        let id = chat[1];
+        try { id = decodeURIComponent(id); } catch { /* keep raw */ }
+        state.pendingSession = id;
+        switchView('chat');
+      } else if (path === '/' || path === '/chat' || path === '/index.html') {
+        switchView('chat');
+      } else {
+        const v = path.replace(/^\//, '');
+        switchView(VIEWS.includes(v) ? v : 'chat');
+      }
+    } finally {
+      applyingRoute = false;
+    }
+  }
+  window.addEventListener('popstate', () => {
+    routeTo(location.pathname);
+    if (state.pendingSession) refreshSessions();
+  });
+  routeTo(location.pathname);
+
+  // ---- Sidebar drawer + chat history ----
+  function closeNav() {
+    document.body.classList.remove('nav-open');
+    $('navScrim').hidden = true;
+  }
+  $('navBtn').onclick = () => {
+    const open = !document.body.classList.contains('nav-open');
+    document.body.classList.toggle('nav-open', open);
+    $('navScrim').hidden = !open;
+    if (open) refreshSessions();
+  };
+  $('navScrim').onclick = closeNav;
+
+  // Sidebar "plus" button: start a fresh chat session.
+  $('newChatBtn').onclick = () => {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const id = 'web:' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) +
+      '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+    const sel = $('session');
+    if (!Array.prototype.some.call(sel.options, (o) => o.value === id)) {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = id;
+      sel.appendChild(o);
+    }
+    sel.value = id;
+    state.pendingSession = null;
+    log.innerHTML = '';
+    addMsg('sys', 'New chat — say hello to start.');
+    updateChatLabel();
+    state.sessions = [{ id, messages: 0, modified: Math.floor(Date.now() / 1000) }]
+      .concat((state.sessions || []).filter((s) => s.id !== id));
+    renderHistory(state.sessions);
+    switchView('chat');
+    closeNav();
+    const input = $('input');
+    if (input) input.focus();
+  };
+  function renderHistory(sessions) {
+    const box = $('histList');
+    if (!box) return;
+    box.innerHTML = '';
+    const cur = $('session').value || 'web:main';
+    const list = (sessions || [])
+      .slice()
+      .sort((a, b) => (b.modified || 0) - (a.modified || 0))
+      .slice(0, 40);
+    if (!list.length) {
+      const e = document.createElement('div');
+      e.className = 'nx';
+      e.style.padding = '4px 8px';
+      e.textContent = 'No chats yet — say hello and one will appear here.';
+      box.appendChild(e);
+      return;
+    }
+    for (const sess of list) {
+      const b = document.createElement('button');
+      b.className = 'histRow' + (sess.id === cur ? ' on' : '');
+      b.dataset.id = sess.id;
+      const id = document.createElement('span');
+      id.className = 'hid';
+      id.innerHTML = sessionIconSpan(sess.id);
+      const hidTxt = document.createElement('span');
+      hidTxt.textContent = sessionLabel(sess.id);
+      id.appendChild(hidTxt);
+      const meta = document.createElement('span');
+      meta.className = 'hmeta';
+      meta.textContent =
+        sess.messages +
+        ' messages · ' +
+        new Date((sess.modified || 0) * 1000).toISOString().slice(0, 10);
+      b.append(id, meta);
+      b.onclick = () => {
+        $('session').value = sess.id;
+        loadSession(sess.id);
+        switchView('chat');
+        closeNav();
+      };
+      box.appendChild(b);
+    }
+  }
+
+async function bootstrap() {
+    if (!state.token) {
+      // No saved password: walk straight in when the panel runs open
+      // (no password configured); show the gate only when one is required.
+      let open = false;
+      try { open = (await (await fetch('/api/health')).json()).authRequired === false; } catch { /* offline -> gate */ }
+      if (!open) { showOverlay(); return; }
+    }
+    try {
+      await api('/api/skills'); // validates token
+      hideOverlay();
+      updateChatLabel();
+      refreshModelBtn();
+      refreshHero();
+      refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
+      connectEvents();
+      refreshTaskCards();
+      refreshProgressCard();
+      applyDashboard();
+      const deepLink = state.pendingSession;
+      await refreshSessions();
+      if (!deepLink) await loadSession(currentSession(), true);
+      refreshAgents();
+      // First-run welcome: if no real brain is configured yet, say what to do.
+      try {
+        const s = await api('/api/setup');
+        if (s.setupNeeded && $('heroNote').hidden) {
+          const w = $('heroNote');
+          w.hidden = false;
+          const t = document.createElement('div');
+          t.textContent =
+            `Welcome — v${s.version} is running. Two steps to wake your crab:\n` +
+            `1) Pick your AI brain: open Settings -> AI brain, choose the service and paste your password (API key).\n` +
+            `2) Say hello in the chat box.\n` +
+            `(Brain "mock" is only an offline demo — it doesn't think.)`;
+          const b = document.createElement('button');
+          b.className = 'ghost';
+          b.style.marginTop = '8px';
+          b.textContent = 'Open Settings';
+          b.onclick = () => switchView('settings');
+          const wz = document.createElement('button');
+          wz.className = 'ghost';
+          wz.style.cssText = 'margin-top:8px;margin-left:8px';
+          wz.textContent = 'Or open the Providers page';
+          wz.onclick = () => switchView('providers');
+          w.append(t, b, wz);
+        }
+      } catch { /* welcome is best-effort */ }
+    } catch (e) {
+      showOverlay((e && e.hint) || 'Token rejected');
+    }
+  }
+  $('connect').onclick = () => {
+    state.token = $('token').value.trim();
+    localStorage.setItem('tc_token', state.token);
+    bootstrap();
+  };
+  $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('connect').click(); });
+
+  bootstrap();
+})();
+</script>
+</body>
+</html>
