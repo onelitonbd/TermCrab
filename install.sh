@@ -49,6 +49,10 @@ npm install --no-fund --no-audit
 
 # --- shim -------------------------------------------------------------
 write_shim() {
+  # Clear whatever is at the target first: a stale file OR a broken symlink
+  # from an older install would make the write below fail and kill the whole
+  # installer (seen in the wild: "line 52: .../termcrab: No such file").
+  rm -f "$1/termcrab" 2>/dev/null || true
   cat > "$1/termcrab" <<SHIM
 #!/usr/bin/env bash
 exec node "$DEST/dist/src/bin/termcrab.js" "\$@"
@@ -57,16 +61,37 @@ SHIM
 }
 BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BIN_DIR"
-write_shim "$BIN_DIR"
+BIN_OK=0
+PREFIX_OK=0
+write_shim "$BIN_DIR" && BIN_OK=1 || say "warning: could not write $BIN_DIR/termcrab"
 # On Termux, $PREFIX/bin is already on PATH - drop a shim there too (no PATH edits needed).
 if [ -n "${PREFIX:-}" ] && [ -d "$PREFIX/bin" ] && [ -w "$PREFIX/bin" ]; then
-  write_shim "$PREFIX/bin"
-  say "termcrab command installed (PREFIX/bin)"
+  if write_shim "$PREFIX/bin" 2>/dev/null; then
+    PREFIX_OK=1
+    say "termcrab command installed (PREFIX/bin)"
+  else
+    say "warning: could not write $PREFIX/bin/termcrab - using $BIN_DIR instead"
+  fi
 else
   case ":$PATH:" in
     *":$BIN_DIR:"*) say "termcrab command installed ($BIN_DIR)" ;;
     *) say "termcrab command installed ($BIN_DIR) - add to PATH:  export PATH=\"\$PATH:$BIN_DIR\"" ;;
   esac
+fi
+if [ "$BIN_OK" != 1 ] && [ "$PREFIX_OK" != 1 ]; then
+  fail "could not install the 'termcrab' command anywhere"
+fi
+# Prove the command actually runs before claiming success.
+ACTIVE="$BIN_DIR/termcrab"
+[ "$PREFIX_OK" = 1 ] && ACTIVE="$PREFIX/bin/termcrab"
+if ! "$ACTIVE" config path >/dev/null 2>&1; then
+  fail "the termcrab command was written but did not run (is node on your PATH?)"
+fi
+# If an OLDER copy would win on PATH, say so now instead of confusing later.
+RESOLVED="$(command -v termcrab 2>/dev/null || true)"
+if [ -n "$RESOLVED" ] && [ "$RESOLVED" != "$BIN_DIR/termcrab" ] && [ "$RESOLVED" != "$PREFIX/bin/termcrab" ]; then
+  say "note: 'termcrab' on your PATH points to an OLDER copy at $RESOLVED"
+  say "      remove that old copy (or its folder) so this install is the one that runs"
 fi
 
 # --- post -------------------------------------------------------------
