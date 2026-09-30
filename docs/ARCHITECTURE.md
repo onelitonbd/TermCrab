@@ -25,6 +25,7 @@ src/
 │   │                        #   + failover chain + compaction trigger + queue-aware
 │   ├── prompt.ts          # system prompt (SOUL + memory + skills index + env)
 │   ├── tools.ts           # tool registry + path guard + shell resolver + browser (CDP) + code_exec (vm sandbox)
+│   ├── toolbox.ts         # extended tools: edit, patch, web_search, automations, sessions_*, subagents, phone tools (Termux:API)
 │   ├── memory.ts          # MEMORY.md + daily logs + lexical search + compacted digests
 │   ├── sessions.ts        # JSONL transcripts + compaction + SessionQueue (FIFO)
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
@@ -97,6 +98,7 @@ test/*.test.ts             # node:test suite
 5. Bionic guard + TMPDIR fix run before any other module (import order is load-bearing)
 6. `browser` tool is read-only CDP (no Playwright dep); `code_exec` runs in a `vm` sandbox with no network/fs/require — both disabled by default
 7. MCP servers run as stdio JSON-RPC subprocesses; tools are namespaced `mcp_<server>_<tool>` and listed in the agent's tool catalog
+8. Phone tools (Termux:API): sms_send, camera, location, clipboard, battery, contacts, wifi_info, notification — zero extra deps, pure subprocess calls
 
 ## Why zero dependencies
 
