@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.29.0 - 2026-09-30
+
+- Telegram can control the brain now: `/provider` lists every saved provider (keys, model count, the one in use) and `/provider 2` (or a name/id) switches - endpoint, key and a sensible default model move together, saved to disk so it survives restarts.
+- `/model` shows the models of the active provider - saved ones first, then the live catalog fetched on the spot when nothing is saved (marked "new", saved automatically on pick). Choose with a number, the exact id, or a unique substring; builtin providers accept any typed model id.
+- Refusals always explain: no key saved, ambiguous name, out-of-range number - each answer reprints the menu instead of guessing.
+- Shared provider helpers (endpoint/key resolution, catalog fetch) moved to src/gateway/provider-helpers.ts, used by both the HTTP API and the chat picker.
+- Tests: 284 total (283 pass, 1 skip) - 20 new covering menus, switching, persistence, catalog fetch and error paths.
+
+
 ## 0.28.0 - 2026-09-30
 
 - The model now knows which channel it is replying on: every turn sends a "Current channel" note (web, Telegram, WhatsApp, terminal TUI, voice, cron, heartbeat, dream, subagent) with channel-specific formatting guidance - Telegram gets phone-friendly simple markdown, voice replies stay plain speakable text, the web panel keeps full markdown.
