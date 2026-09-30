@@ -775,6 +775,14 @@
   .toolItem.on { border-color: rgba(63, 185, 80, 0.35); }
   .toolItem.on .badge { color: var(--ok); border-color: rgba(63, 185, 80, 0.45); background: rgba(63, 185, 80, 0.1); }
 
+  .uiCard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
+  .uiCardHead { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); font-weight: 750; }
+  .uiRow { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text); line-height: 1.45; }
+  .uiRow .sp { flex: 1; min-width: 0; }
+  .uiRow .sub { color: var(--muted); font-size: 12px; }
+  .uiRow .ghost { min-height: 28px; padding: 0 9px; font-size: 12px; border-radius: 7px; flex-shrink: 0; }
+  .progK { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: var(--muted); min-width: 52px; flex-shrink: 0; }
+
   .pRow {
     background: var(--bg-accent);
     border: 1px solid var(--line);
@@ -1216,6 +1224,8 @@
     </div>
     <div id="log"></div>
     <div id="typing"></div>
+    <div id="progCard" class="uiCard" hidden></div>
+    <div id="taskCards" class="uiCard" hidden></div>
   </section>
 
   <section class="view" id="view-status" hidden>
@@ -2272,6 +2282,23 @@
       const ev = JSON.parse(e.data);
       addMsg('sys', ev.ran ? 'Check-in: ' + (ev.reason || 'done') : 'Check-in skipped: ' + humanReason(ev.reason));
     });
+    es.addEventListener('ask', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const hint = d.question + (d.options && d.options.length ? '  (' + d.options.join(' / ') + ')' : '');
+        openModal('Crabby asks', [{ id: 'answer', placeholder: hint }], async () => {
+          const input = $('mf_answer');
+          const value = input ? input.value : '';
+          try {
+            await api('/api/ask/' + d.id + '/answer', 'POST', { answer: value });
+          } catch (err) {
+            addMsg('sys', 'answer failed: ' + err.message);
+          }
+          closeModal();
+        });
+      } catch { /* malformed event */ }
+    });
+    es.addEventListener('tasks', () => { refreshTaskCards(); });
     es.addEventListener('dream', (e) => {
       const ev = JSON.parse(e.data);
       addMsg('sys', ev.ran
@@ -2301,11 +2328,101 @@
   const SEND_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
   const STOP_ICON = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5" fill="currentColor"/></svg>';
   function setSendMode(stop) {
+    if (stop) { refreshProgressCard(); refreshTaskCards(); }
     const b = $('send');
     b.innerHTML = stop ? STOP_ICON : SEND_ICON;
     b.title = stop ? 'Stop' : 'Send';
     b.setAttribute('aria-label', stop ? 'Stop' : 'Send');
     b.classList.toggle('stopMode', !!stop);
+  }
+
+  // ---- operator cards: progress + suggested tasks, dashboard widgets ----
+  let dashWidgets = null;
+  function dashOn(key) {
+    return !dashWidgets || dashWidgets[key] !== false;
+  }
+  async function refreshTaskCards() {
+    const box = $('taskCards');
+    if (!box) return;
+    try {
+      const d = await api('/api/tasks');
+      const list = d.suggestions || [];
+      box.innerHTML = '';
+      if (!list.length || !dashOn('tasks')) {
+        box.hidden = true;
+        return;
+      }
+      const head = document.createElement('div');
+      head.className = 'uiCardHead';
+      head.textContent = 'SUGGESTED TASKS';
+      box.appendChild(head);
+      for (const t of list) {
+        const row = document.createElement('div');
+        row.className = 'uiRow';
+        const label = document.createElement('span');
+        label.className = 'sp';
+        label.textContent = t.title + (t.detail ? ' — ' + t.detail : '');
+        const x = document.createElement('button');
+        x.className = 'ghost';
+        x.type = 'button';
+        x.textContent = 'Dismiss';
+        x.onclick = async () => {
+          try { await api('/api/tasks/' + t.id, 'DELETE'); } catch (e) { addMsg('sys', 'dismiss failed: ' + e.message); }
+          refreshTaskCards();
+        };
+        row.append(label, x);
+        box.appendChild(row);
+      }
+      box.hidden = false;
+    } catch {
+      box.hidden = true;
+    }
+  }
+  async function refreshProgressCard() {
+    const box = $('progCard');
+    if (!box) return;
+    try {
+      const sid = $('session') ? $('session').value : '';
+      const d = await api('/api/progress?session=' + encodeURIComponent(sid));
+      const card = d.card;
+      if (!card || !dashOn('progress')) {
+        box.hidden = true;
+        return;
+      }
+      box.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'uiCardHead';
+      head.textContent = 'PROGRESS' + (card.updatedAt ? ' · updated ' + new Date(card.updatedAt).toLocaleTimeString() : '');
+      box.appendChild(head);
+      for (const [key, label] of [['todo', 'TODO'], ['doing', 'DOING'], ['done', 'DONE']]) {
+        const row = document.createElement('div');
+        row.className = 'uiRow';
+        const k = document.createElement('span');
+        k.className = 'progK';
+        k.textContent = label;
+        const v = document.createElement('span');
+        v.className = 'sp';
+        const items = card[key] || [];
+        v.textContent = items.length ? items.join(' · ') : '—';
+        row.append(k, v);
+        box.appendChild(row);
+      }
+      box.hidden = false;
+    } catch {
+      box.hidden = true;
+    }
+  }
+  async function applyDashboard() {
+    try {
+      const d = await api('/api/config');
+      dashWidgets = (d.config && d.config.dashboard && d.config.dashboard.widgets) || null;
+    } catch { dashWidgets = null; }
+    const w = dashWidgets || {};
+    const hero = $('hero');
+    if (hero) hero.hidden = w.hero === false;
+    document.querySelectorAll('.heroChips').forEach((el) => { el.hidden = w.chips === false; });
+    refreshTaskCards();
+    refreshProgressCard();
   }
 
   async function send() {
@@ -2555,15 +2672,15 @@
     { g: 'Shell & Process', items: [
       { n: 'exec', d: 'Run shell', real: 'exec' },
       { n: 'process', d: 'Control background exec' },
-      { n: 'terminal', d: 'List/read/resize/close operator-opened session terminals' },
+      { n: 'terminal', d: 'List/read/write/close interactive shell sessions' },
     ]},
     { g: 'Web', items: [
       { n: 'web_search', d: 'Web search' },
       { n: 'web_fetch', d: 'Fetch/extract URL', real: 'web_fetch' },
-      { n: 'view_image', d: 'Inspect images in model context' },
+      { n: 'view_image', d: 'Inspect image files (format, dimensions, size)' },
     ]},
     { g: 'UI & Automation', items: [
-      { n: 'screen', d: 'Drive operator web UI' },
+      { n: 'screen', d: 'Read device status screen or send a notification' },
       { n: 'automations', d: 'Schedule/wake/reminders' },
       { n: 'dashboard', d: 'Manage dashboard widgets/tabs' },
       { n: 'portal', d: 'Expose local HTTP server' },
@@ -2577,7 +2694,7 @@
       { n: 'sessions_search', d: 'Search past sessions' },
       { n: 'sessions_send', d: 'Message other session/subagent' },
       { n: 'sessions_spawn', d: 'Spawn subagent' },
-      { n: 'sessions_yield', d: 'End turn; await subagent events' },
+      { n: 'sessions_yield', d: 'End turn and report running subagent tasks' },
       { n: 'sessions', d: 'Session settings/ownership/reset/delete' },
       { n: 'subagents', d: 'Subagent status' },
       { n: 'agents_wait', d: 'Wait for collector subagents' },
@@ -2593,7 +2710,7 @@
       { n: 'memory_search', d: 'Search memory files', real: 'search_memory' },
       { n: 'remember', d: 'Save facts to long-term memory', real: 'remember' },
       { n: 'intent', d: 'Manage standing intents' },
-      { n: 'create_goal / get_goal / update_goal', d: 'Goal tracking' },
+      { n: 'create_goal / get_goal / update_goal', d: 'Goal tracking', real: 'create_goal' },
     ]},
     { g: 'Skills & Configuration', items: [
       { n: 'load_skill', d: 'Load skill instructions', real: 'load_skill' },
@@ -3727,7 +3844,7 @@
     if (name === 'tools') refreshTools();
     if (name === 'providers') showProvidersRoot();
     if (name === 'models') showModelsRoot();
-    if (name === 'chat') log.scrollTop = log.scrollHeight;
+    if (name === 'chat') { log.scrollTop = log.scrollHeight; refreshTaskCards(); refreshProgressCard(); }
     pushRoute(pathForView(name));
   }
   document.querySelectorAll('.nav [data-goto]').forEach((b) => {
@@ -3858,6 +3975,9 @@ async function bootstrap() {
       refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
+      refreshTaskCards();
+      refreshProgressCard();
+      applyDashboard();
       const deepLink = state.pendingSession;
       await refreshSessions();
       if (!deepLink) await loadSession(currentSession(), true);

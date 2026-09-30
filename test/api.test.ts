@@ -423,6 +423,17 @@ test('web control parity API', async (t) => {
       }
     });
 
+    await t.test('v0.26: operator UI — progress card, task cards, ask modal, dashboard', async () => {
+      const html = await (await fetch(base + '/')).text();
+      for (const pin of ['id="progCard"', 'id="taskCards"', 'refreshTaskCards', 'refreshProgressCard', 'applyDashboard',
+        "es.addEventListener('ask'", "es.addEventListener('tasks'", 'mf_answer', 'dashWidgets', '.heroChips']) {
+        assert.ok(html.includes(pin), 'UI pin ' + pin);
+      }
+      // catalog entries that were planned are now mapped to real tools
+      assert.ok(html.includes("real: 'create_goal'"), 'composite goal entry maps to a live tool');
+      assert.ok(!html.includes('Drive operator web UI'), 'screen description updated to what it does');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');
