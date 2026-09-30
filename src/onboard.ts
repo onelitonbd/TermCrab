@@ -149,7 +149,7 @@ function printNextSteps(cfg: Config): void {
 Next steps:
   1. Start the gateway:     termcrab gateway
      Auto-restart version:  termcrab supervisor
-  2. Open control UI:       http://127.0.0.1:${cfg.gateway.port}/  (token in config)
+  2. Open control UI:       http://127.0.0.1:${cfg.gateway.port}/  (password: termcrab config get gateway.token)
   3. Chat in terminal:      termcrab agent "hello"
   4. Run a health check:    termcrab doctor
   5. Phone auto-start:      termcrab boot install   (Termux + Termux:Boot app)

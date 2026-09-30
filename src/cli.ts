@@ -197,6 +197,12 @@ export async function main(argv: string[]): Promise<void> {
       });
       const config = loadConfig();
       ensureLayout();
+      if (!config.gateway.token) {
+        // Fresh install started the panel directly: never run passwordless.
+        config.gateway.token = generateToken();
+        saveConfig(config);
+        log.info('no panel password was set - created one and saved it');
+      }
       const handle = await startGateway({
         config,
         host: values.host,
@@ -878,7 +884,16 @@ export async function main(argv: string[]): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        const v = cfgGet(cfg, key);
+        let v = cfgGet(cfg, key);
+        if (key === 'gateway.token' && (typeof v !== 'string' || !v)) {
+          // Fresh install: nothing saved yet. Create the password right here
+          // so this command — the one the login screen points at — never
+          // comes back empty.
+          cfg.gateway.token = generateToken();
+          saveConfig(cfg);
+          v = cfg.gateway.token;
+          console.error(`no panel password existed - created one and saved it (config: ${describeConfigLocation()})`);
+        }
         console.log(typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v));
         if (key === 'gateway.token' && typeof v === 'string' && v) {
           // Say right here whether the running panel actually accepts it —

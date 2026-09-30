@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.30.3 - 2026-09-30
+
+- Fresh installs are no longer a dead end: `termcrab config get gateway.token` used to print an empty line when no password existed yet (nothing had created one). It now generates a password, saves it, prints it, and says what it did.
+- Starting `termcrab gateway` on a fresh home now creates and saves a password first - the panel never runs passwordless, and the startup log shows the generated password.
+- Onboarding's next-steps text now points at `termcrab config get gateway.token` for the login password instead of the vague "(token in config)".
+- Tests: 290 total (289 pass, 1 skip) - spawn tests prove both fresh-install paths create, save and reprint the same 48-character password.
+
+
 ## 0.30.2 - 2026-09-30
 
 - When the login screen refuses a password, it now says WHY instead of a generic "invalid token". The panel compares what you pasted against the settings file and its own running password, and shows one plain-English line: you pasted only part of the password (it tells you the letter counts), the panel was started before the password changed (restart it), the panel and the settings file disagree (restart it), or simply wrong (run termcrab config get gateway.token).
