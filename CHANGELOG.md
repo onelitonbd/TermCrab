@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.28.0 - 2026-09-30
+
+- The model now knows which channel it is replying on: every turn sends a "Current channel" note (web, Telegram, WhatsApp, terminal TUI, voice, cron, heartbeat, dream, subagent) with channel-specific formatting guidance - Telegram gets phone-friendly simple markdown, voice replies stay plain speakable text, the web panel keeps full markdown.
+- Telegram replies render real markdown now: bold, italic, strike, inline code, fenced code blocks with language, headings, bullet and numbered lists, quotes, links (safe schemes only) and tables as monospace blocks - translated to exactly the tags Telegram understands, everything else escaped.
+- Delivery safety: if Telegram rejects a translated chunk, it is retried as plain text so a reply is never lost to a formatting edge case; offline outbox entries are translated on flush.
+- Tests: 265 (264 pass, 1 skip) - 19 new ones covering the converter, the plain-text fallback, and channel-aware prompting.
+
+
 ## 0.27.0 - 2026-09-30
 
 - Chat header, sidebar history, session picker, and the Tools > Chats list now show a distinct icon per session source (Web, Telegram, WhatsApp, Schedule, Subagent, Dream, Heartbeat) followed by a friendly name - raw `web:` / `telegram:` prefixes are never rendered.
