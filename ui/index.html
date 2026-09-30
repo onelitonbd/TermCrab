@@ -601,6 +601,35 @@
   .setCard h4 { margin: 0 0 5px; font-size: 15.5px; font-weight: 750; color: var(--strong); }
   .setCard .d { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 12px; }
   .setCard textarea { width: 100%; min-height: 170px; resize: vertical; }
+
+  /* ---- settings page v0.30: grouped rows + the right control per value ---- */
+  #setSections { display: flex; flex-direction: column; }
+  #setSections .memSectionLabel:first-child { margin-top: 14px; }
+  .setRow { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--line); }
+  .setRow:first-of-type { border-top: 0; padding-top: 0; }
+  .setRowMain { min-width: 0; flex: 1; }
+  .setRowLabel { font-size: 13.5px; font-weight: 640; color: var(--text); }
+  .setRowHint { margin-top: 2px; font-size: 12px; }
+  .setRowCtl { flex-shrink: 0; display: flex; align-items: center; gap: 8px; max-width: 54%; }
+  .setRowCtl input[type="text"], .setRowCtl input[type="password"] { width: 230px; max-width: 100%; }
+  .setRowCtl select { max-width: 330px; }
+  .setRowCtl .setNum { width: 92px; }
+  .setSuf { color: var(--muted); font-size: 12px; min-width: 48px; }
+  .setSaved { font-size: 11.5px; font-weight: 750; color: var(--ok); opacity: 0; transition: opacity .18s ease; white-space: nowrap; }
+  .setSaved.show { opacity: 1; }
+  .setSaved.err { color: var(--danger); }
+  .setTgl { position: relative; display: inline-flex; cursor: pointer; }
+  .setTgl input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .setTglTrack { width: 40px; height: 22px; border-radius: 999px; background: var(--fill); border: 1px solid var(--line-strong); position: relative; transition: background .15s ease, border-color .15s ease; }
+  .setTglTrack::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .15s ease, background .15s ease; }
+  .setTgl input:checked + .setTglTrack { background: #238636; border-color: #2ea043; }
+  .setTgl input:checked + .setTglTrack::after { transform: translateX(18px); background: #e6edf3; }
+  .setTgl input:focus-visible + .setTglTrack { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 640px) {
+    .setRow { flex-direction: column; align-items: stretch; gap: 8px; }
+    .setRowCtl { max-width: 100%; }
+    .setRowCtl input[type="text"], .setRowCtl input[type="password"], .setRowCtl select { flex: 1; width: auto; max-width: none; }
+  }
   /* ---- models page ---- */
   .mdlBar { display: flex; gap: 8px; align-items: center; margin: 2px 0 8px; }
   .mdlBar input { flex: 1; min-width: 0; }
@@ -1592,33 +1621,45 @@
   </section>
 
   <section class="view" id="view-settings" hidden>
-    <details class="panel" id="cfgPanel" data-primary>
-      <summary>Settings</summary>
-      <div class="pBody">
-        <div class="pNote" id="cfgPath">loading…</div>
-        <div id="cfgRows"><div class="nx">loading…</div></div>
-        <div class="pNote">Secrets are masked with dots — type a new value to replace, leave masked to keep.</div>
+    <div class="pageHead"><h2 class="memTitle">Settings</h2></div>
+    <p class="pageNote">Plain words, real switches - grouped by what they do, not by config keys. Every change saves straight to this device.</p>
+
+    <div class="memHero stHero">
+      <div class="memMascot" aria-hidden="true">
+        <svg viewBox="0 0 120 120" width="86" height="86">
+          <circle cx="60" cy="60" r="27" fill="none" stroke="#9cbcff" stroke-width="7"/>
+          <circle cx="60" cy="60" r="10" fill="#5b8dff"/>
+          <path d="M60 16v13M60 91v13M16 60h13M91 60h13M29 29l9 9M82 82l9 9M91 29l-9 9M38 82l-9 9" stroke="#9cbcff" stroke-width="7" stroke-linecap="round"/>
+        </svg>
       </div>
-    </details>
-    <details class="panel" id="agPanel">
-      <summary>Agents</summary>
-      <div class="pBody">
-        <div id="agList"><div class="nx">loading…</div></div>
-        <div class="pBar">
-          <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
-          <select id="agTemplate" title="starter personality">
-            <option value="">starter: blank</option>
-            <option value="brief">starter: brief</option>
-            <option value="teacher">starter: teacher</option>
-            <option value="researcher">starter: researcher</option>
-          </select>
-          <button id="agCreate">Create</button>
-        </div>
-        <div class="pNote" id="agEditName"></div>
-        <textarea id="agSoul" placeholder="SOUL.md — select an agent to edit its personality"></textarea>
-        <div class="pBar"><button id="agSave" class="ghost">Save personality</button></div>
+      <div style="min-width:0">
+        <div class="memHeroTitle">Control room</div>
+        <div class="memHeroSub">one file on this device - no cloud, no account</div>
+        <div class="pNote" id="cfgPath">loading...</div>
       </div>
-    </details>
+    </div>
+
+    <div id="setSections"><div class="nx">loading...</div></div>
+
+    <div class="memSectionLabel">AGENTS</div>
+    <div class="setCard" id="agCard">
+      <h4>Named agents</h4>
+      <div class="d">Extra personalities that live in <code>workspace/agents/</code>. Start a message with @name to talk to one.</div>
+      <div id="agList"><div class="nx">loading...</div></div>
+      <div class="pBar">
+        <input type="text" id="agNew" placeholder="new agent name (lowercase, - _)" />
+        <select id="agTemplate" title="starter personality">
+          <option value="">starter: blank</option>
+          <option value="brief">starter: brief</option>
+          <option value="teacher">starter: teacher</option>
+          <option value="researcher">starter: researcher</option>
+        </select>
+        <button id="agCreate">Create</button>
+      </div>
+      <div class="pNote" id="agEditName"></div>
+      <textarea id="agSoul" placeholder="SOUL.md - select an agent to edit its personality"></textarea>
+      <div class="pBar"><button id="agSave" class="ghost">Save personality</button></div>
+    </div>
   </section>
 </main>
 
@@ -2925,141 +2966,206 @@
   // ---- Web control parity panels (v0.5 P0 #0) ----
   const DOC_ICON = { ok: 'pass', warn: 'warn', fail: 'fail', info: 'note' };
   const getCfg = (o, dotted) => dotted.split('.').reduce((acc, k) => (acc && typeof acc === 'object' ? acc[k] : undefined), o);
-  const CFG_KEYS = [
-    'agent.name', 'provider.type', 'provider.model', 'provider.baseUrl', 'provider.apiKey',
-    'localProvider.enabled', 'localProvider.baseUrl', 'localProvider.model',
-    'dream.enabled', 'dream.everyHours',
-    'heartbeat.enabled', 'heartbeat.minutes', 'heartbeat.pauseBelow',
-    'memory.embeddings', 'gateway.token',
-    'channels.telegram.token', 'channels.telegram.allowedUserIds',
-    'channels.whatsapp.enabled', 'channels.whatsapp.allowedJids',
-    'update.checkOnStart',
+  // ---- Settings v0.30: grouped sections, plain language, right control per value ----
+  const SET_SECTIONS = [
+    { id: 'identity', label: 'YOUR CRAB', title: 'Identity', d: 'Who shows up in the chat.', fields: [
+      { key: 'agent.name', label: 'Name', hint: 'How your crab introduces itself', type: 'text' },
+    ]},
+    { id: 'brain', label: 'AI BRAIN', title: 'The brain', d: 'Which model answers you. Saved providers, keys and catalogs live on the Providers page.', fields: [
+      { key: 'provider.type', label: 'Service', type: 'select', options: [
+        ['anthropic', 'Anthropic - Claude'],
+        ['openai', 'OpenAI-compatible - OpenAI, OpenRouter, Groq, DeepSeek, Ollama'],
+        ['mock', 'Offline demo - no real answers'],
+      ]},
+      { key: 'provider.model', label: 'Model', hint: 'for example: gpt-4o-mini', type: 'text' },
+      { key: 'provider.baseUrl', label: 'Address', hint: 'where the service lives - empty means the built-in default', type: 'text' },
+      { key: 'provider.apiKey', label: 'API key', hint: 'password for your AI service - stays on this device, dots mean it is already saved', type: 'secret' },
+    ]},
+    { id: 'local', label: 'ON-DEVICE', title: 'Local brain (advanced)', d: 'A small model running on this machine for cheap, private side tasks.', fields: [
+      { key: 'localProvider.enabled', label: 'Use a local model', hint: 'off by default - turn on when you run a local server', type: 'toggle' },
+      { key: 'localProvider.baseUrl', label: 'Local address', hint: 'for example: http://127.0.0.1:8080/v1', type: 'text' },
+      { key: 'localProvider.model', label: 'Local model', hint: 'the name your local server provides', type: 'text' },
+    ]},
+    { id: 'doors', label: 'DOORS & KEYS', title: 'Who can knock', d: 'Passwords and allowlists for every door into your crab. Empty means the door stays shut.', fields: [
+      { key: 'gateway.token', label: 'Web panel password', hint: 'what this page asks for when you open it', type: 'secret' },
+      { key: 'channels.telegram.token', label: 'Telegram bot token', hint: 'from @BotFather - empty keeps Telegram off', type: 'secret' },
+      { key: 'channels.telegram.allowedUserIds', label: 'Telegram allowed people', hint: 'comma-separated user ids - empty means nobody gets in', type: 'list', numeric: true },
+      { key: 'channels.whatsapp.enabled', label: 'WhatsApp door', hint: 'needs the baileys package installed', type: 'toggle' },
+      { key: 'channels.whatsapp.allowedJids', label: 'WhatsApp allowed chats', hint: 'comma-separated chat ids - empty means off', type: 'list' },
+    ]},
+    { id: 'rhythm', label: 'DAILY RHYTHM', title: 'Sleep, learning & check-ins', d: 'How your crab spends the quiet hours.', fields: [
+      { key: 'dream.enabled', label: 'Night learning (dreaming)', hint: 'turns recent chats into long-term memory while idle', type: 'toggle' },
+      { key: 'dream.everyHours', label: 'Learn again every', suffix: 'hours', min: 1, max: 168, type: 'number' },
+      { key: 'heartbeat.enabled', label: 'Self check-ins', hint: 'lets the crab act on its own on a schedule', type: 'toggle' },
+      { key: 'heartbeat.minutes', label: 'Check in every', suffix: 'minutes', min: 5, max: 1440, type: 'number' },
+      { key: 'heartbeat.pauseBelow', label: 'Pause below battery', suffix: '%', min: 0, max: 100, type: 'number' },
+    ]},
+    { id: 'housekeeping', label: 'HOUSEKEEPING', title: 'Updates', d: 'Small chores. The memory engine itself lives in Memory -> Settings.', fields: [
+      { key: 'update.checkOnStart', label: 'Check for updates at startup', hint: 'asks GitHub on start if a newer TermCrab exists', type: 'toggle' },
+    ]},
   ];
-  // Plain-English labels: every setting says what it IS in human words.
-  const CFG_LABELS = {
-    'agent.name': ['Assistant name', 'How your crab introduces itself'],
-    'provider.type': ['AI brain type', 'anthropic = Claude · openai = ChatGPT & friends · mock = offline demo'],
-    'provider.model': ['Brain model', 'Which model to use (e.g. gpt-4o-mini)'],
-    'provider.baseUrl': ['Brain address', 'Where to reach the AI service'],
-    'provider.apiKey': ['Brain password (API key)', 'Secret key from your AI provider'],
-    'localProvider.enabled': ['On-device brain', 'Use a local model for small tasks (cheaper + private)'],
-    'localProvider.baseUrl': ['On-device brain address', 'Your local model server (e.g. http://127.0.0.1:8080/v1)'],
-    'localProvider.model': ['On-device brain model', 'Model name your local server provides'],
-    'dream.enabled': ['Night learning (dreaming)', 'Let the crab turn recent chats into long-term memory while idle'],
-    'dream.everyHours': ['Learn again after (hours)', 'How many hours between learning sessions'],
-    'heartbeat.enabled': ['Self-check-ins', 'Let the crab act on its own on a schedule'],
-    'heartbeat.minutes': ['Check-in every (minutes)', 'How often it checks in'],
-    'heartbeat.pauseBelow': ['Pause below battery %', 'Stop check-ins to save battery under this level'],
-    'memory.embeddings': ['Smarter search', 'Search by meaning, not just words (needs optional install)'],
-    'gateway.token': ['Web panel password', 'What this page asks for when you open it'],
-    'channels.telegram.token': ['Telegram connection', 'Bot token from @BotFather — leave empty if unused'],
-    'channels.telegram.allowedUserIds': ['Telegram allowed people', 'Who may talk to your bot — empty means nobody'],
-    'channels.whatsapp.enabled': ['WhatsApp connection', 'Turn on WhatsApp (needs: npm install baileys)'],
-    'channels.whatsapp.allowedJids': ['WhatsApp allowed chats', 'Who may talk to it — empty means off'],
-    'update.checkOnStart': ['Check for updates at startup', 'Ask GitHub on startup if a newer TermCrab exists'],
-  };
 
-  // Turn system reasons into sentences a person can read.
-  function humanReason(r) {
-    if (!r) return '';
-    const m = String(r).match(/next dream in ~(\d+)m/);
-    if (m) {
-      const n = Number(m[1]);
-      return n >= 60
-        ? `already dreamed recently — next attempt in about ${Math.round(n / 60)}h`
-        : `already dreamed recently — next attempt in about ${n}m`;
-    }
-    if (/disabled/.test(r)) return 'dreaming is switched off (Settings tab, Night learning)';
-    if (/sleepless/i.test(r)) return 'waiting for better battery — ' + String(r).replace(/^sleepless:\s*/i, '');
-    if (/no new sessions/i.test(r)) return 'nothing new since the last dream';
-    if (/nothing to consolidate/i.test(r)) return 'no conversations to learn from yet';
-    if (/below pause/i.test(r)) return 'battery too low — ' + r;
-    return String(r);
+  function cfgStatus(span, text, isErr) {
+    span.textContent = text;
+    span.classList.toggle('err', !!isErr);
+    span.classList.add('show');
+    clearTimeout(span._setT);
+    span._setT = setTimeout(() => span.classList.remove('show'), 2800);
   }
 
-  async function refreshLiveStatus() {
+  async function postCfg(key, value, span) {
     try {
-      const s = await api('/api/status');
-      const parts = ['Awake', 'brain: ' + s.provider];
-      if (s.memory) parts.push(`memory: ${s.memory.facts ?? 0} fact${(s.memory.facts ?? 0) === 1 ? '' : 's'}`);
-      if (s.heartbeat) {
-        parts.push(s.heartbeat.enabled
-          ? `self-check every ${s.heartbeat.minutes}m`
-          : 'self-checks off');
-      }
-      if (s.dream) {
-        if (!s.dream.enabled) parts.push('dreaming off');
-        else if (s.dream.lastDreamAt) {
-          const next = s.dream.lastDreamAt + s.dream.everyHours * 3600000;
-          parts.push(next <= Date.now() ? 'dream due' : `dream ~${new Date(next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
-        } else parts.push(`learns every ${s.dream.everyHours}h while idle`);
-      }
-      const ag = (s.agents || []).length;
-      if (ag) parts.push(`${ag} agent${ag === 1 ? '' : 's'}`);
-      $('liveStatus').textContent = parts.join(' · ');
-    } catch {
-      $('liveStatus').textContent = 'status unavailable (check the gateway)';
-    }
-  }
-  $('helpPanel').addEventListener('toggle', () => { if ($('helpPanel').open) refreshLiveStatus(); });
-
-  async function refreshCfg() {
-    try {
-      const data = await api('/api/config');
-      $('cfgPath').textContent = 'file: ' + (data.path || '?');
-      const rows = $('cfgRows');
-      rows.innerHTML = '';
-      for (const key of CFG_KEYS) {
-        const meta = CFG_LABELS[key] || [key, ''];
-        const row = document.createElement('div');
-        row.className = 'pRow';
-        row.style.flexDirection = 'column';
-        row.style.alignItems = 'stretch';
-        row.style.gap = '4px';
-        row.title = meta[1];
-        const line1 = document.createElement('div');
-        line1.style.display = 'flex';
-        line1.style.gap = '8px';
-        line1.style.alignItems = 'center';
-        const k = document.createElement('span');
-        k.className = 'k';
-        k.textContent = meta[0];
-        const inp = document.createElement('input');
-        inp.type = 'text';
-        const cur = getCfg(data.config, key);
-        inp.value = typeof cur === 'object' && cur !== null ? JSON.stringify(cur) : String(cur ?? '');
-        const btn = document.createElement('button');
-        btn.className = 'ghost';
-        btn.textContent = 'Save';
-        btn.onclick = async () => {
-          btn.disabled = true;
-          try {
-            const r = await api('/api/config', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ key, value: inp.value }),
-            });
-            addMsg('sys', r.unchanged ? `${meta[0]}: kept as-is (masked)` : `${meta[0]} saved`);
-            refreshCfg();
-          } catch (e) { addMsg('sys', `${meta[0]} failed: ` + e.message); }
-          finally { btn.disabled = false; }
-        };
-        line1.append(k, inp, btn);
-        const line2 = document.createElement('div');
-        line2.className = 'nx';
-        line2.textContent = meta[1] ? `${key} — ${meta[1]}` : key;
-        row.append(line1, line2);
-        rows.appendChild(row);
-      }
+      const r = await api('/api/config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      });
+      cfgStatus(span, r.unchanged ? 'kept' : 'Saved');
+      return true;
     } catch (e) {
-      const rows = $('cfgRows');
-      rows.innerHTML = '';
-      const d = document.createElement('div'); d.className = 'nx err';
-      d.textContent = 'config load failed: ' + e.message;
-      rows.appendChild(d);
+      cfgStatus(span, 'Failed: ' + e.message, true);
+      return false;
     }
   }
-  $('cfgPanel').addEventListener('toggle', () => { if ($('cfgPanel').open) refreshCfg(); });
+
+  function cfgRow(cfg, f) {
+    const cur = getCfg(cfg, f.key);
+    const row = document.createElement('div');
+    row.className = 'setRow';
+    row.title = f.key;
+    const main = document.createElement('div');
+    main.className = 'setRowMain';
+    const lb = document.createElement('div');
+    lb.className = 'setRowLabel';
+    lb.textContent = f.label;
+    main.appendChild(lb);
+    if (f.hint) {
+      const hn = document.createElement('div');
+      hn.className = 'setRowHint nx';
+      hn.textContent = f.hint;
+      main.appendChild(hn);
+    }
+    const ctl = document.createElement('div');
+    ctl.className = 'setRowCtl';
+    const st = document.createElement('span');
+    st.className = 'setSaved';
+    const save = (value) => postCfg(f.key, value, st);
+
+    if (f.type === 'toggle') {
+      const lab = document.createElement('label');
+      lab.className = 'setTgl';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = cur === true || cur === 'true';
+      cb.setAttribute('aria-label', f.label);
+      const track = document.createElement('span');
+      track.className = 'setTglTrack';
+      cb.onchange = async () => {
+        const want = cb.checked;
+        const ok = await save(String(want));
+        if (!ok) cb.checked = !want;
+      };
+      lab.append(cb, track);
+      ctl.append(lab, st);
+    } else if (f.type === 'number') {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'setNum';
+      if (f.min != null) inp.min = String(f.min);
+      if (f.max != null) inp.max = String(f.max);
+      inp.value = cur === undefined || cur === null ? '' : String(cur);
+      inp.setAttribute('aria-label', f.label);
+      inp.onchange = async () => {
+        const n = Number(inp.value);
+        if (inp.value === '' || Number.isNaN(n)) { cfgStatus(st, 'Needs a number', true); return; }
+        if ((f.min != null && n < f.min) || (f.max != null && n > f.max)) {
+          cfgStatus(st, `${f.min}-${f.max} only`, true);
+          return;
+        }
+        await save(String(n));
+      };
+      const suf = document.createElement('span');
+      suf.className = 'setSuf';
+      suf.textContent = f.suffix || '';
+      ctl.append(inp, suf, st);
+    } else if (f.type === 'select') {
+      const sel = document.createElement('select');
+      sel.setAttribute('aria-label', f.label);
+      for (const [v, t] of f.options) {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = t;
+        sel.appendChild(o);
+      }
+      sel.value = String(cur != null ? cur : (f.options[0] ? f.options[0][0] : ''));
+      sel.onchange = () => save(sel.value);
+      ctl.append(sel, st);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = f.type === 'secret' ? 'password' : 'text';
+      inp.value = f.type === 'list'
+        ? (Array.isArray(cur) ? cur.join(', ') : String(cur != null ? cur : ''))
+        : String(cur != null ? cur : '');
+      inp.placeholder = f.type === 'secret' ? 'not set yet' : '';
+      inp.setAttribute('aria-label', f.label);
+      const btn = document.createElement('button');
+      btn.className = 'ghost smallBtn';
+      btn.type = 'button';
+      btn.textContent = 'Save';
+      const doSave = async () => {
+        let value = inp.value;
+        if (f.type === 'list') {
+          const items = inp.value.split(',').map((x) => x.trim()).filter(Boolean);
+          const vals = f.numeric ? items.map((x) => Number(x)).filter((x) => !Number.isNaN(x)) : items;
+          value = JSON.stringify(vals);
+        }
+        btn.disabled = true;
+        try { await save(value); } finally { btn.disabled = false; }
+      };
+      btn.onclick = doSave;
+      inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); doSave(); } };
+      ctl.append(inp, btn, st);
+    }
+    row.append(main, ctl);
+    return row;
+  }
+
+  async function refreshSettings() {
+    const host = $('setSections');
+    if (!host) return;
+    let data;
+    try {
+      data = await api('/api/config');
+    } catch (e) {
+      host.innerHTML = '';
+      const d = document.createElement('div');
+      d.className = 'setCard';
+      const p = document.createElement('div');
+      p.className = 'nx err';
+      p.textContent = 'Settings failed to load: ' + e.message;
+      d.appendChild(p);
+      host.appendChild(d);
+      return;
+    }
+    $('cfgPath').textContent = 'file: ' + (data.path || '?');
+    host.innerHTML = '';
+    for (const sec of SET_SECTIONS) {
+      const lbl = document.createElement('div');
+      lbl.className = 'memSectionLabel';
+      lbl.textContent = sec.label;
+      const card = document.createElement('div');
+      card.className = 'setCard';
+      card.dataset.section = sec.id;
+      const h = document.createElement('h4');
+      h.textContent = sec.title;
+      const dd = document.createElement('div');
+      dd.className = 'd';
+      dd.textContent = sec.d;
+      card.append(h, dd);
+      for (const f of sec.fields) card.appendChild(cfgRow(data.config, f));
+      host.append(lbl, card);
+    }
+  }
 
   $('docRun').onclick = async () => {
     $('docRun').disabled = true;
@@ -3377,7 +3483,6 @@
       sel.value = keep;
     } catch { /* non-fatal */ }
   }
-  $('agPanel').addEventListener('toggle', () => { if ($('agPanel').open) refreshAgents(); });
   $('agCreate').onclick = async () => {
     const name = $('agNew').value.trim();
     if (!name) return;
@@ -3994,6 +4099,7 @@
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'tools') refreshTools();
+    if (name === 'settings') { refreshSettings(); refreshAgents(); }
     if (name === 'providers') showProvidersRoot();
     if (name === 'models') showModelsRoot();
     if (name === 'chat') { log.scrollTop = log.scrollHeight; refreshTaskCards(); refreshProgressCard(); }
@@ -4146,14 +4252,14 @@ async function bootstrap() {
           const t = document.createElement('div');
           t.textContent =
             `Welcome — v${s.version} is running. Two steps to wake your crab:\n` +
-            `1) Pick your AI brain: open the Settings tab, choose "AI brain type" and paste your password (API key).\n` +
+            `1) Pick your AI brain: open Settings -> AI brain, choose the service and paste your password (API key).\n` +
             `2) Say hello in the chat box.\n` +
             `(Brain "mock" is only an offline demo — it doesn't think.)`;
           const b = document.createElement('button');
           b.className = 'ghost';
           b.style.marginTop = '8px';
           b.textContent = 'Open Settings';
-          b.onclick = () => { switchView('settings'); $('cfgPanel').open = true; };
+          b.onclick = () => switchView('settings');
           const wz = document.createElement('button');
           wz.className = 'ghost';
           wz.style.cssText = 'margin-top:8px;margin-left:8px';

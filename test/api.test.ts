@@ -473,6 +473,35 @@ test('web control parity API', async (t) => {
       }
     });
 
+    await t.test('v0.30: settings page is grouped, plain-language, right controls', async () => {
+      const html = fs.readFileSync(path.join(process.cwd(), 'ui', 'index.html'), 'utf8');
+      // old flat wall of config keys is gone
+      assert.ok(!html.includes('CFG_KEYS'), 'no raw key list');
+      assert.ok(!html.includes('cfgRows'), 'no ungrouped rows');
+      assert.ok(!html.includes('cfgPanel'), 'no collapsed details panel');
+      // grouped sections with personality
+      assert.ok(html.includes('SET_SECTIONS'), 'section schema exists');
+      assert.ok(html.includes('Control room'), 'hero header');
+      for (const label of ['YOUR CRAB', 'AI BRAIN', 'DOORS & KEYS', 'DAILY RHYTHM', 'HOUSEKEEPING', 'ON-DEVICE']) {
+        assert.ok(html.includes(label), 'section ' + label);
+      }
+      // right control per value
+      assert.ok(html.includes("type: 'toggle'"), 'booleans get switches');
+      assert.ok(html.includes('setTglTrack'), 'switch track styles');
+      assert.ok(html.includes("type: 'number'"), 'minutes/hours get number inputs');
+      assert.ok(html.includes("'secret' ? 'password' : 'text'"), 'secrets are password fields');
+      assert.ok(html.includes("type: 'select'"), 'service is a dropdown');
+      // feedback happens on the settings page itself, not in the chat
+      assert.ok(html.includes('setSaved'), 'inline saved badge');
+      assert.ok(!html.includes("addMsg('sys', r.unchanged"), 'no chat-message save feedback');
+      // loads when the page opens
+      assert.ok(html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); }"), 'loads on open');
+      // agents card keeps its ids (create/edit flow untouched)
+      for (const id of ['agList', 'agNew', 'agTemplate', 'agCreate', 'agSoul', 'agSave', 'cfgPath']) {
+        assert.ok(html.includes('id="' + id + '"'), 'id ' + id);
+      }
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');
