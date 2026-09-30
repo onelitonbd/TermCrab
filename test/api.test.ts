@@ -328,6 +328,13 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('<span>Chat history</span>'), 'history label kept');
     });
 
+    await t.test('v0.23.1: empty replies fail loud — no bare placeholder', async () => {
+      const html = await (await fetch(base + '/')).text();
+      assert.ok(!html.includes("'(empty reply)'"), 'raw placeholder removed');
+      assert.ok(html.includes('got no text back from the model'), 'UI fallback explains itself');
+      assert.ok(html.includes('(empty reply|agent error)'), 'error replies styled as errors');
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');

@@ -116,3 +116,73 @@ test('web_fetch rejects non-http URLs', async () => {
   const wf = tools.find((t) => t.def.name === 'web_fetch')!;
   await assert.rejects(() => wf.execute({ url: 'file:///etc/passwd' }), /http/);
 });
+
+// ---- v0.23.1: empty model replies must never be silent ----
+
+test('empty model reply: retried once, then a loud notice — never a silent blank', async () => {
+  const { ctx } = makeCtx();
+  let calls = 0;
+  ctx.provider = {
+    name: 'stub',
+    model: 'stub-1',
+    chat: async () => {
+      calls++;
+      return { text: '', toolCalls: [], stopReason: 'end' as const };
+    },
+  };
+  const reply = await runTurn(ctx, { sessionId: 't-empty', userMessage: 'hi' });
+  assert.equal(calls, 2, 'one retry before giving up');
+  assert.match(reply, /^\[empty reply\]/, 'user sees an explicit notice, not blank');
+  const assistants = ctx.sessions.read('t-empty').filter((e) => e.role === 'assistant');
+  assert.ok(assistants.length > 0, 'notice is persisted');
+  assert.ok(
+    assistants.every((e) => e.content.trim().length > 0),
+    'no blank assistant entries land in the session',
+  );
+});
+
+test('empty model reply recovers when the retry produces text', async () => {
+  const { ctx } = makeCtx();
+  let calls = 0;
+  ctx.provider = {
+    name: 'stub',
+    model: 'stub-1',
+    chat: async () => {
+      calls++;
+      return calls === 1
+        ? { text: '', toolCalls: [], stopReason: 'end' as const }
+        : { text: 'hello from the retry', toolCalls: [], stopReason: 'end' as const };
+    },
+  };
+  const reply = await runTurn(ctx, { sessionId: 't-empty2', userMessage: 'hi' });
+  assert.equal(reply, 'hello from the retry');
+  assert.equal(calls, 2, 'exactly one retry');
+});
+
+test('empty reply notice names the token-limit case', async () => {
+  const { ctx } = makeCtx();
+  let calls = 0;
+  ctx.provider = {
+    name: 'stub',
+    model: 'stub-1',
+    chat: async () => {
+      calls++;
+      return { text: '', toolCalls: [], stopReason: 'length' as const };
+    },
+  };
+  const reply = await runTurn(ctx, { sessionId: 't-empty3', userMessage: 'hi' });
+  assert.equal(calls, 2);
+  assert.match(reply, /reply space/);
+});
+
+test('toProviderMessages drops blank assistant turns from old sessions', () => {
+  const entries: Entry[] = [
+    { role: 'user', content: 'hi', ts: 1 },
+    { role: 'assistant', content: '', ts: 2 },
+    { role: 'assistant', content: 'done', ts: 3 },
+    { role: 'assistant', content: '   ', ts: 4 },
+  ];
+  const msgs = toProviderMessages(entries);
+  assert.equal(msgs.filter((m) => m.role === 'assistant').length, 1, 'blank turns skipped');
+  assert.equal(msgs[msgs.length - 1]!.content, 'done');
+});

@@ -1773,6 +1773,7 @@
     div.className = `msg ${cls}`;
     if (cls === 'bot') {
       div.innerHTML = renderMarkdown(text);
+      if (/^\[(empty reply|agent error)\]/.test(String(text).trim())) div.classList.add('err');
       const who = document.createElement('div');
       who.className = 'msgWho';
       const sel = $('agentSel');
@@ -2251,7 +2252,18 @@
         body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
         signal: state.abort.signal,
       });
-      if (state.live) { state.liveRaw = res.text || state.liveRaw || '(empty reply)'; state.live.innerHTML = renderMarkdown(state.liveRaw); }
+      if (state.live) {
+        state.liveRaw = res.text || state.liveRaw;
+        if (!state.liveRaw) {
+          // Belt-and-braces: the server now always explains an empty reply,
+          // but never show a bare placeholder if one slips through (v0.23.1).
+          state.liveRaw = 'Crabby got no text back from the model. Try again, or switch models in Providers.';
+          state.live.classList.add('err');
+        } else if (/^\[(empty reply|agent error)\]/.test(state.liveRaw.trim())) {
+          state.live.classList.add('err');
+        }
+        state.live.innerHTML = renderMarkdown(state.liveRaw);
+      }
     } catch (err) {
       if (err && (err.name === 'AbortError' || (state.abort && state.abort.signal.aborted))) {
         if (state.live) { state.live.remove(); state.live = null; }

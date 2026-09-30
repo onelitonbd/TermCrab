@@ -51,6 +51,10 @@ export function toProviderMessages(entries: Entry[]): ProviderMessage[] {
       out.push({ role: 'user', content: e.content });
     } else if (e.role === 'assistant') {
       const calls = e.toolCalls ?? [];
+      // Never send empty assistant turns upstream: an earlier silent "" reply would
+      // become content:null (OpenAI rejects it) or an empty Anthropic block (breaks
+      // alternation). Old sessions keep working after v0.23.1.
+      if (!calls.length && !e.content.trim()) continue;
       for (const c of calls) seenToolIds.add(c.id);
       out.push({
         role: 'assistant',
@@ -118,6 +122,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   const maxIter = Math.max(1, Math.min(ctx.config.agent.maxIterations || 8, 25));
 
   let finalText = '';
+  let emptyRetries = 0;
   try {
     for (let i = 0; i < maxIter; i++) {
       const messages = toProviderMessages(ctx.sessions.read(sessionId));
@@ -163,6 +168,26 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
       }
 
       finalText = result.text ?? '';
+      if (!finalText.trim()) {
+        // Empty completion: retry once (transient provider hiccups happen), then
+        // fail LOUDLY — a silent "" reads as a broken UI to the user (v0.23.1).
+        if (emptyRetries < 1) {
+          emptyRetries++;
+          log.warn(
+            `empty reply from ${provider.name}/${provider.model} (stop=${result.stopReason}) — retrying once`,
+          );
+          i--;
+          continue;
+        }
+        finalText =
+          result.stopReason === 'length'
+            ? '[empty reply] The model ran out of reply space before writing anything — try a shorter ask, or switch models in Providers.'
+            : '[empty reply] The model sent back no text. Try again, or open Providers and switch models.';
+        log.warn(
+          `empty reply from ${provider.name}/${provider.model} (stop=${result.stopReason}) — showing notice`,
+        );
+        emit({ type: 'error', message: finalText });
+      }
       if (finalText && !streamedChars) emit({ type: 'delta', text: finalText });
       ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
       emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i + 1 });

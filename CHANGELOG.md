@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.1 — 2026-09-30 (No more silent empty replies)
+
+- If the model sends back nothing, Crabby now retries once — and if it's still empty you get a clear red notice ("[empty reply] …") instead of a blank bubble with no explanation.
+- Empty-reply notices are styled as errors in the chat, live and on reload, so failures are visible at a glance.
+- The token-limit case is called out specifically (the model ran out of reply space before writing anything).
+- Blank assistant messages from earlier bad runs are never sent back to the model provider — they used to break the next message on strict providers.
+- The chat UI's bare "(empty reply)" placeholder is gone; the fallback text now says what happened and where to go (Providers).
+
 ## 0.23.0 — 2026-09-30 (Homepage becomes the agent's home)
 
 - Empty state is now a real hero: a large floating crab mascot with a soft glow, a greeting, a live status pill (brain, memory count) and one-tap suggestion chips — two start a chat, two jump to Status/Providers. It disappears the moment the conversation starts.
