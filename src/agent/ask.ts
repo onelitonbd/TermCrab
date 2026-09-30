@@ -30,7 +30,6 @@ export function ask(question: string, options: string[] | undefined, timeoutMs: 
     const timer = setTimeout(() => {
       if (pending.delete(id)) resolve('(no answer in time)');
     }, Math.max(1000, timeoutMs));
-    timer.unref?.();
   });
 }
 

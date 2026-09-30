@@ -36,8 +36,9 @@ export function getPortal(id: string): Portal | null {
 }
 
 export function addPortal(id: string, port: number): Portal {
-  const clean = id.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-  if (!clean) throw new Error('portal id must be alphanumeric');
+  const trimmed = id.trim().toLowerCase();
+  const clean = trimmed.replace(/[^a-z0-9-]/g, '');
+  if (!clean || clean !== trimmed) throw new Error('portal id must be alphanumeric');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('port must be 1-65535');
   const list = load();
   const existing = list.find((p) => p.id === clean);

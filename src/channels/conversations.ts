@@ -86,7 +86,6 @@ export function turn(
       if (i >= 0) waiters.splice(i, 1);
       resolve('(no reply in time)');
     }, timeoutMs);
-    timer.unref?.();
     waiters.push({ key, resolve, timer });
   });
   return { reply, send: sendTo(channel, address, text) };

@@ -65,7 +65,10 @@ export function getTask(id: string): Task | null {
 }
 
 export async function waitForTasks(ids: string[] | undefined, timeoutMs: number): Promise<Task[]> {
-  const wanted = ids && ids.length ? ids : listTasks().filter((t) => t.status === 'running').map((t) => t.id);
+  const all = listTasks();
+  const running = all.filter((t) => t.status === 'running').map((t) => t.id);
+  // Default: everything running; if nothing is running anymore, report the most recent few.
+  const wanted = ids && ids.length ? ids : running.length ? running : all.slice(-3).map((t) => t.id);
   const pending = wanted.filter((id) => tasks.get(id)?.status === 'running');
   if (pending.length) {
     await new Promise<void>((resolve) => {
@@ -76,7 +79,6 @@ export async function waitForTasks(ids: string[] | undefined, timeoutMs: number)
         if (i >= 0) waiters.splice(i, 1);
         resolve();
       }, timeoutMs);
-      timer.unref?.();
     });
   }
   return wanted.map((id) => tasks.get(id)).filter((t): t is Task => Boolean(t));

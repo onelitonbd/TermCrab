@@ -282,6 +282,7 @@ export function extraTools(env: ToolEnv): Tool[] {
     async execute(args) {
       const patch = argStr(args, 'patch');
       const lines = patch.replace(/\r\n/g, '\n').split('\n');
+      if (lines[lines.length - 1] === '') lines.pop();
       const applied: string[] = [];
       let i = 0;
       while (i < lines.length) {
@@ -519,7 +520,7 @@ export function extraTools(env: ToolEnv): Tool[] {
       const action = argStr(args, 'action');
       const current = env.config.dashboard?.widgets ?? { hero: true, chips: true, progress: true, tasks: true };
       if (action === 'read') {
-        return Object.entries(current).map(([k, v]) => `${v ? 'on ' : 'off'} ${k}`).join('\n');
+        return Object.entries(current).map(([k, v]) => `${v ? 'on' : 'off'} ${k}`).join('\n');
       }
       if (action === 'set') {
         const widgets = (args.widgets ?? {}) as Record<string, unknown>;
