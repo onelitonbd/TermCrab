@@ -2269,6 +2269,7 @@
     const src = sessionSource(id);
     return svgWrap(src ? src.d : '<path d="M4 5h16v11H9l-5 4z"/>', src ? src.color : '#8b949e');
   }
+  function sessionIconSpan(id) { return '<span class="sessIc">' + sessionIconHtml(id) + '</span>'; }
   function sessionLabel(id) {
     const src = sessionSource(id);
     if (!src) return String(id || '');
@@ -3813,7 +3814,7 @@
         row.dataset.id = s.id;
         const id = document.createElement('span');
         id.className = 'id';
-        id.innerHTML = sessionIconHtml(s.id);
+        id.innerHTML = sessionIconSpan(s.id);
         const idTxt = document.createElement('span');
         idTxt.textContent = sessionLabel(s.id);
         id.appendChild(idTxt);
@@ -4098,7 +4099,7 @@
       b.dataset.id = sess.id;
       const id = document.createElement('span');
       id.className = 'hid';
-      id.innerHTML = sessionIconHtml(sess.id);
+      id.innerHTML = sessionIconSpan(sess.id);
       const hidTxt = document.createElement('span');
       hidTxt.textContent = sessionLabel(sess.id);
       id.appendChild(hidTxt);

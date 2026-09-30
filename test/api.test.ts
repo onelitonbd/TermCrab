@@ -445,8 +445,8 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('toolIc'), 'tool line icon span');
       assert.ok(html.includes('toolSt'), 'tool status appended as span (no innerHTML wipe)');
       assert.ok(html.includes('health.append(ic, label)'), 'chat header: icon + friendly label');
-      assert.ok(html.includes("id.innerHTML = sessionIconHtml(sess.id)"), 'sidebar history rows');
-      assert.ok(html.includes("id.innerHTML = sessionIconHtml(s.id)"), 'session panel rows');
+      assert.ok(html.includes("id.innerHTML = sessionIconSpan(sess.id)"), 'sidebar history rows');
+      assert.ok(html.includes("id.innerHTML = sessionIconSpan(s.id)"), 'session panel rows');
       assert.ok(html.includes('sessionLabel(s.id)'), 'hidden session picker option text');
       assert.ok(/addToolLine\(c\.name/.test(html), 'history reload re-renders m.toolCalls');
       assert.ok(html.includes('doneIds'), 'done status rebuilt from role:tool entries');
