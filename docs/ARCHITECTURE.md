@@ -36,7 +36,8 @@ src/
 │   ├── anthropic.ts       # Messages API (content blocks, tool_use)
 │   ├── openai.ts          # chat/completions (works for OpenRouter/Groq/Ollama/...)
 │   ├── mock.ts            # offline deterministic provider (tests + demo)
-│   └── index.ts           # resolveProvider()
+│   ├── mcp.ts             # MCP client (stdio JSON-RPC, no external deps)
+│   └── index.ts           # resolveProvider() + resolveProviderChain()
 ├── skills/loader.ts       # SkillStore: discovery, override, prompt index
 ├── mobile/                # ★ the differentiator
 │   ├── bionic.ts          # Android guard: networkInterfaces + TMPDIR fixes
@@ -95,6 +96,7 @@ test/*.test.ts             # node:test suite
 4. File tools resolve symlinks and stay inside `TCRAB_HOME` + cwd; `exec` is optional
 5. Bionic guard + TMPDIR fix run before any other module (import order is load-bearing)
 6. `browser` tool is read-only CDP (no Playwright dep); `code_exec` runs in a `vm` sandbox with no network/fs/require — both disabled by default
+7. MCP servers run as stdio JSON-RPC subprocesses; tools are namespaced `mcp_<server>_<tool>` and listed in the agent's tool catalog
 
 ## Why zero dependencies
 

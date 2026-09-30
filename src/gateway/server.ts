@@ -27,6 +27,7 @@ import { countMemoryFacts } from '../agent/status.js';
 import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
+import { createMcpClient } from '../providers/mcp.js';
 import { SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { extractAuth, checkToken, authHint } from './auth.js';
@@ -279,7 +280,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const agentQueue = new SessionQueue();
-  const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue };
+
+  // ---- MCP servers (stdio JSON-RPC) ----
+  const mcpClients = new Map<string, import('../providers/mcp.js').McpClient>();
+  for (const mcpCfg of config.mcpServers ?? []) {
+    try {
+      const client = createMcpClient(mcpCfg);
+      mcpClients.set(mcpCfg.name, client);
+      log.info(`MCP server "${mcpCfg.name}" started (${mcpCfg.command})`);
+    } catch (err) {
+      log.warn(`MCP server "${mcpCfg.name}" failed to start: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue, mcpClients };
 
   /** Process a queued turn: run it and mark done/error in the queue. */
   async function processQueuedTurn(
@@ -800,7 +814,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/tools') {
-          const defs = buildTools({ config, memory, skills }).map((t) => ({
+          const defs = (await buildTools({ config, memory, skills })).map((t) => ({
             name: t.def.name,
             description: t.def.description,
           }));

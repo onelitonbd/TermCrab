@@ -5,11 +5,13 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { Config } from '../core/config.js';
 import { home } from '../core/paths.js';
+import { log } from '../core/logger.js';
 import { MemoryStore } from './memory.js';
 import { SkillStore } from '../skills/loader.js';
 import { spawn } from 'node:child_process';
 import { extraTools } from './toolbox.js';
 import { ToolDef } from '../providers/types.js';
+import { createMcpClient, mcpToolsToDefs, McpClient, McpTool } from '../providers/mcp.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +30,8 @@ export interface ToolEnv {
   providerLabel?: string;
   /** Spawn a background subagent turn (wired by the agent loop). */
   spawnTask?: (sessionId: string, prompt: string) => import('./tasks.js').Task;
+  /** MCP clients keyed by server name (wired by the agent loop). */
+  mcpClients?: Map<string, McpClient>;
 }
 
 export interface Tool {
@@ -175,7 +179,7 @@ export function htmlToText(html: string): string {
   return text;
 }
 
-export function buildTools(env: ToolEnv): Tool[] {
+export async function buildTools(env: ToolEnv): Promise<Tool[]> {
   const roots = [home(), process.cwd(), ...(env.extraRoots ?? [])];
   const tools: Tool[] = [];
 
@@ -524,6 +528,28 @@ export function buildTools(env: ToolEnv): Tool[] {
         return result;
       },
     });
+  }
+
+  // ---- MCP tools (stdio JSON-RPC servers) ----
+  if (env.mcpClients && env.mcpClients.size > 0) {
+    for (const [serverName, client] of env.mcpClients) {
+      try {
+        const mcpTools = await client.listTools();
+        const defs = mcpToolsToDefs(mcpTools, serverName);
+        for (const def of defs) {
+          tools.push({
+            def,
+            async execute(args: Record<string, unknown>) {
+              return client.callTool(def.name.replace(`mcp_${serverName}_`, ''), args);
+            },
+          });
+        }
+      } catch (err) {
+        // Server may have failed to start — skip its tools
+        const msg = err instanceof Error ? err.message : String(err);
+        log.warn(`MCP server ${serverName} failed to list tools: ${msg}`);
+      }
+    }
   }
 
   tools.push(...extraTools(env));

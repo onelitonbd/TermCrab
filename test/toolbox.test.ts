@@ -29,14 +29,14 @@ before(() => {
   env = { config: defaults(), memory: new MemoryStore(), skills: new SkillStore(), sessions, sessionId: 'tb-main', providerLabel: 'mock:mock-1' };
 });
 
-function get(name: string): Tool {
-  const t = buildTools(env).find((x) => x.def.name === name);
+async function get(name: string): Promise<Tool> {
+  const t = (await buildTools(env)).find((x) => x.def.name === name);
   assert.ok(t, `tool registered: ${name}`);
-  return t;
+  return t!;
 }
 
-function run(name: string, args: Record<string, unknown> = {}): Promise<string> {
-  return get(name).execute(args);
+async function run(name: string, args: Record<string, unknown> = {}): Promise<string> {
+  return (await get(name)).execute(args);
 }
 
 function tmpFile(name: string, content: string): string {
@@ -48,8 +48,8 @@ function tmpFile(name: string, content: string): string {
 
 // ---- registry ----
 
-test('every catalog capability is a registered tool', () => {
-  const names = buildTools(env).map((t) => t.def.name);
+test('every catalog capability is a registered tool', async () => {
+  const names = (await buildTools(env)).map((t) => t.def.name);
   const expected = [
     'edit', 'apply_patch', 'process', 'terminal', 'web_search', 'view_image',
     'screen', 'automations', 'dashboard', 'portal',
@@ -61,7 +61,7 @@ test('every catalog capability is a registered tool', () => {
     'read_file', 'write_file', 'exec', 'web_fetch', 'load_skill', 'remember', 'search_memory', 'get_time', 'list_dir',
   ];
   for (const n of expected) assert.ok(names.includes(n), `registered: ${n}`);
-  for (const t of buildTools(env)) {
+  for (const t of await buildTools(env)) {
     assert.ok(t.def.description.length > 10, `${t.def.name} has a real description`);
   }
 });
@@ -299,31 +299,31 @@ test('sessions_spawn / agents_wait / subagents / sessions_yield / sessions_send'
   };
   const orig = env;
   // temporarily swap: build tools with spawn-capable env
-  const tool = (name: string): Tool => {
-    const t = buildTools(spawnEnv).find((x) => x.def.name === name);
+  const tool = async (name: string): Promise<Tool> => {
+    const t = (await buildTools(spawnEnv)).find((x) => x.def.name === name);
     assert.ok(t, name);
-    return t;
+    return t!;
   };
   void orig;
 
-  const spawned = await tool('sessions_spawn').execute({ prompt: 'collect weather', sessionId: 'tb-sub', label: 'weather' });
+  const spawned = await (await tool('sessions_spawn')).execute({ prompt: 'collect weather', sessionId: 'tb-sub', label: 'weather' });
   assert.match(spawned, /spawned subagent task (\w+)/);
   const taskId = /task (\w+)/.exec(spawned)?.[1]!;
 
-  const status = await tool('subagents').execute({ action: 'status', id: taskId });
+  const status = await (await tool('subagents')).execute({ action: 'status', id: taskId });
   assert.match(status, /running|done/);
 
-  const waited = await tool('agents_wait').execute({ timeoutSec: 10 });
+  const waited = await (await tool('agents_wait')).execute({ timeoutSec: 10 });
   assert.match(waited, /done: collect weather/);
   assert.equal(getTask(taskId)?.status, 'done');
 
-  const yieldOut = await tool('sessions_yield').execute({});
+  const yieldOut = await (await tool('sessions_yield')).execute({});
   assert.match(yieldOut, /nothing pending/);
 
-  const queued = await tool('sessions_send').execute({ sessionId: 'tb-s3', prompt: 'continue the report' });
+  const queued = await (await tool('sessions_send')).execute({ sessionId: 'tb-s3', prompt: 'continue the report' });
   assert.match(queued, /queued task \w+ in session tb-s3/);
   await waitForTasks(undefined, 10_000);
-  const list = await tool('subagents').execute({ action: 'list' });
+  const list = await (await tool('subagents')).execute({ action: 'list' });
   assert.match(list, /done|running/);
   assert.ok(listTasks().length >= 2);
 });
@@ -458,6 +458,6 @@ test('progress_card: set/get/clear for the current session', async () => {
 
 test('exec still honors allowExec=false', async () => {
   const locked: ToolEnv = { ...env, config: { ...env.config, agent: { ...env.config.agent, allowExec: false } } };
-  const execTool = buildTools(locked).find((t) => t.def.name === 'exec')!;
+  const execTool = (await buildTools(locked)).find((t) => t.def.name === 'exec')!;
   await assert.rejects(() => execTool.execute({ command: 'echo hi' }), /disabled/);
 });

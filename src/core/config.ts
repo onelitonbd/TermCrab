@@ -62,6 +62,8 @@ export interface Config {
   };
   /** Fallback providers for failover chain (tried in order when primary fails). */
   fallbackProviders: ProviderCfg[];
+  /** MCP servers (stdio JSON-RPC). Tools are exposed as mcp_<server>_<tool>. */
+  mcpServers: { name: string; command: string; args?: string[]; env?: Record<string, string> }[];
   channels: {
     telegram?: {
       token: string;
@@ -119,6 +121,7 @@ export function defaults(): Config {
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false },
     fallbackProviders: [],
+    mcpServers: [],
     channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },
     heartbeat: { enabled: true, minutes: 60, pauseBelow: 20 },
     localProvider: {

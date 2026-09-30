@@ -27,6 +27,8 @@ export interface AgentCtx {
   fetchImpl?: typeof fetch;
   /** Per-session queue for steer/interrupt/followup/collect modes. */
   queue?: SessionQueue;
+  /** MCP clients keyed by server name. */
+  mcpClients?: Map<string, import('../providers/mcp.js').McpClient>;
 }
 
 export interface RunOpts {
@@ -167,7 +169,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         prompt,
       }),
   };
-  const tools = buildTools(toolEnv);
+  const tools = await buildTools(toolEnv);
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));
   const system = buildSystemPrompt({
     config: ctx.config,
