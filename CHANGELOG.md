@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.26.0 — 2026-09-30 (Every catalog tool is now real)
+
+All 33 "planned" entries from the toolbox catalog are implemented, tested one by one, and now show green "active" badges:
+
+- File & Web: edit (exact replacements with guard rails), apply_patch (unified diffs with context checks), web_search (DuckDuckGo results with titles/URLs/snippets), view_image (real format/dimension/size inspection).
+- Shell & Process: exec can run in the background; process lists/kills/reads those runs; terminal keeps interactive shell sessions (spawn/read/write/close over pipes).
+- UI & Automation: screen reads a device status snapshot or pushes a notification; automations manages scheduled jobs plus one-shot reminders (they auto-disable after firing); dashboard turns homepage widgets (hero, chips, progress, tasks) on/off from the agent; portal exposes a local HTTP server through a token-gated /portal/<id>/ proxy.
+- Messaging & Sessions: conversations_list/send/turn work over a real conversation registry wired into telegram and whatsapp (turn waits for the correlated reply); sessions_list/history/search/send, session settings (info/reset/delete/rename/set_owner) and session_status all run on the live session store.
+- Subagents: sessions_spawn runs prompts in background sessions; subagents reports status; agents_wait blocks for outputs; sessions_yield ends the turn while tasks keep running.
+- Session & Agent Management: ask_user pops a question in the UI and waits for the operator's answer; suggest_task/dismiss_task drive new suggestion cards above the composer (with live updates over SSE).
+- Memory & Context: intent manages standing directives injected into every system prompt; create_goal/get_goal/update_goal track progress and open goals appear in the prompt too.
+- Skills & Configuration: skill_workshop creates/checks/repairs skills; github_identity_status reports gh auth + git identity; secrets stores credentials with metadata-only listings and an audit log.
+- Progress: progress_card maintains a todo/doing/done card shown live above the composer.
+- New operator endpoints: /api/tasks, /api/ask (list + answer), /api/progress, /portal proxy — all token-gated.
+- Suite: 245 tests green, including 26 dedicated toolbox tests covering every new tool.
+
 ## 0.25.1 — 2026-09-30 (Tools pane toggle fix)
 
 - Fixed: switching to Jobs/Chats/Voice/Skills now hides the Tools catalog pane (the new pane was missing from the tab switcher's list, so it stayed on screen underneath).

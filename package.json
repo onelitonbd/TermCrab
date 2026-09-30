@@ -1,6 +1,6 @@
 {
   "name": "termcrab",
-  "version": "0.25.1",
+  "version": "0.26.0",
   "description": "TermCrab - the always-on AI agent that lives in your Termux. Gateway, channels, skills, memory. Zero native dependencies.",
   "type": "module",
   "license": "MIT",
