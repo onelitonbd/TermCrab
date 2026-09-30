@@ -570,6 +570,39 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
+      // Inbound webhooks: external services can POST to /api/hooks/:id
+      const hookMatch = pathname.match(/^\/api\/hooks\/([^/]+)$/);
+      if (hookMatch && req.method === 'POST') {
+        const hookId = hookMatch[1]!;
+        const hook = (config.hooks ?? []).find((h) => h.id === hookId);
+        if (!hook) {
+          json(res, 404, { error: 'hook not found' });
+          return;
+        }
+        // Validate hook token
+        const presented = extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string });
+        if (presented !== hook.token) {
+          json(res, 401, { error: 'unauthorized' });
+          return;
+        }
+        // Read the webhook payload
+        const raw = await readBody(req);
+        const payload = raw ? JSON.parse(raw) : {};
+        const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+        // Enqueue a turn with the webhook payload
+        const turn = agentQueue.enqueue({
+          sessionId: `hook:${hookId}`,
+          userMessage: `[webhook:${hookId}] ${hook.prompt}\n\nPayload: ${payloadStr}`,
+          channel: 'webhook',
+        });
+
+        void processQueuedTurn(agent, agentQueue, turn.id, `hook:${hookId}`);
+
+        json(res, 202, { ok: true, turnId: turn.id, hookId });
+        return;
+      }
+
       // Everything else under /api requires a valid token.
       if (pathname.startsWith('/api/')) {
         const presented = extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string });

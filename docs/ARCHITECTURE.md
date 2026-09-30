@@ -99,6 +99,7 @@ test/*.test.ts             # node:test suite
 6. `browser` tool is read-only CDP (no Playwright dep); `code_exec` runs in a `vm` sandbox with no network/fs/require — both disabled by default
 7. MCP servers run as stdio JSON-RPC subprocesses; tools are namespaced `mcp_<server>_<tool>` and listed in the agent's tool catalog
 8. Phone tools (Termux:API): sms_send, camera, location, clipboard, battery, contacts, wifi_info, notification — zero extra deps, pure subprocess calls
+9. Inbound webhooks: POST /api/hooks/:id with token auth triggers an agent run with the payload as context
 
 ## Why zero dependencies
 

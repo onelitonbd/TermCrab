@@ -64,6 +64,8 @@ export interface Config {
   fallbackProviders: ProviderCfg[];
   /** MCP servers (stdio JSON-RPC). Tools are exposed as mcp_<server>_<tool>. */
   mcpServers: { name: string; command: string; args?: string[]; env?: Record<string, string> }[];
+  /** Inbound webhooks: external services can POST to /api/hooks/:id to trigger agent runs. */
+  hooks: { id: string; token: string; prompt: string }[];
   channels: {
     telegram?: {
       token: string;
@@ -122,6 +124,7 @@ export function defaults(): Config {
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false },
     fallbackProviders: [],
     mcpServers: [],
+    hooks: [],
     channels: { whatsapp: { enabled: false, allowedJids: [] }, web: { enabled: true } },
     heartbeat: { enabled: true, minutes: 60, pauseBelow: 20 },
     localProvider: {
