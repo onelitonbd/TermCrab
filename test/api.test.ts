@@ -454,6 +454,25 @@ test('web control parity API', async (t) => {
       assert.ok(!html.includes("textContent = id.length > 26 ? id.slice(0, 25)"), 'old raw-id chat label gone');
     });
 
+    await t.test('v0.29: telegram can pick provider and model from the chat', async () => {
+      const src = fs.readFileSync(path.join(process.cwd(), 'src/gateway/server.ts'), 'utf8');
+      assert.ok(/providers\?\|models\?/.test(src), 'command pattern wired before the AI sees the text');
+      assert.ok(src.includes('providerMenu(config)'), 'provider menu command');
+      assert.ok(src.includes('modelSelect(config'), 'model select command');
+      assert.ok(src.includes('await liveCatalog(config)'), 'catalog fetched for /model');
+      const pk = fs.readFileSync(path.join(process.cwd(), 'src/channels/picker.ts'), 'utf8');
+      for (const pin of [
+        'export function providerMenu',
+        'export function providerSelect',
+        'export function modelMenu',
+        'export function modelSelect',
+        'export async function liveCatalog',
+        'saveConfig(cfg)',
+      ]) {
+        assert.ok(pk.includes(pin), 'picker pin ' + pin);
+      }
+    });
+
     await t.test('listen (dictation) always answers with ok or a reason', async () => {
       const l = await req('/api/listen', 'POST');
       assert.equal(l.status, 200, 'must never be an HTTP error');

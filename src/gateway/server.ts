@@ -40,6 +40,15 @@ import { speak } from '../mobile/tts.js';
 import { WakeService } from './wake-service.js';
 import { normalizeProvider, seedWorkspace } from '../onboard.js';
 import { DEFAULT_MODEL_HINTS, generateToken } from '../core/config.js';
+import {
+  activeBaseUrl,
+  activeLabel,
+  fetchProviderModels,
+  maskApiKey,
+  providerOutboundKey,
+  providerView,
+} from './provider-helpers.js';
+import { liveCatalog, modelMenu, modelSelect, providerMenu, providerSelect } from '../channels/picker.js';
 import { listenOnce } from '../mobile/stt.js';
 import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
@@ -108,50 +117,6 @@ function redactConfig(cfg: Config): unknown {
   return walk(cfg);
 }
 
-/** Short, safe rendering of a stored API key (never the whole secret). */
-function maskApiKey(k: string): string {
-  if (k.length >= 8) return `${k.slice(0, 3)}…${k.slice(-4)}`;
-  return `…${k.slice(-2)}`;
-}
-
-function providerView(p: ProviderEntry) {
-  return {
-    id: p.id,
-    name: p.name,
-    baseUrl: p.baseUrl,
-    created: p.created,
-    keyCount: p.keys.length,
-    modelCount: (p.models || []).length,
-  };
-}
-
-/** Resolved base url of the provider currently wired into the gateway. */
-function activeBaseUrl(cfg: Config["provider"]): string {
-  if (cfg.type === "mock") return "";
-  if (cfg.baseUrl) return cfg.baseUrl.replace(/\/+$/, "");
-  if (cfg.type === "anthropic") return "https://api.anthropic.com";
-  return "https://api.openai.com/v1";
-}
-
-/** Human name for the current provider (known hosts get their brand name). */
-function activeLabel(cfg: Config["provider"], baseUrl: string): string {
-  if (cfg.type === "mock") return "Offline demo";
-  let host = "";
-  try { host = new URL(baseUrl).host; } catch { /* ignore */ }
-  const known: Record<string, string> = {
-    "api.openai.com": "OpenAI",
-    "openrouter.ai": "OpenRouter",
-    "api.groq.com": "Groq",
-    "api.deepseek.com": "DeepSeek",
-    "api.anthropic.com": "Anthropic",
-    "127.0.0.1:11434": "Ollama (local)",
-    "localhost:11434": "Ollama (local)",
-  };
-  if (host && known[host]) return known[host]!;
-  if (host) return host;
-  return cfg.type;
-}
-
 /**
  * The providers list, always in sync with the LIVE config: saved rows are
  * flagged when they are the endpoint in use, plus an `active` block that
@@ -187,49 +152,6 @@ function providersListView(cfg: Config) {
       matchedId: matched.length ? cfg.providers[matched[0]!]!.id : null,
     },
   };
-}
-
-/** Which key to talk to a provider with: the one in use, else the first saved, else a CLI key. */
-function providerOutboundKey(p: ProviderEntry, cfg: Config): string {
-  const activeKey = cfg.provider.apiKey || "";
-  if (activeKey && p.keys.some((k) => k.key === activeKey)) return activeKey;
-  if (p.keys[0]) return p.keys[0].key;
-  if (activeKey && activeBaseUrl(cfg.provider) === p.baseUrl) return activeKey;
-  return "";
-}
-
-/** Ask an OpenAI-compatible endpoint for its model catalog. */
-async function fetchProviderModels(p: ProviderEntry, key: string): Promise<string[]> {
-  const url = p.baseUrl.replace(/\/+$/, "") + "/models";
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: key ? { authorization: "Bearer " + key } : {},
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch (e) {
-    const why = e instanceof Error ? e.message : String(e);
-    throw new Error("could not reach " + p.baseUrl + " (" + why.slice(0, 120) + ")");
-  }
-  if (!res.ok) throw new Error("the provider answered HTTP " + res.status);
-  let data: unknown;
-  try {
-    data = await res.json();
-  } catch {
-    throw new Error("the provider sent an unreadable answer");
-  }
-  const d = data as { data?: unknown; models?: unknown };
-  const arr = Array.isArray(d.data) ? d.data : Array.isArray(d.models) ? d.models : null;
-  if (!arr) throw new Error("the provider sent an unexpected answer");
-  const ids: string[] = [];
-  for (const m of arr) {
-    const id = typeof m === "string" ? m : m && typeof m === "object" && typeof (m as { id?: unknown }).id === "string"
-      ? (m as { id: string }).id
-      : "";
-    if (id && !ids.includes(id)) ids.push(id);
-  }
-  if (!ids.length) throw new Error("no models came back from the provider");
-  return ids.sort();
 }
 
 function keyView(k: { id: string; name: string; key: string; created: number }, activeKey: string) {
@@ -473,6 +395,16 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     if (channel === 'telegram' && text === '/heartbeat') {
       const res = await runHeartbeatOnce(agent);
       return res.ran ? `🫀 Heartbeat done (${res.reason}):\n\n${res.output}` : `🫀 Heartbeat skipped: ${res.reason}`;
+    }
+
+    // ---- v0.29.0: pick provider/model right from the chat ----
+    const pickCmd = text.trim().match(/^\/(providers?|models?)(?:\s+([\s\S]+))?$/i);
+    if (pickCmd) {
+      const kind = pickCmd[1]!.toLowerCase().startsWith('prov') ? 'provider' : 'model';
+      const arg = (pickCmd[2] || '').trim();
+      if (kind === 'provider') return arg ? providerSelect(config, arg) : providerMenu(config);
+      const fetched = await liveCatalog(config);
+      return arg ? modelSelect(config, arg, fetched) : modelMenu(config, fetched);
     }
 
     const routed = parseAgentPrefix(text, listAgents());
