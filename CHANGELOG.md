@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.25.1 — 2026-09-30 (Tools pane toggle fix)
+
+- Fixed: switching to Jobs/Chats/Voice/Skills now hides the Tools catalog pane (the new pane was missing from the tab switcher's list, so it stayed on screen underneath).
+- Regression pin added so this exact slip fails the suite next time.
+
 ## 0.25.0 — 2026-09-30 (Tools catalog tab)
 
 - The Tools page now opens on a new first tab named "Tools": a full catalog of the agent's toolbox, grouped exactly as requested — File & Edit, Shell & Process, Web, UI & Automation, Messaging & Sessions, Session & Agent Management, Memory & Context, Skills & Configuration, Progress, Utilities.

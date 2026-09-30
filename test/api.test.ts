@@ -358,6 +358,7 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('id="tlPane-tools"') && html.includes('id="toolCat"'), 'catalog pane');
       assert.ok(html.includes('id="chipTTools"'), 'live tools chip');
       assert.ok(html.includes('TOOL_CATALOG') && html.includes('refreshToolCatalog'), 'catalog logic');
+      assert.ok(html.includes("['tools', 'jobs', 'chats', 'voice', 'skills']"), 'tools pane toggles with its siblings');
       for (const t of ['skill_workshop', 'progress_card', 'sessions_spawn', 'ask_user', 'conversations_send', 'create_goal', 'apply_patch', 'web_search']) {
         assert.ok(html.includes(t), 'catalog lists ' + t);
       }

@@ -2530,7 +2530,7 @@
   // ---- Tools tabs (page redesign) ----
   function showToolTab(name) {
     document.querySelectorAll('[data-ttab]').forEach((b) => b.classList.toggle('on', b.dataset.ttab === name));
-    ['jobs', 'chats', 'voice', 'skills'].forEach((t) => { const p = $('tlPane-' + t); if (p) p.hidden = t !== name; });
+    ['tools', 'jobs', 'chats', 'voice', 'skills'].forEach((t) => { const p = $('tlPane-' + t); if (p) p.hidden = t !== name; });
     if (name === 'tools') refreshToolCatalog();
     else if (name === 'jobs') refreshCrons();
     else if (name === 'chats') refreshSessPanel();
