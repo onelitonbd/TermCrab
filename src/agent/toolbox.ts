@@ -6,6 +6,7 @@ import type { Tool, ToolEnv } from './tools.js';
 import { resolveInRoots } from './tools.js';
 import { home, userSkillsDir, stateDir } from '../core/paths.js';
 import { notify } from '../mobile/notify.js';
+import { canvasUpdate, canvasRemove, canvasList, canvasGet } from '../gateway/canvas.js';
 import {
   loadCrons,
   addCron,
@@ -1403,6 +1404,52 @@ export function extraTools(env: ToolEnv): Tool[] {
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(`notification failed: ${msg} (is termux-api installed?)`);
       }
+    },
+  });
+
+  // ---- canvas tool (agent-driven UI widgets) ----
+  tools.push({
+    def: {
+      name: 'canvas',
+      description: 'Push a live HTML widget to the Control UI. Actions: update (create/update), remove, list, get. Widgets are rendered in the browser panel.',
+      schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['update', 'remove', 'list', 'get'] },
+          id: { type: 'string', description: 'update/remove/get: widget id' },
+          html: { type: 'string', description: 'update: HTML content' },
+          title: { type: 'string', description: 'update: widget title' },
+        },
+        required: ['action'],
+      },
+    },
+    async execute(args) {
+      const action = argStr(args, 'action');
+      if (action === 'update') {
+        const id = argStr(args, 'id');
+        const html = argStr(args, 'html');
+        const title = typeof args.title === 'string' ? args.title : undefined;
+        const widget = canvasUpdate(id, html, title);
+        return `canvas widget "${widget.id}" updated (${html.length} chars)`;
+      }
+      if (action === 'remove') {
+        const id = argStr(args, 'id');
+        const removed = canvasRemove(id);
+        if (!removed) throw new Error(`canvas widget not found: ${id}`);
+        return `canvas widget "${id}" removed`;
+      }
+      if (action === 'list') {
+        const list = canvasList();
+        if (!list.length) return 'no canvas widgets';
+        return list.map((w) => `${w.id} · ${w.title || '(untitled)'} · ${w.html.length} chars`).join('\n');
+      }
+      if (action === 'get') {
+        const id = argStr(args, 'id');
+        const widget = canvasGet(id);
+        if (!widget) throw new Error(`canvas widget not found: ${id}`);
+        return JSON.stringify(widget, null, 2);
+      }
+      throw new Error('action must be update/remove/list/get');
     },
   });
 

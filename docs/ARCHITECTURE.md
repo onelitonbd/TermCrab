@@ -100,6 +100,7 @@ test/*.test.ts             # node:test suite
 7. MCP servers run as stdio JSON-RPC subprocesses; tools are namespaced `mcp_<server>_<tool>` and listed in the agent's tool catalog
 8. Phone tools (Termux:API): sms_send, camera, location, clipboard, battery, contacts, wifi_info, notification — zero extra deps, pure subprocess calls
 9. Inbound webhooks: POST /api/hooks/:id with token auth triggers an agent run with the payload as context
+10. Canvas/A2UI: agent pushes live HTML widgets to the Control UI via the `canvas` tool; widgets broadcast over SSE and render in the browser panel
 
 ## Why zero dependencies
 
