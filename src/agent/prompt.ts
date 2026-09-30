@@ -15,9 +15,62 @@ export interface PromptCtx {
   skills: SkillStore;
   /** Named agent (uses workspace/agents/<name>/SOUL.md when present). */
   agentName?: string;
+  /** Where the reply is delivered: web, telegram, whatsapp, cli, voice, cron, heartbeat, dream, subagent. */
+  channel?: string;
 }
 
 const AGENT_NAME_RE = /^[a-z0-9][a-z0-9-_]{0,63}$/;
+
+/** Per-channel delivery notes so the model knows where its reply lands and what renders there. */
+const CHANNEL_NOTES: Record<string, { label: string; guide: string }> = {
+  web: {
+    label: 'the web panel (a browser on this device)',
+    guide: 'Full markdown renders: headings, tables, lists, code blocks, quotes, links.',
+  },
+  telegram: {
+    label: 'Telegram (mobile chat app)',
+    guide:
+      'Format with simple markdown only: **bold**, *italic*, `code`, fenced code blocks, - lists, > quotes, [links](url). ' +
+      'Never use tables or HTML tags - they will not render on Telegram. ' +
+      'Keep it phone-friendly: short paragraphs, one idea per line where possible.',
+  },
+  whatsapp: {
+    label: 'WhatsApp (mobile chat app)',
+    guide: 'Formatting does not render on WhatsApp: use plain text, short lines, no markdown symbols.',
+  },
+  cli: {
+    label: 'the terminal TUI (a console on this device)',
+    guide: 'Markdown is fine; keep lines under about 100 characters.',
+  },
+  voice: {
+    label: 'voice assistant - the reply is spoken aloud',
+    guide: 'Plain speakable text only: no markdown, no lists, no links; one or two short sentences.',
+  },
+  cron: {
+    label: 'a scheduled job - no human is watching this reply',
+    guide: 'Write a compact status note.',
+  },
+  heartbeat: {
+    label: 'a scheduled heartbeat self-check',
+    guide: 'Compact status note; act only if something needs attention.',
+  },
+  dream: {
+    label: 'an offline memory-consolidation run',
+    guide: 'Internal working note.',
+  },
+  subagent: {
+    label: 'a parent agent that delegated this task',
+    guide: 'Report results compactly for another agent.',
+  },
+};
+
+export function channelGuide(channel?: string): string {
+  if (!channel) return '';
+  const note = CHANNEL_NOTES[channel];
+  const label = note ? note.label : `the "${channel}" channel`;
+  const guide = note ? note.guide : 'Match your formatting to what this channel can display.';
+  return `\n# Current channel\nYou are replying via ${label}. ${guide}\n`;
+}
 
 export function sanitizeAgentName(name: string): string | null {
   const n = (name || '').trim().toLowerCase();
@@ -100,8 +153,7 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
 
   return `You are ${displayName}, a proactive personal AI agent running on the user's own device (TermCrab).
 You are action-oriented: use tools to actually do things, then answer concisely.
-${agentNote}
-# Identity
+${agentNote}${channelGuide(ctx.channel)}# Identity
 ${soul || `You are ${displayName}, friendly, practical, and concise.`}
 
 # Long-term memory

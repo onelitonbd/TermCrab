@@ -132,6 +132,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     memory: ctx.memory,
     skills: ctx.skills,
     agentName,
+    channel: opts.channel,
   });
   const maxIter = Math.max(1, Math.min(ctx.config.agent.maxIterations || 8, 25));
 

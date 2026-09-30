@@ -186,3 +186,33 @@ test('toProviderMessages drops blank assistant turns from old sessions', () => {
   assert.equal(msgs.filter((m) => m.role === 'assistant').length, 1, 'blank turns skipped');
   assert.equal(msgs[msgs.length - 1]!.content, 'done');
 });
+
+// ---- v0.28.0: the model must know which channel it is replying on ----
+
+test('runTurn tells the model which channel it is replying on', async () => {
+  const { ctx } = makeCtx();
+  const captured: string[] = [];
+  ctx.provider = {
+    name: 'stub',
+    model: 'stub-1',
+    chat: async (req) => {
+      captured.push(req.system);
+      return { text: 'ok', toolCalls: [], stopReason: 'end' as const };
+    },
+  };
+
+  await runTurn(ctx, { sessionId: 't-ch-tg', userMessage: 'hi', channel: 'telegram' });
+  assert.match(captured[0]!, /# Current channel/);
+  assert.match(captured[0]!, /replying via Telegram \(mobile chat app\)/);
+  assert.match(captured[0]!, /Never use tables/);
+
+  await runTurn(ctx, { sessionId: 't-ch-web', userMessage: 'hi', channel: 'web' });
+  assert.match(captured[1]!, /replying via the web panel/);
+  assert.ok(!captured[1]!.includes('Never use tables'), 'web keeps full markdown');
+
+  await runTurn(ctx, { sessionId: 't-ch-cli', userMessage: 'hi', channel: 'cli' });
+  assert.match(captured[2]!, /replying via the terminal TUI/);
+
+  await runTurn(ctx, { sessionId: 't-ch-none', userMessage: 'hi' });
+  assert.ok(!captured[3]!.includes('# Current channel'), 'no channel -> no section');
+});

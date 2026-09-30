@@ -1,6 +1,9 @@
 import { TelegramApi } from './api.js';
 import { log } from '../core/logger.js';
 import { outboxPush, outboxTake, OutboxItem } from '../mobile/outbox.js';
+import { escapeHtml, mdToTelegramHtml } from './markdown.js';
+
+export { escapeHtml };
 
 export interface TelegramCfg {
   token: string;
@@ -13,11 +16,6 @@ export interface TelegramDeps {
   onMessage: (userId: number, chatId: number, text: string, displayName: string) => Promise<string>;
   getOffset: () => number;
   setOffset: (n: number) => void;
-}
-
-/** Escape for Telegram HTML parse mode. */
-export function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 export function chunkText(text: string, size = 3900): string[] {
@@ -57,10 +55,18 @@ export class TelegramChannel {
     await this.loopPromise;
   }
 
-  /** Deliver with chunking + HTML escaping; throws on failure (used by flush). */
+  /** Deliver with chunking + markdown rendering; throws on failure (used by flush).
+   *  Chunks are cut from the raw markdown first, then translated per chunk.
+   *  If Telegram rejects the translated HTML, the chunk is retried as plain
+   *  escaped text so a reply can never be lost to a formatting edge case. */
   private async deliver(chatId: number, text: string): Promise<void> {
-    for (const chunk of chunkText(text)) {
-      await this.api.sendMessage(chatId, escapeHtml(chunk));
+    for (const chunk of chunkText(text, 3400)) {
+      try {
+        await this.api.sendMessage(chatId, mdToTelegramHtml(chunk));
+      } catch (err) {
+        log.warn('telegram html send failed, retrying as plain text:', err instanceof Error ? err.message : err);
+        await this.api.sendMessage(chatId, escapeHtml(chunk));
+      }
       this.backoffMs = 1000;
     }
   }
