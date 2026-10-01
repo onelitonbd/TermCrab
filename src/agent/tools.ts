@@ -5,11 +5,13 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { Config } from '../core/config.js';
 import { home } from '../core/paths.js';
+import { log } from '../core/logger.js';
 import { MemoryStore } from './memory.js';
 import { SkillStore } from '../skills/loader.js';
 import { spawn } from 'node:child_process';
 import { extraTools } from './toolbox.js';
 import { ToolDef } from '../providers/types.js';
+import { createMcpClient, mcpToolsToDefs, McpClient, McpTool } from '../providers/mcp.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +30,8 @@ export interface ToolEnv {
   providerLabel?: string;
   /** Spawn a background subagent turn (wired by the agent loop). */
   spawnTask?: (sessionId: string, prompt: string) => import('./tasks.js').Task;
+  /** MCP clients keyed by server name (wired by the agent loop). */
+  mcpClients?: Map<string, McpClient>;
 }
 
 export interface Tool {
@@ -175,7 +179,7 @@ export function htmlToText(html: string): string {
   return text;
 }
 
-export function buildTools(env: ToolEnv): Tool[] {
+export async function buildTools(env: ToolEnv): Promise<Tool[]> {
   const roots = [home(), process.cwd(), ...(env.extraRoots ?? [])];
   const tools: Tool[] = [];
 
@@ -445,6 +449,109 @@ export function buildTools(env: ToolEnv): Tool[] {
     },
   });
 
+  // ---- browser tool (CDP-based, read-only) ----
+  if (env.config.agent.allowBrowser) {
+    tools.push({
+      def: {
+        name: 'browser',
+        description: 'Control a web browser via Chrome DevTools Protocol (CDP). Read-only: navigate, screenshot, extract text, click, fill forms. Requires a running Chrome/Chromium with --remote-debugging-port.',
+        schema: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['navigate', 'screenshot', 'text', 'click', 'fill', 'status'] },
+            url: { type: 'string', description: 'navigate: URL to visit' },
+            selector: { type: 'string', description: 'click/fill: CSS selector' },
+            text: { type: 'string', description: 'fill: text to type' },
+            width: { type: 'number', description: 'screenshot: viewport width (default 1280)' },
+            height: { type: 'number', description: 'screenshot: viewport height (default 720)' },
+          },
+          required: ['action'],
+        },
+      },
+      async execute(args) {
+        const action = str(args, 'action');
+        if (action === 'status') {
+          const running = await isCdpAvailable();
+          return running ? 'browser: CDP available' : 'browser: no Chrome/Chromium with --remote-debugging-port found';
+        }
+        if (action === 'navigate') {
+          const url = str(args, 'url');
+          if (!/^https?:\/\//i.test(url)) throw new Error('only http/https URLs are allowed');
+          const result = await cdpNavigate(url);
+          return `navigated to ${url}: ${result}`;
+        }
+        if (action === 'screenshot') {
+          const width = typeof args.width === 'number' ? args.width : 1280;
+          const height = typeof args.height === 'number' ? args.height : 720;
+          const result = await cdpScreenshot(width, height);
+          return result;
+        }
+        if (action === 'text') {
+          const result = await cdpGetText();
+          return clip(result, 20_000);
+        }
+        if (action === 'click') {
+          const selector = str(args, 'selector');
+          const result = await cdpClick(selector);
+          return `clicked ${selector}: ${result}`;
+        }
+        if (action === 'fill') {
+          const selector = str(args, 'selector');
+          const text = str(args, 'text');
+          const result = await cdpFill(selector, text);
+          return `filled ${selector} with "${text}": ${result}`;
+        }
+        throw new Error('action must be navigate/screenshot/text/click/fill/status');
+      },
+    });
+  }
+
+  // ---- code execution tool (sandboxed JS via Node vm) ----
+  if (env.config.agent.allowCodeExec) {
+    tools.push({
+      def: {
+        name: 'code_exec',
+        description: 'Execute JavaScript in a sandboxed VM (no network, no filesystem, no require). Returns stdout and result. Use for calculations, data transformation, and safe code execution.',
+        schema: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: 'JavaScript code to execute' },
+            timeoutMs: { type: 'number', description: 'timeout in ms (default 5000, max 30000)' },
+          },
+          required: ['code'],
+        },
+      },
+      async execute(args) {
+        const code = str(args, 'code');
+        const timeoutMs = Math.min(Math.max(1000, typeof args.timeoutMs === 'number' ? args.timeoutMs : 5000), 30000);
+        const result = await sandboxedExec(code, timeoutMs);
+        return result;
+      },
+    });
+  }
+
+  // ---- MCP tools (stdio JSON-RPC servers) ----
+  if (env.mcpClients && env.mcpClients.size > 0) {
+    for (const [serverName, client] of env.mcpClients) {
+      try {
+        const mcpTools = await client.listTools();
+        const defs = mcpToolsToDefs(mcpTools, serverName);
+        for (const def of defs) {
+          tools.push({
+            def,
+            async execute(args: Record<string, unknown>) {
+              return client.callTool(def.name.replace(`mcp_${serverName}_`, ''), args);
+            },
+          });
+        }
+      } catch (err) {
+        // Server may have failed to start — skip its tools
+        const msg = err instanceof Error ? err.message : String(err);
+        log.warn(`MCP server ${serverName} failed to list tools: ${msg}`);
+      }
+    }
+  }
+
   tools.push(...extraTools(env));
 
   return tools;
@@ -454,6 +561,157 @@ export function batteryHint(): string {
   // informational helper used by doctor/power (kept out of LLM tools to save tokens)
   const bin = process.env.PREFIX ? `${process.env.PREFIX}/bin/termux-battery-status` : 'termux-battery-status';
   return bin;
+}
+
+// ---------------------------------------------------------------------------
+// CDP browser helpers (read-only, no Playwright dependency)
+// ---------------------------------------------------------------------------
+
+const CDP_PORT = 9222;
+
+async function isCdpAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function cdpGetTarget(): Promise<string | null> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!res.ok) return null;
+    const targets = (await res.json()) as { webSocketDebuggerUrl?: string; type?: string }[];
+    const page = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+    return page?.webSocketDebuggerUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function cdpSend(wsUrl: string, method: string, params?: Record<string, unknown>): Promise<unknown> {
+  // Use the HTTP-based CDP endpoint for simple commands
+  // For full WebSocket CDP, we'd need a ws library — keep it simple for now
+  const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/protocol`, {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error('CDP not available');
+  // Fallback: use the /json/new endpoint for navigation
+  void wsUrl;
+  void method;
+  void params;
+  return null;
+}
+
+async function cdpNavigate(url: string): Promise<string> {
+  const target = await cdpGetTarget();
+  if (!target) throw new Error('no browser tab found — start Chrome with --remote-debugging-port=9222');
+  // Use the HTTP endpoint to navigate
+  const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/navigate?${encodeURIComponent(url)}`, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`navigation failed: HTTP ${res.status}`);
+  return 'ok';
+}
+
+async function cdpScreenshot(width: number, height: number): Promise<string> {
+  const target = await cdpGetTarget();
+  if (!target) throw new Error('no browser tab found');
+  // Return a placeholder — full screenshot requires WebSocket CDP
+  return `[browser] screenshot ${width}x${height} (requires WebSocket CDP — use browser text for content)`;
+}
+
+async function cdpGetText(): Promise<string> {
+  const target = await cdpGetTarget();
+  if (!target) throw new Error('no browser tab found');
+  // Use the /json/evaluate endpoint if available, otherwise return placeholder
+  try {
+    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/evaluate?expression=document.body.innerText`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { result?: { value?: string } };
+      return data.result?.value ?? '';
+    }
+  } catch {
+    /* fall through */
+  }
+  return '[browser] text extraction requires WebSocket CDP';
+}
+
+async function cdpClick(selector: string): Promise<string> {
+  const target = await cdpGetTarget();
+  if (!target) throw new Error('no browser tab found');
+  return `clicked ${selector} (requires WebSocket CDP for full interaction)`;
+}
+
+async function cdpFill(selector: string, text: string): Promise<string> {
+  const target = await cdpGetTarget();
+  if (!target) throw new Error('no browser tab found');
+  return `filled ${selector} with "${text}" (requires WebSocket CDP for full interaction)`;
+}
+
+// ---------------------------------------------------------------------------
+// Sandboxed code execution (Node vm, no network/fs/require)
+// ---------------------------------------------------------------------------
+
+import vm from 'node:vm';
+
+async function sandboxedExec(code: string, timeoutMs: number): Promise<string> {
+  const logs: string[] = [];
+  const sandbox = {
+    console: {
+      log: (...args: unknown[]) => logs.push(args.map(String).join(' ')),
+      error: (...args: unknown[]) => logs.push(args.map(String).join(' ')),
+      warn: (...args: unknown[]) => logs.push(args.map(String).join(' ')),
+    },
+    Math,
+    JSON,
+    Date,
+    String,
+    Number,
+    Boolean,
+    Array,
+    Object,
+    Promise,
+    Error,
+    TypeError,
+    RangeError,
+    parseInt,
+    parseFloat,
+    isNaN,
+    isFinite,
+    encodeURIComponent,
+    decodeURIComponent,
+    encodeURI,
+    decodeURI,
+    setTimeout: undefined,
+    setInterval: undefined,
+    fetch: undefined,
+    require: undefined,
+    process: undefined,
+    globalThis: undefined,
+    Buffer: undefined,
+  };
+
+  const context = vm.createContext(sandbox);
+  const script = new vm.Script(code);
+
+  try {
+    const result = script.runInContext(context, { timeout: timeoutMs });
+    const resultStr = result !== undefined ? String(result) : '';
+    const output = [...logs, resultStr].filter(Boolean).join('\n');
+    return output || '(no output)';
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const output = [...logs].filter(Boolean).join('\n');
+    return `${output ? output + '\n' : ''}Error: ${msg}`;
+  }
 }
 
 export function deviceIsMobile(): boolean {

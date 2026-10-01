@@ -60,7 +60,7 @@ test('memory integration: remember tool writes MEMORY.md', async () => {
 test('exec tool blocked when allowExec=false', async () => {
   const { ctx } = makeCtx();
   ctx.config.agent.allowExec = false;
-  const tools = buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
+  const tools = await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
   const exec = tools.find((t) => t.def.name === 'exec')!;
   await assert.rejects(() => exec.execute({ command: 'echo hi' }), /disabled/);
 });
@@ -103,7 +103,7 @@ test('resolveShell returns an existing executable', () => {
 
 test('skills loaded into context via load_skill', async () => {
   const { ctx } = makeCtx();
-  const tools = buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
+  const tools = await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
   const load = tools.find((t) => t.def.name === 'load_skill')!;
   const out = await load.execute({ name: 'solo' });
   assert.match(out, /Solo body/);
@@ -112,7 +112,7 @@ test('skills loaded into context via load_skill', async () => {
 
 test('web_fetch rejects non-http URLs', async () => {
   const { ctx } = makeCtx();
-  const tools = buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
+  const tools = await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
   const wf = tools.find((t) => t.def.name === 'web_fetch')!;
   await assert.rejects(() => wf.execute({ url: 'file:///etc/passwd' }), /http/);
 });

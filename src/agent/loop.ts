@@ -1,12 +1,13 @@
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
-import { providerSummary, resolveProvider } from '../providers/index.js';
+import { providerSummary, resolveProvider, resolveProviderChain } from '../providers/index.js';
 import { ChatResult, Provider, ProviderMessage } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
-import { Entry, newRunId, SessionStore } from './sessions.js';
+import { Entry, newRunId, SessionQueue, SessionStore } from './sessions.js';
 import { buildTools, Tool, ToolEnv } from './tools.js';
 import { spawnTask as spawnBgTask } from './tasks.js';
+import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing.js';
 
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
@@ -14,6 +15,7 @@ export type AgentEvent =
   | { type: 'tool:start'; name: string; args: Record<string, unknown> }
   | { type: 'tool:end'; name: string; ok: boolean; preview: string }
   | { type: 'run:end'; runId: string; text: string; sessionId: string; iterations: number }
+  | { type: 'approval'; approval: import('../core/approvals.js').Approval }
   | { type: 'error'; message: string };
 
 export interface AgentCtx {
@@ -25,6 +27,10 @@ export interface AgentCtx {
   /** Optional local-model provider (dreaming/lightweight tiers). */
   localProvider?: Provider;
   fetchImpl?: typeof fetch;
+  /** Per-session queue for steer/interrupt/followup/collect modes. */
+  queue?: SessionQueue;
+  /** MCP clients keyed by server name. */
+  mcpClients?: Map<string, import('../providers/mcp.js').McpClient>;
 }
 
 export interface RunOpts {
@@ -36,6 +42,10 @@ export interface RunOpts {
   /** Model tier: 'local' uses ctx.localProvider when configured (falls back to cloud). */
   tier?: 'cloud' | 'local';
   onEvent?: (ev: AgentEvent) => void;
+  /** Abort signal for interrupt support. */
+  signal?: AbortSignal;
+  /** Skip the queue (used by subagents and internal calls). */
+  skipQueue?: boolean;
 }
 
 const PROVIDER_TIMEOUT_MS = 180_000;
@@ -99,6 +109,25 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   const agentName = opts.agent ? sanitizeAgentName(opts.agent) ?? undefined : undefined;
   const sessionId = agentName ? `${agentName}:${opts.sessionId}` : opts.sessionId;
 
+  // Queue handling: if a queue is present and we're not skipping it,
+  // handle the turn according to queueMode.
+  if (ctx.queue && !opts.skipQueue) {
+    const mode = ctx.config.agent.queueMode || 'followup';
+    const running = ctx.queue.getRunning(sessionId);
+
+    if (running && mode === 'interrupt') {
+      // Abort the current turn and run the new one
+      ctx.queue.interrupt(sessionId);
+      log.info(`session ${sessionId}: interrupted turn ${running.id}`);
+    } else if (running && mode === 'steer') {
+      // Abort current turn, but keep its partial output in context
+      ctx.queue.interrupt(sessionId);
+      log.info(`session ${sessionId}: steered turn ${running.id}`);
+    }
+    // For 'followup' and 'collect', we just proceed — the queue
+    // ensures FIFO ordering via the gateway's enqueue mechanism.
+  }
+
   ctx.sessions.append(sessionId, {
     role: 'user',
     content: userMessage,
@@ -107,10 +136,31 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   });
   emit({ type: 'run:start', runId, sessionId });
 
-  const provider =
-    opts.tier === 'local' && ctx.localProvider
-      ? ctx.localProvider
-      : (ctx.provider ?? resolveProvider(ctx.config.provider, ctx.fetchImpl));
+  // Tracing: start a run span
+  const providerName = providerLabel(ctx.config);
+  startRun(runId, sessionId, providerName, ctx.config.provider.model);
+
+  // Compact session if it grew past the threshold (keeps context lean on mobile)
+  const threshold = ctx.config.agent.compactThreshold || 60;
+  const sessionSize = ctx.sessions.list().find((s) => s.id === sessionId)?.messages ?? 0;
+  if (sessionSize > threshold + 10) {
+    const digest = ctx.sessions.compact(sessionId, threshold);
+    if (digest) {
+      log.info(`session ${sessionId} compacted (${sessionSize} -> ${threshold} entries)`);
+    }
+  }
+
+  // Resolve provider: local tier > failover chain > single provider
+  let provider: Provider;
+  if (opts.tier === 'local' && ctx.localProvider) {
+    provider = ctx.localProvider;
+  } else if (ctx.provider) {
+    provider = ctx.provider;
+  } else if (ctx.config.agent.failover && ctx.config.fallbackProviders.length > 0) {
+    provider = resolveProviderChain(ctx.config.provider, ctx.config.fallbackProviders, ctx.fetchImpl);
+  } else {
+    provider = resolveProvider(ctx.config.provider, ctx.fetchImpl);
+  }
   const toolEnv: ToolEnv = {
     config: ctx.config,
     memory: ctx.memory,
@@ -125,7 +175,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         prompt,
       }),
   };
-  const tools = buildTools(toolEnv);
+  const tools = await buildTools(toolEnv);
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));
   const system = buildSystemPrompt({
     config: ctx.config,
@@ -138,8 +188,20 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
 
   let finalText = '';
   let emptyRetries = 0;
+  const abortCtrl = new AbortController();
+  // Link external abort signal (from queue interrupt) to our internal controller
+  if (opts.signal) {
+    if (opts.signal.aborted) abortCtrl.abort();
+    else opts.signal.addEventListener('abort', () => abortCtrl.abort(), { once: true });
+  }
   try {
     for (let i = 0; i < maxIter; i++) {
+      if (abortCtrl.signal.aborted) {
+        finalText = '[interrupted] The user cancelled this request.';
+        ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+        emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
+        return finalText;
+      }
       const messages = toProviderMessages(ctx.sessions.read(sessionId));
       let streamedChars = 0;
       const result = await chatWithTimeout(provider, { system, messages, tools: tools.map((t) => t.def) }, (chunk) => {
@@ -163,13 +225,41 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           let output: string;
           let ok = true;
           const tool = toolMap.get(call.name);
+          const toolStart = Date.now();
+          const span = addSpan(runId, `tool:${call.name}`, { args: call.args });
           try {
             if (!tool) throw new Error(`unknown tool: ${call.name}`);
+            // Approval gate for sensitive tools
+            if (['exec', 'write_file', 'delete_file', 'edit_file'].includes(call.name)) {
+              const { createApproval, waitForApproval } = await import('../core/approvals.js');
+              const approval = createApproval(call.name, call.args as Record<string, unknown>);
+              emit({ type: 'approval', approval });
+              const approved = await waitForApproval(approval.id);
+              if (!approved) {
+                output = 'Action denied by user';
+                ok = false;
+                const toolDuration = Date.now() - toolStart;
+                if (span) endSpan(runId, span.id);
+                addToolCall(runId, call.name, toolDuration, ok);
+                emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200) });
+                ctx.sessions.append(sessionId, {
+                  role: 'tool',
+                  toolCallId: call.id,
+                  name: call.name,
+                  result: output,
+                  ts: Date.now(),
+                });
+                continue;
+              }
+            }
             output = await tool.execute(call.args);
           } catch (err) {
             ok = false;
             output = err instanceof Error ? err.message : String(err);
           }
+          const toolDuration = Date.now() - toolStart;
+          if (span) endSpan(runId, span.id);
+          addToolCall(runId, call.name, toolDuration, ok);
           emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200) });
           ctx.sessions.append(sessionId, {
             role: 'tool',
@@ -205,6 +295,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
       }
       if (finalText && !streamedChars) emit({ type: 'delta', text: finalText });
       ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+      endRun(runId);
       emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i + 1 });
       return finalText;
     }

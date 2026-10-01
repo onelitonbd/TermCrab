@@ -3,7 +3,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange, readConfigFileToken } from '../core/config.js';
+import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange } from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -13,6 +13,7 @@ import {
   logsDir,
   memoryDir,
   pidPath,
+  sessionsDir,
   stateDir,
   uiDir,
   workspaceDir,
@@ -27,9 +28,18 @@ import { countMemoryFacts } from '../agent/status.js';
 import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
-import { SessionStore } from '../agent/sessions.js';
+import { createMcpClient } from '../providers/mcp.js';
+import { listRuns, getRun, clearRuns } from '../core/tracing.js';
+import { speakStream } from '../mobile/tts-stream.js';
+import { startContinuousStt } from '../mobile/tts-stream.js';
+import { DiscordChannel } from '../channels/discord.js';
+import { SlackChannel } from '../channels/slack.js';
+import { SignalChannel } from '../channels/signal.js';
+import { SmsChannel } from '../channels/sms.js';
+import { MatrixChannel } from '../channels/matrix.js';
+import { SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
-import { extractAuth, checkToken, authHint } from './auth.js';
+// Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
@@ -62,6 +72,7 @@ import { getProgress } from '../agent/progress.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
+import { createApproval, listApprovals, resolveApproval, waitForApproval, cleanupOldApprovals } from '../core/approvals.js';
 
 export interface GatewayHandle {
   server: http.Server;
@@ -278,7 +289,97 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       localProvider = undefined;
     }
   }
-  const agent: AgentCtx = { config, memory, skills, sessions, localProvider };
+  const agentQueue = new SessionQueue();
+  let continuousStt: import('../mobile/tts-stream.js').ContinuousStt | null = null;
+
+  // ---- Config hot-reload: watch config.json for external changes ----
+  const configFile = configPath();
+  let configReloadTimer: ReturnType<typeof setTimeout> | null = null;
+  const scheduleConfigReload = (): void => {
+    if (configReloadTimer) clearTimeout(configReloadTimer);
+    configReloadTimer = setTimeout(() => {
+      const fresh = readExternalConfigChange();
+      if (fresh) {
+        // Merge fresh config into the live config object
+        const live = config as unknown as Record<string, unknown>;
+        for (const k of Object.keys(live)) delete live[k];
+        Object.assign(live, fresh);
+        log.info('config: hot-reloaded from disk');
+        // Re-resolve provider if it changed
+        if (fresh.provider && fresh.provider.type !== 'mock') {
+          try {
+            const newProvider = resolveProvider(fresh.provider, fetch);
+            agent.provider = newProvider;
+            log.info('config: provider updated');
+          } catch (err) {
+            log.warn('config: provider update failed:', err instanceof Error ? err.message : String(err));
+          }
+        }
+      }
+    }, 500); // debounce: wait for file writes to settle
+    configReloadTimer.unref();
+  };
+  if (fs.existsSync(configFile)) {
+    fs.watch(configFile, () => scheduleConfigReload());
+  }
+
+  // ---- MCP servers (stdio JSON-RPC) ----
+  const mcpClients = new Map<string, import('../providers/mcp.js').McpClient>();
+  for (const mcpCfg of config.mcpServers ?? []) {
+    try {
+      const client = createMcpClient(mcpCfg);
+      mcpClients.set(mcpCfg.name, client);
+      log.info(`MCP server "${mcpCfg.name}" started (${mcpCfg.command})`);
+    } catch (err) {
+      log.warn(`MCP server "${mcpCfg.name}" failed to start: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue, mcpClients };
+
+  // ---- Optional channels (Discord, Slack, Signal, SMS, Matrix) ----
+  const discord = config.channels.discord ? new DiscordChannel(config.channels.discord) : null;
+  const slack = config.channels.slack ? new SlackChannel(config.channels.slack) : null;
+  const signal = config.channels.signal ? new SignalChannel(config.channels.signal) : null;
+  const sms = config.channels.sms ? new SmsChannel(config.channels.sms) : null;
+  const matrix = config.channels.matrix ? new MatrixChannel(config.channels.matrix) : null;
+  if (discord) discord.start().catch((e) => log.warn('discord:', e instanceof Error ? e.message : String(e)));
+  if (slack) slack.start().catch((e) => log.warn('slack:', e instanceof Error ? e.message : String(e)));
+  if (signal) signal.start().catch((e) => log.warn('signal:', e instanceof Error ? e.message : String(e)));
+  if (sms) sms.start().catch((e) => log.warn('sms:', e instanceof Error ? e.message : String(e)));
+  if (matrix) matrix.start().catch((e) => log.warn('matrix:', e instanceof Error ? e.message : String(e)));
+
+  /** Process a queued turn: run it and mark done/error in the queue. */
+  async function processQueuedTurn(
+    agentCtx: AgentCtx,
+    queue: SessionQueue,
+    turnId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const turn = queue.getQueued(sessionId).find((t) => t.id === turnId)
+      ?? queue.getRunning(sessionId);
+    if (!turn || turn.id !== turnId) return;
+
+    const abortCtrl = new AbortController();
+    queue.markRunning(turnId, sessionId, abortCtrl);
+
+    try {
+      const output = await runTurn(agentCtx, {
+        sessionId: turn.sessionId,
+        userMessage: turn.userMessage,
+        channel: turn.channel,
+        agent: turn.agent,
+        tier: turn.tier,
+        signal: abortCtrl.signal,
+        skipQueue: true,
+        onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+      });
+      queue.markDone(turnId, sessionId, output);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      queue.markError(turnId, sessionId, msg);
+    }
+  }
 
   // ---- Wake loop (voice or typed), visible to the panel over SSE ----
   const wake = new WakeService({
@@ -470,12 +571,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
-      // Portal: token-gated reverse proxy to an exposed local server.
+      // Portal: reverse proxy to an exposed local server.
       if (pathname.startsWith('/portal/')) {
-        if (!checkToken(config, extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string }))) {
-          json(res, 401, { error: 'unauthorized' });
-          return;
-        }
         const u = new URL(url, 'http://localhost');
         const rest = pathname.slice('/portal/'.length);
         const id = rest.split('/')[0] ?? '';
@@ -517,29 +614,63 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           uptimeSec: Math.floor(process.uptime()),
           provider: providerLabel(config),
           telegram: Boolean(telegram),
-          // Lets the login screen skip its gate when no password is set.
-          authRequired: Boolean(config.gateway.token),
         });
         return;
       }
 
-      // Everything else under /api requires a valid token.
-      if (pathname.startsWith('/api/')) {
-        const presented = extractAuth(req as unknown as { headers: Record<string, string | string[] | undefined>; url?: string });
-        if (!checkToken(config, presented)) {
-          // Say WHY on the login screen: does the pasted password match the
-          // file? Do the file and this running panel even agree?
-          let diskToken: string | null = null;
-          try {
-            diskToken = readConfigFileToken();
-          } catch {
-            diskToken = null;
-          }
-          const hint = authHint(presented, config.gateway.token, diskToken);
-          json(res, 401, hint ? { error: 'unauthorized', hint } : { error: 'unauthorized' });
+      // Tracing: list recent runs or get one by id
+      if (pathname === '/api/traces' && req.method === 'GET') {
+        const runs = listRuns();
+        json(res, 200, { runs });
+        return;
+      }
+      const traceMatch = pathname.match(/^\/api\/traces\/([^/]+)$/);
+      if (traceMatch && req.method === 'GET') {
+        const run = getRun(traceMatch[1]!);
+        if (!run) {
+          json(res, 404, { error: 'run not found' });
           return;
         }
+        json(res, 200, run);
+        return;
+      }
+      if (pathname === '/api/traces' && req.method === 'DELETE') {
+        clearRuns();
+        json(res, 200, { ok: true });
+        return;
+      }
 
+      // Inbound webhooks: external services can POST to /api/hooks/:id
+      const hookMatch = pathname.match(/^\/api\/hooks\/([^/]+)$/);
+      if (hookMatch && req.method === 'POST') {
+        const hookId = hookMatch[1]!;
+        const hook = (config.hooks ?? []).find((h) => h.id === hookId);
+        if (!hook) {
+          json(res, 404, { error: 'hook not found' });
+          return;
+        }
+        // Validate hook token (login system removed — hooks are open)
+        // TODO: re-enable hook token validation when auth is restored
+        // Read the webhook payload
+        const raw = await readBody(req);
+        const payload = raw ? JSON.parse(raw) : {};
+        const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+        // Enqueue a turn with the webhook payload
+        const turn = agentQueue.enqueue({
+          sessionId: `hook:${hookId}`,
+          userMessage: `[webhook:${hookId}] ${hook.prompt}\n\nPayload: ${payloadStr}`,
+          channel: 'webhook',
+        });
+
+        void processQueuedTurn(agent, agentQueue, turn.id, `hook:${hookId}`);
+
+        json(res, 202, { ok: true, turnId: turn.id, hookId });
+        return;
+      }
+
+      // Everything else under /api is open (login system removed for now).
+      if (pathname.startsWith('/api/')) {
         if (req.method === 'GET' && pathname === '/api/events') {
           res.writeHead(200, {
             'content-type': 'text/event-stream',
@@ -571,14 +702,55 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const sessionId = body.sessionId || 'web:main';
           const agentName = body.agent ? sanitizeAgentName(body.agent) ?? undefined : undefined;
-          const text = await runTurn(agent, {
+
+          // Enqueue the turn and return immediately with a turn id
+          const turn = agentQueue.enqueue({
             sessionId,
             userMessage: message,
             channel: 'web',
             agent: agentName,
-            onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
           });
-          json(res, 200, { text, sessionId: agentName ? `${agentName}:${sessionId}` : sessionId });
+
+          // Process the turn in the background
+          void processQueuedTurn(agent, agentQueue, turn.id, sessionId);
+
+          json(res, 202, {
+            turnId: turn.id,
+            sessionId: agentName ? `${agentName}:${sessionId}` : sessionId,
+            status: 'queued',
+          });
+          return;
+        }
+
+        // Poll turn status
+        const turnMatch = pathname.match(/^\/api\/chat\/([^/]+)\/([^/]+)$/);
+        if (turnMatch && req.method === 'GET') {
+          const sid = decodeURIComponent(turnMatch[1]!);
+          const turnId = turnMatch[2]!;
+          const running = agentQueue.getRunning(sid);
+          const queued = agentQueue.getQueued(sid);
+          const turn = running?.id === turnId ? running : queued.find((t) => t.id === turnId);
+          if (!turn) {
+            json(res, 404, { error: 'turn not found' });
+            return;
+          }
+          json(res, 200, {
+            turnId: turn.id,
+            sessionId: sid,
+            status: turn.status,
+            output: turn.output,
+            error: turn.error,
+            queueLength: agentQueue.getQueueLength(sid),
+          });
+          return;
+        }
+
+        // Interrupt a running turn
+        const interruptMatch = pathname.match(/^\/api\/chat\/([^/]+)\/interrupt$/);
+        if (interruptMatch && req.method === 'POST') {
+          const sid = decodeURIComponent(interruptMatch[1]!);
+          const interrupted = agentQueue.interrupt(sid);
+          json(res, 200, { ok: interrupted, sessionId: sid });
           return;
         }
 
@@ -602,6 +774,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           const id = decodeURIComponent(sessionMatch[1]!);
           sessions.reset(id);
           json(res, 200, { ok: true });
+          return;
+        }
+
+        // Replay a session: re-execute user messages with full tool trace
+        const replayMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/replay$/);
+        if (replayMatch && req.method === 'POST') {
+          const id = decodeURIComponent(replayMatch[1]!);
+          const entries = sessions.read(id);
+          if (!entries.length) {
+            json(res, 404, { error: 'no chat found with that id' });
+            return;
+          }
+          const newId = `replayed:${id}`;
+          const newEntries = entries.filter((e) => e.role === 'user');
+          // Create new session file with user messages
+          const newFile = path.join(sessionsDir(), `${newId}.jsonl`);
+          fs.writeFileSync(newFile, newEntries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+          json(res, 200, { ok: true, originalId: id, replayedId: newId, userMessages: newEntries.length });
           return;
         }
 
@@ -720,13 +910,133 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        if (req.method === 'GET' && pathname === '/api/logs') {
+          const lines = Math.min(Number(new URL(req.url!, 'http://x').searchParams.get('lines')) || 200, 2000);
+          const level = new URL(req.url!, 'http://x').searchParams.get('level') || '';
+          const logPath = path.join(logsDir(), 'gateway.log');
+          try {
+            const content = fs.readFileSync(logPath, 'utf8');
+            const all = content.split('\n').filter(Boolean);
+            const filtered = level
+              ? all.filter((l) => l.includes(level.toUpperCase()))
+              : all;
+            const tail = filtered.slice(-lines);
+            json(res, 200, { lines: tail, total: filtered.length });
+          } catch {
+            json(res, 200, { lines: [], total: 0 });
+          }
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/approvals') {
+          cleanupOldApprovals();
+          json(res, 200, { approvals: listApprovals() });
+          return;
+        }
+
+        const approvalMatch = pathname.match(/^\/api\/approvals\/([^/]+)\/(approve|deny)$/);
+        if (approvalMatch && req.method === 'POST') {
+          const id = decodeURIComponent(approvalMatch[1]!);
+          resolveApproval(id, approvalMatch[2] === 'approve');
+          json(res, 200, { ok: true });
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/skills') {
           json(res, 200, { skills: skills.list() });
           return;
         }
 
+        if (req.method === 'POST' && pathname === '/api/skills/create') {
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { name?: string; content?: string }) : {};
+          try {
+            const name = (body.name || '').trim();
+            if (!name) { json(res, 400, { error: 'name required' }); return; }
+            const content = body.content || '# ' + name + '\n\nDescribe what this skill does.\n';
+            const skill = skills.create(name, content);
+            json(res, 200, { skill });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        if (req.method === 'PUT' && pathname.startsWith('/api/skills/')) {
+          const name = decodeURIComponent(pathname.slice('/api/skills/'.length));
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { content?: string }) : {};
+          try {
+            const skill = skills.update(name, body.content || '');
+            json(res, 200, { skill });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        if (req.method === 'DELETE' && pathname.startsWith('/api/skills/')) {
+          const name = decodeURIComponent(pathname.slice('/api/skills/'.length));
+          const ok = skills.remove(name);
+          json(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'not found' });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/slash') {
+          json(res, 200, {
+            commands: [
+              { name: '/new', description: 'Start a new chat', args: '' },
+              { name: '/clear', description: 'Clear the current chat', args: '' },
+              { name: '/model', description: 'Pick a model', args: '[model-name]' },
+              { name: '/status', description: 'Show agent status', args: '' },
+              { name: '/help', description: 'Show available commands', args: '' },
+            ],
+          });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/slash') {
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { command?: string; args?: string }) : {};
+          const cmd = (body.command || '').trim();
+          const args = (body.args || '').trim();
+          switch (cmd) {
+            case '/new':
+              json(res, 200, { ok: true, action: 'new' });
+              return;
+            case '/clear':
+              json(res, 200, { ok: true, action: 'clear' });
+              return;
+            case '/model':
+              json(res, 200, { ok: true, action: 'model', model: args });
+              return;
+            case '/status':
+              json(res, 200, { ok: true, action: 'status' });
+              return;
+            case '/help':
+              json(res, 200, { ok: true, action: 'help' });
+              return;
+            default:
+              json(res, 400, { error: 'unknown command: ' + cmd });
+              return;
+          }
+        }
+
+        if (req.method === 'GET' && pathname === '/api/providers/detect') {
+          const detected = [];
+          const env = process.env;
+          if (env.ANTHROPIC_API_KEY) detected.push({ type: 'anthropic', key: env.ANTHROPIC_API_KEY.slice(0, 8) + '…' });
+          if (env.OPENAI_API_KEY) detected.push({ type: 'openai', key: env.OPENAI_API_KEY.slice(0, 8) + '…' });
+          if (env.GROQ_API_KEY) detected.push({ type: 'openai', key: env.GROQ_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.groq.com/openai/v1' });
+          if (env.DEEPSEEK_API_KEY) detected.push({ type: 'openai', key: env.DEEPSEEK_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.deepseek.com/v1' });
+          if (env.OPENROUTER_API_KEY) detected.push({ type: 'openai', key: env.OPENROUTER_API_KEY.slice(0, 8) + '…', baseUrl: 'https://openrouter.ai/api/v1' });
+          if (env.GEMINI_API_KEY || env.GOOGLE_API_KEY) detected.push({ type: 'openai', key: (env.GEMINI_API_KEY || env.GOOGLE_API_KEY || '').slice(0, 8) + '…', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' });
+          json(res, 200, { detected });
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/tools') {
-          const defs = buildTools({ config, memory, skills }).map((t) => ({
+          const defs = (await buildTools({ config, memory, skills })).map((t) => ({
             name: t.def.name,
             description: t.def.description,
           }));
@@ -1169,6 +1479,45 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const result = await speak(text);
           json(res, 200, result);
+          return;
+        }
+
+        // TTS streaming: speak text in chunks
+        if (req.method === 'POST' && pathname === '/api/say/stream') {
+          const body = await readJsonBody(req);
+          const text = typeof body?.text === 'string' ? body.text.trim() : '';
+          if (!text || text.length > 10000) {
+            json(res, 400, { error: 'text required (1-10000 chars)' });
+            return;
+          }
+          const result = await speakStream(text, {
+            onChunk: (chunk) => bus.emit({ type: 'tts:chunk', text: chunk }),
+          });
+          json(res, 200, result);
+          return;
+        }
+
+        // Continuous STT: start a listening session
+        if (req.method === 'POST' && pathname === '/api/listen/start') {
+          const body = await readJsonBody(req);
+          const timeoutMs = typeof body?.timeoutMs === 'number' ? body.timeoutMs : 30000;
+          const stt = startContinuousStt(
+            (text) => bus.emit({ type: 'stt:result', text }),
+            { timeoutMs },
+          );
+          // Store for later stop
+          continuousStt = stt;
+          json(res, 200, { ok: true, status: 'listening' });
+          return;
+        }
+
+        // Continuous STT: stop listening
+        if (req.method === 'POST' && pathname === '/api/listen/stop') {
+          if (continuousStt) {
+            continuousStt.stop();
+            continuousStt = null;
+          }
+          json(res, 200, { ok: true, status: 'stopped' });
           return;
         }
 

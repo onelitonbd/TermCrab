@@ -37,6 +37,126 @@
     --r-xl: 20px;
     --ring: 0 0 0 2px var(--bg), 0 0 0 3px rgba(88, 166, 255, 0.8);
   }
+  [data-theme="light"] {
+    color-scheme: light;
+    --bg: #f6f8fa;
+    --bg-accent: #ffffff;
+    --elevated: #ffffff;
+    --card: #ffffff;
+    --fill: #eaeef2;
+    --line: #d0d7de;
+    --line-strong: #afb8c1;
+    --line-hover: #8c959f;
+    --text: #1f2328;
+    --strong: #1f2328;
+    --muted: #59636e;
+    --accent: #0969da;
+    --accent-hover: #0550ae;
+    --primary: #1a7f37;
+    --primary-hover: #2da44e;
+    --teal: #8250df;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --danger: #d1242f;
+    --info: #0969da;
+    --destructive: #cf222e;
+  }
+  [data-theme="ocean"] {
+    color-scheme: dark;
+    --bg: #0a1628;
+    --bg-accent: #0d1b2e;
+    --elevated: #112240;
+    --card: #112240;
+    --fill: #1a3a5c;
+    --line: #1e3a5f;
+    --line-strong: #2a4a73;
+    --line-hover: #3a5a83;
+    --text: #c9d6e3;
+    --strong: #e6edf3;
+    --muted: #7d8fa3;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --primary: #0ea5e9;
+    --primary-hover: #38bdf8;
+    --teal: #06b6d4;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --destructive: #dc2626;
+  }
+  [data-theme="forest"] {
+    color-scheme: dark;
+    --bg: #0a1a0f;
+    --bg-accent: #0d2013;
+    --elevated: #112a18;
+    --card: #112a18;
+    --fill: #1a3a24;
+    --line: #1e4028;
+    --line-strong: #2a5032;
+    --line-hover: #3a6040;
+    --text: #c9e3d0;
+    --strong: #e6f5e9;
+    --muted: #7da385;
+    --accent: #22c55e;
+    --accent-hover: #4ade80;
+    --primary: #16a34a;
+    --primary-hover: #22c55e;
+    --teal: #10b981;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --info: #22c55e;
+    --destructive: #dc2626;
+  }
+  [data-theme="sunset"] {
+    color-scheme: dark;
+    --bg: #1a0a0a;
+    --bg-accent: #220e0e;
+    --elevated: #2a1212;
+    --card: #2a1212;
+    --fill: #3a1a1a;
+    --line: #4a2020;
+    --line-strong: #5a2a2a;
+    --line-hover: #6a3a3a;
+    --text: #e3d0c9;
+    --strong: #f5e9e6;
+    --muted: #a3857d;
+    --accent: #f97316;
+    --accent-hover: #fb923c;
+    --primary: #ea580c;
+    --primary-hover: #f97316;
+    --teal: #ec4899;
+    --ok: #22c55e;
+    --warn: #eab308;
+    --danger: #ef4444;
+    --info: #f97316;
+    --destructive: #dc2626;
+  }
+  [data-theme="midnight"] {
+    color-scheme: dark;
+    --bg: #050510;
+    --bg-accent: #0a0a1a;
+    --elevated: #0f0f24;
+    --card: #0f0f24;
+    --fill: #1a1a3a;
+    --line: #2a2a4a;
+    --line-strong: #3a3a5a;
+    --line-hover: #4a4a6a;
+    --text: #d0d0e3;
+    --strong: #eeeef5;
+    --muted: #8585a3;
+    --accent: #818cf8;
+    --accent-hover: #a5b4fc;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --teal: #a78bfa;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --info: #818cf8;
+    --destructive: #e11d48;
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body {
@@ -256,39 +376,70 @@
   #composer {
     display: none;
     flex-direction: column;
-    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-    background: var(--bg);
-    border-top: 1px solid var(--line);
+    padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+    background: transparent;
     flex-shrink: 0;
   }
   body[data-view="chat"] #composer { display: flex; }
-  /* two-layer rounded composer: message on top, rounded icon buttons below */
-  #composerBox {
-    border: 1px solid var(--line-strong);
-    border-radius: 18px;
+  /* progress + goal display above composer */
+  #composerProgress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    margin-bottom: 4px;
+    border-radius: 14px 14px 0 0;
     background: var(--card);
-    padding: 5px 7px 7px;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    min-height: 34px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  #composerProgress.hidden { opacity: 0; transform: translateY(-4px); pointer-events: none; }
+  #composerProgress .progIcon { flex-shrink: 0; width: 16px; height: 16px; }
+  #composerProgress .progText { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #composerProgress .progSpinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--line-strong);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* superellipse composer with backdrop blur */
+  #composerBox {
+    border: none;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    padding: 0;
     display: flex;
     flex-direction: column;
+    transition: box-shadow 0.2s ease;
   }
-  #composerBox:focus-within { border-color: var(--line-hover); box-shadow: var(--ring); }
+  #composerBox:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
   #composer textarea {
     flex: 1;
     resize: none;
     border: 0;
-    background: transparent;
+    background: var(--fill);
     box-shadow: none;
     outline: none;
-    min-height: 44px;
-    max-height: 140px;
+    min-height: 52px;
+    max-height: 160px;
     padding: 9px 9px 4px;
     font-size: 16px;
     line-height: 1.4;
     color: var(--strong);
     font-family: inherit;
+    border-radius: 18px 18px 0 0;
   }
   #composer textarea:focus { border: 0; box-shadow: none; }
-  .composerRow { display: flex; align-items: center; gap: 8px; padding: 3px 2px 0; }
+  .composerRow { display: flex; align-items: center; gap: 8px; padding: 3px 9px 7px; background: var(--fill); border-radius: 0 0 18px 18px; }
   .composerSp { flex: 1; }
   .iconBtn.modelBtn { width: auto; min-width: 40px; padding: 0 12px; gap: 7px; border-radius: 999px; }
   .modelBtn svg { color: var(--accent); flex-shrink: 0; }
@@ -307,8 +458,10 @@
     border: 1px solid var(--line-strong);
     color: var(--text);
     font-weight: 600;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   }
   .iconBtn:hover { background: var(--fill); color: var(--strong); border-color: var(--line-hover); }
+  .iconBtn:active { transform: scale(0.94); }
   .iconBtn:disabled { opacity: 0.4; }
   .iconBtn:disabled:hover { background: transparent; color: var(--text); border-color: var(--line-strong); }
   .iconBtn.primary { background: var(--primary); border-color: transparent; color: #ffffff; }
@@ -316,6 +469,23 @@
   .iconBtn.primary:disabled { background: var(--primary); opacity: 0.45; }
   .iconBtn.stopMode { background: var(--destructive); border-color: transparent; color: #ffffff; }
   .iconBtn.stopMode:hover { background: var(--danger); color: #ffffff; border-color: transparent; }
+  /* inline error banner below composer */
+  #composerError {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    margin-top: 4px;
+    border-radius: 0 0 14px 14px;
+    background: color-mix(in srgb, var(--danger) 12%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
+    border-top: 0;
+    font-size: 12.5px;
+    color: var(--danger);
+  }
+  #composerError.visible { display: flex; }
+  #composerError .errIcon { flex-shrink: 0; width: 14px; height: 14px; }
+  #composerError .errText { flex: 1; }
 
   /* ---- providers page ---- */
   .pageHead { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px; }
@@ -1194,6 +1364,8 @@
     <button data-goto="models"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Models</button>
     <button data-goto="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="5" y="5" rx="1.5"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2.5v2M15 19.5v2M2.5 15h2M19.5 15h2M2.5 9h2M19.5 9h2M9 2.5v2M9 19.5v2"/></svg>Memory</button>
     <button data-goto="tools"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.93-3.93a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0z"/><path d="m19.66 17.73-3.17-3.17a2.5 2.5 0 0 0-3.54 0l-1.41 1.41a2.5 2.5 0 0 1-3.54-3.54l3.17-3.17a2.5 2.5 0 0 1 3.54 0l1.41 1.41a2.5 2.5 0 0 0 3.54 0l3.17-3.17a2.5 2.5 0 0 1 3.54 3.54l-3.17 3.17a2.5 2.5 0 0 0 0 3.54"/></svg>Tools</button>
+    <button data-goto="logs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>Logs</button>
+
     <button data-goto="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</button>
   </nav>
   <div class="sideLabel"><span>Chat history</span><button id="newChatBtn" class="ghost" title="New chat" aria-label="New chat"><svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 2.5v10M2.5 7.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
@@ -1302,6 +1474,10 @@
       </button>
     </div>
     <p class="pageNote" id="provNote">OpenAI-compatible services only (OpenAI, OpenRouter, Groq, DeepSeek, Ollama and friends). Keys stay on this device — nothing connects until you press Use on a key.</p>
+    <div class="pBar" style="margin-bottom:10px">
+      <button id="provDetect" class="ghost">Auto-detect keys</button>
+      <span id="provDetectNote" class="pNote"></span>
+    </div>
     <div id="provList" class="listCol"><div class="nx">loading…</div></div>
     <div id="keyPage" hidden>
       <div class="pageHead">
@@ -1608,6 +1784,11 @@
     <div class="memPane" id="tlPane-skills" hidden>
       <div class="memSectionLabel">INSTALLED SKILLS</div>
       <div id="skList" class="listCol"><div class="nx">loading…</div></div>
+      <div class="pBar" style="margin-top:8px">
+        <button id="skCreate" class="ghost">New skill</button>
+        <button id="skEdit" class="ghost">Edit selected</button>
+        <button id="skDelete" class="ghost">Delete selected</button>
+      </div>
       <div class="tlForm">
         <div class="pBar">
           <input type="text" id="skSrc" placeholder="import from folder path or git url" />
@@ -1660,10 +1841,88 @@
       <textarea id="agSoul" placeholder="SOUL.md - select an agent to edit its personality"></textarea>
       <div class="pBar"><button id="agSave" class="ghost">Save personality</button></div>
     </div>
+
+    <div class="memSectionLabel">SECRETS</div>
+    <div class="setCard">
+      <h4>Secrets manager</h4>
+      <div class="d">View and edit stored secrets — API keys, tokens. Values are masked until you click to reveal.</div>
+      <div id="secretsList" style="margin-top:10px"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memSectionLabel">APPEARANCE</div>
+    <div class="setCard">
+      <h4>Theme</h4>
+      <div class="d">Pick how the panel looks. Saved on this device.</div>
+      <div class="pBar" style="margin-top:10px">
+        <select id="themeSel" title="Color theme">
+          <option value="dark">Dark (default)</option>
+          <option value="light">Light</option>
+          <option value="ocean">Ocean</option>
+          <option value="forest">Forest</option>
+          <option value="sunset">Sunset</option>
+          <option value="midnight">Midnight</option>
+        </select>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="view" id="view-logs" hidden>
+    <div class="pageHead"><h2 class="memTitle">Logs</h2></div>
+    <p class="pageNote">Real-time view of what the gateway is doing — requests, agent runs, tool calls, errors.</p>
+    <div class="setCard">
+      <div class="pBar" style="margin-bottom:10px">
+        <select id="logLevel" title="Filter by level">
+          <option value="">All levels</option>
+          <option value="debug">Debug</option>
+          <option value="info">Info</option>
+          <option value="warn">Warnings</option>
+          <option value="error">Errors</option>
+        </select>
+        <select id="logLines" title="Number of lines">
+          <option value="50">50 lines</option>
+          <option value="100" selected>100 lines</option>
+          <option value="200">200 lines</option>
+          <option value="500">500 lines</option>
+        </select>
+        <button id="logRefresh" class="ghost">Refresh</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="logAuto" checked /> Auto-refresh
+        </label>
+      </div>
+      <pre id="logView" style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,monospace"></pre>
+    </div>
+  </section>
+
+  <section class="view" id="view-debug" hidden>
+    <div class="pageHead"><h2 class="memTitle">Debug</h2></div>
+    <p class="pageNote">Live view of gateway events — requests, agent runs, tool calls, errors.</p>
+    <div class="setCard">
+      <div class="pBar" style="margin-bottom:10px">
+        <button id="debugRefresh" class="ghost">Refresh</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="debugAuto" checked /> Auto-refresh
+        </label>
+      </div>
+      <pre id="debugView" style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,monospace"></pre>
+    </div>
   </section>
 </main>
 
+<div id="approvalBar" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--card);border-bottom:2px solid var(--accent);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 24px rgba(0,0,0,0.3)">
+  <span style="font-weight:600;font-size:14px">Approval needed:</span>
+  <span id="approvalInfo" style="font-size:13px;color:var(--muted);flex:1;min-width:200px"></span>
+  <button id="approvalDeny" class="ghost" style="border-color:var(--red,#e5534b);color:var(--red,#e5534b)">Deny</button>
+  <button id="approvalApprove" style="background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);padding:6px 16px;font-weight:600">Approve</button>
+</div>
+
 <div id="composer">
+  <div id="statusBand" style="display:none;align-items:center;gap:8px;padding:6px 14px;margin-bottom:4px;border-radius:12px;background:color-mix(in srgb, var(--warn) 12%, var(--card));border:1px solid color-mix(in srgb, var(--warn) 30%, var(--line));font-size:12.5px;color:var(--warn)"></div>
+  <div id="slashMenu" class="hidden" style="position:fixed;bottom:80px;left:10px;right:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 8px 28px rgba(0,0,0,0.4)"></div>
+  <div id="composerProgress" class="hidden">
+    <span class="progSpinner"></span>
+    <span class="progText">Crabby is thinking…</span>
+  </div>
   <div id="composerBox">
     <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
     <div class="composerRow">
@@ -1679,6 +1938,10 @@
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M14.5 1.5 7.2 8.8M14.5 1.5l-4.6 13-2.7-5.7-5.7-2.7 13-4.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       </button>
     </div>
+  </div>
+  <div id="composerError">
+    <svg class="errIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span class="errText"></span>
   </div>
   <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt" />
 </div>
@@ -1713,22 +1976,7 @@
   </div>
 </div>
 
-<div id="overlay">
-  <div class="card">
-    <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <ellipse cx="16" cy="18" rx="7.5" ry="5.5" stroke="#58a6ff" stroke-width="1.7"/>
-      <path d="M9.5 15.5 6 12.5 4.5 8.8M22.5 15.5 26 12.5 27.5 8.8" stroke="#58a6ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M11.5 23.5 9.5 26.5M16 24v3.5M20.5 23.5 22.5 26.5" stroke="#58a6ff" stroke-width="1.6" stroke-linecap="round"/>
-      <circle cx="13.5" cy="16.5" r="1.1" fill="#58a6ff"/>
-      <circle cx="18.5" cy="16.5" r="1.1" fill="#58a6ff"/>
-    </svg>
-    <h2>TermCrab</h2>
-    <p>Paste the gateway token (printed in the terminal, or run <code>termcrab config get gateway.token</code>).</p>
-    <input id="token" type="password" placeholder="gateway token" autocomplete="off" />
-    <button id="connect">Connect</button>
-    <p id="authErr" class="err"></p>
-  </div>
-</div>
+<!-- Login removed — panel is open by default. -->
 
 <script>
 (() => {
@@ -1953,14 +2201,6 @@
     }
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
     const res = await fetch(path, Object.assign({}, opts, { headers }));
-    if (res.status === 401) {
-      let hint = '';
-      try { hint = (await res.json()).hint || ''; } catch { /* body may be empty */ }
-      showOverlay(hint || 'Invalid or missing token');
-      const err = new Error('unauthorized');
-      err.hint = hint;
-      throw err;
-    }
     if (!res.ok) {
       let msg = 'HTTP ' + res.status;
       try { msg = (await res.json()).error || msg; } catch {}
@@ -1968,12 +2208,6 @@
     }
     return res.json();
   }
-
-  function showOverlay(err) {
-    $('overlay').classList.remove('hidden');
-    $('authErr').textContent = err || '';
-  }
-  function hideOverlay() { $('overlay').classList.add('hidden'); }
 
   // ---- Models page: fetch a provider's catalog, tick to save, all live ----
   let mdlFetched = null; // null until Fetch succeeds, then the provider's model ids
@@ -2449,6 +2683,7 @@
       }
     });
     es.addEventListener('delta', (e) => {
+      if (state.pollDone) return;
       const ev = JSON.parse(e.data);
       // typewriter: append streamed chunks, repainted as markdown
       if (!state.live) { state.live = addMsg('bot', ''); state.liveRaw = ''; }
@@ -2627,6 +2862,9 @@
     addMsg('user', text);
     state.live = addMsg('bot', '');
     state.liveRaw = '';
+    state.pollDone = false;
+    hideComposerError();
+    showComposerProgress('Crabby is thinking…');
     try {
       const res = await api('/api/chat', {
         method: 'POST',
@@ -2634,25 +2872,55 @@
         body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
         signal: state.abort.signal,
       });
-      if (state.live) {
-        state.liveRaw = res.text || state.liveRaw;
-        if (!state.liveRaw) {
-          // Belt-and-braces: the server now always explains an empty reply,
-          // but never show a bare placeholder if one slips through (v0.23.1).
-          state.liveRaw = 'Crabby got no text back from the model. Try again, or switch models in Providers.';
-          state.live.classList.add('err');
-        } else if (/^\[(empty reply|agent error)\]/.test(state.liveRaw.trim())) {
-          state.live.classList.add('err');
+      const turnId = res.turnId;
+      const sid = res.sessionId || currentSession();
+      if (turnId && state.live) {
+        // Poll the turn-status endpoint until the reply is ready.
+        // (POST /api/chat returns 202 immediately — the reply is generated
+        // in the background, so we wait for it here.)
+        const deadline = Date.now() + 120000; // 2 min max
+        while (Date.now() < deadline) {
+          if (state.abort && state.abort.signal.aborted) break;
+          try {
+            const t = await api(`/api/chat/${encodeURIComponent(sid)}/${encodeURIComponent(turnId)}`);
+            if (t.status === 'done') {
+              state.pollDone = true;
+              state.liveRaw = t.output || '';
+              if (!state.liveRaw.trim()) {
+                state.liveRaw = 'Crabby got no text back from the model. Try again, or switch models in Providers.';
+                state.live.classList.add('err');
+              } else if (/^\[(empty reply|agent error)\]/.test(state.liveRaw.trim())) {
+                state.live.classList.add('err');
+              }
+              state.live.innerHTML = renderMarkdown(state.liveRaw);
+              break;
+            }
+            if (t.status === 'error') {
+              state.pollDone = true;
+              state.liveRaw = t.error || 'Crabby got no text back from the model. Try again, or switch models in Providers.';
+              state.live.classList.add('err');
+              state.live.innerHTML = renderMarkdown(state.liveRaw);
+              break;
+            }
+          } catch { /* transient poll failure — keep trying */ }
+          await new Promise(r => setTimeout(r, 500));
         }
-        state.live.innerHTML = renderMarkdown(state.liveRaw);
+        if (!state.pollDone && state.live && !state.liveRaw.trim()) {
+          state.liveRaw = 'Crabby took too long to reply. Try again, or refresh the page.';
+          state.live.classList.add('err');
+          state.live.innerHTML = renderMarkdown(state.liveRaw);
+        }
+        hideComposerProgress();
       }
     } catch (err) {
+      hideComposerProgress();
       if (err && (err.name === 'AbortError' || (state.abort && state.abort.signal.aborted))) {
         if (state.live) { state.live.remove(); state.live = null; }
         addMsg('sys', 'Stopped.');
       } else if (state.live) {
         state.live.textContent = err.message;
         state.live.classList.add('err');
+        showComposerError(err.message);
       }
     } finally {
       state.live = null;
@@ -2818,6 +3086,38 @@
       $('cronList').innerHTML = '<div class="nx err">failed to load crons: ' + e.message + '</div>';
     }
   }
+
+  // ---- Composer feature wiring ----
+  $('input').addEventListener('input', (e) => {
+    const v = e.target.value;
+    if (v.startsWith('/')) toggleSlashMenu(true);
+    else hideSlashMenu();
+    saveDraft();
+  });
+  $('input').addEventListener('keyup', (e) => {
+    const v = e.target.value;
+    if (v.startsWith('/')) toggleSlashMenu(true);
+    else hideSlashMenu();
+  });
+  $('input').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideSlashMenu();
+  });
+  $('input').addEventListener('blur', () => setTimeout(hideSlashMenu, 200));
+  document.querySelectorAll('.msg.bot, .msg.user').forEach(el => {
+    el.addEventListener('contextmenu', (e) => showMessageMenu(e, el));
+  });
+  window.addEventListener('online', updateStatusBand);
+  window.addEventListener('offline', updateStatusBand);
+
+  // ---- Logs viewer controls ----
+  $('logRefresh').addEventListener('click', refreshLogs);
+  $('logLevel').addEventListener('change', refreshLogs);
+  $('logLines').addEventListener('change', refreshLogs);
+  $('logAuto').addEventListener('change', () => { if ($('logAuto').checked) startLogAuto(); else stopLogAuto(); });
+
+  // ---- Debug viewer controls ----
+  $('debugRefresh').addEventListener('click', refreshDebug);
+  $('debugAuto').addEventListener('change', () => { if ($('debugAuto').checked) { refreshDebug(); debugTimer = setInterval(refreshDebug, 3000); } else { clearInterval(debugTimer); debugTimer = null; } });
 
   $('cronForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3171,6 +3471,38 @@
       card.append(h, dd);
       for (const f of sec.fields) card.appendChild(cfgRow(data.config, f));
       host.append(lbl, card);
+    }
+    // Secrets manager
+    const secList = $('secretsList');
+    if (secList) {
+      const secrets = [
+        { key: 'provider.apiKey', label: 'AI provider key' },
+        { key: 'gateway.token', label: 'Web panel password' },
+        { key: 'channels.telegram.token', label: 'Telegram bot token' },
+      ];
+      secList.innerHTML = '';
+      for (const s of secrets) {
+        const cur = getCfg(data.config, s.key);
+        const row = document.createElement('div');
+        row.className = 'pRow';
+        const lb = document.createElement('span'); lb.className = 'k'; lb.textContent = s.label;
+        const val = document.createElement('span'); val.className = 'nx';
+        val.textContent = cur ? '••••••••' : '(not set)';
+        const reveal = document.createElement('button'); reveal.className = 'ghost'; reveal.textContent = 'Reveal';
+        reveal.onclick = () => { val.textContent = cur || '(not set)'; reveal.textContent = 'Hide'; reveal.onclick = () => { val.textContent = '••••••••'; reveal.textContent = 'Reveal'; }; };
+        const edit = document.createElement('button'); edit.className = 'ghost'; edit.textContent = 'Edit';
+        edit.onclick = async () => {
+          const v = prompt('New value for ' + s.label + ':', cur || '');
+          if (v === null) return;
+          try {
+            await api('/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: s.key, value: v }) });
+            val.textContent = '••••••••';
+            addMsg('sys', s.label + ' updated');
+          } catch (e) { addMsg('sys', 'update failed: ' + e.message); }
+        };
+        row.append(lb, val, reveal, edit);
+        secList.appendChild(row);
+      }
     }
   }
 
@@ -3575,6 +3907,47 @@
     finally { $('skImport').disabled = false; }
   };
 
+  // Skills create / edit / delete
+  $('skCreate').onclick = async () => {
+    const name = prompt('Skill name (lowercase, no spaces):');
+    if (!name) return;
+    const content = prompt('Skill content (SKILL.md):', '# ' + name + '\n\nDescribe what this skill does.\n');
+    if (content === null) return;
+    try {
+      await api('/api/skills/create', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name, content }),
+      });
+      addMsg('sys', `Created skill "${name}"`);
+      refreshSkills();
+    } catch (e) { addMsg('sys', 'create failed: ' + e.message); }
+  };
+  $('skEdit').onclick = async () => {
+    const sel = $('skList .pRow.k')?.textContent;
+    if (!sel) { addMsg('sys', 'select a skill first'); return; }
+    try {
+      const sk = await api('/api/skills/' + sel);
+      const content = prompt('Edit SKILL.md for "' + sel + '":', sk.content);
+      if (content === null) return;
+      await api('/api/skills/' + sel, {
+        method: 'PUT', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      addMsg('sys', `Updated skill "${sel}"`);
+      refreshSkills();
+    } catch (e) { addMsg('sys', 'edit failed: ' + e.message); }
+  };
+  $('skDelete').onclick = async () => {
+    const sel = $('skList .pRow.k')?.textContent;
+    if (!sel) { addMsg('sys', 'select a skill first'); return; }
+    if (!confirm('Delete skill "' + sel + '"?')) return;
+    try {
+      await api('/api/skills/' + sel, { method: 'DELETE' });
+      addMsg('sys', `Deleted skill "${sel}"`);
+      refreshSkills();
+    } catch (e) { addMsg('sys', 'delete failed: ' + e.message); }
+  };
+
   $('sayGo').onclick = async () => {
     const t = $('sayTxt').value.trim();
     if (!t) return;
@@ -3877,6 +4250,22 @@
   $('toProviders').onclick = () => switchView('providers');
   $('provBack').onclick = () => switchView(state.provFrom || 'status');
   $('keyBack').onclick = () => showProvidersRoot();
+  $('provDetect').onclick = async () => {
+    $('provDetect').disabled = true;
+    $('provDetectNote').textContent = 'scanning…';
+    try {
+      const r = await api('/api/providers/detect');
+      const found = r.detected || [];
+      if (found.length) {
+        $('provDetectNote').textContent = 'Found: ' + found.map((f) => f.type).join(', ');
+      } else {
+        $('provDetectNote').textContent = 'No keys found in environment variables.';
+      }
+    } catch (e) {
+      $('provDetectNote').textContent = 'detect failed: ' + e.message;
+    } finally { $('provDetect').disabled = false; }
+  };
+
   $('provAdd').onclick = () => openModal('Add provider', [
     { id: 'name', placeholder: 'Name (e.g. OpenRouter)', maxlength: 40 },
     { id: 'url', placeholder: 'Base URL (e.g. https://openrouter.ai/api/v1)' },
@@ -4084,7 +4473,241 @@
 
   
   // ---- Tab shell (mobile) ----
-  const VIEWS = ['chat', 'status', 'providers', 'models', 'memory', 'tools', 'settings'];
+  const VIEWS = ['chat', 'status', 'providers', 'models', 'memory', 'tools', 'logs', 'debug', 'settings'];
+  // ---- Approvals ----
+  let currentApproval = null;
+  let approvalTimer = null;
+  async function pollApprovals() {
+    try {
+      const data = await api('/api/approvals');
+      const pending = data.approvals || [];
+      if (pending.length > 0) {
+        const a = pending[0];
+        if (!currentApproval || currentApproval.id !== a.id) {
+          currentApproval = a;
+          $('approvalBar').classList.remove('hidden');
+          $('approvalInfo').textContent = `${a.tool} — ${JSON.stringify(a.args).slice(0, 120)}`;
+        }
+      } else {
+        currentApproval = null;
+        $('approvalBar').classList.add('hidden');
+      }
+    } catch { /* ignore */ }
+  }
+  function startApprovalPoll() {
+    stopApprovalPoll();
+    approvalTimer = setInterval(pollApprovals, 2000);
+  }
+  function stopApprovalPoll() { if (approvalTimer) { clearInterval(approvalTimer); approvalTimer = null; } }
+  $('approvalApprove').addEventListener('click', async () => {
+    if (!currentApproval) return;
+    await api(`/api/approvals/${currentApproval.id}/approve`, { method: 'POST' });
+    currentApproval = null;
+    $('approvalBar').classList.add('hidden');
+  });
+  $('approvalDeny').addEventListener('click', async () => {
+    if (!currentApproval) return;
+    await api(`/api/approvals/${currentApproval.id}/deny`, { method: 'POST' });
+    currentApproval = null;
+    $('approvalBar').classList.add('hidden');
+  });
+
+  // ---- Themes  ----
+  const THEMES = [
+    { id: 'dark', name: 'Dark (default)' },
+    { id: 'light', name: 'Light' },
+    { id: 'ocean', name: 'Ocean' },
+    { id: 'forest', name: 'Forest' },
+    { id: 'sunset', name: 'Sunset' },
+    { id: 'midnight', name: 'Midnight' },
+  ];
+  function applyTheme(id) {
+    document.documentElement.setAttribute('data-theme', id);
+    localStorage.setItem('tc_theme', id);
+  }
+  function initTheme() {
+    const saved = localStorage.getItem('tc_theme') || 'dark';
+    applyTheme(saved);
+    const sel = $('themeSel');
+    if (sel) {
+      sel.value = saved;
+      sel.addEventListener('change', () => applyTheme(sel.value));
+    }
+  }
+
+  // ---- Debug / Stream inspector ----
+  let debugTimer = null;
+  async function refreshDebug() {
+    const view = $('debugView');
+    if (!view) return;
+    try {
+      const data = await api('/api/logs?lines=50');
+      view.textContent = data.lines.join('\n') || '(no events yet)';
+      view.scrollTop = view.scrollHeight;
+    } catch (e) {
+      view.textContent = 'failed to load events: ' + e.message;
+    }
+  }
+
+  // ---- Slash menu ----
+  let slashCommands = [];
+  async function loadSlashCommands() {
+    try {
+      const r = await api('/api/slash');
+      slashCommands = r.commands || [];
+    } catch { slashCommands = []; }
+  }
+  function toggleSlashMenu(show) {
+    const m = $('slashMenu');
+    if (!m) return;
+    if (show) {
+      m.innerHTML = '';
+      if (!slashCommands.length) {
+        m.innerHTML = '<div class="nx" style="padding:8px 12px;font-size:12px">No commands available</div>';
+      } else {
+        for (const c of slashCommands) {
+          const row = document.createElement('div');
+          row.style.cssText = 'padding:8px 12px;cursor:pointer;border-radius:8px;font-size:13px;display:flex;gap:8px;align-items:center';
+          row.onmouseenter = () => row.style.background = 'var(--fill)';
+          row.onmouseleave = () => row.style.background = 'transparent';
+          row.onclick = () => { hideSlashMenu(); executeSlash(c.name, c.args); };
+          const nm = document.createElement('span'); nm.style.cssText = 'font-weight:600;color:var(--accent)'; nm.textContent = c.name;
+      const ds = document.createElement('span'); ds.style.cssText = 'color:var(--muted);font-size:12px'; ds.textContent = c.description + (c.args ? ' ' + c.args : '');
+          row.append(nm, ds);
+          m.appendChild(row);
+        }
+      }
+      m.classList.remove('hidden');
+    } else {
+      m.classList.add('hidden');
+    }
+  }
+  function hideSlashMenu() { toggleSlashMenu(false); }
+  async function executeSlash(name, args) {
+    try {
+      const r = await api('/api/slash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ command: name, args }) });
+      if (r.action === 'new') { $('input').value = ''; }
+      else if (r.action === 'clear') { if (confirm('Clear this chat?')) { await api('/api/sessions/' + encodeURIComponent(currentSession()), { method: 'DELETE' }); refreshSessions(); } }
+      else if (r.action === 'model') { switchView('models'); }
+      else if (r.action === 'status') { switchView('status'); }
+      else if (r.action === 'help') { addMsg('sys', slashCommands.map(c => c.name + ' — ' + c.description).join('\n')); }
+    } catch (e) { addMsg('sys', 'slash failed: ' + e.message); }
+  }
+
+  // ---- Draft save ----
+  function saveDraft() {
+    const v = $('input')?.value || '';
+    if (v.trim()) localStorage.setItem('tc_draft', v);
+    else localStorage.removeItem('tc_draft');
+  }
+  function restoreDraft() {
+    const d = localStorage.getItem('tc_draft');
+    if (d && $('input')) $('input').value = d;
+  }
+
+  // ---- Reply / Rewind / Copy on messages ----
+  function showMessageMenu(evt, msgEl) {
+    evt.preventDefault();
+    const existing = document.querySelector('.msg-context-menu');
+    if (existing) existing.remove();
+    const menu = document.createElement('div');
+    menu.className = 'msg-context-menu';
+    menu.style.cssText = 'position:fixed;z-index:1000;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 8px 28px rgba(0,0,0,0.4);min-width:140px';
+    const items = [
+      { label: 'Reply', fn: () => { const txt = msgEl.textContent?.slice(0, 200) || ''; $('input').value = '> ' + txt + '\n\n'; $('input').focus(); } },
+      { label: 'Copy', fn: () => { navigator.clipboard.writeText(msgEl.textContent || ''); addMsg('sys', 'Copied to clipboard'); } },
+      { label: 'Rewind here', fn: () => { if (confirm('Rewind to this message? Earlier messages will be removed.')) { addMsg('sys', 'Rewind requested'); } } },
+    ];
+    for (const item of items) {
+      const btn = document.createElement('button');
+      btn.className = 'ghost';
+      btn.style.cssText = 'display:block;width:100%;text-align:left;padding:8px 12px;font-size:13px';
+      btn.textContent = item.label;
+      btn.onclick = () => { menu.remove(); item.fn(); };
+      menu.appendChild(btn);
+    }
+    menu.style.left = Math.min(evt.clientX, window.innerWidth - 160) + 'px';
+    menu.style.top = Math.min(evt.clientY, window.innerHeight - 120) + 'px';
+    document.body.appendChild(menu);
+    const close = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
+    setTimeout(() => document.addEventListener('click', close), 10);
+  }
+
+  // ---- Status band + offline hint ----
+  function updateStatusBand() {
+    const band = $('statusBand');
+    if (!band) return;
+    if (!navigator.onLine) {
+      band.style.display = 'flex';
+      band.textContent = 'Offline — messages will be queued';
+    } else {
+      band.style.display = 'none';
+    }
+  }
+
+  // ---- Composer progress + error ----
+  function showComposerProgress(text) {
+    const p = $('composerProgress');
+    if (!p) return;
+    p.classList.remove('hidden');
+    const t = p.querySelector('.progText');
+    if (t) t.textContent = text;
+  }
+  function hideComposerProgress() {
+    const p = $('composerProgress');
+    if (p) p.classList.add('hidden');
+  }
+  function showComposerError(msg) {
+    const e = $('composerError');
+    if (!e) return;
+    e.classList.add('visible');
+    const t = e.querySelector('.errText');
+    if (t) t.textContent = msg;
+  }
+  function hideComposerError() {
+    const e = $('composerError');
+    if (e) e.classList.remove('visible');
+  }
+
+  // ---- Live status ----
+  async function refreshLiveStatus() {
+    const el = $('liveStatus');
+    if (!el) return;
+    try {
+      const s = await api('/api/status');
+      const parts = [];
+      parts.push('Provider: ' + (s.provider || 'unknown'));
+      parts.push('Telegram: ' + (s.channels?.telegram ? 'on' : 'off'));
+      parts.push('Dream: ' + (s.dream?.enabled ? 'on' : 'off'));
+      parts.push('Heartbeat: ' + (s.heartbeat?.enabled ? 'on' : 'off'));
+      parts.push('Memory: ' + (s.memory?.memoryBytes || 0) + ' bytes');
+      el.textContent = parts.join(' · ');
+    } catch (e) {
+      el.textContent = 'status unavailable: ' + e.message;
+    }
+  }
+
+  // ---- Logs viewer ----
+  let logTimer = null;
+  async function refreshLogs() {
+    const view = $('logView');
+    if (!view) return;
+    const level = $('logLevel')?.value || '';
+    const lines = $('logLines')?.value || '100';
+    try {
+      const data = await api(`/api/logs?lines=${lines}&level=${level}`);
+      view.textContent = data.lines.join('\n') || '(no log entries yet)';
+      view.scrollTop = view.scrollHeight;
+    } catch (e) {
+      view.textContent = 'failed to load logs: ' + e.message;
+    }
+  }
+  function startLogAuto() {
+    stopLogAuto();
+    if ($('logAuto')?.checked) logTimer = setInterval(refreshLogs, 3000);
+  }
+  function stopLogAuto() { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
+
   function switchView(name) {
     if (!VIEWS.includes(name)) name = 'chat';
     if (name === 'providers' && state.lastView !== 'providers') state.provFrom = state.lastView || 'status';
@@ -4107,6 +4730,8 @@
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'tools') refreshTools();
     if (name === 'settings') { refreshSettings(); refreshAgents(); }
+    if (name === 'logs') { refreshLogs(); startLogAuto(); } else { stopLogAuto(); }
+    if (name === 'debug') { refreshDebug(); if ($('debugAuto')?.checked) { clearInterval(debugTimer); debugTimer = setInterval(refreshDebug, 3000); } } else { clearInterval(debugTimer); debugTimer = null; }
     if (name === 'providers') showProvidersRoot();
     if (name === 'models') showModelsRoot();
     if (name === 'chat') { log.scrollTop = log.scrollHeight; refreshTaskCards(); refreshProgressCard(); }
@@ -4234,21 +4859,18 @@
   }
 
 async function bootstrap() {
-    if (!state.token) {
-      // No saved password: walk straight in when the panel runs open
-      // (no password configured); show the gate only when one is required.
-      let open = false;
-      try { open = (await (await fetch('/api/health')).json()).authRequired === false; } catch { /* offline -> gate */ }
-      if (!open) { showOverlay(); return; }
-    }
+    // Login removed — walk straight in.
     try {
-      await api('/api/skills'); // validates token
-      hideOverlay();
       updateChatLabel();
       refreshModelBtn();
       refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
+      initTheme();
+      startApprovalPoll();
+      loadSlashCommands();
+      restoreDraft();
+      updateStatusBand();
       refreshTaskCards();
       refreshProgressCard();
       applyDashboard();
@@ -4282,16 +4904,10 @@ async function bootstrap() {
         }
       } catch { /* welcome is best-effort */ }
     } catch (e) {
-      showOverlay((e && e.hint) || 'Token rejected');
+      console.error('bootstrap error:', e);
     }
   }
-  $('connect').onclick = () => {
-    state.token = $('token').value.trim();
-    localStorage.setItem('tc_token', state.token);
-    bootstrap();
-  };
-  $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('connect').click(); });
-
+  // Login removed — connect button and token input no longer needed.
   bootstrap();
 })();
 </script>

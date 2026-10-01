@@ -15,27 +15,38 @@ src/
 │   ├── paths.ts           # TCRAB_HOME resolution, package root discovery, layout
 │   ├── config.ts          # config.json load/save/merge, dotted get/set
 │   ├── frontmatter.ts     # dependency-free YAML-ish frontmatter parser
-│   └── logger.ts          # leveled logger
+│   ├── logger.ts          # leveled logger
+│   └── tracing.ts         # run spans, token counts, tool latencies
 ├── gateway/
 │   ├── server.ts          # HTTP API + SSE + static UI + channel/heartbeat wiring
 │   ├── auth.ts            # constant-time token checks (header or query)
 │   └── events.ts          # in-process bus -> SSE subscribers
 ├── agent/
 │   ├── loop.ts            # the agent run: prompt -> model -> tools -> repeat
+│   │                        #   + failover chain + compaction trigger + queue-aware
 │   ├── prompt.ts          # system prompt (SOUL + memory + skills index + env)
-│   ├── tools.ts           # tool registry + path guard + shell resolver
-│   ├── memory.ts          # MEMORY.md + daily logs + lexical search
-│   ├── sessions.ts        # JSONL transcripts with rolling window
+│   ├── tools.ts           # tool registry + path guard + shell resolver + browser (CDP) + code_exec (vm sandbox)
+│   ├── toolbox.ts         # extended tools: edit, patch, web_search, automations, sessions_*, subagents, phone tools (Termux:API)
+│   ├── memory.ts          # MEMORY.md + daily logs + lexical search + compacted digests
+│   ├── sessions.ts        # JSONL transcripts + compaction + SessionQueue (FIFO) + replay
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
 ├── channels/
 │   ├── api.ts             # Telegram Bot API client (global fetch)
-│   └── telegram.ts        # long-poll loop, allowlist, chunking, outbox
+│   ├── telegram.ts        # long-poll loop, allowlist, chunking, outbox
+│   ├── discord.ts         # Discord (optional, discord.js)
+│   ├── slack.ts           # Slack (optional, @slack/bolt)
+│   ├── signal.ts          # Signal (optional, signal-cli)
+│   ├── sms.ts             # SMS/MMS (optional, Twilio)
+│   └── matrix.ts          # Matrix (optional, matrix-js-sdk)
 ├── providers/
 │   ├── types.ts           # ChatRequest/ChatResult/Provider contract
 │   ├── anthropic.ts       # Messages API (content blocks, tool_use)
 │   ├── openai.ts          # chat/completions (works for OpenRouter/Groq/Ollama/...)
+│   ├── gemini.ts          # Google Gemini (REST API, streaming, tool calling)
+│   ├── ollama.ts          # Ollama local (native API, streaming, tool calling)
 │   ├── mock.ts            # offline deterministic provider (tests + demo)
-│   └── index.ts           # resolveProvider()
+│   ├── mcp.ts             # MCP client (stdio JSON-RPC, no external deps)
+│   └── index.ts           # resolveProvider() + resolveProviderChain()
 ├── skills/loader.ts       # SkillStore: discovery, override, prompt index
 ├── mobile/                # ★ the differentiator
 │   ├── bionic.ts          # Android guard: networkInterfaces + TMPDIR fixes
@@ -47,8 +58,15 @@ src/
 └── ...
 
 skills/                    # bundled SKILL.md skills (user skills live in ~/.termcrab/skills)
+├── loader.ts              # SkillStore: discovery, override, prompt index
+├── importer.ts            # import from folder/git URL
+├── scaffold.ts            # skill templates
+└── registry.ts            # ClawHub-compatible search/install/publish
+packages/
+└── plugin-sdk/            # typed interface for channels/providers/tools
 ui/index.html              # control UI (single file, mobile-first, SSE)
 test/*.test.ts             # node:test suite
+└── fixtures/              # recorded API responses for contract tests
 ```
 
 ## Data layout (state lives in `TCRAB_HOME`, default `~/.termcrab`)
@@ -70,24 +88,43 @@ test/*.test.ts             # node:test suite
 
 ## Agent run sequence
 
-1. Channel (web/CLI/telegram) receives a message → `runTurn(ctx, …)`
-2. User entry appended to the session JSONL
-3. System prompt assembled: identity (SOUL.md) + memory head + skills index + env blurb
-4. Loop (max `agent.maxIterations`, default 8):
+1. Channel (web/CLI/telegram) receives a message → enqueued in `SessionQueue` (per-session FIFO)
+2. `POST /api/chat` returns `202` with `turnId` immediately; client polls `GET /api/chat/:sessionId/:turnId`
+3. `processQueuedTurn` dequeues and calls `runTurn(ctx, …)` with an `AbortController`
+4. User entry appended to the session JSONL
+5. **Queue mode**: `followup` (default) waits for running turn; `steer`/`interrupt` abort it
+6. **Compaction check**: if session entries exceed `agent.compactThreshold` (default 60),
+   old entries are summarized into `memory/compacted/<sessionId>.md` and the session is trimmed
+7. System prompt assembled: identity (SOUL.md) + memory head + skills index + env blurb
+8. Loop (max `agent.maxIterations`, default 8):
    - transcript → provider messages (orphan tool results dropped)
-   - provider chat call (180s timeout)
+   - provider chat call (180s timeout) via **failover chain** (primary → fallbacks on 429/5xx)
    - tool calls executed (policy/roots enforced) → results appended
    - repeat until a pure text answer
-5. Events stream to SSE subscribers (`tool:start`, `delta`, `run:end`, …)
-6. Final answer persisted; channel replies (Telegram chunks + HTML-escapes)
+9. Events stream to SSE subscribers (`tool:start`, `delta`, `run:end`, …)
+10. Final answer persisted; channel replies (Telegram chunks + HTML-escapes)
 
 ## Security invariants
 
 1. Gateway binds `127.0.0.1` by default; **non-loopback + empty token = refuse to start**
-2. All `/api/*` except `/api/health` require a bearer/query token (constant-time compare)
+2. **Login system removed** — all `/api/*` endpoints are open (loopback binding is the only gate)
 3. Telegram: empty allowlist = channel off; foreign senders get a lock notice
 4. File tools resolve symlinks and stay inside `TCRAB_HOME` + cwd; `exec` is optional
 5. Bionic guard + TMPDIR fix run before any other module (import order is load-bearing)
+6. `browser` tool is read-only CDP (no Playwright dep); `code_exec` runs in a `vm` sandbox with no network/fs/require — both disabled by default
+7. MCP servers run as stdio JSON-RPC subprocesses; tools are namespaced `mcp_<server>_<tool>` and listed in the agent's tool catalog
+8. Phone tools (Termux:API): sms_send, camera, location, clipboard, battery, contacts, wifi_info, notification — zero extra deps, pure subprocess calls
+9. Inbound webhooks: POST /api/hooks/:id triggers an agent run with the payload as context
+10. Canvas/A2UI: agent pushes live HTML widgets to the Control UI via the `canvas` tool; widgets broadcast over SSE and render in the browser panel
+11. Config hot-reload: gateway watches config.json and applies changes without restart
+12. Tracing: run spans, token counts, tool latencies exported to /api/traces
+13. Session replay: POST /api/sessions/:id/replay re-executes user messages with full tool trace
+14. Multi-agent isolation: shared (default) | isolated (separate memory/skills per agent); AGENTS.md roster
+15. Voice depth: TTS streaming (chunked synthesis) + continuous STT mode
+16. Channel contract tests + fuzzing for parseCron/parseFrontmatter + test fixtures
+17. Optional channels: Discord, Slack, Signal, SMS/MMS, Matrix (all off by default, dynamic imports)
+18. Skill registry: ClawHub-compatible search/install/publish/list
+19. Plugin SDK: typed interface for channels/providers/tools (packages/plugin-sdk)
 
 ## Why zero dependencies
 

@@ -53,9 +53,21 @@ write_shim() {
   # from an older install would make the write below fail and kill the whole
   # installer (seen in the wild: "line 52: .../termcrab: No such file").
   rm -f "$1/termcrab" 2>/dev/null || true
-  cat > "$1/termcrab" <<SHIM
+  cat > "$1/termcrab" <<'SHIM'
 #!/usr/bin/env bash
-exec node "$DEST/dist/src/bin/termcrab.js" "\$@"
+# Self-locating shim: finds the install relative to this script's location.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for CANDIDATE in \
+  "$SCRIPT_DIR/../lib/node_modules/termcrab" \
+  "$SCRIPT_DIR/../share/termcrab" \
+  "$HOME/.local/share/termcrab" \
+  "$HOME/.termcrab"; do
+  if [ -f "$CANDIDATE/dist/src/bin/termcrab.js" ]; then
+    exec node "$CANDIDATE/dist/src/bin/termcrab.js" "$@"
+  fi
+done
+echo "termcrab: install not found - reinstall with: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw/install.sh | bash" >&2
+exit 1
 SHIM
   chmod +x "$1/termcrab"
 }

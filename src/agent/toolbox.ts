@@ -6,6 +6,7 @@ import type { Tool, ToolEnv } from './tools.js';
 import { resolveInRoots } from './tools.js';
 import { home, userSkillsDir, stateDir } from '../core/paths.js';
 import { notify } from '../mobile/notify.js';
+import { canvasUpdate, canvasRemove, canvasList, canvasGet } from '../gateway/canvas.js';
 import {
   loadCrons,
   addCron,
@@ -1202,6 +1203,253 @@ export function extraTools(env: ToolEnv): Tool[] {
         return `progress card saved: ${card.todo.length} todo, ${card.doing.length} doing, ${card.done.length} done`;
       }
       throw new Error('action must be get/set/clear');
+    },
+  });
+
+  // ---- phone tools (Termux:API) ----
+  const termuxBin = (name: string): string => {
+    return process.env.PREFIX ? `${process.env.PREFIX}/bin/${name}` : name;
+  };
+
+  tools.push({
+    def: {
+      name: 'sms_send',
+      description: 'Send an SMS message via Termux:API. Requires termux-api package and SMS permission.',
+      schema: {
+        type: 'object',
+        properties: {
+          to: { type: 'string', description: 'Phone number (e.g. +1234567890)' },
+          text: { type: 'string', description: 'Message text' },
+        },
+        required: ['to', 'text'],
+      },
+    },
+    async execute(args) {
+      const to = argStr(args, 'to');
+      const text = argStr(args, 'text');
+      try {
+        const { stdout } = await execFileAsync(termuxBin('termux-sms-send'), ['-n', to, text], { timeout: 10_000 });
+        return `SMS sent to ${to}: ${stdout.trim() || 'ok'}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`sms_send failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'camera',
+      description: 'Take a photo via Termux:API. Returns the file path of the captured image.',
+      schema: {
+        type: 'object',
+        properties: {
+          cameraId: { type: 'string', description: 'Camera ID (0=back, 1=front, default 0)' },
+        },
+      },
+    },
+    async execute(args) {
+      const cameraId = argStr(args, 'cameraId', false) || '0';
+      try {
+        const { stdout } = await execFileAsync(termuxBin('termux-camera-photo'), ['-c', cameraId], { timeout: 15_000 });
+        return `Photo captured: ${stdout.trim()}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`camera failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'location',
+      description: 'Get current GPS location via Termux:API. Returns latitude, longitude, and address.',
+      schema: {
+        type: 'object',
+        properties: {
+          provider: { type: 'string', description: 'Location provider (gps/network, default gps)' },
+        },
+      },
+    },
+    async execute(args) {
+      const provider = argStr(args, 'provider', false) || 'gps';
+      try {
+        const { stdout } = await execFileAsync(termuxBin('termux-location'), ['-p', provider], { timeout: 15_000 });
+        return `Location: ${stdout.trim()}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`location failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'clipboard',
+      description: 'Get or set clipboard content via Termux:API.',
+      schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['get', 'set'] },
+          text: { type: 'string', description: 'set: text to put on clipboard' },
+        },
+        required: ['action'],
+      },
+    },
+    async execute(args) {
+      const action = argStr(args, 'action');
+      if (action === 'get') {
+        try {
+          const { stdout } = await execFileAsync(termuxBin('termux-clipboard-get'), [], { timeout: 5000 });
+          return `Clipboard: ${stdout.trim()}`;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`clipboard get failed: ${msg}`);
+        }
+      }
+      if (action === 'set') {
+        const text = argStr(args, 'text');
+        try {
+          await execFileAsync(termuxBin('termux-clipboard-set'), [text], { timeout: 5000 });
+          return 'Clipboard set';
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`clipboard set failed: ${msg}`);
+        }
+      }
+      throw new Error('action must be get or set');
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'battery',
+      description: 'Get battery status via Termux:API. Returns percentage, charging state, and health.',
+      schema: { type: 'object', properties: {} },
+    },
+    async execute() {
+      try {
+        const { stdout } = await execFileAsync(termuxBin('termux-battery-status'), [], { timeout: 5000 });
+        return `Battery: ${stdout.trim()}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`battery failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'contacts',
+      description: 'List device contacts via Termux:API. Returns names and phone numbers.',
+      schema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Max contacts to return (default 50)' },
+        },
+      },
+    },
+    async execute(args) {
+      const limit = typeof args.limit === 'number' ? args.limit : 50;
+      try {
+        const { stdout } = await execFileAsync(termuxBin('termux-contact-list'), [], { timeout: 10_000 });
+        const lines = stdout.trim().split('\n').slice(0, limit);
+        return `Contacts:\n${lines.join('\n')}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`contacts failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'wifi_info',
+      description: 'Get WiFi connection info via Termux:API. Returns SSID, IP address, signal strength.',
+      schema: { type: 'object', properties: {} },
+    },
+    async execute() {
+      try {
+        const { stdout } = await execFileAsync(termuxBin('termux-wifi-connectioninfo'), [], { timeout: 5000 });
+        return `WiFi: ${stdout.trim()}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`wifi_info failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'notification',
+      description: 'Send a notification via Termux:API. Shows in the notification shade.',
+      schema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          text: { type: 'string' },
+          priority: { type: 'string', description: 'low/normal/high (default normal)' },
+        },
+        required: ['title', 'text'],
+      },
+    },
+    async execute(args) {
+      const title = argStr(args, 'title');
+      const text = argStr(args, 'text');
+      const priority = argStr(args, 'priority', false) || 'normal';
+      try {
+        await execFileAsync(termuxBin('termux-notification'), ['--title', title, '--content', text, '--priority', priority], { timeout: 5000 });
+        return `Notification sent: ${title}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`notification failed: ${msg} (is termux-api installed?)`);
+      }
+    },
+  });
+
+  // ---- canvas tool (agent-driven UI widgets) ----
+  tools.push({
+    def: {
+      name: 'canvas',
+      description: 'Push a live HTML widget to the Control UI. Actions: update (create/update), remove, list, get. Widgets are rendered in the browser panel.',
+      schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['update', 'remove', 'list', 'get'] },
+          id: { type: 'string', description: 'update/remove/get: widget id' },
+          html: { type: 'string', description: 'update: HTML content' },
+          title: { type: 'string', description: 'update: widget title' },
+        },
+        required: ['action'],
+      },
+    },
+    async execute(args) {
+      const action = argStr(args, 'action');
+      if (action === 'update') {
+        const id = argStr(args, 'id');
+        const html = argStr(args, 'html');
+        const title = typeof args.title === 'string' ? args.title : undefined;
+        const widget = canvasUpdate(id, html, title);
+        return `canvas widget "${widget.id}" updated (${html.length} chars)`;
+      }
+      if (action === 'remove') {
+        const id = argStr(args, 'id');
+        const removed = canvasRemove(id);
+        if (!removed) throw new Error(`canvas widget not found: ${id}`);
+        return `canvas widget "${id}" removed`;
+      }
+      if (action === 'list') {
+        const list = canvasList();
+        if (!list.length) return 'no canvas widgets';
+        return list.map((w) => `${w.id} · ${w.title || '(untitled)'} · ${w.html.length} chars`).join('\n');
+      }
+      if (action === 'get') {
+        const id = argStr(args, 'id');
+        const widget = canvasGet(id);
+        if (!widget) throw new Error(`canvas widget not found: ${id}`);
+        return JSON.stringify(widget, null, 2);
+      }
+      throw new Error('action must be update/remove/list/get');
     },
   });
 

@@ -443,6 +443,75 @@ export async function main(argv: string[]): Promise<void> {
         console.log('   try: termcrab skills list');
         return;
       }
+      // Skill registry: search, install, publish, list
+      if (sub === 'search') {
+        const q = source;
+        if (!q) {
+          console.error('usage: termcrab skills search <query>');
+          process.exitCode = 1;
+          return;
+        }
+        const { searchSkills } = await import('./skills/registry.js');
+        const results = await searchSkills(q);
+        if (!results.length) {
+          console.log('no skills found in registry');
+          return;
+        }
+        for (const s of results) console.log(`${s.name.padEnd(20)} ${s.description}`);
+        return;
+      }
+      if (sub === 'install') {
+        const name = source;
+        if (!name) {
+          console.error('usage: termcrab skills install <name>');
+          process.exitCode = 1;
+          return;
+        }
+        const { installSkill } = await import('./skills/registry.js');
+        const result = await installSkill(name);
+        if (result.ok) {
+          console.log(`✅ installed ${name}`);
+        } else {
+          console.error(`install failed: ${result.error}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      if (sub === 'publish') {
+        const name = source;
+        if (!name) {
+          console.error('usage: termcrab skills publish <name>');
+          process.exitCode = 1;
+          return;
+        }
+        const skill = store.get(name);
+        if (!skill) {
+          console.error(`skill not found: ${name}`);
+          process.exitCode = 1;
+          return;
+        }
+        const { publishSkill } = await import('./skills/registry.js');
+        const result = await publishSkill(name, skill.content, {
+          description: skill.description,
+        });
+        if (result.ok) {
+          console.log(`✅ published ${name}`);
+        } else {
+          console.error(`publish failed: ${result.error}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      if (sub === 'registry') {
+        const { listRegistrySkills } = await import('./skills/registry.js');
+        const skills = await listRegistrySkills();
+        if (!skills.length) {
+          console.log('registry empty or unreachable');
+          return;
+        }
+        for (const s of skills) console.log(`${s.name.padEnd(20)} ${s.description}`);
+        return;
+      }
       const list = store.list();
       if (!list.length) {
         console.log('no skills found');

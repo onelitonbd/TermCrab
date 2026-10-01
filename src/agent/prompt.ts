@@ -121,6 +121,11 @@ function readWorkspaceFile(rel: string): string {
   return '';
 }
 
+/** Read AGENTS.md roster (multi-agent routing rules). */
+export function readAgentsRoster(): string {
+  return readWorkspaceFile('AGENTS.md');
+}
+
 function readSoul(agentName?: string): { name: string; soul: string } {
   if (agentName) {
     const safe = sanitizeAgentName(agentName);
@@ -146,6 +151,10 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   const goalsBlurb = openGoals.length
     ? `\n# Active goals\n${openGoals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n')}\n`
     : '';
+  const roster = readAgentsRoster();
+  const rosterBlurb = roster
+    ? `\n# Agent roster\n${roster}\n`
+    : '';
 
   const agentNote = ctx.agentName
     ? `\n# Active agent profile\nYou are currently running as the named agent "${ctx.agentName}". Stay in this role.\n`
@@ -160,7 +169,7 @@ ${soul || `You are ${displayName}, friendly, practical, and concise.`}
 ${memory || '(empty - use the remember tool to record durable facts)'}
 
 # Skills index (load a skill with load_skill before using it)
-${skills}${intentsBlurb}${goalsBlurb}
+${skills}${intentsBlurb}${goalsBlurb}${rosterBlurb}
 # Rules
 - Be concise by default; structured answers for research.
 - Before running shell commands, state briefly what you are doing.
