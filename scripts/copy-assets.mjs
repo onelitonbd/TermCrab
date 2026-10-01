@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Post-build: make the CLI entry executable for local runs.
+// Post-build: make the CLI entry executable + copy test fixtures.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,4 +13,15 @@ if (fs.existsSync(bin)) {
     /* best effort (e.g. exotic FS) */
   }
 }
+
+// Copy test fixtures to dist/ so tests can find them
+const fixturesSrc = path.join(root, 'test', 'fixtures');
+const fixturesDst = path.join(root, 'dist', 'test', 'fixtures');
+if (fs.existsSync(fixturesSrc)) {
+  fs.mkdirSync(fixturesDst, { recursive: true });
+  for (const f of fs.readdirSync(fixturesSrc)) {
+    fs.copyFileSync(path.join(fixturesSrc, f), path.join(fixturesDst, f));
+  }
+}
+
 console.log('build ok:', bin);

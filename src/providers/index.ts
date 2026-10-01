@@ -2,6 +2,8 @@ import { ProviderCfg } from '../core/config.js';
 import { createAnthropic } from './anthropic.js';
 import { createMock } from './mock.js';
 import { createOpenAi } from './openai.js';
+import { createGemini } from './gemini.js';
+import { createOllama } from './ollama.js';
 import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider } from './types.js';
 import { isAbortError } from './types.js';
 
@@ -13,6 +15,8 @@ export const OPENAI_COMPAT_BASES = {
   openrouter: 'https://openrouter.ai/api/v1',
   groq: 'https://api.groq.com/openai/v1',
   deepseek: 'https://api.deepseek.com/v1',
+  xai: 'https://api.x.ai/v1',
+  mistral: 'https://api.mistral.ai/v1',
   ollama: 'http://127.0.0.1:11434/v1',
 } as const;
 
@@ -25,6 +29,34 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
       {
         baseUrl: cfg.baseUrl || 'https://api.anthropic.com',
         apiKey: cfg.apiKey,
+        model: cfg.model,
+        maxTokens: cfg.maxTokens,
+        temperature: cfg.temperature,
+        stream: cfg.stream,
+      },
+      fetchImpl,
+    );
+  }
+
+  if (cfg.type === 'gemini') {
+    if (!cfg.apiKey) throw new Error('provider.apiKey is required for the gemini provider');
+    return createGemini(
+      {
+        baseUrl: cfg.baseUrl,
+        apiKey: cfg.apiKey,
+        model: cfg.model,
+        maxTokens: cfg.maxTokens,
+        temperature: cfg.temperature,
+        stream: cfg.stream,
+      },
+      fetchImpl,
+    );
+  }
+
+  if (cfg.type === 'ollama') {
+    return createOllama(
+      {
+        baseUrl: cfg.baseUrl,
         model: cfg.model,
         maxTokens: cfg.maxTokens,
         temperature: cfg.temperature,

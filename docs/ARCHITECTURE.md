@@ -32,11 +32,18 @@ src/
 │   └── heartbeat.ts       # proactive tick: power check -> checklist -> run
 ├── channels/
 │   ├── api.ts             # Telegram Bot API client (global fetch)
-│   └── telegram.ts        # long-poll loop, allowlist, chunking, outbox
+│   ├── telegram.ts        # long-poll loop, allowlist, chunking, outbox
+│   ├── discord.ts         # Discord (optional, discord.js)
+│   ├── slack.ts           # Slack (optional, @slack/bolt)
+│   ├── signal.ts          # Signal (optional, signal-cli)
+│   ├── sms.ts             # SMS/MMS (optional, Twilio)
+│   └── matrix.ts          # Matrix (optional, matrix-js-sdk)
 ├── providers/
 │   ├── types.ts           # ChatRequest/ChatResult/Provider contract
 │   ├── anthropic.ts       # Messages API (content blocks, tool_use)
 │   ├── openai.ts          # chat/completions (works for OpenRouter/Groq/Ollama/...)
+│   ├── gemini.ts          # Google Gemini (REST API, streaming, tool calling)
+│   ├── ollama.ts          # Ollama local (native API, streaming, tool calling)
 │   ├── mock.ts            # offline deterministic provider (tests + demo)
 │   ├── mcp.ts             # MCP client (stdio JSON-RPC, no external deps)
 │   └── index.ts           # resolveProvider() + resolveProviderChain()
@@ -51,8 +58,15 @@ src/
 └── ...
 
 skills/                    # bundled SKILL.md skills (user skills live in ~/.termcrab/skills)
+├── loader.ts              # SkillStore: discovery, override, prompt index
+├── importer.ts            # import from folder/git URL
+├── scaffold.ts            # skill templates
+└── registry.ts            # ClawHub-compatible search/install/publish
+packages/
+└── plugin-sdk/            # typed interface for channels/providers/tools
 ui/index.html              # control UI (single file, mobile-first, SSE)
 test/*.test.ts             # node:test suite
+└── fixtures/              # recorded API responses for contract tests
 ```
 
 ## Data layout (state lives in `TCRAB_HOME`, default `~/.termcrab`)
@@ -105,6 +119,12 @@ test/*.test.ts             # node:test suite
 11. Config hot-reload: gateway watches config.json and applies changes without restart
 12. Tracing: run spans, token counts, tool latencies exported to /api/traces
 13. Session replay: POST /api/sessions/:id/replay re-executes user messages with full tool trace
+14. Multi-agent isolation: shared (default) | isolated (separate memory/skills per agent); AGENTS.md roster
+15. Voice depth: TTS streaming (chunked synthesis) + continuous STT mode
+16. Channel contract tests + fuzzing for parseCron/parseFrontmatter + test fixtures
+17. Optional channels: Discord, Slack, Signal, SMS/MMS, Matrix (all off by default, dynamic imports)
+18. Skill registry: ClawHub-compatible search/install/publish/list
+19. Plugin SDK: typed interface for channels/providers/tools (packages/plugin-sdk)
 
 ## Why zero dependencies
 

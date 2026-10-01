@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import { configPath, ensureLayout, home } from './paths.js';
 
 export interface ProviderCfg {
-  /** anthropic | openai (also openai-compatible: openrouter, groq, deepseek, ollama) | mock */
-  type: 'anthropic' | 'openai' | 'mock';
+  /** anthropic | openai (also openai-compatible: openrouter, groq, deepseek, xai, mistral) | gemini | ollama | mock */
+  type: 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'mock';
   /** For openai-type: full base ending in /v1 (e.g. https://openrouter.ai/api/v1, http://127.0.0.1:11434/v1). */
   baseUrl?: string;
   apiKey?: string;
@@ -59,6 +59,8 @@ export interface Config {
     allowBrowser: boolean;
     /** Allow sandboxed code execution (QuickJS). */
     allowCodeExec: boolean;
+    /** Multi-agent isolation: shared (default) | isolated (separate memory/skills per agent). */
+    isolation: 'shared' | 'isolated';
   };
   /** Fallback providers for failover chain (tried in order when primary fails). */
   fallbackProviders: ProviderCfg[];
@@ -81,6 +83,38 @@ export interface Config {
       authDir?: string;
     };
     web: { enabled: boolean };
+    discord?: {
+      enabled: boolean;
+      token: string;
+      allowedGuilds: string[];
+      allowedUsers: string[];
+    };
+    slack?: {
+      enabled: boolean;
+      botToken: string;
+      appToken: string;
+      allowedChannels: string[];
+      allowedUsers: string[];
+    };
+    signal?: {
+      enabled: boolean;
+      phoneNumber: string;
+      allowedNumbers: string[];
+    };
+    sms?: {
+      enabled: boolean;
+      accountSid: string;
+      authToken: string;
+      fromNumber: string;
+      allowedNumbers: string[];
+    };
+    matrix?: {
+      enabled: boolean;
+      homeserver: string;
+      accessToken: string;
+      userId: string;
+      allowedRooms: string[];
+    };
   };
   heartbeat: {
     enabled: boolean;
@@ -121,7 +155,7 @@ export function defaults(): Config {
     provider: { type: 'mock', model: DEFAULT_MODEL_HINTS.mock! },
     providers: [],
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared' },
     fallbackProviders: [],
     mcpServers: [],
     hooks: [],

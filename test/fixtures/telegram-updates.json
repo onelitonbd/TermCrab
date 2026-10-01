@@ -1,0 +1,46 @@
+[
+  {
+    "name": "simple text message",
+    "update": {
+      "update_id": 1,
+      "message": {
+        "text": "hello",
+        "chat": { "id": 123, "type": "private" },
+        "from": { "id": 456, "username": "testuser" }
+      }
+    }
+  },
+  {
+    "name": "command message",
+    "update": {
+      "update_id": 2,
+      "message": {
+        "text": "/status",
+        "chat": { "id": 123, "type": "private" },
+        "from": { "id": 456, "username": "testuser" }
+      }
+    }
+  },
+  {
+    "name": "agent mention",
+    "update": {
+      "update_id": 3,
+      "message": {
+        "text": "@brief do the thing",
+        "chat": { "id": 123, "type": "private" },
+        "from": { "id": 456, "username": "testuser" }
+      }
+    }
+  },
+  {
+    "name": "group message",
+    "update": {
+      "update_id": 4,
+      "message": {
+        "text": "hello group",
+        "chat": { "id": -789, "type": "group" },
+        "from": { "id": 456, "username": "testuser" }
+      }
+    }
+  }
+]

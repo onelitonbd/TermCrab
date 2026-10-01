@@ -30,6 +30,13 @@ import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { createMcpClient } from '../providers/mcp.js';
 import { listRuns, getRun, clearRuns } from '../core/tracing.js';
+import { speakStream } from '../mobile/tts-stream.js';
+import { startContinuousStt } from '../mobile/tts-stream.js';
+import { DiscordChannel } from '../channels/discord.js';
+import { SlackChannel } from '../channels/slack.js';
+import { SignalChannel } from '../channels/signal.js';
+import { SmsChannel } from '../channels/sms.js';
+import { MatrixChannel } from '../channels/matrix.js';
 import { SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
@@ -282,6 +289,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const agentQueue = new SessionQueue();
+  let continuousStt: import('../mobile/tts-stream.js').ContinuousStt | null = null;
 
   // ---- Config hot-reload: watch config.json for external changes ----
   const configFile = configPath();
@@ -327,6 +335,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   }
 
   const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue, mcpClients };
+
+  // ---- Optional channels (Discord, Slack, Signal, SMS, Matrix) ----
+  const discord = config.channels.discord ? new DiscordChannel(config.channels.discord) : null;
+  const slack = config.channels.slack ? new SlackChannel(config.channels.slack) : null;
+  const signal = config.channels.signal ? new SignalChannel(config.channels.signal) : null;
+  const sms = config.channels.sms ? new SmsChannel(config.channels.sms) : null;
+  const matrix = config.channels.matrix ? new MatrixChannel(config.channels.matrix) : null;
+  if (discord) discord.start().catch((e) => log.warn('discord:', e instanceof Error ? e.message : String(e)));
+  if (slack) slack.start().catch((e) => log.warn('slack:', e instanceof Error ? e.message : String(e)));
+  if (signal) signal.start().catch((e) => log.warn('signal:', e instanceof Error ? e.message : String(e)));
+  if (sms) sms.start().catch((e) => log.warn('sms:', e instanceof Error ? e.message : String(e)));
+  if (matrix) matrix.start().catch((e) => log.warn('matrix:', e instanceof Error ? e.message : String(e)));
 
   /** Process a queued turn: run it and mark done/error in the queue. */
   async function processQueuedTurn(
@@ -1338,6 +1358,45 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const result = await speak(text);
           json(res, 200, result);
+          return;
+        }
+
+        // TTS streaming: speak text in chunks
+        if (req.method === 'POST' && pathname === '/api/say/stream') {
+          const body = await readJsonBody(req);
+          const text = typeof body?.text === 'string' ? body.text.trim() : '';
+          if (!text || text.length > 10000) {
+            json(res, 400, { error: 'text required (1-10000 chars)' });
+            return;
+          }
+          const result = await speakStream(text, {
+            onChunk: (chunk) => bus.emit({ type: 'tts:chunk', text: chunk }),
+          });
+          json(res, 200, result);
+          return;
+        }
+
+        // Continuous STT: start a listening session
+        if (req.method === 'POST' && pathname === '/api/listen/start') {
+          const body = await readJsonBody(req);
+          const timeoutMs = typeof body?.timeoutMs === 'number' ? body.timeoutMs : 30000;
+          const stt = startContinuousStt(
+            (text) => bus.emit({ type: 'stt:result', text }),
+            { timeoutMs },
+          );
+          // Store for later stop
+          continuousStt = stt;
+          json(res, 200, { ok: true, status: 'listening' });
+          return;
+        }
+
+        // Continuous STT: stop listening
+        if (req.method === 'POST' && pathname === '/api/listen/stop') {
+          if (continuousStt) {
+            continuousStt.stop();
+            continuousStt = null;
+          }
+          json(res, 200, { ok: true, status: 'stopped' });
           return;
         }
 
