@@ -72,6 +72,7 @@ import { getProgress } from '../agent/progress.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
+import { createApproval, listApprovals, resolveApproval, waitForApproval, cleanupOldApprovals } from '../core/approvals.js';
 
 export interface GatewayHandle {
   server: http.Server;
@@ -909,8 +910,128 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        if (req.method === 'GET' && pathname === '/api/logs') {
+          const lines = Math.min(Number(new URL(req.url!, 'http://x').searchParams.get('lines')) || 200, 2000);
+          const level = new URL(req.url!, 'http://x').searchParams.get('level') || '';
+          const logPath = path.join(logsDir(), 'gateway.log');
+          try {
+            const content = fs.readFileSync(logPath, 'utf8');
+            const all = content.split('\n').filter(Boolean);
+            const filtered = level
+              ? all.filter((l) => l.includes(level.toUpperCase()))
+              : all;
+            const tail = filtered.slice(-lines);
+            json(res, 200, { lines: tail, total: filtered.length });
+          } catch {
+            json(res, 200, { lines: [], total: 0 });
+          }
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/approvals') {
+          cleanupOldApprovals();
+          json(res, 200, { approvals: listApprovals() });
+          return;
+        }
+
+        const approvalMatch = pathname.match(/^\/api\/approvals\/([^/]+)\/(approve|deny)$/);
+        if (approvalMatch && req.method === 'POST') {
+          const id = decodeURIComponent(approvalMatch[1]!);
+          resolveApproval(id, approvalMatch[2] === 'approve');
+          json(res, 200, { ok: true });
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/skills') {
           json(res, 200, { skills: skills.list() });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/skills/create') {
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { name?: string; content?: string }) : {};
+          try {
+            const name = (body.name || '').trim();
+            if (!name) { json(res, 400, { error: 'name required' }); return; }
+            const content = body.content || '# ' + name + '\n\nDescribe what this skill does.\n';
+            const skill = skills.create(name, content);
+            json(res, 200, { skill });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        if (req.method === 'PUT' && pathname.startsWith('/api/skills/')) {
+          const name = decodeURIComponent(pathname.slice('/api/skills/'.length));
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { content?: string }) : {};
+          try {
+            const skill = skills.update(name, body.content || '');
+            json(res, 200, { skill });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        if (req.method === 'DELETE' && pathname.startsWith('/api/skills/')) {
+          const name = decodeURIComponent(pathname.slice('/api/skills/'.length));
+          const ok = skills.remove(name);
+          json(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'not found' });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/slash') {
+          json(res, 200, {
+            commands: [
+              { name: '/new', description: 'Start a new chat', args: '' },
+              { name: '/clear', description: 'Clear the current chat', args: '' },
+              { name: '/model', description: 'Pick a model', args: '[model-name]' },
+              { name: '/status', description: 'Show agent status', args: '' },
+              { name: '/help', description: 'Show available commands', args: '' },
+            ],
+          });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/slash') {
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { command?: string; args?: string }) : {};
+          const cmd = (body.command || '').trim();
+          const args = (body.args || '').trim();
+          switch (cmd) {
+            case '/new':
+              json(res, 200, { ok: true, action: 'new' });
+              return;
+            case '/clear':
+              json(res, 200, { ok: true, action: 'clear' });
+              return;
+            case '/model':
+              json(res, 200, { ok: true, action: 'model', model: args });
+              return;
+            case '/status':
+              json(res, 200, { ok: true, action: 'status' });
+              return;
+            case '/help':
+              json(res, 200, { ok: true, action: 'help' });
+              return;
+            default:
+              json(res, 400, { error: 'unknown command: ' + cmd });
+              return;
+          }
+        }
+
+        if (req.method === 'GET' && pathname === '/api/providers/detect') {
+          const detected = [];
+          const env = process.env;
+          if (env.ANTHROPIC_API_KEY) detected.push({ type: 'anthropic', key: env.ANTHROPIC_API_KEY.slice(0, 8) + '…' });
+          if (env.OPENAI_API_KEY) detected.push({ type: 'openai', key: env.OPENAI_API_KEY.slice(0, 8) + '…' });
+          if (env.GROQ_API_KEY) detected.push({ type: 'openai', key: env.GROQ_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.groq.com/openai/v1' });
+          if (env.DEEPSEEK_API_KEY) detected.push({ type: 'openai', key: env.DEEPSEEK_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.deepseek.com/v1' });
+          if (env.OPENROUTER_API_KEY) detected.push({ type: 'openai', key: env.OPENROUTER_API_KEY.slice(0, 8) + '…', baseUrl: 'https://openrouter.ai/api/v1' });
+          if (env.GEMINI_API_KEY || env.GOOGLE_API_KEY) detected.push({ type: 'openai', key: (env.GEMINI_API_KEY || env.GOOGLE_API_KEY || '').slice(0, 8) + '…', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' });
+          json(res, 200, { detected });
           return;
         }
 

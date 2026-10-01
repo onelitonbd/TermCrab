@@ -15,6 +15,7 @@ export type AgentEvent =
   | { type: 'tool:start'; name: string; args: Record<string, unknown> }
   | { type: 'tool:end'; name: string; ok: boolean; preview: string }
   | { type: 'run:end'; runId: string; text: string; sessionId: string; iterations: number }
+  | { type: 'approval'; approval: import('../core/approvals.js').Approval }
   | { type: 'error'; message: string };
 
 export interface AgentCtx {
@@ -228,6 +229,29 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           const span = addSpan(runId, `tool:${call.name}`, { args: call.args });
           try {
             if (!tool) throw new Error(`unknown tool: ${call.name}`);
+            // Approval gate for sensitive tools
+            if (['exec', 'write_file', 'delete_file', 'edit_file'].includes(call.name)) {
+              const { createApproval, waitForApproval } = await import('../core/approvals.js');
+              const approval = createApproval(call.name, call.args as Record<string, unknown>);
+              emit({ type: 'approval', approval });
+              const approved = await waitForApproval(approval.id);
+              if (!approved) {
+                output = 'Action denied by user';
+                ok = false;
+                const toolDuration = Date.now() - toolStart;
+                if (span) endSpan(runId, span.id);
+                addToolCall(runId, call.name, toolDuration, ok);
+                emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200) });
+                ctx.sessions.append(sessionId, {
+                  role: 'tool',
+                  toolCallId: call.id,
+                  name: call.name,
+                  result: output,
+                  ts: Date.now(),
+                });
+                continue;
+              }
+            }
             output = await tool.execute(call.args);
           } catch (err) {
             ok = false;

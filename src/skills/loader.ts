@@ -83,4 +83,32 @@ export class SkillStore {
     if (!skills.length) return '(no skills installed)';
     return skills.map((s) => `- ${s.name} [${s.origin}]: ${s.description || 'no description'}`).join('\n');
   }
+
+  create(name: string, content: string): Skill {
+    if (!NAME_RE.test(name)) throw new Error('invalid skill name');
+    const dir = path.join(userSkillsDir(), name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), content, 'utf8');
+    const skill = readSkillDir(dir, 'user');
+    if (!skill) throw new Error('failed to create skill');
+    return skill;
+  }
+
+  update(name: string, content: string): Skill {
+    if (!NAME_RE.test(name)) throw new Error('invalid skill name');
+    const dir = path.join(userSkillsDir(), name);
+    if (!fs.existsSync(dir)) throw new Error('skill not found');
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), content, 'utf8');
+    const skill = readSkillDir(dir, 'user');
+    if (!skill) throw new Error('failed to update skill');
+    return skill;
+  }
+
+  remove(name: string): boolean {
+    if (!NAME_RE.test(name)) return false;
+    const dir = path.join(userSkillsDir(), name);
+    if (!fs.existsSync(dir)) return false;
+    fs.rmSync(dir, { recursive: true, force: true });
+    return true;
+  }
 }
