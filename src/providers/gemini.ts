@@ -1,5 +1,6 @@
 import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider, ProviderMessage, ToolDef } from './types.js';
 import { readError } from './types.js';
+import { getModelCapabilities, thinkingLevelToTokens } from './capabilities.js';
 
 /**
  * Google Gemini provider (REST API, no SDK needed).
@@ -8,6 +9,8 @@ import { readError } from './types.js';
 
 interface GeminiPart {
   text?: string;
+  /** Gemini marks reasoning summaries with thought: true. */
+  thought?: boolean;
   functionCall?: { name: string; args: Record<string, unknown> };
 }
 
@@ -64,6 +67,18 @@ export function createGemini(
 ): Provider {
   const base = cfg.baseUrl || 'https://generativelanguage.googleapis.com/v1beta';
   const model = cfg.model || 'gemini-2.0-flash';
+  const caps = getModelCapabilities(model, 'gemini');
+  // Gemini accepts thinking budgets between 1K and 24K tokens; clamp so a High/
+  // XHigh/Max choice can never turn into a 400 for an out-of-range budget.
+  const GEMINI_MAX_THINKING_BUDGET = 24576;
+
+  function thinkingConfig(req: ChatRequest): Record<string, unknown> | undefined {
+    if (!req.thinkingLevel || req.thinkingLevel === 'none') return undefined;
+    if (!caps.supportsThinking) return undefined;
+    const budget = thinkingLevelToTokens(req.thinkingLevel);
+    if (!budget) return undefined;
+    return { thinkingBudget: Math.min(budget, GEMINI_MAX_THINKING_BUDGET), includeThoughts: true };
+  }
 
   return {
     name: 'gemini',
@@ -72,13 +87,13 @@ export function createGemini(
     async chat(req: ChatRequest, opts?: ChatOpts): Promise<ChatResult> {
       const contents = toGeminiMessages(req.messages);
       const tools = toGeminiTools(req.tools);
-      const body: Record<string, unknown> = {
-        contents,
-        generationConfig: {
-          maxOutputTokens: cfg.maxTokens || 8192,
-          temperature: cfg.temperature ?? 0.7,
-        },
+      const generationConfig: Record<string, unknown> = {
+        maxOutputTokens: cfg.maxTokens || 8192,
+        temperature: cfg.temperature ?? 0.7,
       };
+      const thinkCfg = thinkingConfig(req);
+      if (thinkCfg) generationConfig.thinkingConfig = thinkCfg;
+      const body: Record<string, unknown> = { contents, generationConfig };
       if (tools) body.tools = [tools];
       if (req.system) body.systemInstruction = { parts: [{ text: req.system }] };
 
@@ -100,6 +115,7 @@ export function createGemini(
         // Parse SSE chunks
         const chunks = text.split('\n\n').filter((c) => c.startsWith('data: '));
         let fullText = '';
+        let thinkingText = '';
         const toolCalls: { id: string; name: string; args: Record<string, unknown> }[] = [];
         for (const chunk of chunks) {
           try {
@@ -107,7 +123,10 @@ export function createGemini(
             const candidate = data.candidates?.[0];
             if (!candidate) continue;
             for (const part of candidate.content.parts) {
-              if (part.text) {
+              if (part.text && part.thought) {
+                thinkingText += part.text;
+                opts.onThinkingDelta?.(part.text);
+              } else if (part.text) {
                 fullText += part.text;
                 opts.onDelta?.(part.text);
               }
@@ -123,7 +142,12 @@ export function createGemini(
             /* skip malformed chunks */
           }
         }
-        return { text: fullText, toolCalls, stopReason: toolCalls.length ? 'tool' : 'end' };
+        return {
+          text: fullText,
+          toolCalls,
+          stopReason: toolCalls.length ? 'tool' : 'end',
+          thinking: thinkingText || undefined,
+        };
       }
 
       // Non-streaming
@@ -142,7 +166,8 @@ export function createGemini(
       if (!candidate) throw new Error('Gemini returned no candidates');
 
       const parts = candidate.content.parts;
-      const text = parts.filter((p) => p.text).map((p) => p.text!).join('');
+      const text = parts.filter((p) => p.text && !p.thought).map((p) => p.text!).join('');
+      const thinking = parts.filter((p) => p.text && p.thought).map((p) => p.text!).join('');
       const toolCalls = parts
         .filter((p) => p.functionCall)
         .map((p, i) => ({
@@ -151,7 +176,7 @@ export function createGemini(
           args: p.functionCall!.args,
         }));
 
-      return { text, toolCalls, stopReason: toolCalls.length ? 'tool' : 'end' };
+      return { text, toolCalls, stopReason: toolCalls.length ? 'tool' : 'end', thinking: thinking || undefined };
     },
   };
 }

@@ -100,7 +100,7 @@ export function createMcpClient(config: McpServerConfig): McpClient {
     await sendRequest('initialize', {
       protocolVersion: '2024-11-05',
       capabilities: {},
-      clientInfo: { name: 'termcrab', version: '0.30.4' },
+      clientInfo: { name: 'termcrab', version: '0.34.0' },
     });
     // Send initialized notification
     child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`, 'utf8');

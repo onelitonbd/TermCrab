@@ -398,15 +398,53 @@
   }
 
   /* ---- thinking level button & selector ---- */
-  .thinkingBtn {
-    border-left: 1px solid rgba(138, 111, 155, 0.15);
-    margin-left: 2px;
+  /* The button rides inside the composer's .seg capsule next to the model chip,
+     so it must size to its content (the old circular .iconBtn shape squeezed
+     the label out of the button). Same trick as .modelBtn. */
+  .iconBtn.thinkingBtn {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    gap: 0;
+    border-radius: 999px;
+    background: transparent;
   }
-  .thinkingBtn.off { opacity: 0.6; }
+  .iconBtn.thinkingBtn:hover { background: transparent; }
+  .thinkingBtn .modOn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 2px 8px -2px rgba(90, 40, 120, 0.25);
+  }
+  .thinkingBtn svg { flex-shrink: 0; }
+  .thinkingBtn .modOn svg:first-child { color: var(--mut); transition: color 0.15s ease; }
+  /* an active level lights the brain up in the accent colour */
+  .thinkingBtn:not(.off) .modOn svg:first-child { color: #f0517d; }
+  .thinkingBtn:not(.off) .modOn { box-shadow: 0 2px 8px -2px rgba(240, 81, 125, .45); }
+  .thinkingBtn.off { opacity: 0.72; }
+  .thinkingBtn.off .modOn svg:first-child { color: var(--mut); }
+  #thinkingBtnLabel {
+    min-width: 0;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .thinkingBtn:not(.off) #thinkingBtnLabel { color: var(--ink); }
   .tpRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
     width: 100%;
     padding: 10px 14px;
     border-radius: 12px;
@@ -420,7 +458,11 @@
   }
   .tpRow:hover { background: rgba(246, 238, 250, 0.9); }
   .tpRow.on { border-color: #d9456f; background: rgba(217, 69, 111, 0.08); font-weight: 600; }
+  .tpRow.unsupported { opacity: 0.55; }
+  .tpRow .tpLeft { min-width: 0; text-align: left; }
   .tpSub { font-size: 12px; color: var(--mut); font-weight: normal; }
+  .tpChk { flex-shrink: 0; color: #d9456f; display: inline-flex; }
+  .tpList { max-height: min(52vh, 420px); overflow-y: auto; }
 
   /* ---- stop / max-iterations notice ---- */
   .warn {
@@ -658,8 +700,10 @@
     box-shadow: 0 10px 22px -10px var(--sh);
   }
   .iconBtn.stopMode:hover { background: #fff; color: #d9456f; }
-  /* model chip inside a soft capsule */
-  .seg { display: flex; padding: 3px; border-radius: 999px; background: var(--soft); min-width: 0; flex-shrink: 0; }
+  /* model + thinking chips inside a soft capsule.
+     The capsule may shrink (never overflow the row on phones); the labels
+     ellipsize instead of spilling out of their pills. */
+  .seg { display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: var(--soft); min-width: 0; flex-shrink: 1; }
   .iconBtn.modelBtn {
     width: auto;
     min-width: 0;
@@ -671,6 +715,7 @@
   .iconBtn.modelBtn:hover { background: transparent; }
   .modelBtn svg { color: var(--ic); flex-shrink: 0; }
   #modelBtnLabel {
+    min-width: 0;
     max-width: 110px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -683,6 +728,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
     height: 34px;
     padding: 0 14px;
     border-radius: 999px;
@@ -691,7 +737,14 @@
     box-shadow: 0 2px 8px -2px rgba(90, 40, 120, .25);
   }
   .modelBtn .modOn svg:first-child { color: #f0517d; }
-  @media (max-width: 430px) { .iconBtn.modelBtn { padding: 3px; } #modelBtnLabel { max-width: 84px; } }
+  /* phones: keep both chips, drop the "Think:" prefix and trim the model name */
+  @media (max-width: 560px) { .thinkPre { display: none; } }
+  @media (max-width: 430px) {
+    .iconBtn.modelBtn, .iconBtn.thinkingBtn { padding: 3px; }
+    #modelBtnLabel { max-width: 84px; }
+    #thinkingBtnLabel { max-width: 64px; }
+    .modelBtn .modOn, .thinkingBtn .modOn { padding: 0 11px; }
+  }
   /* inline error banner below composer */
   #composerError {
     display: none;
@@ -2046,7 +2099,7 @@
   }
 
   /* ---- sheets (token gate + popup modal) ---- */
-  #overlay, #modal, #modelPick {
+  #overlay, #modal, #modelPick, #thinkingPick {
     position: fixed;
     inset: 0;
     background: rgba(5, 7, 10, 0.78);
@@ -2057,7 +2110,7 @@
     padding: 0;
     animation: fade 0.15s ease-out;
   }
-  #overlay .card, #modal .card, #modelPick .card {
+  #overlay .card, #modal .card, #modelPick .card, #thinkingPick .card {
     background: var(--elevated);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
@@ -2069,18 +2122,20 @@
   #overlay p, #modal p { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; line-height: 1.55; }
   #overlay input, #modal input, #modal select { width: 100%; margin: 12px 0; }
   #overlay button { width: 100%; min-height: 48px; }
-  #modal .card { max-height: 92vh; overflow-y: auto; }
-  #modal h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; color: var(--strong); }
+  #modal .card, #modelPick .card, #thinkingPick .card { max-height: 92vh; overflow-y: auto; }
+  #modal h3, #thinkingPick h3 { margin: 2px 0 4px; font-size: 17px; letter-spacing: -0.01em; color: var(--strong); }
   #modal label.pNote { display: block; margin: 4px 0; }
-  #modal .pBar { margin-top: 14px; }
-  #modal .pBar .sp { flex: 1; }
+  #modal .pBar, #modelPick .pBar, #thinkingPick .pBar { margin-top: 14px; }
+  #modal .pBar .sp, #modelPick .pBar .sp, #thinkingPick .pBar .sp { flex: 1; }
   #modal #modalErr { color: var(--danger) !important; }
+  #thinkingPick .card { max-width: 420px; }
+  #tpModelNote { margin: 0 0 2px; }
 
   @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) {
     #log { scroll-behavior: auto; }
-    .msg, #overlay, #modal, details.panel > summary::after { animation: none; transition: none; }
+    .msg, #overlay, #modal, #modelPick, #thinkingPick, details.panel > summary::after { animation: none; transition: none; }
   }
   @media (max-width: 380px) {
     .pRow .k { min-width: 110px; }
@@ -2658,10 +2713,10 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
-        <button id="thinkingBtn" class="iconBtn thinkingBtn" type="button" title="Model Thinking Level / Reasoning Effort" aria-label="Model thinking level">
+        <button id="thinkingBtn" class="iconBtn thinkingBtn" type="button" title="Thinking level: Auto" aria-label="Thinking level: Auto" aria-haspopup="dialog" aria-expanded="false">
           <span class="modOn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>
-            <span id="thinkingBtnLabel">Think: Auto</span>
+            <span class="thinkPre">Think:&nbsp;</span><span id="thinkingBtnLabel">Auto</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
@@ -2709,11 +2764,12 @@
   </div>
 </div>
 
-<div id="thinkingPick" class="hidden">
-  <div class="card" style="max-width:380px">
-    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>Thinking Level / Reasoning Effort</h3>
-    <p class="pNote">Select reasoning depth for thinking-capable models (Claude 3.7, o1/o3, DeepSeek R1, Gemini Flash Thinking).</p>
-    <div id="tpList" class="listCol" style="gap:6px;margin:12px 0"></div>
+<div id="thinkingPick" class="hidden" role="dialog" aria-modal="true" aria-labelledby="tpTitle">
+  <div class="card">
+    <h3 id="tpTitle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>Thinking Level / Reasoning Effort</h3>
+    <p class="pNote" id="tpModelNote"></p>
+    <p class="pNote">Applies to thinking-capable models (o1/o3, Claude 3.7+, Gemini 2.5, DeepSeek R1). Other models ignore it.</p>
+    <div id="tpList" class="listCol tpList" role="radiogroup" aria-label="Thinking level" style="gap:6px;margin:12px 0"></div>
     <div class="pBar" style="margin-top:14px">
       <span class="sp"></span>
       <button id="tpCancel" class="ghost">Close</button>
@@ -2740,6 +2796,8 @@
     mdlFrom: 'status',
     mdlProvId: '',
     thinkingLevel: localStorage.getItem('tc_thinking') || 'none',
+    model: '',
+    thinkCaps: null,
     thinkStartTime: null,
     thinkInterval: null,
   };
@@ -3207,7 +3265,7 @@
 
   // ---- Composer model picker: choose provider, then one of its saved models ----
   const THINKING_LEVELS = [
-    { id: 'none', label: 'None (Auto)', detail: 'Model default / auto thinking' },
+    { id: 'none', label: 'Auto', detail: 'Model default — no reasoning budget forced' },
     { id: 'low', label: 'Low', detail: 'Fast, minimal (~1K token budget)' },
     { id: 'medium', label: 'Medium', detail: 'Balanced (~4K token budget)' },
     { id: 'high', label: 'High', detail: 'Thorough (~16K token budget)' },
@@ -3215,54 +3273,116 @@
     { id: 'max', label: 'Max', detail: 'Maximum reasoning (~64K token budget)' },
   ];
 
-  function refreshThinkingBtn() {
+  function thinkingLevel() {
     const cur = state.thinkingLevel || localStorage.getItem('tc_thinking') || 'none';
+    return THINKING_LEVELS.some((l) => l.id === cur) ? cur : 'none';
+  }
+
+  function refreshThinkingBtn() {
+    const cur = thinkingLevel();
     state.thinkingLevel = cur;
     const item = THINKING_LEVELS.find((l) => l.id === cur) || THINKING_LEVELS[0];
-    const shortLabel = item.label.split(' ')[0];
     const el = $('thinkingBtnLabel');
-    if (el) el.textContent = 'Think: ' + shortLabel;
+    if (el) el.textContent = item.label;
     const btn = $('thinkingBtn');
-    if (btn) btn.classList.toggle('off', cur === 'none');
+    if (btn) {
+      btn.classList.toggle('off', cur === 'none');
+      const title = 'Thinking level: ' + item.label
+        + (cur === 'none' ? ' (model default)' : '') + ' — tap to change';
+      btn.title = title;
+      btn.setAttribute('aria-label', title);
+    }
+  }
+
+  /** Current model's reasoning capability, straight from the backend. */
+  function thinkingCapabilityNote() {
+    const caps = state.thinkCaps;
+    const model = (caps && caps.model) || state.model || '';
+    if (!model) return 'No model in use yet — pick one with the model button beside this one.';
+    if (caps && caps.supportsThinking === false) {
+      return 'Current model: ' + model + ' — this model has no reasoning mode, so the level will not change its answers.';
+    }
+    return 'Current model: ' + model + ' — reasoning-capable.';
+  }
+
+  function closeThinkingPick() {
+    const box = $('thinkingPick');
+    if (!box || box.classList.contains('hidden')) return;
+    box.classList.add('hidden');
+    const btn = $('thinkingBtn');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      btn.focus();
+    }
   }
 
   function renderThinkingPick() {
     const box = $('tpList');
     if (!box) return;
+    const cur = thinkingLevel();
+    const caps = state.thinkCaps;
+    const unsupported = Boolean(caps && caps.supportsThinking === false);
+    const note = $('tpModelNote');
+    if (note) note.textContent = thinkingCapabilityNote();
     box.innerHTML = '';
-    const cur = state.thinkingLevel || 'none';
     for (const lvl of THINKING_LEVELS) {
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = 'tpRow' + (lvl.id === cur ? ' on' : '');
+      row.setAttribute('role', 'radio');
+      row.setAttribute('aria-checked', lvl.id === cur ? 'true' : 'false');
+      row.className = 'tpRow' + (lvl.id === cur ? ' on' : '') + (unsupported && lvl.id !== 'none' ? ' unsupported' : '');
       const left = document.createElement('div');
+      left.className = 'tpLeft';
       const name = document.createElement('div');
       name.textContent = lvl.label;
       const sub = document.createElement('div');
       sub.className = 'tpSub';
-      sub.textContent = lvl.detail;
+      sub.textContent = unsupported && lvl.id !== 'none'
+        ? lvl.detail + ' — current model ignores this'
+        : lvl.detail;
       left.append(name, sub);
       const chk = document.createElement('span');
+      chk.className = 'tpChk';
       if (lvl.id === cur) chk.innerHTML = TOOL_CHECK;
       row.append(left, chk);
       row.onclick = () => {
         state.thinkingLevel = lvl.id;
         localStorage.setItem('tc_thinking', lvl.id);
         refreshThinkingBtn();
-        $('thinkingPick').classList.add('hidden');
+        closeThinkingPick();
       };
       box.appendChild(row);
     }
   }
 
-  if ($('thinkingBtn')) $('thinkingBtn').onclick = () => { renderThinkingPick(); $('thinkingPick').classList.remove('hidden'); };
-  if ($('tpCancel')) $('tpCancel').onclick = () => $('thinkingPick').classList.add('hidden');
+  function openThinkingPick() {
+    renderThinkingPick();
+    const box = $('thinkingPick');
+    box.classList.remove('hidden');
+    const btn = $('thinkingBtn');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    const on = box.querySelector('.tpRow.on') || box.querySelector('.tpRow');
+    if (on) on.focus();
+  }
+
+  if ($('thinkingBtn')) $('thinkingBtn').onclick = openThinkingPick;
+  if ($('tpCancel')) $('tpCancel').onclick = closeThinkingPick;
+  if ($('thinkingPick')) {
+    // tap the dark backdrop to dismiss, like every other sheet
+    $('thinkingPick').addEventListener('click', (e) => { if (e.target === $('thinkingPick')) closeThinkingPick(); });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('thinkingPick') && !$('thinkingPick').classList.contains('hidden')) closeThinkingPick();
+  });
 
   async function refreshModelBtn() {
-    if (!state.token) return;
+    // No token gate here: the panel runs open by default, and the model chip +
+    // thinking picker must still show what is in use.
     try {
       const d = await api('/api/config');
       const m = (d.config && d.config.provider && d.config.provider.model) || '';
+      state.model = m;
+      state.thinkCaps = d.thinking || null;
       $('modelBtnLabel').textContent = m || 'model';
       $('modelBtn').title = 'Model in use: ' + (m || 'none');
     } catch { /* keep the old label */ }
@@ -5667,7 +5787,6 @@
   // ---- Providers page: OpenAI-compatible endpoints + API keys ----
   // Everything here only runs when the page is opened — no auto start.
   async function loadProviders() {
-    if (!state.token) return;
     const box = $('provList');
     box.innerHTML = '<div class="nx">loading…</div>';
     try {
