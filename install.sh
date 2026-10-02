@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # TermCrab installer - works on Termux and any Linux/macOS with Node >= 20.10.
-# Usage: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/main/install.sh | bash
+# Pin a version: TCRAB_BRANCH=v0.34.0 curl -fsSL <url> | bash
 set -euo pipefail
 
 REPO="${TCRAB_REPO:-https://github.com/onelitonbd/claw.git}"
-BRANCH="${TCRAB_BRANCH:-arena/01a0ec99-claw}"
+BRANCH="${TCRAB_BRANCH:-main}"
 DEST="${TCRAB_DEST:-$HOME/.local/share/termcrab}"
 
 say() { printf '\033[36m[termcrab]\033[0m %s\n' "$*"; }
@@ -28,18 +29,63 @@ command -v git >/dev/null 2>&1 || {
   if [ -n "${PREFIX:-}" ]; then pkg install -y git; else fail "git not found"; fi
 }
 
-# --- clone ------------------------------------------------------------
+# --- clone / upgrade --------------------------------------------------
 MODE="install"
 if [ -d "$DEST/.git" ]; then
   MODE="upgrade"
   say "upgrading existing install at $DEST"
-  git -C "$DEST" fetch --quiet origin "$BRANCH"
-  git -C "$DEST" checkout --quiet "$BRANCH"
-  git -C "$DEST" pull --quiet --ff-only origin "$BRANCH" || true
+  say "target ref: $BRANCH  (override with TCRAB_BRANCH=<branch|tag>)"
+  git -C "$DEST" fetch --quiet --tags origin
+  # Resolve $BRANCH to a commit SHA: prefer a tag, then a remote branch.
+  TARGET_SHA=""
+  if git -C "$DEST" rev-parse -q --verify "refs/tags/$BRANCH^{commit}" >/dev/null 2>&1; then
+    TARGET_SHA=$(git -C "$DEST" rev-parse "refs/tags/$BRANCH^{commit}")
+  elif git -C "$DEST" rev-parse -q --verify "origin/$BRANCH^{commit}" >/dev/null 2>&1; then
+    TARGET_SHA=$(git -C "$DEST" rev-parse "origin/$BRANCH^{commit}")
+  else
+    fail "branch/tag '$BRANCH' not found in $REPO"
+  fi
+  CURRENT_SHA=$(git -C "$DEST" rev-parse HEAD 2>/dev/null || echo "")
+  DIRTY=0
+  if ! git -C "$DEST" diff --quiet 2>/dev/null; then DIRTY=1; fi
+  if [ -n "$(git -C "$DEST" ls-files --others --exclude-standard 2>/dev/null)" ]; then DIRTY=1; fi
+  if [ "$CURRENT_SHA" != "$TARGET_SHA" ] || [ "$DIRTY" = "1" ]; then
+    if [ "$DIRTY" = "1" ]; then
+      say "working tree has local changes - resetting to $BRANCH (user config in ~/.termcrab is preserved)"
+    else
+      say "updating to $BRANCH..."
+    fi
+    # Discard any local modifications and untracked files (build artifacts,
+    # leftover files from failed merges, etc.), then set the tree to the
+    # target commit. Safe because user data lives in ~/.termcrab, not the
+    # install dir.
+    git -C "$DEST" reset --hard --quiet "$TARGET_SHA"
+    git -C "$DEST" clean -fd --quiet
+  fi
+  # Make sure we are sitting on the requested branch (if it exists as a local
+  # branch head) rather than a detached HEAD from a tag fetch.
+  if git -C "$DEST" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    git -C "$DEST" checkout --quiet "$BRANCH"
+    git -C "$DEST" reset --hard --quiet "$TARGET_SHA"
+  else
+    # Tag-based install: stay on detached HEAD at the tag.
+    git -C "$DEST" checkout --quiet "$TARGET_SHA"
+  fi
 else
   say "installing: cloning $REPO ($BRANCH) -> $DEST"
+  say "target ref: $BRANCH  (override with TCRAB_BRANCH=<branch|tag>)"
   mkdir -p "$(dirname "$DEST")"
-  git clone --quiet --branch "$BRANCH" "$REPO" "$DEST"
+  # Try to clone by branch first, then by tag.
+  if ! git clone --quiet --branch "$BRANCH" "$REPO" "$DEST" 2>/dev/null; then
+    # Branch clone failed; try tag.
+    git clone --quiet "$REPO" "$DEST"
+    git -C "$DEST" fetch --quiet --tags origin
+    if git -C "$DEST" rev-parse -q --verify "refs/tags/$BRANCH^{commit}" >/dev/null 2>&1; then
+      git -C "$DEST" checkout --quiet "$BRANCH"
+    else
+      fail "could not find branch or tag '$BRANCH' in $REPO"
+    fi
+  fi
 fi
 
 # --- build ------------------------------------------------------------
@@ -66,7 +112,7 @@ for CANDIDATE in \
     exec node "$CANDIDATE/dist/src/bin/termcrab.js" "$@"
   fi
 done
-echo "termcrab: install not found - reinstall with: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw/install.sh | bash" >&2
+echo "termcrab: install not found - reinstall with: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/main/install.sh | bash" >&2
 exit 1
 SHIM
   chmod +x "$1/termcrab"
