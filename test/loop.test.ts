@@ -15,7 +15,7 @@ function makeCtx(): { ctx: AgentCtx; home: string } {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tloop-'));
   process.env.TCRAB_HOME = home;
   const config = defaults();
-  config.provider = { type: 'mock', model: 'mock-1' };
+  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   const memory = new MemoryStore(path.join(home, 'memory'));
   const sessions = new SessionStore(path.join(home, 'sessions'));
   const skillRoot = path.join(home, 'skills');

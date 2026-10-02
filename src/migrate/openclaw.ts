@@ -356,9 +356,9 @@ export function planOpenclaw(source: string): PlanReport {
       const baseUrl = obj?.baseUrl ? String(obj.baseUrl) : '';
       const apiKey = obj?.apiKey ? String(obj.apiKey) : '';
       report.rows.push({ from: `${cand}.model`, to: 'provider.model', value: model, status: 'will set', set: { key: 'provider.model', value: model } });
-      if (provider === 'anthropic' || provider === 'openai') {
-        report.rows.push({ from: `${cand}.provider`, to: 'provider.type', value: provider, status: 'will set', set: { key: 'provider.type', value: provider } });
-      }
+      // Migrate any historical provider type (anthropic/gemini/ollama/mock) to
+      // the single supported kind: openai-compatible.
+      report.rows.push({ from: `${cand}.provider`, to: 'provider.type', value: 'openai', status: 'will set', set: { key: 'provider.type', value: 'openai' } });
       if (baseUrl) {
         report.rows.push({ from: `${cand}.baseUrl`, to: 'provider.baseUrl', value: baseUrl, status: 'will set', set: { key: 'provider.baseUrl', value: baseUrl } });
       }

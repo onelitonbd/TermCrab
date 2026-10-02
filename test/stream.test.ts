@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseSseText } from '../src/providers/sse.js';
 import { createOpenAi } from '../src/providers/openai.js';
-import { createAnthropic } from '../src/providers/anthropic.js';
 import { resolveProvider } from '../src/providers/index.js';
 import { FetchLike } from '../src/providers/types.js';
 
@@ -57,6 +56,30 @@ test('openai streaming: text deltas + tool call assembly', async () => {
   assert.deepEqual(deltas, ['Hello ', 'world']);
 });
 
+test('openai streaming: reasoning_content deltas are surfaced as thinking', async () => {
+  const frames = [
+    `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: 'Let me think… ' } }] })}\n\n`,
+    `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: 'the answer is 42' } }] })}\n\n`,
+    `data: ${JSON.stringify({ choices: [{ delta: { content: '42' } }] })}\n\n`,
+    `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] })}\n\n`,
+    'data: [DONE]\n\n',
+  ];
+  const provider = createOpenAi(
+    { baseUrl: 'https://x.test/v1', apiKey: 'k', model: 'o3-mini', stream: true },
+    async () => sseResponse(frames),
+  );
+  const thinking: string[] = [];
+  const text: string[] = [];
+  const result = await provider.chat(
+    { system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [], thinkingLevel: 'medium' },
+    { onDelta: (c) => text.push(c), onThinkingDelta: (c) => thinking.push(c) },
+  );
+  assert.equal(result.thinking, 'Let me think… the answer is 42');
+  assert.equal(result.text, '42');
+  assert.deepEqual(thinking, ['Let me think… ', 'the answer is 42']);
+  assert.deepEqual(text, ['42']);
+});
+
 test('openai streaming: fragmented tool arguments concatenate', async () => {
   const frames = [
     `data: ${JSON.stringify({
@@ -77,6 +100,60 @@ test('openai streaming: fragmented tool arguments concatenate', async () => {
   assert.deepEqual(result.toolCalls[0]!.args, { cmd: 'ls' });
 });
 
+test('openai basic (non-stream) request attaches reasoning_effort for reasoning models', async () => {
+  let captured: Record<string, unknown> = {};
+  const fetchImpl: FetchLike = async (_url, init) => {
+    captured = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  const provider = createOpenAi({ baseUrl: 'https://api.openai.com/v1', apiKey: 'k', model: 'o3-mini' }, fetchImpl);
+  await provider.chat(
+    { system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [], thinkingLevel: 'high' },
+    {},
+  );
+  assert.equal(captured.reasoning_effort, 'high', 'reasoning_effort must be set for reasoning model');
+});
+
+test('openai basic request does NOT attach reasoning_effort for plain chat models on the official API', async () => {
+  let captured: Record<string, unknown> = {};
+  const fetchImpl: FetchLike = async (_url, init) => {
+    captured = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  const provider = createOpenAi({ baseUrl: 'https://api.openai.com/v1', apiKey: 'k', model: 'gpt-4o-mini' }, fetchImpl);
+  await provider.chat(
+    { system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [], thinkingLevel: 'high' },
+    {},
+  );
+  assert.equal(captured.reasoning_effort, undefined, 'plain chat model must not receive reasoning_effort');
+});
+
+test('openai basic request DOES send reasoning_effort on custom hosts even for unknown models', async () => {
+  let captured: Record<string, unknown> = {};
+  const fetchImpl: FetchLike = async (_url, init) => {
+    captured = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  const provider = createOpenAi(
+    { baseUrl: 'http://127.0.0.1:8080/v1', apiKey: 'k', model: 'some-unknown-model', isCustomHost: true },
+    fetchImpl,
+  );
+  await provider.chat(
+    { system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [], thinkingLevel: 'medium' },
+    {},
+  );
+  assert.equal(captured.reasoning_effort, 'medium', 'custom host should forward reasoning_effort on user request');
+});
+
 test('openai falls back to non-streaming when stream errors before any delta', async () => {
   let calls = 0;
   const fetchImpl: FetchLike = async (_url, init) => {
@@ -93,41 +170,6 @@ test('openai falls back to non-streaming when stream errors before any delta', a
   // broken frames produced empty text and no tool calls -> treated as unknown; ensure no crash
   assert.equal(calls, 1);
   assert.ok(result);
-});
-
-test('anthropic streaming: text and tool_use blocks', async () => {
-  const frames = [
-    'event: message_start\ndata: {"type":"message_start","message":{}}\n\n',
-    'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text"}}\n\n',
-    'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi "}}\n\n',
-    'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"there"}}\n\n',
-    'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n',
-    'event: content_block_start\ndata: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"tu_1","name":"web_fetch"}}\n\n',
-    'event: content_block_delta\ndata: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\\"url\\": \\"https://e.x/\\"}"}}\n\n',
-    'event: content_block_stop\ndata: {"type":"content_block_stop","index":1}\n\n',
-    'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"tool_use"}}\n\n',
-    'event: message_stop\ndata: {"type":"message_stop"}\n\n',
-  ];
-  let body: Record<string, unknown> = {};
-  const provider = createAnthropic(
-    { baseUrl: 'https://x.test', apiKey: 'k', model: 'm', stream: true },
-    async (_url, init) => {
-      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return sseResponse(frames);
-    },
-  );
-  const deltas: string[] = [];
-  const result = await provider.chat(
-    { system: 's', messages: [{ role: 'user', content: 'go' }], tools: [] },
-    { onDelta: (c) => deltas.push(c) },
-  );
-  assert.equal(body.stream, true);
-  assert.equal(result.text, 'Hi there');
-  assert.equal(result.stopReason, 'tool');
-  assert.equal(result.toolCalls[0]!.name, 'web_fetch');
-  assert.equal(result.toolCalls[0]!.id, 'tu_1');
-  assert.deepEqual(result.toolCalls[0]!.args, { url: 'https://e.x/' });
-  assert.deepEqual(deltas, ['Hi ', 'there']);
 });
 
 test('resolveProvider passes stream flag through', async () => {

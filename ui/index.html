@@ -2768,7 +2768,7 @@
   <div class="card">
     <h3 id="tpTitle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>Thinking Level / Reasoning Effort</h3>
     <p class="pNote" id="tpModelNote"></p>
-    <p class="pNote">Applies to thinking-capable models (o1/o3, Claude 3.7+, Gemini 2.5, DeepSeek R1). Other models ignore it.</p>
+    <p class="pNote">Applies to reasoning models over the OpenAI-compatible API (o1/o3/o4, gpt-5, DeepSeek-R1, QwQ, Kimi k1/k2, OpenRouter :thinking models, …). Other models ignore it.</p>
     <div id="tpList" class="listCol tpList" role="radiogroup" aria-label="Thinking level" style="gap:6px;margin:12px 0"></div>
     <div class="pBar" style="margin-top:14px">
       <span class="sp"></span>
@@ -4746,15 +4746,10 @@
     { id: 'identity', label: 'YOUR CRAB', title: 'Identity', d: 'Who shows up in the chat.', fields: [
       { key: 'agent.name', label: 'Name', hint: 'How your crab introduces itself', type: 'text' },
     ]},
-    { id: 'brain', label: 'AI BRAIN', title: 'The brain', d: 'Which model answers you. Saved providers, keys and catalogs live on the Providers page.', fields: [
-      { key: 'provider.type', label: 'Service', type: 'select', options: [
-        ['anthropic', 'Anthropic - Claude'],
-        ['openai', 'OpenAI-compatible - OpenAI, OpenRouter, Groq, DeepSeek, Ollama'],
-        ['mock', 'Offline demo - no real answers'],
-      ]},
-      { key: 'provider.model', label: 'Model', hint: 'for example: gpt-4o-mini', type: 'text' },
-      { key: 'provider.baseUrl', label: 'Address', hint: 'where the service lives - empty means the built-in default', type: 'text' },
-      { key: 'provider.apiKey', label: 'API key', hint: 'password for your AI service - stays on this device, dots mean it is already saved', type: 'secret' },
+    { id: 'brain', label: 'AI BRAIN', title: 'The brain', d: 'Which model answers you. TermCrab speaks the OpenAI Chat Completions API — works with OpenAI, OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama (/v1), vLLM, llama.cpp, and most other self-hosted servers. Saved providers, keys and catalogs live on the Providers page.', fields: [
+      { key: 'provider.model', label: 'Model', hint: 'for example: gpt-4o-mini, o3-mini, deepseek-reasoner, qwq-plus', type: 'text' },
+      { key: 'provider.baseUrl', label: 'Address', hint: 'where the service lives — empty means https://api.openai.com/v1; for Ollama use http://127.0.0.1:11434/v1', type: 'text' },
+      { key: 'provider.apiKey', label: 'API key', hint: 'password for your AI service — stays on this device, dots mean it is already saved; leave empty for local servers (Ollama, etc.)', type: 'secret' },
     ]},
     { id: 'local', label: 'ON-DEVICE', title: 'Local brain (advanced)', d: 'A small model running on this machine for cheap, private side tasks.', fields: [
       { key: 'localProvider.enabled', label: 'Use a local model', hint: 'off by default - turn on when you run a local server', type: 'toggle' },
@@ -6538,7 +6533,7 @@ async function bootstrap() {
               `<div class="hnStep"><span class="hnNum">1</span><span><b>Pick your AI brain:</b> open Settings &rarr; AI brain to select a provider and enter your API key.</span></div>` +
               `<div class="hnStep"><span class="hnNum">2</span><span><b>Say hello:</b> start a chat in the composer below.</span></div>` +
             `</div>` +
-            `<div class="hnSub">Currently on offline demo brain ("mock") — connect a real provider to enable thinking.</div>` +
+            `<div class="hnSub">Connect any OpenAI-compatible API (OpenAI, OpenRouter, Groq, DeepSeek, xAI, Ollama, …) to enable chat and thinking.</div>` +
             `<div class="hnActions">` +
               `<button class="hnBtnPrimary" type="button" id="hnSetBtn">Open Settings</button>` +
               `<button class="hnBtnSecondary" type="button" id="hnProvBtn">Providers page</button>` +

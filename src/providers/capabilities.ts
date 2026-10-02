@@ -1,11 +1,16 @@
 /**
- * Model thinking / reasoning capabilities.
+ * Model thinking / reasoning capabilities for OpenAI-compatible providers.
  *
- * Providers differ in *how* a reasoning budget is expressed (Anthropic budgets,
- * OpenAI reasoning_effort, Gemini thinkingBudget, Ollama think), and — more
- * importantly — non-reasoning models reject those parameters outright (OpenAI
- * answers `Unsupported parameter: 'reasoning_effort'` with a 400). So every
- * provider checks this table before attaching thinking options to a request.
+ * Reasoning budgets are expressed as `reasoning_effort` (low/medium/high) on
+ * OpenAI-style endpoints, sometimes combined with a `reasoning: { max_tokens }`
+ * block on newer servers (DeepSeek-R1, vLLM, OpenAI o3/o4).
+ *
+ * Important: plain (non-reasoning) OpenAI models (gpt-4o, gpt-4o-mini) answer
+ * `Unsupported parameter: 'reasoning_effort'` with a hard 400, so we only
+ * attach the parameter when we recognize the model as a reasoning model —
+ * OR when the request is going to a custom/self-hosted base URL (those
+ * servers usually ignore unknown JSON fields, and many host reasoning
+ * models we cannot identify by name alone).
  */
 
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -47,22 +52,15 @@ export function getModelCapabilities(modelId: string, providerName?: string): Mo
   // (Deliberately anchored: plain 4o / gpt-4 must NOT match and get a 400.)
   if (
     /(^|[/:])o[134](-|$|\.)/.test(m) ||
+    /(^|[/:])o1$|(^|[/:])o3$|(^|[/:])o4$/.test(m) ||
     /(^|[/:])gpt-5(-|$|\.)/.test(m) ||
     m.includes('codex')
   ) {
     return yes();
   }
 
-  // Anthropic extended thinking: Claude 3.7 and the Claude 4 family.
-  if (
-    m.includes('claude-3-7') || m.includes('claude-3.7') ||
-    m.includes('claude-4') || m.includes('claude-sonnet-4') || m.includes('claude-opus-4')
-  ) {
-    return yes();
-  }
-
-  // Google Gemini 2.5 (and other explicitly thinking-tagged models).
-  if (m.includes('thinking') || m.includes('gemini-2.5') || m.includes('gemini-2-5')) {
+  // OpenAI-mini variants of reasoning models (e.g. o3-mini, o4-mini).
+  if (/(^|[/:])o[134]-mini/.test(m)) {
     return yes();
   }
 
@@ -71,9 +69,23 @@ export function getModelCapabilities(modelId: string, providerName?: string): Mo
     return yes();
   }
 
-  // OpenRouter-style reasoning models (`:thinking`, `-reasoner`, `reasoning`).
-  // The provider name is accepted too, for endpoints that proxy reasoning models.
-  if (m.includes(':thinking') || m.includes('-reasoner') || m.includes('/reasoner') || m.includes('reasoning')) {
+  // Common reasoning-model name hints across OpenAI-compatible providers:
+  //  - Qwen QwQ / Qwen*-Thinking
+  //  - :thinking suffix (OpenRouter)
+  //  - -reasoner / /reasoner suffix
+  //  - model ids containing "reasoning"
+  //  - Kimi k1/k2, GLM-4.5-thinking, StepFun, Mistral "thinking" editions, etc.
+  if (
+    m.includes(':thinking') ||
+    m.includes('-reasoner') ||
+    m.includes('/reasoner') ||
+    m.includes('-thinking') ||
+    m.includes('/thinking') ||
+    m.includes('qwq') ||
+    m.includes('reasoning') ||
+    m.includes('kimi-k') || // moonshot kimi-k1 / kimi-k1.5 / kimi-k2
+    /(^|[-/:_])k[12](-|$|\.)/.test(m) // Kimi k1/k2 reasoning models
+  ) {
     return yes();
   }
   if (p.includes('reason') && (m.includes('think') || m.includes('r1'))) {

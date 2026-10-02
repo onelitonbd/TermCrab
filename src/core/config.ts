@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import { configPath, ensureLayout, home } from './paths.js';
 
 export interface ProviderCfg {
-  /** anthropic | openai (also openai-compatible: openrouter, groq, deepseek, xai, mistral) | gemini | ollama | mock */
-  type: 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'mock';
-  /** For openai-type: full base ending in /v1 (e.g. https://openrouter.ai/api/v1, http://127.0.0.1:11434/v1). */
+  /** OpenAI-compatible Chat Completions API (OpenAI, OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama /v1, vLLM, llama.cpp, …). */
+  type: 'openai';
+  /** Full base URL ending in /v1 (e.g. https://openrouter.ai/api/v1, http://127.0.0.1:11434/v1). Leave empty for OpenAI proper. */
   baseUrl?: string;
   apiKey?: string;
   model: string;
@@ -144,15 +144,13 @@ export interface Config {
 }
 
 export const DEFAULT_MODEL_HINTS: Record<string, string> = {
-  anthropic: 'claude-sonnet-4-5',
   openai: 'gpt-4o-mini',
-  mock: 'mock-1',
 };
 
 export function defaults(): Config {
   return {
     version: 1,
-    provider: { type: 'mock', model: DEFAULT_MODEL_HINTS.mock! },
+    provider: { type: 'openai', model: '', baseUrl: '', apiKey: '' },
     providers: [],
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared' },
@@ -204,9 +202,11 @@ export function loadConfig(): Config {
   try {
     const raw = JSON.parse(rawText) as Partial<Config>;
     const merged = deepMerge(defaults(), raw);
-    // Never keep an invalid provider type.
-    const t = merged.provider?.type;
-    if (t !== 'anthropic' && t !== 'openai' && t !== 'mock') merged.provider.type = 'mock';
+    // Coerce legacy provider types (anthropic / gemini / ollama / mock) to the
+    // single supported kind: openai-compatible. Older configs with apiKey+baseUrl
+    // will keep working; "mock" configs (offline demo) fall back to an empty
+    // provider which the UI flags as setup-needed.
+    merged.provider.type = 'openai';
     return merged;
   } catch {
     return defaults();

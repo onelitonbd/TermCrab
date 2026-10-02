@@ -24,7 +24,7 @@ test('phase 3: wake service + wizard + update button', async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tph3-'));
   process.env.TCRAB_HOME = home;
   const config = defaults();
-  config.provider = { type: 'mock', model: 'mock-1' };
+  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   config.gateway.token = 'test-token';
   const port = await freePort();
   const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });
@@ -160,14 +160,13 @@ test('phase 3: wake service + wizard + update button', async (t) => {
       assert.ok(!JSON.stringify(get.data).includes(secret));
     });
 
-    await t.test('wizard: mock provider clears the key and flags setup needed', async () => {
-      const res = await req('/api/onboard', 'POST', { provider: 'mock' });
+    await t.test('wizard: submitting empty key flags setup needed', async () => {
+      const res = await req('/api/onboard', 'POST', { provider: 'openai', apiKey: '', model: '', baseUrl: '' });
       assert.equal(res.status, 200);
-      assert.equal(res.data.providerType, 'mock');
+      assert.equal(res.data.providerType, 'openai');
       assert.equal(res.data.setupNeeded, true);
       const cfg = loadConfig();
-      assert.equal(cfg.provider.type, 'mock');
-      assert.equal(cfg.provider.apiKey, undefined);
+      assert.equal(cfg.provider.type, 'openai');
     });
   } finally {
     await handle.stop();

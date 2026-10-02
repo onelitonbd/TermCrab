@@ -1,22 +1,31 @@
 /**
  * Telegram provider/model picker (v0.29.0).
  *
- * Lets you choose the provider and the model from inside the chat:
- *   /provider           - list saved providers, mark the one in use
+ * Lets you choose the provider endpoint and the model from inside the chat:
+ *   /provider           - list saved endpoints, mark the one in use
  *   /provider 2         - switch (also accepts the name or id)
- *   /model              - list models of the active provider (saved + live catalog)
+ *   /model              - list models of the active endpoint (saved + live catalog)
  *   /model 1            - switch (picks by number, exact id, or unique substring)
  *
  * Replies are markdown - the telegram channel translates them for delivery.
  * Every switch persists through saveConfig, so it survives restarts.
+ *
+ * All endpoints speak the OpenAI Chat Completions API (OpenAI, OpenRouter,
+ * Groq, DeepSeek, xAI, Mistral, Ollama /v1, vLLM, llama.cpp, …).
  */
 import { Config, ProviderEntry, saveConfig, DEFAULT_MODEL_HINTS } from '../core/config.js';
 import { activeBaseUrl, activeLabel, fetchProviderModels, providerOutboundKey } from '../gateway/provider-helpers.js';
 
-/** The saved provider the gateway is currently talking to (null for built-in setups). */
+/** True when no provider has been configured yet (setup needed). */
+function isUnconfigured(cfg: Config): boolean {
+  if (cfg.providers.some((p) => p.keys.length)) return false;
+  return !cfg.provider.apiKey;
+}
+
+/** The saved provider the gateway is currently talking to (null when no saved entry matches). */
 export function matchActiveEntry(cfg: Config): ProviderEntry | null {
   const activeBase = activeBaseUrl(cfg.provider);
-  if (!activeBase || cfg.provider.type === 'mock') return null;
+  if (!activeBase || isUnconfigured(cfg)) return null;
   const activeKey = cfg.provider.apiKey || '';
   const keyed = cfg.providers.filter(
     (p) => p.baseUrl === activeBase && activeKey && p.keys.some((k) => k.key === activeKey),
@@ -26,6 +35,7 @@ export function matchActiveEntry(cfg: Config): ProviderEntry | null {
 }
 
 function usingLine(cfg: Config): string {
+  if (isUnconfigured(cfg)) return 'No provider configured yet - add one in the web panel, or run `termcrab onboard`.';
   const base = activeBaseUrl(cfg.provider);
   const entry = matchActiveEntry(cfg);
   const name = entry ? entry.name : activeLabel(cfg.provider, base);
@@ -33,9 +43,9 @@ function usingLine(cfg: Config): string {
 }
 
 export function providerMenu(cfg: Config): string {
-  const lines: string[] = ['**Provider**', '', usingLine(cfg), ''];
+  const lines: string[] = ['**Provider endpoint**', '', usingLine(cfg), ''];
   if (!cfg.providers.length) {
-    lines.push('No providers saved yet - add one in the web panel, then run `/provider` again.');
+    lines.push('No endpoints saved yet - add one in the web panel, then run `/provider` again.');
     return lines.join('\n');
   }
   const active = matchActiveEntry(cfg);
@@ -50,12 +60,12 @@ export function providerMenu(cfg: Config): string {
   return lines.join('\n');
 }
 
-function resolveProvider(cfg: Config, arg: string): ProviderEntry | { error: string } {
+function resolveEntry(cfg: Config, arg: string): ProviderEntry | { error: string } {
   const a = arg.trim();
   if (!a) return { error: 'Tell me which one: a number, a name, or an id.' };
   if (/^\d+$/.test(a)) {
     const p = cfg.providers[Number(a) - 1];
-    if (!p) return { error: `There is no provider #${a} - the list has ${cfg.providers.length}.` };
+    if (!p) return { error: `There is no endpoint #${a} - the list has ${cfg.providers.length}.` };
     return p;
   }
   const byId = cfg.providers.find((p) => p.id === a);
@@ -66,13 +76,13 @@ function resolveProvider(cfg: Config, arg: string): ProviderEntry | { error: str
   const partial = cfg.providers.filter((p) => p.name.toLowerCase().includes(lower));
   if (partial.length === 1) return partial[0]!;
   if (partial.length > 1) {
-    return { error: `Several providers match "${a}": ${partial.map((p) => p.name).join(', ')}. Use the number instead.` };
+    return { error: `Several endpoints match "${a}": ${partial.map((p) => p.name).join(', ')}. Use the number instead.` };
   }
-  return { error: `No provider matches "${a}".` };
+  return { error: `No endpoint matches "${a}".` };
 }
 
 export function providerSelect(cfg: Config, arg: string): string {
-  const got = resolveProvider(cfg, arg);
+  const got = resolveEntry(cfg, arg);
   if ('error' in got) return `${got.error}\n\n${providerMenu(cfg)}`;
   const p = got;
   const key = providerOutboundKey(p, cfg);
@@ -84,12 +94,12 @@ export function providerSelect(cfg: Config, arg: string): string {
   const keepCurrent = saved.includes(current);
   const model = keepCurrent
     ? current
-    : saved[0] || (cfg.provider.type === 'mock' ? DEFAULT_MODEL_HINTS.openai || current : current);
-  cfg.provider = { ...cfg.provider, type: 'openai', baseUrl: p.baseUrl, apiKey: key || cfg.provider.apiKey || '', model };
+    : saved[0] || DEFAULT_MODEL_HINTS.openai || current;
+  cfg.provider = { type: 'openai', baseUrl: p.baseUrl, apiKey: key || cfg.provider.apiKey || '', model };
   saveConfig(cfg);
   const modelLine = saved.length
     ? `Model: \`${model || 'none'}\``
-    : 'No models saved on this provider yet - run `/model` to fetch its catalog.';
+    : 'No models saved on this endpoint yet - run `/model` to fetch its catalog.';
   return `Switched to **${p.name}** (${p.baseUrl}).\n\n${modelLine}\n\nChange the model any time with \`/model\`.`;
 }
 
@@ -103,8 +113,8 @@ function modelChoices(cfg: Config, fetched: string[] | null): { choices: string[
 
 export function modelMenu(cfg: Config, fetched: string[] | null): string {
   const lines: string[] = ['**Model**', ''];
-  if (cfg.provider.type === 'mock') {
-    lines.push(`Offline demo runs on \`${cfg.provider.model}\`.`, '', 'Add a real provider with `/provider` to pick a model.');
+  if (isUnconfigured(cfg)) {
+    lines.push('No provider configured yet - add one with `/provider` or in the web panel to pick a model.');
     return lines.join('\n');
   }
   const entry = matchActiveEntry(cfg);
@@ -133,8 +143,8 @@ export function modelMenu(cfg: Config, fetched: string[] | null): string {
 }
 
 export function modelSelect(cfg: Config, arg: string, fetched: string[] | null): string {
-  if (cfg.provider.type === 'mock') {
-    return 'Offline demo cannot change model - run `/provider` first.';
+  if (isUnconfigured(cfg)) {
+    return 'No provider configured - run `/provider` first.';
   }
   const entry = matchActiveEntry(cfg);
   const { choices } = modelChoices(cfg, fetched);
@@ -155,7 +165,7 @@ export function modelSelect(cfg: Config, arg: string, fetched: string[] | null):
         return `Several models match "${a}": ${partial.slice(0, 5).map((m) => '`' + m + '`').join(', ')}. Use the number or the exact id.`;
       }
     }
-    // built-in provider (no saved entry): accept any exact id the user types
+    // built-in endpoint (no saved entry): accept any exact id the user types
     if (!model && !entry && a.length <= 200) model = a;
     if (!model) return `No model matches "${a}".\n\n${modelMenu(cfg, fetched)}`;
   }
@@ -167,20 +177,20 @@ export function modelSelect(cfg: Config, arg: string, fetched: string[] | null):
       entry.models.sort();
     }
     const key = providerOutboundKey(entry, cfg);
-    cfg.provider = { ...cfg.provider, type: 'openai', baseUrl: entry.baseUrl, apiKey: key || cfg.provider.apiKey || '', model };
+    cfg.provider = { type: 'openai', baseUrl: entry.baseUrl, apiKey: key || cfg.provider.apiKey || '', model };
     saveConfig(cfg);
     return `Now chatting with **${entry.name}** on \`${model}\`.\n\nYour next message will use it.`;
   }
-  // Built-in provider wired directly (no saved entry) - switch the model only.
+  // Built-in endpoint wired directly (no saved entry) - switch the model only.
   cfg.provider.model = model;
   saveConfig(cfg);
   return `Model set to \`${model}\` on **${activeLabel(cfg.provider, activeBaseUrl(cfg.provider))}**.`;
 }
 
 /**
- * Catalog for the active provider. Returns [] fast when models are already
+ * Catalog for the active endpoint. Returns [] fast when models are already
  * saved (no remote call), the live catalog when nothing is saved, or null when
- * it cannot be fetched (no key, offline, builtin mock).
+ * it cannot be fetched (no key, offline).
  */
 export async function liveCatalog(cfg: Config): Promise<string[] | null> {
   const entry = matchActiveEntry(cfg);
@@ -194,7 +204,7 @@ export async function liveCatalog(cfg: Config): Promise<string[] | null> {
       return null;
     }
   }
-  if (cfg.provider.type === 'mock' || !cfg.provider.apiKey) return null;
+  if (isUnconfigured(cfg)) return null;
   const base = activeBaseUrl(cfg.provider);
   if (!base) return null;
   try {
@@ -203,11 +213,11 @@ export async function liveCatalog(cfg: Config): Promise<string[] | null> {
         id: '_live',
         name: 'active',
         baseUrl: base,
-        keys: [{ id: 'k', name: 'active', key: cfg.provider.apiKey, created: 0 }],
+        keys: [{ id: 'k', name: 'active', key: cfg.provider.apiKey || '', created: 0 }],
         models: [],
         created: 0,
       },
-      cfg.provider.apiKey,
+      cfg.provider.apiKey || '',
     );
   } catch {
     return null;

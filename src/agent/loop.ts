@@ -54,12 +54,11 @@ const PROVIDER_TIMEOUT_MS = 180_000;
 
 /**
  * Convert our transcript to provider messages, dropping orphaned tool results
- * (Anthropic rejects tool_result blocks without a matching tool_use).
+ * and empty assistant turns that would confuse the model.
  */
-export function toProviderMessages(entries: Entry[], providerName?: string): ProviderMessage[] {
+export function toProviderMessages(entries: Entry[], _providerName?: string): ProviderMessage[] {
   const seenToolIds = new Set<string>();
   const out: ProviderMessage[] = [];
-  const isMock = providerName === 'mock';
   for (const e of entries) {
     if (e.role === 'system') {
       out.push({ role: 'system', content: e.content });
@@ -68,7 +67,8 @@ export function toProviderMessages(entries: Entry[], providerName?: string): Pro
     } else if (e.role === 'assistant') {
       const calls = e.toolCalls ?? [];
       let content = e.content;
-      if (!isMock && content) {
+      // Strip any legacy mock-prefixed text from pre-0.35 transcripts.
+      if (content) {
         content = content.replace(/^\[mock:[^\]]+\]\s*(?:You said:[^.\n]*[.\n]\s*)?(?:Tool said:[^\n]*\n*)?/i, '').trim();
       }
       // Never send empty assistant turns upstream

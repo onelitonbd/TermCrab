@@ -49,7 +49,7 @@ import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
 import { WakeService } from './wake-service.js';
-import { normalizeProvider, seedWorkspace } from '../onboard.js';
+import { seedWorkspace } from '../onboard.js';
 import { DEFAULT_MODEL_HINTS } from '../core/config.js';
 import {
   activeBaseUrl,
@@ -141,7 +141,7 @@ function providersListView(cfg: Config) {
   const activeKey = cfg.provider.apiKey || "";
   const views = cfg.providers.map((p) => ({ ...providerView(p), inUse: false }));
   const matched: number[] = [];
-  if (activeBase && cfg.provider.type !== "mock") {
+  if (activeBase) {
     cfg.providers.forEach((p, i) => {
       if (p.baseUrl === activeBase && activeKey && p.keys.some((k) => k.key === activeKey)) matched.push(i);
     });
@@ -308,7 +308,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         Object.assign(live, fresh);
         log.info('config: hot-reloaded from disk');
         // Re-resolve provider if it changed
-        if (fresh.provider && fresh.provider.type !== 'mock') {
+        if (fresh.provider) {
           try {
             const newProvider = resolveProvider(fresh.provider, fetch);
             agent.provider = newProvider;
@@ -1028,14 +1028,16 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/providers/detect') {
-          const detected = [];
+          // Look for well-known OpenAI-compatible API keys in the environment.
+          // (All supported providers speak the same /v1/chat/completions format.)
+          const detected: { type: 'openai'; key: string; baseUrl?: string; label?: string }[] = [];
           const env = process.env;
-          if (env.ANTHROPIC_API_KEY) detected.push({ type: 'anthropic', key: env.ANTHROPIC_API_KEY.slice(0, 8) + '…' });
           if (env.OPENAI_API_KEY) detected.push({ type: 'openai', key: env.OPENAI_API_KEY.slice(0, 8) + '…' });
-          if (env.GROQ_API_KEY) detected.push({ type: 'openai', key: env.GROQ_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.groq.com/openai/v1' });
-          if (env.DEEPSEEK_API_KEY) detected.push({ type: 'openai', key: env.DEEPSEEK_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.deepseek.com/v1' });
-          if (env.OPENROUTER_API_KEY) detected.push({ type: 'openai', key: env.OPENROUTER_API_KEY.slice(0, 8) + '…', baseUrl: 'https://openrouter.ai/api/v1' });
-          if (env.GEMINI_API_KEY || env.GOOGLE_API_KEY) detected.push({ type: 'openai', key: (env.GEMINI_API_KEY || env.GOOGLE_API_KEY || '').slice(0, 8) + '…', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' });
+          if (env.GROQ_API_KEY) detected.push({ type: 'openai', key: env.GROQ_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.groq.com/openai/v1', label: 'Groq' });
+          if (env.DEEPSEEK_API_KEY) detected.push({ type: 'openai', key: env.DEEPSEEK_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.deepseek.com/v1', label: 'DeepSeek' });
+          if (env.OPENROUTER_API_KEY) detected.push({ type: 'openai', key: env.OPENROUTER_API_KEY.slice(0, 8) + '…', baseUrl: 'https://openrouter.ai/api/v1', label: 'OpenRouter' });
+          if (env.XAI_API_KEY) detected.push({ type: 'openai', key: env.XAI_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.x.ai/v1', label: 'xAI' });
+          if (env.MISTRAL_API_KEY) detected.push({ type: 'openai', key: env.MISTRAL_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.mistral.ai/v1', label: 'Mistral' });
           json(res, 200, { detected });
           return;
         }
@@ -1123,10 +1125,23 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         // ---- Web control parity (v0.5 P0 #0): everything the CLI can do ----
 
         if (req.method === 'GET' && pathname === '/api/setup') {
+          // Setup is needed when there is no config file at all, OR no primary
+          // api key AND no saved providers. (Local Ollama-style endpoints with
+          // no key work fine: apiKey can be empty if baseUrl points to a
+          // trusted local host.)
+          const hasSavedProvider = config.providers.some((p) => p.keys.length > 0);
+          const hasKey = Boolean(config.provider.apiKey);
+          const isLocal = (() => {
+            try {
+              const u = new URL(config.provider.baseUrl || '');
+              return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
+            } catch { return false; }
+          })();
+          const setupNeeded = !configExists() || !(hasKey || hasSavedProvider || isLocal);
           json(res, 200, {
-            setupNeeded: !configExists() || config.provider.type === 'mock',
+            setupNeeded,
             providerType: config.provider.type,
-            hasKey: Boolean(config.provider.apiKey),
+            hasKey,
             version: version(),
           });
           return;
@@ -1614,20 +1629,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'POST' && pathname === '/api/onboard') {
-          // Web setup wizard: apply in one shot, same fields as `termcrab onboard`.
+          // Web setup wizard: apply in one shot. TermCrab only supports
+          // OpenAI-compatible Chat Completions, so body.provider is normalised
+          // to 'openai' regardless of which label the UI shows.
           const body = await readJsonBody(req);
-          if (body && typeof body.provider === 'string') {
-            config.provider.type = normalizeProvider(body.provider);
-            if (config.provider.type === 'mock') {
-              config.provider = { type: 'mock', model: DEFAULT_MODEL_HINTS.mock || 'mock-1' };
-            } else {
-              if (typeof body.apiKey === 'string' && body.apiKey.trim()) config.provider.apiKey = body.apiKey.trim();
-              if (typeof body.baseUrl === 'string' && body.baseUrl.trim()) config.provider.baseUrl = body.baseUrl.trim();
-              if (typeof body.model === 'string' && body.model.trim()) {
-                config.provider.model = body.model.trim();
-              } else if (!config.provider.model || config.provider.model === 'mock-1') {
-                config.provider.model = DEFAULT_MODEL_HINTS[config.provider.type] || config.provider.model;
-              }
+          config.provider.type = 'openai';
+          if (body && (typeof body.provider === 'string' || typeof body.apiKey === 'string' || typeof body.baseUrl === 'string' || typeof body.model === 'string')) {
+            if (typeof body.apiKey === 'string' && body.apiKey.trim()) config.provider.apiKey = body.apiKey.trim();
+            if (typeof body.baseUrl === 'string' && body.baseUrl.trim()) config.provider.baseUrl = body.baseUrl.trim();
+            if (typeof body.model === 'string' && body.model.trim()) {
+              config.provider.model = body.model.trim();
+            } else if (!config.provider.model) {
+              config.provider.model = DEFAULT_MODEL_HINTS.openai || 'gpt-4o-mini';
             }
           }
           if (body && typeof body.name === 'string' && body.name.trim()) config.agent.name = body.name.trim().slice(0, 40);
@@ -1648,9 +1661,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           saveConfig(config);
           seedWorkspace(config.agent.name);
+          const isLocal = (() => {
+            try {
+              const u = new URL(config.provider.baseUrl || '');
+              return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
+            } catch { return false; }
+          })();
           json(res, 200, {
             ok: true,
-            setupNeeded: config.provider.type === 'mock' || !config.provider.apiKey,
+            setupNeeded: !config.provider.apiKey && !isLocal,
             providerType: config.provider.type,
             model: config.provider.model,
             name: config.agent.name,

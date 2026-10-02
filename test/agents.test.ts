@@ -22,7 +22,7 @@ function setup(): { ctx: AgentCtx; home: string } {
   fs.writeFileSync(path.join(home, 'workspace', 'SOUL.md'), '# SOUL\n\n- Name: Crabby (main)\n');
 
   const config = defaults();
-  config.provider = { type: 'mock', model: 'mock-1' };
+  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   const ctx: AgentCtx = {
     config,
     memory: new MemoryStore(path.join(home, 'memory')),

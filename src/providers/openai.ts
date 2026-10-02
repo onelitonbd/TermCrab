@@ -10,7 +10,7 @@ import {
   isAbortError,
 } from './types.js';
 import { sseData } from './sse.js';
-import { getModelCapabilities, thinkingLevelToEffort } from './capabilities.js';
+import { getModelCapabilities, thinkingLevelToEffort, thinkingLevelToTokens } from './capabilities.js';
 
 interface OpenAiCfg {
   baseUrl: string;
@@ -19,6 +19,12 @@ interface OpenAiCfg {
   maxTokens?: number;
   temperature?: number;
   stream?: boolean;
+  /** True when baseUrl is a self-hosted / non-well-known host. On such hosts we
+   *  trust the user's thinking-level selection and always send reasoning_effort,
+   *  because custom proxies and local servers (vLLM, llama.cpp, OpenRouter
+   *  fallbacks) silently ignore unknown JSON fields but may host reasoning
+   *  models we can't detect by name. */
+  isCustomHost?: boolean;
 }
 
 function joinUrl(base: string, path: string): string {
@@ -81,15 +87,47 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
   const caps = getModelCapabilities(cfg.model, 'openai');
 
   /**
-   * Attach reasoning effort — but ONLY for models that take it. Sending
-   * `reasoning_effort` to a plain model (gpt-4o and friends) is a hard 400,
-   * which used to break the whole reply whenever a thinking level was picked.
+   * Attach reasoning options when the user picked a thinking level.
+   *
+   * Strategy:
+   *  - If we can positively identify a reasoning model (caps.supportsThinking)
+   *    we always attach reasoning_effort, mapped low/medium/high.
+   *  - If we can't identify the model but the host is a custom/self-hosted
+   *    endpoint (isCustomHost) and the user explicitly picked a non-none
+   *    level, we still send reasoning_effort. Most OpenAI-compat servers
+   *    ignore unknown JSON keys, so this is safe — and reasoning-capable
+   *    proxies (e.g. self-hosted DeepSeek-R1, QwQ, vLLM) will honour it.
+   *  - If the host is api.openai.com itself and we don't recognize the model
+   *    as a reasoning model, we do NOT send reasoning_effort because OpenAI
+   *    returns a hard 400 for plain chat models.
    */
   function applyThinking(body: Record<string, unknown>, req: ChatRequest): void {
-    if (!req.thinkingLevel || req.thinkingLevel === 'none') return;
-    if (!caps.supportsThinking) return;
-    const effort = thinkingLevelToEffort(req.thinkingLevel);
+    const level = req.thinkingLevel;
+    if (!level || level === 'none') return;
+
+    const knownReasoning = caps.supportsThinking;
+    const isOpenAiOfficial = /^https?:\/\/api\.openai\.com\b/.test(cfg.baseUrl);
+    const forceOnCustom = cfg.isCustomHost && !isOpenAiOfficial;
+
+    if (!knownReasoning && !(forceOnCustom)) return;
+
+    const effort = thinkingLevelToEffort(level);
     if (effort) body.reasoning_effort = effort;
+
+    // Some OpenAI-compat reasoning servers (DeepSeek, Qwen on vLLM/sglang,
+    // newer OpenAI o3/o4) accept a `reasoning` block with { max_tokens: N }
+    // instead of/in addition to effort. We attach a budget hint there too
+    // when the chosen level maps to a token count. Servers that don't
+    // understand it simply ignore the field.
+    const tokBudget = thinkingLevelToTokens(level);
+    if (tokBudget) {
+      body.reasoning = { max_tokens: tokBudget };
+      // Bump overall max_tokens when it is not user-set so there is room for
+      // both the reasoning trace and the answer.
+      if (!body.max_tokens || (typeof body.max_tokens === 'number' && body.max_tokens < tokBudget + 256)) {
+        body.max_tokens = Math.max((cfg.maxTokens ?? 4096), tokBudget + 2048);
+      }
+    }
   }
 
   function finalize(
@@ -251,6 +289,9 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
           onDelta: (chunk) => {
             emitted++;
             opts.onDelta?.(chunk);
+          },
+          onThinkingDelta: (chunk) => {
+            opts.onThinkingDelta?.(chunk);
           },
         };
         try {

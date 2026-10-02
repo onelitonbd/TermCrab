@@ -7,37 +7,37 @@ import {
 } from '../src/providers/index.js';
 import { ProviderCfg } from '../src/core/config.js';
 
-const mockCfg: ProviderCfg = { type: 'mock', model: 'mock-1' };
-const mockCfg2: ProviderCfg = { type: 'mock', model: 'mock-2' };
+const cfgA: ProviderCfg = { type: 'openai', baseUrl: 'http://127.0.0.1:11111/v1', apiKey: 'sk-a', model: 'model-a' };
+const cfgB: ProviderCfg = { type: 'openai', baseUrl: 'http://127.0.0.1:11112/v1', apiKey: 'sk-b', model: 'model-b' };
 
 test('failover: single provider returns directly', () => {
-  const provider = resolveProviderChain(mockCfg, []);
-  assert.equal(provider.model, 'mock-1');
+  const provider = resolveProviderChain(cfgA, []);
+  assert.equal(provider.model, 'model-a');
 });
 
 test('failover: chain with multiple providers succeeds', () => {
-  const provider = resolveProviderChain(mockCfg, [mockCfg2]);
+  const provider = resolveProviderChain(cfgA, [cfgB]);
   assert.ok(provider.name.includes('failover'));
 });
 
 test('failover: cooldown tracking works', () => {
-  markProviderCooldown(mockCfg);
-  assert.ok(providerInCooldown(mockCfg), 'should be in cooldown');
-  assert.ok(!providerInCooldown(mockCfg2), 'mockCfg2 should not be in cooldown');
+  markProviderCooldown(cfgA);
+  assert.ok(providerInCooldown(cfgA), 'should be in cooldown');
+  assert.ok(!providerInCooldown(cfgB), 'cfgB should not be in cooldown');
 });
 
 test('failover: provider in cooldown is skipped', () => {
-  markProviderCooldown(mockCfg);
-  // When primary is in cooldown, chain should skip it
-  const provider = resolveProviderChain(mockCfg, [mockCfg2]);
-  // Should fall through to mockCfg2
-  assert.equal(provider.model, 'mock-2');
+  markProviderCooldown(cfgA);
+  // When primary is in cooldown and only one fallback is available, the chain
+  // reduces to that single fallback (no FailoverProvider wrapper needed).
+  const provider = resolveProviderChain(cfgA, [cfgB]);
+  assert.equal(provider.model, 'model-b', 'falls through to the non-cooldown provider');
 });
 
 test('failover: all providers in cooldown falls back to primary', () => {
-  markProviderCooldown(mockCfg);
-  markProviderCooldown(mockCfg2);
-  const provider = resolveProviderChain(mockCfg, [mockCfg2]);
+  markProviderCooldown(cfgA);
+  markProviderCooldown(cfgB);
+  const provider = resolveProviderChain(cfgA, [cfgB]);
   // Should try primary anyway when all are in cooldown
-  assert.equal(provider.model, 'mock-1');
+  assert.equal(provider.model, 'model-a');
 });

@@ -1,15 +1,11 @@
 import { ProviderCfg } from '../core/config.js';
-import { createAnthropic } from './anthropic.js';
-import { createMock } from './mock.js';
 import { createOpenAi } from './openai.js';
-import { createGemini } from './gemini.js';
-import { createOllama } from './ollama.js';
 import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider } from './types.js';
 import { isAbortError } from './types.js';
 
 export * from './types.js';
 
-/** Default bases for openai-compatible endpoints (set provider.baseUrl to override). */
+/** Default base URLs for well-known OpenAI-compatible endpoints. */
 export const OPENAI_COMPAT_BASES = {
   openai: 'https://api.openai.com/v1',
   openrouter: 'https://openrouter.ai/api/v1',
@@ -20,60 +16,28 @@ export const OPENAI_COMPAT_BASES = {
   ollama: 'http://127.0.0.1:11434/v1',
 } as const;
 
+/**
+ * TermCrab only supports OpenAI-compatible Chat Completions APIs.
+ * That covers OpenAI, OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama (/v1),
+ * vLLM, llama.cpp, text-generation-webui, Together, Fireworks, Anyscale, and
+ * dozens of self-hosted servers — they all speak the same /v1/chat/completions
+ * wire format. Set cfg.baseUrl to point at any compatible server.
+ */
 export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch): Provider {
-  if (cfg.type === 'mock') return createMock(cfg.model);
-
-  if (cfg.type === 'anthropic') {
-    if (!cfg.apiKey) throw new Error('provider.apiKey is required for the anthropic provider');
-    return createAnthropic(
-      {
-        baseUrl: cfg.baseUrl || 'https://api.anthropic.com',
-        apiKey: cfg.apiKey,
-        model: cfg.model,
-        maxTokens: cfg.maxTokens,
-        temperature: cfg.temperature,
-        stream: cfg.stream,
-      },
-      fetchImpl,
-    );
-  }
-
-  if (cfg.type === 'gemini') {
-    if (!cfg.apiKey) throw new Error('provider.apiKey is required for the gemini provider');
-    return createGemini(
-      {
-        baseUrl: cfg.baseUrl,
-        apiKey: cfg.apiKey,
-        model: cfg.model,
-        maxTokens: cfg.maxTokens,
-        temperature: cfg.temperature,
-        stream: cfg.stream,
-      },
-      fetchImpl,
-    );
-  }
-
-  if (cfg.type === 'ollama') {
-    return createOllama(
-      {
-        baseUrl: cfg.baseUrl,
-        model: cfg.model,
-        maxTokens: cfg.maxTokens,
-        temperature: cfg.temperature,
-        stream: cfg.stream,
-      },
-      fetchImpl,
-    );
-  }
-
+  const baseUrl = cfg.baseUrl || OPENAI_COMPAT_BASES.openai;
   return createOpenAi(
     {
-      baseUrl: cfg.baseUrl || OPENAI_COMPAT_BASES.openai,
+      baseUrl,
       apiKey: cfg.apiKey || '',
       model: cfg.model,
       maxTokens: cfg.maxTokens,
       temperature: cfg.temperature,
       stream: cfg.stream,
+      // Let the OpenAI client know whether this is a well-known host. We use
+      // that to decide how strict to be about thinking/reasoning parameters
+      // (unknown hosts often proxy reasoning models too and ignore unknown
+      // params silently).
+      isCustomHost: !Object.values(OPENAI_COMPAT_BASES).includes(baseUrl as (typeof OPENAI_COMPAT_BASES)[keyof typeof OPENAI_COMPAT_BASES]),
     },
     fetchImpl,
   );
@@ -81,7 +45,7 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
 
 export function providerSummary(cfg: ProviderCfg): string {
   const base = cfg.baseUrl ? ` @ ${cfg.baseUrl}` : '';
-  return `${cfg.type}:${cfg.model}${base}`;
+  return `openai:${cfg.model}${base}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +56,7 @@ const cooldowns = new Map<string, number>();
 const COOLDOWN_MS = 60_000;
 
 function providerKey(cfg: ProviderCfg): string {
-  return `${cfg.type}:${cfg.baseUrl || ''}:${cfg.model}`;
+  return `openai:${cfg.baseUrl || ''}:${cfg.model}`;
 }
 
 function isInCooldown(cfg: ProviderCfg): boolean {

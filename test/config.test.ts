@@ -13,7 +13,7 @@ test('loadConfig returns defaults when no file', () => {
   tempHome();
   const cfg = loadConfig();
   assert.equal(cfg.gateway.port, 7788);
-  assert.equal(cfg.provider.type, 'mock');
+  assert.equal(cfg.provider.type, 'openai');
   assert.equal(cfg.agent.maxIterations, 8);
 });
 
@@ -21,7 +21,7 @@ test('save/load roundtrip + deep merge with defaults', () => {
   tempHome();
   const cfg = defaults();
   cfg.gateway.token = 'abc123';
-  cfg.provider = { type: 'anthropic', model: 'claude-x', apiKey: 'sk-test' };
+  cfg.provider = { type: 'openai', model: 'gpt-4o-mini', apiKey: 'sk-test' };
   saveConfig(cfg);
 
   // Simulate a partial/older config file missing newer keys.
@@ -32,7 +32,7 @@ test('save/load roundtrip + deep merge with defaults', () => {
 
   const loaded = loadConfig();
   assert.equal(loaded.gateway.token, 'abc123');
-  assert.equal(loaded.provider.model, 'claude-x');
+  assert.equal(loaded.provider.model, 'gpt-4o-mini');
   assert.ok(loaded.heartbeat, 'defaults merged for missing heartbeat section');
 });
 
@@ -48,13 +48,13 @@ test('cfgSet sets nested values with coercion', () => {
   assert.equal(loadConfig().gateway.port, 9000);
 });
 
-test('invalid provider type falls back to mock', () => {
+test('invalid provider type is coerced to openai', () => {
   tempHome();
   const cfg = defaults();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (cfg.provider as any).type = 'nope';
   saveConfig(cfg);
-  assert.equal(loadConfig().provider.type, 'mock');
+  assert.equal(loadConfig().provider.type, 'openai');
 });
 
 // ---- fresh-install password paths (the "config get printed nothing" bug) ----
