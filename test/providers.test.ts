@@ -187,8 +187,8 @@ test('providers API: list / add / keys / use / delete', async (t) => {
       const rows = second.data.providers as Array<Record<string, unknown>>;
       assert.equal(rows[0]!.inUse, true, 'matching endpoint flips to in use');
       assert.equal((second.data.active as Record<string, unknown>).matchedId, pid2);
-      // tidy: back to the offline demo
-      config.provider = { ...config.provider, type: 'mock', baseUrl: '', apiKey: '', model: 'mock-1' };
+      // tidy: clear provider
+      config.provider = { type: 'openai', baseUrl: '', apiKey: '', model: '' };
     });
   } finally {
     await handle.stop();

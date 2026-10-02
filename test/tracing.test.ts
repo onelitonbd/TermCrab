@@ -4,10 +4,10 @@ import { startRun, endRun, addSpan, endSpan, addToolCall, getRun, listRuns, clea
 
 test('tracing: startRun creates a trace', () => {
   clearRuns();
-  const trace = startRun('run1', 's1', 'mock', 'mock-1');
+  const trace = startRun('run1', 's1', 'openai', 'test-model');
   assert.equal(trace.runId, 'run1');
   assert.equal(trace.sessionId, 's1');
-  assert.equal(trace.provider, 'mock');
+  assert.equal(trace.provider, 'openai');
   assert.ok(trace.start > 0);
 });
 

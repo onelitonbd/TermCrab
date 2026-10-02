@@ -29,6 +29,7 @@ import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { getModelCapabilities, normalizeThinkingLevel } from '../providers/capabilities.js';
+import { getCachedCaps, modelCapsKey, probeModel, probeModels } from '../providers/probe.js';
 import { createMcpClient } from '../providers/mcp.js';
 import { listRuns, getRun, clearRuns } from '../core/tracing.js';
 import { speakStream } from '../mobile/tts-stream.js';
@@ -49,7 +50,7 @@ import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
 import { WakeService } from './wake-service.js';
-import { normalizeProvider, seedWorkspace } from '../onboard.js';
+import { seedWorkspace } from '../onboard.js';
 import { DEFAULT_MODEL_HINTS } from '../core/config.js';
 import {
   activeBaseUrl,
@@ -141,7 +142,7 @@ function providersListView(cfg: Config) {
   const activeKey = cfg.provider.apiKey || "";
   const views = cfg.providers.map((p) => ({ ...providerView(p), inUse: false }));
   const matched: number[] = [];
-  if (activeBase && cfg.provider.type !== "mock") {
+  if (activeBase) {
     cfg.providers.forEach((p, i) => {
       if (p.baseUrl === activeBase && activeKey && p.keys.some((k) => k.key === activeKey)) matched.push(i);
     });
@@ -308,11 +309,26 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         Object.assign(live, fresh);
         log.info('config: hot-reloaded from disk');
         // Re-resolve provider if it changed
-        if (fresh.provider && fresh.provider.type !== 'mock') {
+        if (fresh.provider) {
           try {
             const newProvider = resolveProvider(fresh.provider, fetch);
             agent.provider = newProvider;
             log.info('config: provider updated');
+            // Kick off a fresh probe for the new model/baseUrl/key combo if
+            // we haven't probed it yet, so the thinking picker updates quickly.
+            if (fresh.provider.model) {
+              const newBase = fresh.provider.baseUrl || 'https://api.openai.com/v1';
+              if (!getCachedCaps(newBase, fresh.provider.model, fresh.provider.apiKey)) {
+                probeModel({
+                  baseUrl: newBase,
+                  model: fresh.provider.model,
+                  apiKey: fresh.provider.apiKey,
+                  fetchImpl: fetch,
+                }).catch((e: unknown) => {
+                  log.warn('config-change probe failed:', e instanceof Error ? e.message : String(e));
+                });
+              }
+            }
           } catch (err) {
             log.warn('config: provider update failed:', err instanceof Error ? err.message : String(err));
           }
@@ -561,6 +577,26 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     });
   }
   void notifyStatus(`online · ${providerLabel(config)} · port ${port}`);
+
+  // ---- Background capability probe for the active model ----
+  // If we haven't probed this (baseUrl, model, key) tuple yet, send a tiny
+  // request in the background to learn which thinking levels the server
+  // actually accepts. The chat UI reads the result via /api/config. Errors
+  // are swallowed — heuristic detection is always the fallback.
+  if (config.provider.model) {
+    const baseUrl = config.provider.baseUrl || 'https://api.openai.com/v1';
+    const already = getCachedCaps(baseUrl, config.provider.model, config.provider.apiKey);
+    if (!already) {
+      probeModel({
+        baseUrl,
+        model: config.provider.model,
+        apiKey: config.provider.apiKey,
+        fetchImpl: fetch,
+      }).catch((e: unknown) => {
+        log.warn('startup probe failed:', e instanceof Error ? e.message : String(e));
+      });
+    }
+  }
 
   // ---- HTTP server ----
   const server = http.createServer(async (req, res) => {
@@ -1028,14 +1064,16 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/providers/detect') {
-          const detected = [];
+          // Look for well-known OpenAI-compatible API keys in the environment.
+          // (All supported providers speak the same /v1/chat/completions format.)
+          const detected: { type: 'openai'; key: string; baseUrl?: string; label?: string }[] = [];
           const env = process.env;
-          if (env.ANTHROPIC_API_KEY) detected.push({ type: 'anthropic', key: env.ANTHROPIC_API_KEY.slice(0, 8) + '…' });
           if (env.OPENAI_API_KEY) detected.push({ type: 'openai', key: env.OPENAI_API_KEY.slice(0, 8) + '…' });
-          if (env.GROQ_API_KEY) detected.push({ type: 'openai', key: env.GROQ_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.groq.com/openai/v1' });
-          if (env.DEEPSEEK_API_KEY) detected.push({ type: 'openai', key: env.DEEPSEEK_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.deepseek.com/v1' });
-          if (env.OPENROUTER_API_KEY) detected.push({ type: 'openai', key: env.OPENROUTER_API_KEY.slice(0, 8) + '…', baseUrl: 'https://openrouter.ai/api/v1' });
-          if (env.GEMINI_API_KEY || env.GOOGLE_API_KEY) detected.push({ type: 'openai', key: (env.GEMINI_API_KEY || env.GOOGLE_API_KEY || '').slice(0, 8) + '…', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' });
+          if (env.GROQ_API_KEY) detected.push({ type: 'openai', key: env.GROQ_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.groq.com/openai/v1', label: 'Groq' });
+          if (env.DEEPSEEK_API_KEY) detected.push({ type: 'openai', key: env.DEEPSEEK_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.deepseek.com/v1', label: 'DeepSeek' });
+          if (env.OPENROUTER_API_KEY) detected.push({ type: 'openai', key: env.OPENROUTER_API_KEY.slice(0, 8) + '…', baseUrl: 'https://openrouter.ai/api/v1', label: 'OpenRouter' });
+          if (env.XAI_API_KEY) detected.push({ type: 'openai', key: env.XAI_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.x.ai/v1', label: 'xAI' });
+          if (env.MISTRAL_API_KEY) detected.push({ type: 'openai', key: env.MISTRAL_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.mistral.ai/v1', label: 'Mistral' });
           json(res, 200, { detected });
           return;
         }
@@ -1123,19 +1161,40 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         // ---- Web control parity (v0.5 P0 #0): everything the CLI can do ----
 
         if (req.method === 'GET' && pathname === '/api/setup') {
+          // Setup is needed when there is no config file at all, OR no primary
+          // api key AND no saved providers. (Local Ollama-style endpoints with
+          // no key work fine: apiKey can be empty if baseUrl points to a
+          // trusted local host.)
+          const hasSavedProvider = config.providers.some((p) => p.keys.length > 0);
+          const hasKey = Boolean(config.provider.apiKey);
+          const isLocal = (() => {
+            try {
+              const u = new URL(config.provider.baseUrl || '');
+              return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
+            } catch { return false; }
+          })();
+          const setupNeeded = !configExists() || !(hasKey || hasSavedProvider || isLocal);
           json(res, 200, {
-            setupNeeded: !configExists() || config.provider.type === 'mock',
+            setupNeeded,
             providerType: config.provider.type,
-            hasKey: Boolean(config.provider.apiKey),
+            hasKey,
             version: version(),
           });
           return;
         }
 
         if (req.method === 'GET' && pathname === '/api/config') {
-          // The chat UI reads this to label its model button and to say whether
-          // the model in use can reason at all (thinking level picker).
-          const caps = getModelCapabilities(config.provider.model || '', config.provider.type);
+          // The chat UI reads this to label its model button and to render the
+          // thinking level picker. Prefer a *verified* capability record (from
+          // src/providers/probe.js, populated by /api/probe or the startup
+          // background probe); fall back to heuristic detection by model id.
+          const heuristic = getModelCapabilities(config.provider.model || '', config.provider.type);
+          const verified = getCachedCaps(
+            config.provider.baseUrl || 'https://api.openai.com/v1',
+            config.provider.model || '',
+            config.provider.apiKey,
+          );
+          const caps = verified ?? heuristic;
           json(res, 200, {
             config: redactConfig(config),
             path: configPath(),
@@ -1144,6 +1203,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
               supportsThinking: caps.supportsThinking,
               supportedLevels: caps.supportedLevels,
               defaultLevel: caps.defaultLevel,
+              probed: Boolean(verified),
+              probedAt: verified?.probedAt || null,
+              rejectReason: verified?.rejectReason || null,
             },
           });
           return;
@@ -1174,6 +1236,72 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             );
           }
           json(res, 200, { ok: true, config: redactConfig(config) });
+          return;
+        }
+
+        // ---- Thinking capability probes ----
+        // GET  /api/probe           → return cached caps for current model
+        // POST /api/probe           → re-probe the current model
+        // POST /api/probe/all       → probe every saved model (active + providers[].models)
+        if (pathname === '/api/probe' && req.method === 'GET') {
+          const baseUrl = config.provider.baseUrl || 'https://api.openai.com/v1';
+          const heuristic = getModelCapabilities(config.provider.model || '', 'openai');
+          const cached = getCachedCaps(baseUrl, config.provider.model || '', config.provider.apiKey);
+          json(res, 200, {
+            model: config.provider.model || '',
+            baseUrl,
+            thinking: cached ?? {
+              ...heuristic,
+              probed: false,
+              probedAt: null,
+              rejectReason: null,
+            },
+          });
+          return;
+        }
+        if (pathname === '/api/probe' && req.method === 'POST') {
+          if (!config.provider.model) { json(res, 400, { error: 'no model configured' }); return; }
+          const baseUrl = config.provider.baseUrl || 'https://api.openai.com/v1';
+          try {
+            const result = await probeModel({
+              baseUrl,
+              model: config.provider.model,
+              apiKey: config.provider.apiKey,
+              fetchImpl: fetch,
+              force: true,
+            });
+            bus.emit({ type: 'thinkingCaps', model: config.provider.model, caps: result });
+            json(res, 200, { ok: true, model: config.provider.model, thinking: result });
+          } catch (e) {
+            json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+          }
+          return;
+        }
+        if (pathname === '/api/probe/all' && req.method === 'POST') {
+          const targets: { baseUrl: string; model: string; apiKey?: string }[] = [];
+          if (config.provider.model) {
+            targets.push({
+              baseUrl: config.provider.baseUrl || 'https://api.openai.com/v1',
+              model: config.provider.model,
+              apiKey: config.provider.apiKey,
+            });
+          }
+          for (const p of config.providers) {
+            for (const m of p.models || []) {
+              const k = p.keys[0]?.key;
+              targets.push({ baseUrl: p.baseUrl, model: m, apiKey: k });
+            }
+          }
+          // De-duplicate
+          const seen = new Set<string>();
+          const uniq = targets.filter((t) => {
+            const k = modelCapsKey(t.baseUrl, t.model, t.apiKey);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          });
+          const results = await probeModels(uniq, { fetchImpl: fetch, force: true, concurrency: 2 });
+          json(res, 200, { ok: true, count: uniq.length, results });
           return;
         }
 
@@ -1614,20 +1742,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'POST' && pathname === '/api/onboard') {
-          // Web setup wizard: apply in one shot, same fields as `termcrab onboard`.
+          // Web setup wizard: apply in one shot. TermCrab only supports
+          // OpenAI-compatible Chat Completions, so body.provider is normalised
+          // to 'openai' regardless of which label the UI shows.
           const body = await readJsonBody(req);
-          if (body && typeof body.provider === 'string') {
-            config.provider.type = normalizeProvider(body.provider);
-            if (config.provider.type === 'mock') {
-              config.provider = { type: 'mock', model: DEFAULT_MODEL_HINTS.mock || 'mock-1' };
-            } else {
-              if (typeof body.apiKey === 'string' && body.apiKey.trim()) config.provider.apiKey = body.apiKey.trim();
-              if (typeof body.baseUrl === 'string' && body.baseUrl.trim()) config.provider.baseUrl = body.baseUrl.trim();
-              if (typeof body.model === 'string' && body.model.trim()) {
-                config.provider.model = body.model.trim();
-              } else if (!config.provider.model || config.provider.model === 'mock-1') {
-                config.provider.model = DEFAULT_MODEL_HINTS[config.provider.type] || config.provider.model;
-              }
+          config.provider.type = 'openai';
+          if (body && (typeof body.provider === 'string' || typeof body.apiKey === 'string' || typeof body.baseUrl === 'string' || typeof body.model === 'string')) {
+            if (typeof body.apiKey === 'string' && body.apiKey.trim()) config.provider.apiKey = body.apiKey.trim();
+            if (typeof body.baseUrl === 'string' && body.baseUrl.trim()) config.provider.baseUrl = body.baseUrl.trim();
+            if (typeof body.model === 'string' && body.model.trim()) {
+              config.provider.model = body.model.trim();
+            } else if (!config.provider.model) {
+              config.provider.model = DEFAULT_MODEL_HINTS.openai || 'gpt-4o-mini';
             }
           }
           if (body && typeof body.name === 'string' && body.name.trim()) config.agent.name = body.name.trim().slice(0, 40);
@@ -1648,9 +1774,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           saveConfig(config);
           seedWorkspace(config.agent.name);
+          const isLocal = (() => {
+            try {
+              const u = new URL(config.provider.baseUrl || '');
+              return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
+            } catch { return false; }
+          })();
           json(res, 200, {
             ok: true,
-            setupNeeded: config.provider.type === 'mock' || !config.provider.apiKey,
+            setupNeeded: !config.provider.apiKey && !isLocal,
             providerType: config.provider.type,
             model: config.provider.model,
             name: config.agent.name,

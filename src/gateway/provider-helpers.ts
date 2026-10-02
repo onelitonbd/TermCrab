@@ -25,15 +25,12 @@ export function providerView(p: ProviderEntry) {
 
 /** Resolved base url of the provider currently wired into the gateway. */
 export function activeBaseUrl(cfg: Config['provider']): string {
-  if (cfg.type === 'mock') return '';
   if (cfg.baseUrl) return cfg.baseUrl.replace(/\/+$/, '');
-  if (cfg.type === 'anthropic') return 'https://api.anthropic.com';
   return 'https://api.openai.com/v1';
 }
 
 /** Human name for the current provider (known hosts get their brand name). */
 export function activeLabel(cfg: Config['provider'], baseUrl: string): string {
-  if (cfg.type === 'mock') return 'Offline demo';
   let host = '';
   try { host = new URL(baseUrl).host; } catch { /* ignore */ }
   const known: Record<string, string> = {
@@ -41,7 +38,8 @@ export function activeLabel(cfg: Config['provider'], baseUrl: string): string {
     'openrouter.ai': 'OpenRouter',
     'api.groq.com': 'Groq',
     'api.deepseek.com': 'DeepSeek',
-    'api.anthropic.com': 'Anthropic',
+    'api.x.ai': 'xAI',
+    'api.mistral.ai': 'Mistral',
     '127.0.0.1:11434': 'Ollama (local)',
     'localhost:11434': 'Ollama (local)',
   };

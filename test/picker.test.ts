@@ -72,7 +72,7 @@ test('provider menu: empty list and builtin mock read friendly', () => {
   const { cfg } = makeCfg();
   cfg.providers = [];
   assert.match(providerMenu(cfg), /No providers saved yet/);
-  cfg.provider = { type: 'mock', model: 'mock-1' };
+  cfg.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   assert.match(providerMenu(cfg), /Using: \*\*Offline demo\*\*/);
 });
 
@@ -157,7 +157,7 @@ test('model menu: empty everything says what to do; mock says add a provider', (
   const out = modelMenu(cfg, null);
   assert.match(out, /could not be fetched/);
   assert.match(out, /`\/model <model-id>`/);
-  cfg.provider = { type: 'mock', model: 'mock-1' };
+  cfg.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   assert.match(modelMenu(cfg, null), /Offline demo runs on `mock-1`/);
 });
 
@@ -202,19 +202,22 @@ test('model select: ambiguous and unknown picks explain instead of guessing', ()
 test('model select on builtin provider sets the model id directly', () => {
   const { cfg, home } = makeCfg();
   cfg.providers = [];
-  cfg.provider = { type: 'anthropic', model: 'claude-3-5-haiku-latest', apiKey: 'ant-key-123456' };
-  const out = modelSelect(cfg, 'claude-sonnet-4-20250514', null);
-  assert.match(out, /Model set to `claude-sonnet-4-20250514` on \*\*Anthropic\*\*/);
-  assert.equal(cfg.provider.type, 'anthropic', 'builtin type preserved');
-  assert.equal(cfg.provider.apiKey, 'ant-key-123456', 'key preserved');
+  cfg.provider = { type: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', apiKey: 'sk-key-123456' };
+  const out = modelSelect(cfg, 'gpt-4o', null);
+  assert.match(out, /Model set to `gpt-4o` on \*\*OpenAI\*\*/);
+  assert.equal(cfg.provider.type, 'openai', 'builtin type preserved');
+  assert.equal(cfg.provider.apiKey, 'sk-key-123456', 'key preserved');
   process.env.TCRAB_HOME = home;
-  assert.equal(loadConfig().provider.model, 'claude-sonnet-4-20250514');
+  assert.equal(loadConfig().provider.model, 'gpt-4o');
 });
 
-test('model select on the offline demo is refused with guidance', () => {
+test('model select accepts arbitrary model id on builtin provider (no saved entry)', () => {
   const { cfg } = makeCfg();
-  cfg.provider = { type: 'mock', model: 'mock-1' };
-  assert.match(modelSelect(cfg, 'whatever', null), /run `\/provider` first/);
+  cfg.providers = [];
+  cfg.provider = { type: 'openai', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-test', model: 'gpt-4o-mini' };
+  const out = modelSelect(cfg, 'some-custom-model', null);
+  assert.match(out, /Model set to `some-custom-model`/);
+  assert.equal(cfg.provider.model, 'some-custom-model');
 });
 
 // ---- live catalog ----
@@ -255,7 +258,7 @@ test('liveCatalog: fetches the catalog when nothing is saved; null on failure/mo
     assert.equal(await liveCatalog(cfg), null);
 
     // builtin mock -> null, no network call needed
-    cfg.provider = { type: 'mock', model: 'mock-1' };
+    cfg.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
     assert.equal(await liveCatalog(cfg), null);
   } finally {
     globalThis.fetch = original;
@@ -267,6 +270,6 @@ test('matchActiveEntry tracks the wired-in provider by url and key', () => {
   assert.equal(matchActiveEntry(cfg)!.id, 'prov_a');
   providerSelect(cfg, '2');
   assert.equal(matchActiveEntry(cfg)!.id, 'prov_b');
-  cfg.provider = { type: 'mock', model: 'mock-1' };
+  cfg.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   assert.equal(matchActiveEntry(cfg), null);
 });

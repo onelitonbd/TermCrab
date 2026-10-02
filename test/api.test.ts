@@ -25,7 +25,7 @@ test('web control parity API', async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tapi-'));
   process.env.TCRAB_HOME = home;
   const config = defaults();
-  config.provider = { type: 'mock', model: 'mock-1', apiKey: 'sk-secret-abcdef123456' };
+  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-secret-abcdef123456', model: 'test-model' };
   config.gateway.token = 'test-token';
   const port = await freePort();
   const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });
@@ -520,7 +520,7 @@ test('config file password change hot-applies to the running gateway', async () 
   process.env.TCRAB_HOME = home;
   const port = await freePort();
   const config = defaults();
-  config.provider = { type: 'mock', model: 'mock-1', apiKey: 'sk-test' };
+  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   config.gateway = { host: '127.0.0.1', port, token: 'old-token-000' };
   saveConfig(config);
   const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });

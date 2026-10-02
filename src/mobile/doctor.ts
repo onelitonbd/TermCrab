@@ -138,14 +138,21 @@ export async function runDoctor(): Promise<Check[]> {
     });
   }
 
-  // Config
-  const hasProviderKey = Boolean(cfg.provider.apiKey) || cfg.provider.type === 'mock';
+  // Config - warn only if there's no api key AND no saved providers AND not
+  // pointed at a local host (Ollama etc. don't require a key).
+  const isLocal = (() => {
+    try {
+      const u = new URL(cfg.provider.baseUrl || '');
+      return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
+    } catch { return false; }
+  })();
+  const hasProvider = Boolean(cfg.provider.apiKey) || cfg.providers.some((p) => p.keys.length) || isLocal;
   checks.push({
     id: 'config',
     label: 'config.json',
-    status: fs.existsSync(configPath()) ? (hasProviderKey ? 'ok' : 'warn') : 'fail',
+    status: fs.existsSync(configPath()) ? (hasProvider ? 'ok' : 'warn') : 'fail',
     detail: fs.existsSync(configPath())
-      ? `provider=${cfg.provider.type} model=${cfg.provider.model}${hasProviderKey ? '' : ' (no api key)'}`
+      ? `provider=openai model=${cfg.provider.model}${hasProvider ? '' : ' (no api key)'}`
       : 'missing',
     fix: fs.existsSync(configPath()) ? 'run: termcrab onboard' : 'run: termcrab onboard',
   });

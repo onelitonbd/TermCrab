@@ -193,7 +193,7 @@ test('P1: gateway session/dream routes', async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tapi2-'));
   process.env.TCRAB_HOME = home;
   const config = defaults();
-  config.provider = { type: 'mock', model: 'mock-1' };
+  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
   config.gateway.token = 'test-token';
   const srv = net.createServer();
   const port: number = await new Promise((resolve, reject) => {

@@ -51,14 +51,24 @@ async function prompt(rl: readline.Interface, question: string, def = ''): Promi
   return answer || def;
 }
 
+/** True when the current config does not yet have a usable provider. */
+export function configNeedsProvider(cfg: Config): boolean {
+  // If the user saved at least one provider entry with a key, they're set.
+  for (const p of cfg.providers) if (p.keys.length) return false;
+  // Otherwise they need an apiKey on the primary provider.
+  return !cfg.provider.apiKey;
+}
+
 export async function onboard(flags: OnboardFlags): Promise<void> {
   ensureLayout();
   const existing = fs.existsSync(path.join(home(), 'config.json')) ? loadConfig() : defaults();
   const cfg: Config = existing;
   if (!cfg.gateway.token) cfg.gateway.token = generateToken();
 
+  // TermCrab only supports OpenAI-compatible Chat Completions.
+  cfg.provider.type = 'openai';
+
   if (flags.nonInteractive) {
-    if (flags.provider) cfg.provider.type = normalizeProvider(flags.provider);
     if (flags.model) cfg.provider.model = flags.model;
     if (flags.apiKey) cfg.provider.apiKey = flags.apiKey;
     if (flags.baseUrl) cfg.provider.baseUrl = flags.baseUrl;
@@ -71,7 +81,6 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
         allowedUserIds: flags.allowUser ? String(flags.allowUser).split(',').map((s) => Number(s.trim())).filter((n) => n > 0) : [],
         ...(cfg.channels.telegram?.notifyChatId ? { notifyChatId: cfg.channels.telegram.notifyChatId } : {}),
       };
-      if (cfg.provider.type === 'mock' && !flags.apiKey) cfg.provider.type = 'mock';
     }
     saveConfig(cfg);
     seedWorkspace(cfg.agent.name);
@@ -83,25 +92,27 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
   const rl = readline.createInterface({ input: stdin, output: stdout });
   try {
     console.log('\n🦀 TermCrab onboard - your AI agent lives here now.\n');
+    console.log('   TermCrab speaks the OpenAI Chat Completions API. It works with OpenAI,');
+    console.log('   OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama (/v1), vLLM, llama.cpp,');
+    console.log('   and most other local or self-hosted servers.\n');
 
-    const providerRaw = await prompt(
+    const hasKey = Boolean(cfg.provider.apiKey);
+    const defaultModel = cfg.provider.model || DEFAULT_MODEL_HINTS.openai || 'gpt-4o-mini';
+    const defaultBase = cfg.provider.baseUrl || '';
+
+    const key = await prompt(rl, 'API key (empty = skip for now, e.g. for local Ollama)', cfg.provider.apiKey || '');
+    if (key) cfg.provider.apiKey = key;
+    const base = await prompt(
       rl,
-      'Provider (anthropic / openai / ollama / openrouter / groq / mock)',
-      cfg.provider.type === 'mock' && !flags.apiKey ? 'mock' : cfg.provider.type,
+      'Base URL (empty = https://api.openai.com/v1; use http://127.0.0.1:11434/v1 for Ollama)',
+      defaultBase,
     );
-    const provider = normalizeProvider(providerRaw);
-    cfg.provider.type = provider;
+    cfg.provider.baseUrl = base || undefined;
+    const model = await prompt(rl, 'Model', defaultModel);
+    cfg.provider.model = model;
 
-    if (provider !== 'mock') {
-      const key = await prompt(rl, 'API key (empty = none yet)');
-      if (key) cfg.provider.apiKey = key;
-      const base = await prompt(rl, 'Base URL (empty = official endpoint)');
-      if (base) cfg.provider.baseUrl = base;
-      const model = await prompt(rl, 'Model', DEFAULT_MODEL_HINTS[provider] || '');
-      cfg.provider.model = model;
-    } else {
-      cfg.provider = { type: 'mock', model: 'mock-1' };
-      console.log('   (mock provider: fully offline demo, switch later with: termcrab onboard)');
+    if (!hasKey && !cfg.provider.apiKey) {
+      console.log('   (no API key saved yet - you can add one later with: termcrab config set provider.apiKey <key>)');
     }
 
     const name = await prompt(rl, 'Agent name', cfg.agent.name || 'Crabby');
@@ -136,17 +147,18 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
   }
 }
 
+/**
+ * Accept any historical provider-name alias and return 'openai'. TermCrab now
+ * speaks only the OpenAI Chat Completions wire format; legacy names (anthropic,
+ * gemini, ollama, mock) are kept only so old CLI flags / env vars keep working.
+ */
 export function normalizeProvider(raw: string): Config['provider']['type'] {
-  const v = raw.trim().toLowerCase();
-  if (['anthropic', 'claude'].includes(v)) return 'anthropic';
-  if (['mock', 'demo', 'offline'].includes(v)) return 'mock';
-  // openai, openrouter, groq, ollama, deepseek, custom -> openai-compatible
+  // Always openai-compatible regardless of which alias the user typed.
   return 'openai';
 }
 
 function printNextSteps(cfg: Config): void {
-  console.log(`
-Next steps:
+  console.log(`\nNext steps:
   1. Start the gateway:     termcrab gateway
      Auto-restart version:  termcrab supervisor
   2. Open control UI:       http://127.0.0.1:${cfg.gateway.port}/  (password: termcrab config get gateway.token)

@@ -52,7 +52,8 @@ function fixture(): { ocHome: string; tcHome: string } {
     telegram: { token: '7777777:AAsecrettokenAAsecrettoken', allowFrom: [42] },
   },
   gateway: { port: 18790, },
-  models: { primary: { provider: 'anthropic', model: 'claude-sonnet-4-5', apiKey: 'sk-ant-imported-key-123' } },
+  models: { primary: { provider: 'anthropic', model: 'claude-sonnet-4-5', apiKey: 'sk-ant-imported-key-123' } }, // legacy anthropic value gets migrated to openai
+
   logging: { level: 'info' },
   session: { scope: 'per-sender' },
 }`,
@@ -137,7 +138,7 @@ test('apply: round-trip moves personality, memory, skills, agents, config — se
   assert.deepEqual(cfg.channels.whatsapp?.allowedJids, ['+15551234567']);
   assert.deepEqual(cfg.channels.telegram?.allowedUserIds, [42]);
   assert.equal(cfg.provider.model, 'claude-sonnet-4-5');
-  assert.equal(cfg.provider.type, 'anthropic');
+  assert.equal(cfg.provider.type, 'openai', 'legacy anthropic coerced to openai-compatible');
   assert.equal(cfg.provider.apiKey, 'sk-ant-imported-key-123');
   assert.equal(cfg.gateway.port, 18790);
 

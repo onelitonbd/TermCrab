@@ -10,7 +10,8 @@ import {
   isAbortError,
 } from './types.js';
 import { sseData } from './sse.js';
-import { getModelCapabilities, thinkingLevelToEffort } from './capabilities.js';
+import { getModelCapabilities, thinkingLevelToEffort, thinkingLevelToTokens, ThinkingLevel } from './capabilities.js';
+import { getModelCaps, getCachedCaps } from './probe.js';
 
 interface OpenAiCfg {
   baseUrl: string;
@@ -19,6 +20,12 @@ interface OpenAiCfg {
   maxTokens?: number;
   temperature?: number;
   stream?: boolean;
+  /** True when baseUrl is a self-hosted / non-well-known host. On such hosts we
+   *  trust the user's thinking-level selection and always send reasoning_effort,
+   *  because custom proxies and local servers (vLLM, llama.cpp, OpenRouter
+   *  fallbacks) silently ignore unknown JSON fields but may host reasoning
+   *  models we can't detect by name. */
+  isCustomHost?: boolean;
 }
 
 function joinUrl(base: string, path: string): string {
@@ -73,23 +80,97 @@ interface ToolAcc {
   args: string;
 }
 
+/** Order from none → max, used for clamping. */
+const LEVEL_RANK: Record<ThinkingLevel, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  xhigh: 4,
+  max: 5,
+};
+
+/**
+ * Clamp a requested thinking level to the highest level the model supports.
+ * If the model supports none of them, returns 'none' (caller should skip).
+ */
+function clampLevel(requested: ThinkingLevel, supported: readonly ThinkingLevel[]): ThinkingLevel {
+  const reqRank = LEVEL_RANK[requested] ?? 0;
+  let best: ThinkingLevel = 'none';
+  let bestRank = 0;
+  for (const lvl of supported) {
+    const r = LEVEL_RANK[lvl] ?? 0;
+    if (r <= reqRank && r > bestRank) {
+      best = lvl;
+      bestRank = r;
+    }
+  }
+  return best;
+}
+
 /**
  * Works for OpenAI, OpenRouter, Groq, DeepSeek, Ollama (/v1), and most compatible
  * servers - including SSE streaming of text and tool-call fragments.
  */
 export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Provider {
-  const caps = getModelCapabilities(cfg.model, 'openai');
 
   /**
-   * Attach reasoning effort — but ONLY for models that take it. Sending
-   * `reasoning_effort` to a plain model (gpt-4o and friends) is a hard 400,
-   * which used to break the whole reply whenever a thinking level was picked.
+   * Attach reasoning options when the user picked a thinking level.
+   *
+   * Decision matrix (most trusted → least trusted):
+   *  1. Probed cache (probe.js): we actually sent reasoning_effort to the
+   *     server and saw it accept/reject each level. That wins.
+   *  2. Heuristic capability detection (capabilities.ts) from model id for
+   *     well-known reasoning models (o3-mini, deepseek-r1, …).
+   *  3. If we can't identify the model BUT this is a custom/self-hosted host,
+   *     trust the user and forward reasoning_effort anyway — most OpenAI-compat
+   *     servers ignore unknown JSON fields and the user explicitly picked a
+   *     level, which is a strong signal they're using a reasoning model.
+   *  4. If it's https://api.openai.com and we don't recognise the model, do
+   *     NOT send reasoning_effort — OpenAI returns a hard 400 for plain chat
+   *     models, which breaks the entire reply.
+   *
+   * When we DO send reasoning_effort we also clamp the requested level to the
+   * highest one the server actually accepts (per cache/heuristic) and attach a
+   * reasoning.max_tokens budget hint (DeepSeek / vLLM / o3/o4 style).
    */
   function applyThinking(body: Record<string, unknown>, req: ChatRequest): void {
-    if (!req.thinkingLevel || req.thinkingLevel === 'none') return;
-    if (!caps.supportsThinking) return;
-    const effort = thinkingLevelToEffort(req.thinkingLevel);
+    const level = req.thinkingLevel;
+    if (!level || level === 'none') return;
+
+    const heuristicCaps = getModelCapabilities(cfg.model, 'openai');
+    const cached = getCachedCaps(cfg.baseUrl, cfg.model, cfg.apiKey);
+    const isOpenAiOfficial = /^https?:\/\/api\.openai\.com\b/.test(cfg.baseUrl);
+    const forceOnCustom = cfg.isCustomHost && !isOpenAiOfficial;
+
+    // If we have a *verified* answer (probe.js tested this server), use it as
+    // the source of truth and clamp to the highest level the server accepted.
+    // Otherwise fall back to heuristic detection; on custom/self-hosted
+    // endpoints we fall back to allowing all levels when the user picked one,
+    // because we can't know without probing and most servers ignore unknown
+    // fields.
+    const supportedLevels: readonly ThinkingLevel[] = cached
+      ? cached.supportedLevels
+      : (heuristicCaps.supportsThinking || forceOnCustom)
+        ? (['none', 'low', 'medium', 'high', 'xhigh', 'max'] as const)
+        : ['none'];
+    const sendAtAll = cached ? cached.supportsThinking : (heuristicCaps.supportsThinking || forceOnCustom);
+    if (!sendAtAll) return;
+
+    // Clamp the requested level to the highest the model supports.
+    const effective = clampLevel(level, supportedLevels);
+    if (effective === 'none') return;
+
+    const effort = thinkingLevelToEffort(effective);
     if (effort) body.reasoning_effort = effort;
+
+    const tokBudget = thinkingLevelToTokens(effective);
+    if (tokBudget) {
+      body.reasoning = { max_tokens: tokBudget };
+      if (!body.max_tokens || (typeof body.max_tokens === 'number' && body.max_tokens < tokBudget + 256)) {
+        body.max_tokens = Math.max((cfg.maxTokens ?? 4096), tokBudget + 2048);
+      }
+    }
   }
 
   function finalize(
@@ -251,6 +332,9 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
           onDelta: (chunk) => {
             emitted++;
             opts.onDelta?.(chunk);
+          },
+          onThinkingDelta: (chunk) => {
+            opts.onThinkingDelta?.(chunk);
           },
         };
         try {
