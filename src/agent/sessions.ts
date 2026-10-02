@@ -6,7 +6,16 @@ import { sessionsDir, ensureLayout, home } from '../core/paths.js';
 export type Entry =
   | { role: 'system'; content: string; ts: number }
   | { role: 'user'; content: string; ts: number; channel?: string }
-  | { role: 'assistant'; content: string; ts: number; toolCalls?: { id: string; name: string; args: unknown }[] }
+  | {
+      role: 'assistant';
+      content: string;
+      ts: number;
+      toolCalls?: { id: string; name: string; args: unknown }[];
+      /** Reasoning trace text (shown in the UI drawer, not sent back upstream). */
+      thinking?: string;
+      /** Raw provider reasoning blocks (Anthropic) — echoed back verbatim. */
+      thinkingBlocks?: unknown[];
+    }
   | { role: 'tool'; toolCallId: string; name: string; result: string; ts: number };
 
 const KEEP = 80;

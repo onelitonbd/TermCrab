@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.34.0 - 2026-10-02
+
+- The thinking level picker actually opens now. It was rendered as a plain block at the bottom of the page (its sheet styles were never wired up), so tapping the Think button looked like nothing happened - or pushed the composer around. It is a normal rounded sheet like every other popup, with a dark backdrop; tap outside, press Escape, or pick a level to close it, and focus returns to the button.
+- The Think chip in the composer no longer spills its label out of a bare circle. It sizes to its text like the model chip beside it, lights up in the accent colour when a level is active, and drops the "Think:" prefix on narrow phones so the composer row can never overflow.
+- The picker says what you are choosing for: it names the model in use and, when that model has no reasoning mode, says so plainly and marks the levels it will ignore ("current model ignores this") instead of pretending they do something.
+- Fixed: picking a level used to break plain models. `reasoning_effort` was attached to every OpenAI-compatible request, and non-reasoning models (gpt-4o and friends) reject that parameter with a 400 - so the whole reply failed. Thinking options now go only to models known to accept them.
+- Levels are wired through every provider, not just OpenAI-compatible ones: Anthropic gets extended thinking (budget clamped to 32K, max_tokens raised above the budget, temperature left at its default so the call is accepted), Gemini 2.5 gets a thinkingBudget clamped to its 24K ceiling with thought parts kept out of the reply and streamed to the trace drawer, and Ollama reasoning models get `think: true`. Anthropic thinking blocks are stored with their signatures and echoed back on the next turn - required, or the follow-up tool call is rejected.
+- The chat page works on an open (no-password) panel: the model chip, its picker and the Providers list no longer sit empty just because no token was stored.
+- Only the six known levels are accepted from the UI; a stray value is treated as auto instead of reaching a provider request.
+- Tests: 10 new ones pin the capability table, per-provider request shapes (no `reasoning_effort` for gpt-4o, clamped budgets, `think` only for reasoning models), the thinking-block round trip, an end-to-end check that the picked level reaches the real provider request, `/api/config`'s capability block, and the picker markup (modal styles, chip sizing, Escape to close).
+
+
 ## 0.30.4 - 2026-09-30
 
 - The panel can now run with NO password, on request: clear it with `termcrab config set gateway.token ""` and the login screen walks straight in - no gate, no typing. The choice is yours per device.

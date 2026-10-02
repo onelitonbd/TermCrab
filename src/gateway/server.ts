@@ -28,6 +28,7 @@ import { countMemoryFacts } from '../agent/status.js';
 import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
+import { getModelCapabilities, normalizeThinkingLevel } from '../providers/capabilities.js';
 import { createMcpClient } from '../providers/mcp.js';
 import { listRuns, getRun, clearRuns } from '../core/tracing.js';
 import { speakStream } from '../mobile/tts-stream.js';
@@ -704,7 +705,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const sessionId = body.sessionId || 'web:main';
           const agentName = body.agent ? sanitizeAgentName(body.agent) ?? undefined : undefined;
-          const thinkingLevel = (body.thinkingLevel as import('../providers/types.js').ThinkingLevel) || undefined;
+          // Only the six known levels; anything else is treated as "auto" so a
+          // stray value can never reach a provider request.
+          const thinkingLevel = normalizeThinkingLevel(body.thinkingLevel);
 
           // Enqueue the turn and return immediately with a turn id
           const turn = agentQueue.enqueue({
@@ -1130,7 +1133,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/config') {
-          json(res, 200, { config: redactConfig(config), path: configPath() });
+          // The chat UI reads this to label its model button and to say whether
+          // the model in use can reason at all (thinking level picker).
+          const caps = getModelCapabilities(config.provider.model || '', config.provider.type);
+          json(res, 200, {
+            config: redactConfig(config),
+            path: configPath(),
+            thinking: {
+              model: config.provider.model || '',
+              supportsThinking: caps.supportsThinking,
+              supportedLevels: caps.supportedLevels,
+              defaultLevel: caps.defaultLevel,
+            },
+          });
           return;
         }
 

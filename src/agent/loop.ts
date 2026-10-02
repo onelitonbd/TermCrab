@@ -80,6 +80,7 @@ export function toProviderMessages(entries: Entry[], providerName?: string): Pro
         toolCalls: calls.length
           ? calls.map((c) => ({ id: c.id, name: c.name, args: (c.args ?? {}) as Record<string, unknown> }))
           : undefined,
+        thinkingBlocks: e.thinkingBlocks?.length ? e.thinkingBlocks : undefined,
       });
     } else if (e.role === 'tool') {
       if (!seenToolIds.has(e.toolCallId)) continue;
@@ -236,6 +237,8 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           content: result.text,
           ts: Date.now(),
           toolCalls: result.toolCalls,
+          thinking: result.thinking,
+          thinkingBlocks: result.thinkingBlocks,
         });
         if (result.text && !streamedChars) emit({ type: 'delta', text: result.text });
 

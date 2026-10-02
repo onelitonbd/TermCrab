@@ -1,5 +1,6 @@
 import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider, ProviderMessage, ToolDef } from './types.js';
 import { readError } from './types.js';
+import { getModelCapabilities } from './capabilities.js';
 
 /**
  * Ollama local provider (OpenAI-compatible, but with native Ollama API support).
@@ -9,6 +10,8 @@ import { readError } from './types.js';
 interface OllamaMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
+  /** Reasoning models (deepseek-r1, qwen3, gpt-oss…) put their trace here. */
+  thinking?: string;
   tool_calls?: { function: { name: string; arguments: Record<string, unknown> } }[];
 }
 
@@ -56,6 +59,7 @@ export function createOllama(
   fetchImpl: FetchLike = fetch,
 ): Provider {
   const base = cfg.baseUrl || 'http://127.0.0.1:11434';
+  const caps = getModelCapabilities(cfg.model, 'ollama');
 
   return {
     name: 'ollama',
@@ -77,6 +81,8 @@ export function createOllama(
       };
       const tools = toOllamaTools(req.tools);
       if (tools) body.tools = tools;
+      // Ollama only accepts `think` for models that have a reasoning mode.
+      if (req.thinkingLevel && req.thinkingLevel !== 'none' && caps.supportsThinking) body.think = true;
 
       const res = await fetchImpl(`${base}/api/chat`, {
         method: 'POST',
@@ -93,10 +99,15 @@ export function createOllama(
         const text = await res.text();
         const lines = text.split('\n').filter((l) => l.trim());
         let fullText = '';
+        let thinkingText = '';
         const toolCalls: { id: string; name: string; args: Record<string, unknown> }[] = [];
         for (const line of lines) {
           try {
             const data = JSON.parse(line) as OllamaResponse;
+            if (data.message?.thinking) {
+              thinkingText += data.message.thinking;
+              opts?.onThinkingDelta?.(data.message.thinking);
+            }
             if (data.message?.content) {
               fullText += data.message.content;
               opts?.onDelta?.(data.message.content);
@@ -114,7 +125,12 @@ export function createOllama(
             /* skip malformed lines */
           }
         }
-        return { text: fullText, toolCalls, stopReason: toolCalls.length ? 'tool' : 'end' };
+        return {
+          text: fullText,
+          toolCalls,
+          stopReason: toolCalls.length ? 'tool' : 'end',
+          thinking: thinkingText || undefined,
+        };
       }
 
       const data = (await res.json()) as OllamaResponse;
@@ -127,7 +143,12 @@ export function createOllama(
         args: tc.function.arguments,
       }));
 
-      return { text: msg.content, toolCalls, stopReason: toolCalls.length ? 'tool' : 'end' };
+      return {
+        text: msg.content,
+        toolCalls,
+        stopReason: toolCalls.length ? 'tool' : 'end',
+        thinking: msg.thinking || undefined,
+      };
     },
   };
 }

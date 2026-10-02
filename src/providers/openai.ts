@@ -10,6 +10,7 @@ import {
   isAbortError,
 } from './types.js';
 import { sseData } from './sse.js';
+import { getModelCapabilities, thinkingLevelToEffort } from './capabilities.js';
 
 interface OpenAiCfg {
   baseUrl: string;
@@ -77,6 +78,20 @@ interface ToolAcc {
  * servers - including SSE streaming of text and tool-call fragments.
  */
 export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Provider {
+  const caps = getModelCapabilities(cfg.model, 'openai');
+
+  /**
+   * Attach reasoning effort — but ONLY for models that take it. Sending
+   * `reasoning_effort` to a plain model (gpt-4o and friends) is a hard 400,
+   * which used to break the whole reply whenever a thinking level was picked.
+   */
+  function applyThinking(body: Record<string, unknown>, req: ChatRequest): void {
+    if (!req.thinkingLevel || req.thinkingLevel === 'none') return;
+    if (!caps.supportsThinking) return;
+    const effort = thinkingLevelToEffort(req.thinkingLevel);
+    if (effort) body.reasoning_effort = effort;
+  }
+
   function finalize(
     text: string,
     tools: Map<number, ToolAcc>,
@@ -113,10 +128,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
       max_tokens: req.maxTokens ?? cfg.maxTokens,
       temperature: req.temperature ?? cfg.temperature,
     };
-    if (req.thinkingLevel && req.thinkingLevel !== 'none') {
-      const effort = req.thinkingLevel === 'low' ? 'low' : req.thinkingLevel === 'medium' ? 'medium' : 'high';
-      body.reasoning_effort = effort;
-    }
+    applyThinking(body, req);
     const tools = toOpenAiTools(req.tools);
     if (tools) body.tools = tools;
 
@@ -161,10 +173,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
       temperature: req.temperature ?? cfg.temperature,
       stream: true,
     };
-    if (req.thinkingLevel && req.thinkingLevel !== 'none') {
-      const effort = req.thinkingLevel === 'low' ? 'low' : req.thinkingLevel === 'medium' ? 'medium' : 'high';
-      body.reasoning_effort = effort;
-    }
+    applyThinking(body, req);
     const tools = toOpenAiTools(req.tools);
     if (tools) body.tools = tools;
 

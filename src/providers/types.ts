@@ -18,6 +18,12 @@ export interface ProviderMessage {
   toolCallId?: string;
   /** Original tool name for role:"tool" results (Anthropic mapping). */
   toolName?: string;
+  /**
+   * Raw reasoning blocks from the provider (Anthropic thinking / redacted_thinking).
+   * They must be echoed back verbatim on the next turn, otherwise a tool-result
+   * follow-up is rejected. Other providers leave this unset.
+   */
+  thinkingBlocks?: unknown[];
 }
 
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -36,6 +42,8 @@ export interface ChatResult {
   toolCalls: { id: string; name: string; args: Record<string, unknown> }[];
   stopReason: 'end' | 'tool' | 'length' | 'unknown';
   thinking?: string;
+  /** Raw reasoning blocks to store and send back verbatim (Anthropic). */
+  thinkingBlocks?: unknown[];
 }
 
 export interface ChatOpts {
