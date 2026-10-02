@@ -4,6 +4,7 @@ import path from 'node:path';
 import { sessionsDir, ensureLayout, home } from '../core/paths.js';
 
 export type Entry =
+  | { role: 'system'; content: string; ts: number }
   | { role: 'user'; content: string; ts: number; channel?: string }
   | { role: 'assistant'; content: string; ts: number; toolCalls?: { id: string; name: string; args: unknown }[] }
   | { role: 'tool'; toolCallId: string; name: string; result: string; ts: number };
@@ -258,6 +259,7 @@ export interface QueuedTurn {
 export class SessionQueue {
   private queues = new Map<string, QueuedTurn[]>();
   private running = new Map<string, QueuedTurn>();
+  private completed = new Map<string, QueuedTurn>();
   private abortControllers = new Map<string, AbortController>();
   private listeners = new Map<string, Set<(turn: QueuedTurn) => void>>();
 
@@ -301,6 +303,11 @@ export class SessionQueue {
       turn.status = 'done';
       turn.output = output;
       this.running.delete(sessionId);
+      this.completed.set(turnId, turn);
+      if (this.completed.size > 100) {
+        const oldest = this.completed.keys().next().value;
+        if (oldest) this.completed.delete(oldest);
+      }
       this.notify(sessionId, turn);
     }
   }
@@ -313,6 +320,11 @@ export class SessionQueue {
       turn.status = 'error';
       turn.error = error;
       this.running.delete(sessionId);
+      this.completed.set(turnId, turn);
+      if (this.completed.size > 100) {
+        const oldest = this.completed.keys().next().value;
+        if (oldest) this.completed.delete(oldest);
+      }
       this.notify(sessionId, turn);
     }
   }
@@ -325,9 +337,24 @@ export class SessionQueue {
     if (ctrl) ctrl.abort();
     turn.status = 'interrupted';
     this.running.delete(sessionId);
+    this.completed.set(turn.id, turn);
+    if (this.completed.size > 100) {
+      const oldest = this.completed.keys().next().value;
+      if (oldest) this.completed.delete(oldest);
+    }
     this.abortControllers.delete(`${sessionId}:${turn.id}`);
     this.notify(sessionId, turn);
     return true;
+  }
+
+  /** Get turn by id across running, queued, and recently completed turns. */
+  getTurn(sessionId: string, turnId: string): QueuedTurn | null {
+    const run = this.running.get(sessionId);
+    if (run && run.id === turnId) return run;
+    const q = this.queues.get(sessionId) ?? [];
+    const queued = q.find((t) => t.id === turnId);
+    if (queued) return queued;
+    return this.completed.get(turnId) ?? null;
   }
 
   /** Get the currently running turn for a session. */

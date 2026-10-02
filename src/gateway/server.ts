@@ -66,6 +66,7 @@ import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
 import { registerSender, recordInbound } from '../channels/conversations.js';
 import { getPortal } from './portal.js';
+import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
 import { listAsks, answer as answerAsk } from '../agent/ask.js';
 import { getProgress } from '../agent/progress.js';
@@ -727,9 +728,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         if (turnMatch && req.method === 'GET') {
           const sid = decodeURIComponent(turnMatch[1]!);
           const turnId = turnMatch[2]!;
-          const running = agentQueue.getRunning(sid);
-          const queued = agentQueue.getQueued(sid);
-          const turn = running?.id === turnId ? running : queued.find((t) => t.id === turnId);
+          const turn = agentQueue.getTurn(sid, turnId);
           if (!turn) {
             json(res, 404, { error: 'turn not found' });
             return;
@@ -1041,6 +1040,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             description: t.def.description,
           }));
           json(res, 200, { tools: defs });
+          return;
+        }
+
+        // Canvas / A2UI: live widgets pushed by the `canvas` tool.
+        // The registry lives in-process; SSE carries live updates, this hydrates
+        // a freshly loaded page.
+        if (req.method === 'GET' && pathname === '/api/canvas') {
+          json(res, 200, { widgets: canvasList() });
+          return;
+        }
+        if (req.method === 'DELETE' && pathname.startsWith('/api/canvas/')) {
+          const id = decodeURIComponent(pathname.slice('/api/canvas/'.length));
+          const ok = canvasRemove(id);
+          json(res, ok ? 200 : 404, ok ? { ok: true } : { error: `no canvas widget: ${id}` });
           return;
         }
 

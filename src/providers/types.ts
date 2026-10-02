@@ -7,7 +7,7 @@ export interface ToolDef {
   schema: Record<string, unknown>;
 }
 
-export type ProviderRole = 'user' | 'assistant' | 'tool';
+export type ProviderRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export interface ProviderMessage {
   role: ProviderRole;

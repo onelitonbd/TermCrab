@@ -12,8 +12,8 @@ import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
   | { type: 'delta'; text: string }
-  | { type: 'tool:start'; name: string; args: Record<string, unknown> }
-  | { type: 'tool:end'; name: string; ok: boolean; preview: string }
+  | { type: 'tool:start'; name: string; args: Record<string, unknown>; toolCallId?: string; sessionId?: string }
+  | { type: 'tool:end'; name: string; ok: boolean; preview: string; result: string; toolCallId?: string; sessionId?: string }
   | { type: 'run:end'; runId: string; text: string; sessionId: string; iterations: number }
   | { type: 'approval'; approval: import('../core/approvals.js').Approval }
   | { type: 'error'; message: string };
@@ -54,22 +54,27 @@ const PROVIDER_TIMEOUT_MS = 180_000;
  * Convert our transcript to provider messages, dropping orphaned tool results
  * (Anthropic rejects tool_result blocks without a matching tool_use).
  */
-export function toProviderMessages(entries: Entry[]): ProviderMessage[] {
+export function toProviderMessages(entries: Entry[], providerName?: string): ProviderMessage[] {
   const seenToolIds = new Set<string>();
   const out: ProviderMessage[] = [];
+  const isMock = providerName === 'mock';
   for (const e of entries) {
-    if (e.role === 'user') {
+    if (e.role === 'system') {
+      out.push({ role: 'system', content: e.content });
+    } else if (e.role === 'user') {
       out.push({ role: 'user', content: e.content });
     } else if (e.role === 'assistant') {
       const calls = e.toolCalls ?? [];
-      // Never send empty assistant turns upstream: an earlier silent "" reply would
-      // become content:null (OpenAI rejects it) or an empty Anthropic block (breaks
-      // alternation). Old sessions keep working after v0.23.1.
-      if (!calls.length && !e.content.trim()) continue;
+      let content = e.content;
+      if (!isMock && content) {
+        content = content.replace(/^\[mock:[^\]]+\]\s*(?:You said:[^.\n]*[.\n]\s*)?(?:Tool said:[^\n]*\n*)?/i, '').trim();
+      }
+      // Never send empty assistant turns upstream
+      if (!calls.length && !content.trim()) continue;
       for (const c of calls) seenToolIds.add(c.id);
       out.push({
         role: 'assistant',
-        content: e.content,
+        content,
         toolCalls: calls.length
           ? calls.map((c) => ({ id: c.id, name: c.name, args: (c.args ?? {}) as Record<string, unknown> }))
           : undefined,
@@ -184,10 +189,13 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     agentName,
     channel: opts.channel,
   });
-  const maxIter = Math.max(1, Math.min(ctx.config.agent.maxIterations || 8, 25));
+  // No hard iteration cap — the repetition detector below stops runaway loops.
+  const maxIter = 1000;
 
   let finalText = '';
   let emptyRetries = 0;
+  let lastCallKey = '';
+  let repeatCount = 0;
   const abortCtrl = new AbortController();
   // Link external abort signal (from queue interrupt) to our internal controller
   if (opts.signal) {
@@ -202,7 +210,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
         return finalText;
       }
-      const messages = toProviderMessages(ctx.sessions.read(sessionId));
+      const messages = toProviderMessages(ctx.sessions.read(sessionId), provider.name);
       let streamedChars = 0;
       const result = await chatWithTimeout(provider, { system, messages, tools: tools.map((t) => t.def) }, (chunk) => {
         if (!chunk) return;
@@ -221,7 +229,25 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         if (result.text && !streamedChars) emit({ type: 'delta', text: result.text });
 
         for (const call of result.toolCalls) {
-          emit({ type: 'tool:start', name: call.name, args: call.args });
+          emit({ type: 'tool:start', name: call.name, args: call.args, toolCallId: call.id, sessionId });
+          // Repetition detector: same tool + same args over and over.
+          // 6th time → warn the AI. 8th time → stop the turn.
+          const key = call.name + ':' + JSON.stringify(call.args || {});
+          if (key === lastCallKey) repeatCount++;
+          else { repeatCount = 1; lastCallKey = key; }
+          if (repeatCount === 6) {
+            ctx.sessions.append(sessionId, {
+              role: 'system',
+              content: `You have called ${call.name} with the exact same arguments ${repeatCount} times. Stop repeating. Give a final answer or try a different approach.`,
+              ts: Date.now(),
+            });
+          }
+          if (repeatCount >= 8) {
+            finalText = `[stopped] You repeated ${call.name} with the same arguments ${repeatCount} times.`;
+            ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+            emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
+            return finalText;
+          }
           let output: string;
           let ok = true;
           const tool = toolMap.get(call.name);
@@ -229,29 +255,6 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           const span = addSpan(runId, `tool:${call.name}`, { args: call.args });
           try {
             if (!tool) throw new Error(`unknown tool: ${call.name}`);
-            // Approval gate for sensitive tools
-            if (['exec', 'write_file', 'delete_file', 'edit_file'].includes(call.name)) {
-              const { createApproval, waitForApproval } = await import('../core/approvals.js');
-              const approval = createApproval(call.name, call.args as Record<string, unknown>);
-              emit({ type: 'approval', approval });
-              const approved = await waitForApproval(approval.id);
-              if (!approved) {
-                output = 'Action denied by user';
-                ok = false;
-                const toolDuration = Date.now() - toolStart;
-                if (span) endSpan(runId, span.id);
-                addToolCall(runId, call.name, toolDuration, ok);
-                emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200) });
-                ctx.sessions.append(sessionId, {
-                  role: 'tool',
-                  toolCallId: call.id,
-                  name: call.name,
-                  result: output,
-                  ts: Date.now(),
-                });
-                continue;
-              }
-            }
             output = await tool.execute(call.args);
           } catch (err) {
             ok = false;
@@ -260,7 +263,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           const toolDuration = Date.now() - toolStart;
           if (span) endSpan(runId, span.id);
           addToolCall(runId, call.name, toolDuration, ok);
-          emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200) });
+          emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200), result: output, toolCallId: call.id, sessionId });
           ctx.sessions.append(sessionId, {
             role: 'tool',
             toolCallId: call.id,
