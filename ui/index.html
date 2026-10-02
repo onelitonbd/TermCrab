@@ -342,6 +342,86 @@
   .row.open { flex-wrap: wrap; background: rgba(246, 238, 250, 0.85); }
   .row.open .d { margin-left: auto; }
 
+  /* ---- model thinking / reasoning drawer ---- */
+  details.think-drawer {
+    background: rgba(246, 238, 250, 0.75);
+    border: 1px solid rgba(138, 111, 155, 0.25);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  details.think-drawer summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #5c3866;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.4);
+  }
+  details.think-drawer summary::-webkit-details-marker { display: none; }
+  .think-badge {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(138, 111, 155, 0.15);
+    color: #8a6f9b;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .think-badge.active {
+    background: rgba(217, 69, 111, 0.15);
+    color: #d9456f;
+  }
+  .think-timer {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: var(--mut);
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  .think-body {
+    padding: 10px 14px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #3e2847;
+    background: rgba(255, 255, 255, 0.6);
+    border-top: 1px solid rgba(138, 111, 155, 0.12);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ---- thinking level button & selector ---- */
+  .thinkingBtn {
+    border-left: 1px solid rgba(138, 111, 155, 0.15);
+    margin-left: 2px;
+  }
+  .thinkingBtn.off { opacity: 0.6; }
+  .tpRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(138, 111, 155, 0.15);
+    margin-bottom: 6px;
+    font-size: 13.5px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .tpRow:hover { background: rgba(246, 238, 250, 0.9); }
+  .tpRow.on { border-color: #d9456f; background: rgba(217, 69, 111, 0.08); font-weight: 600; }
+  .tpSub { font-size: 12px; color: var(--mut); font-weight: normal; }
+
   /* ---- stop / max-iterations notice ---- */
   .warn {
     display: flex;
@@ -2578,6 +2658,13 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
+        <button id="thinkingBtn" class="iconBtn thinkingBtn" type="button" title="Model Thinking Level / Reasoning Effort" aria-label="Model thinking level">
+          <span class="modOn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>
+            <span id="thinkingBtnLabel">Think: Auto</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </span>
+        </button>
       </div>
       <span class="composerSp"></span>
       <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
@@ -2622,13 +2709,40 @@
   </div>
 </div>
 
+<div id="thinkingPick" class="hidden">
+  <div class="card" style="max-width:380px">
+    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>Thinking Level / Reasoning Effort</h3>
+    <p class="pNote">Select reasoning depth for thinking-capable models (Claude 3.7, o1/o3, DeepSeek R1, Gemini Flash Thinking).</p>
+    <div id="tpList" class="listCol" style="gap:6px;margin:12px 0"></div>
+    <div class="pBar" style="margin-top:14px">
+      <span class="sp"></span>
+      <button id="tpCancel" class="ghost">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Login removed — panel is open by default. -->
 
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
   const log = $('log');
-  const state = { token: localStorage.getItem('tc_token') || '', busy: false, live: null, liveRaw: '', pendingSession: null, abort: null, lastView: 'chat', provFrom: 'status', provId: '', mdlFrom: 'status', mdlProvId: '' };
+  const state = {
+    token: localStorage.getItem('tc_token') || '',
+    busy: false,
+    live: null,
+    liveRaw: '',
+    pendingSession: null,
+    abort: null,
+    lastView: 'chat',
+    provFrom: 'status',
+    provId: '',
+    mdlFrom: 'status',
+    mdlProvId: '',
+    thinkingLevel: localStorage.getItem('tc_thinking') || 'none',
+    thinkStartTime: null,
+    thinkInterval: null,
+  };
   const currentSession = () => $('session').value || 'web:main';
 
 
@@ -3092,6 +3206,58 @@
   $('mdlSearch').addEventListener('input', renderMdlList);
 
   // ---- Composer model picker: choose provider, then one of its saved models ----
+  const THINKING_LEVELS = [
+    { id: 'none', label: 'None (Auto)', detail: 'Model default / auto thinking' },
+    { id: 'low', label: 'Low', detail: 'Fast, minimal (~1K token budget)' },
+    { id: 'medium', label: 'Medium', detail: 'Balanced (~4K token budget)' },
+    { id: 'high', label: 'High', detail: 'Thorough (~16K token budget)' },
+    { id: 'xhigh', label: 'XHigh', detail: 'Extra deep (~32K token budget)' },
+    { id: 'max', label: 'Max', detail: 'Maximum reasoning (~64K token budget)' },
+  ];
+
+  function refreshThinkingBtn() {
+    const cur = state.thinkingLevel || localStorage.getItem('tc_thinking') || 'none';
+    state.thinkingLevel = cur;
+    const item = THINKING_LEVELS.find((l) => l.id === cur) || THINKING_LEVELS[0];
+    const shortLabel = item.label.split(' ')[0];
+    const el = $('thinkingBtnLabel');
+    if (el) el.textContent = 'Think: ' + shortLabel;
+    const btn = $('thinkingBtn');
+    if (btn) btn.classList.toggle('off', cur === 'none');
+  }
+
+  function renderThinkingPick() {
+    const box = $('tpList');
+    if (!box) return;
+    box.innerHTML = '';
+    const cur = state.thinkingLevel || 'none';
+    for (const lvl of THINKING_LEVELS) {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'tpRow' + (lvl.id === cur ? ' on' : '');
+      const left = document.createElement('div');
+      const name = document.createElement('div');
+      name.textContent = lvl.label;
+      const sub = document.createElement('div');
+      sub.className = 'tpSub';
+      sub.textContent = lvl.detail;
+      left.append(name, sub);
+      const chk = document.createElement('span');
+      if (lvl.id === cur) chk.innerHTML = TOOL_CHECK;
+      row.append(left, chk);
+      row.onclick = () => {
+        state.thinkingLevel = lvl.id;
+        localStorage.setItem('tc_thinking', lvl.id);
+        refreshThinkingBtn();
+        $('thinkingPick').classList.add('hidden');
+      };
+      box.appendChild(row);
+    }
+  }
+
+  if ($('thinkingBtn')) $('thinkingBtn').onclick = () => { renderThinkingPick(); $('thinkingPick').classList.remove('hidden'); };
+  if ($('tpCancel')) $('tpCancel').onclick = () => $('thinkingPick').classList.add('hidden');
+
   async function refreshModelBtn() {
     if (!state.token) return;
     try {
@@ -3100,6 +3266,7 @@
       $('modelBtnLabel').textContent = m || 'model';
       $('modelBtn').title = 'Model in use: ' + (m || 'none');
     } catch { /* keep the old label */ }
+    refreshThinkingBtn();
   }
 
   async function loadMpModels() {
@@ -3552,6 +3719,87 @@
     if (details) toolSummary(details);
   }
 
+  function addThinkingDelta(text) {
+    if (!text) return;
+    if (!state.live || !log.contains(state.live)) {
+      state.live = addMsg('bot', '');
+    }
+    let thinkDrawer = state.live.querySelector('details.think-drawer');
+    if (!thinkDrawer) {
+      const thinkOld = state.live.querySelector('.think');
+      if (thinkOld) thinkOld.remove();
+      thinkDrawer = document.createElement('details');
+      thinkDrawer.className = 'think-drawer';
+      thinkDrawer.open = true;
+      const sum = document.createElement('summary');
+      const badge = document.createElement('span');
+      badge.className = 'think-badge active';
+      badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>';
+      const title = document.createElement('span');
+      title.className = 'think-title';
+      title.textContent = 'Thinking…';
+      const timer = document.createElement('span');
+      timer.className = 'think-timer';
+      timer.textContent = '0.0s';
+      const cv = document.createElement('svg');
+      cv.setAttribute('class', 'cv');
+      cv.setAttribute('width', '14');
+      cv.setAttribute('height', '14');
+      cv.setAttribute('viewBox', '0 0 24 24');
+      cv.setAttribute('fill', 'none');
+      cv.setAttribute('stroke', 'currentColor');
+      cv.setAttribute('stroke-width', '2');
+      cv.setAttribute('stroke-linecap', 'round');
+      cv.setAttribute('stroke-linejoin', 'round');
+      cv.innerHTML = '<path d="m6 9 6 6 6-6"/>';
+      sum.append(badge, title, timer, cv);
+      const body = document.createElement('div');
+      body.className = 'think-body';
+      thinkDrawer.append(sum, body);
+
+      const steps = state.live.querySelector('details.steps');
+      const tb = state.live.querySelector('.textBody');
+      if (steps) {
+        state.live.insertBefore(thinkDrawer, steps);
+      } else if (tb) {
+        state.live.insertBefore(thinkDrawer, tb);
+      } else {
+        state.live.appendChild(thinkDrawer);
+      }
+      state.thinkStartTime = Date.now();
+      if (state.thinkInterval) clearInterval(state.thinkInterval);
+      state.thinkInterval = setInterval(() => {
+        if (!state.thinkStartTime) return;
+        const sec = ((Date.now() - state.thinkStartTime) / 1000).toFixed(1);
+        const tSpan = thinkDrawer.querySelector('.think-timer');
+        if (tSpan) tSpan.textContent = sec + 's';
+      }, 100);
+    }
+    const body = thinkDrawer.querySelector('.think-body');
+    if (body) {
+      body.textContent = (body.textContent || '') + text;
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function stopThinkingTimer() {
+    if (state.thinkInterval) {
+      clearInterval(state.thinkInterval);
+      state.thinkInterval = null;
+    }
+    if (state.live) {
+      const thinkDrawer = state.live.querySelector('details.think-drawer');
+      if (thinkDrawer && state.thinkStartTime) {
+        const elapsed = ((Date.now() - state.thinkStartTime) / 1000).toFixed(1);
+        const title = thinkDrawer.querySelector('.think-title');
+        const badge = thinkDrawer.querySelector('.think-badge');
+        if (title) title.textContent = 'Thought for ' + elapsed + 's';
+        if (badge) badge.classList.remove('active');
+        state.thinkStartTime = null;
+      }
+    }
+  }
+
   function updateChatLabel() {
     const id = currentSession() || 'web:main';
     const health = $('health');
@@ -3580,6 +3828,11 @@
 
   function connectEvents() {
     const es = new EventSource('/api/events?token=' + encodeURIComponent(state.token));
+    es.addEventListener('thinking:delta', (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.sessionId && ev.sessionId !== currentSession()) return;
+      addThinkingDelta(ev.text);
+    });
     es.addEventListener('tool:start', (e) => {
       const ev = JSON.parse(e.data);
       if (ev.sessionId && ev.sessionId !== currentSession()) return;
@@ -3596,6 +3849,7 @@
     });
     es.addEventListener('delta', (e) => {
       if (state.pollDone) return;
+      stopThinkingTimer();
       const ev = JSON.parse(e.data);
       // typewriter: append streamed chunks, repainted as markdown
       if (!state.live || !log.contains(state.live)) { state.live = addMsg('bot', ''); state.liveRaw = ''; }
@@ -3875,7 +4129,12 @@
       const res = await api('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId: currentSession(), agent: $('agentSel').value || undefined }),
+        body: JSON.stringify({
+          message: text,
+          sessionId: currentSession(),
+          agent: $('agentSel').value || undefined,
+          thinkingLevel: state.thinkingLevel || 'none',
+        }),
         signal: state.abort.signal,
       });
       const turnId = res.turnId;
@@ -6132,6 +6391,7 @@ async function bootstrap() {
     try {
       updateChatLabel();
       refreshModelBtn();
+      refreshThinkingBtn();
       refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();

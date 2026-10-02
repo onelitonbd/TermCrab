@@ -250,6 +250,7 @@ export interface QueuedTurn {
   channel?: string;
   agent?: string;
   tier?: 'cloud' | 'local';
+  thinkingLevel?: import('../providers/types.js').ThinkingLevel;
   enqueuedAt: number;
   status: 'queued' | 'running' | 'done' | 'error' | 'interrupted';
   output?: string;

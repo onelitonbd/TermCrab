@@ -81,7 +81,17 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     text: string,
     tools: Map<number, ToolAcc>,
     finish: string,
+    thinking?: string,
   ): ChatResult {
+    // If text contains inline <think>...</think> tags, extract them
+    let cleanText = text;
+    let extractedThinking = thinking || '';
+    const thinkMatch = cleanText.match(/<think>([\s\S]*?)<\/think>/i);
+    if (thinkMatch && thinkMatch[1]) {
+      extractedThinking = (extractedThinking ? extractedThinking + '\n' : '') + thinkMatch[1].trim();
+      cleanText = cleanText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    }
+
     const toolCalls: ChatResult['toolCalls'] = [...tools.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([, t]) => ({ id: t.id || `call_${t.name}`, name: t.name, args: parseToolArgs(t.args) }));
@@ -93,7 +103,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
           : finish === 'stop'
             ? 'end'
             : 'unknown';
-    return { text, toolCalls, stopReason };
+    return { text: cleanText, toolCalls, stopReason, thinking: extractedThinking || undefined };
   }
 
   async function basic(req: ChatRequest, opts?: ChatOpts): Promise<ChatResult> {
@@ -103,6 +113,10 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
       max_tokens: req.maxTokens ?? cfg.maxTokens,
       temperature: req.temperature ?? cfg.temperature,
     };
+    if (req.thinkingLevel && req.thinkingLevel !== 'none') {
+      const effort = req.thinkingLevel === 'low' ? 'low' : req.thinkingLevel === 'medium' ? 'medium' : 'high';
+      body.reasoning_effort = effort;
+    }
     const tools = toOpenAiTools(req.tools);
     if (tools) body.tools = tools;
 
@@ -118,7 +132,12 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     if (!res.ok) throw new ProviderError(`openai HTTP ${res.status}`, res.status, await readError(res));
     const data = (await res.json()) as {
       choices?: {
-        message?: { content?: string | null; tool_calls?: { id: string; function: { name: string; arguments: string } }[] };
+        message?: {
+          content?: string | null;
+          reasoning_content?: string;
+          thinking?: string;
+          tool_calls?: { id: string; function: { name: string; arguments: string } }[];
+        };
         finish_reason?: string;
       }[];
     };
@@ -126,11 +145,12 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     const msg = choice?.message;
     let text = msg?.content ?? '';
     if (Array.isArray(text)) text = JSON.stringify(text);
+    const thinkingText = msg?.reasoning_content || msg?.thinking || '';
     const toolsOut = new Map<number, ToolAcc>();
     for (const tc of msg?.tool_calls ?? []) {
       toolsOut.set(toolsOut.size, { id: tc.id, name: tc.function.name, args: tc.function.arguments || '{}' });
     }
-    return finalize(text || '', toolsOut, choice?.finish_reason ?? '');
+    return finalize(text || '', toolsOut, choice?.finish_reason ?? '', thinkingText);
   }
 
   async function stream(req: ChatRequest, opts: ChatOpts): Promise<ChatResult> {
@@ -141,6 +161,10 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
       temperature: req.temperature ?? cfg.temperature,
       stream: true,
     };
+    if (req.thinkingLevel && req.thinkingLevel !== 'none') {
+      const effort = req.thinkingLevel === 'low' ? 'low' : req.thinkingLevel === 'medium' ? 'medium' : 'high';
+      body.reasoning_effort = effort;
+    }
     const tools = toOpenAiTools(req.tools);
     if (tools) body.tools = tools;
 
@@ -157,13 +181,23 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     if (!res.body) throw new ProviderError('openai: empty stream body');
 
     let text = '';
+    let thinkingText = '';
     let finish = '';
     const acc = new Map<number, ToolAcc>();
 
     for await (const data of sseData(res)) {
       if (data === '[DONE]') break;
       let frame: {
-        choices?: { delta?: { content?: string; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[];
+        choices?: {
+          delta?: {
+            content?: string;
+            reasoning_content?: string;
+            thinking?: string;
+            reasoning?: string;
+            tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[];
+          };
+          finish_reason?: string | null;
+        }[];
       };
       try {
         frame = JSON.parse(data);
@@ -171,6 +205,11 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
         continue;
       }
       const choice = frame.choices?.[0];
+      const reasoningChunk = choice?.delta?.reasoning_content || choice?.delta?.thinking || choice?.delta?.reasoning;
+      if (reasoningChunk) {
+        thinkingText += reasoningChunk;
+        opts.onThinkingDelta?.(reasoningChunk);
+      }
       if (choice?.delta?.content) {
         text += choice.delta.content;
         opts.onDelta?.(choice.delta.content);
@@ -189,7 +228,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
       if (choice?.finish_reason) finish = choice.finish_reason;
     }
 
-    return finalize(text, acc, finish);
+    return finalize(text, acc, finish, thinkingText);
   }
 
   return {

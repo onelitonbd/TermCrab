@@ -20,24 +20,30 @@ export interface ProviderMessage {
   toolName?: string;
 }
 
+export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 export interface ChatRequest {
   system: string;
   messages: ProviderMessage[];
   tools: ToolDef[];
   maxTokens?: number;
   temperature?: number;
+  thinkingLevel?: ThinkingLevel;
 }
 
 export interface ChatResult {
   text: string;
   toolCalls: { id: string; name: string; args: Record<string, unknown> }[];
   stopReason: 'end' | 'tool' | 'length' | 'unknown';
+  thinking?: string;
 }
 
 export interface ChatOpts {
   signal?: AbortSignal;
   /** Incremental text deltas for typewriter UX (streaming providers). */
   onDelta?: (chunk: string) => void;
+  /** Incremental thinking/reasoning deltas for thinking UX. */
+  onThinkingDelta?: (chunk: string) => void;
 }
 
 export interface Provider {

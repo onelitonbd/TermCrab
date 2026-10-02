@@ -371,6 +371,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         channel: turn.channel,
         agent: turn.agent,
         tier: turn.tier,
+        thinkingLevel: turn.thinkingLevel,
         signal: abortCtrl.signal,
         skipQueue: true,
         onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
@@ -694,7 +695,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         if (req.method === 'POST' && pathname === '/api/chat') {
           const raw = await readBody(req);
           const body = raw
-            ? (JSON.parse(raw) as { message?: string; sessionId?: string; agent?: string })
+            ? (JSON.parse(raw) as { message?: string; sessionId?: string; agent?: string; thinkingLevel?: string })
             : {};
           const message = (body.message || '').trim();
           if (!message) {
@@ -703,6 +704,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           }
           const sessionId = body.sessionId || 'web:main';
           const agentName = body.agent ? sanitizeAgentName(body.agent) ?? undefined : undefined;
+          const thinkingLevel = (body.thinkingLevel as import('../providers/types.js').ThinkingLevel) || undefined;
 
           // Enqueue the turn and return immediately with a turn id
           const turn = agentQueue.enqueue({
@@ -710,6 +712,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             userMessage: message,
             channel: 'web',
             agent: agentName,
+            thinkingLevel,
           });
 
           // Process the turn in the background

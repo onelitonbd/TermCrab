@@ -1,7 +1,7 @@
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
 import { providerSummary, resolveProvider, resolveProviderChain } from '../providers/index.js';
-import { ChatResult, Provider, ProviderMessage } from '../providers/types.js';
+import { ChatResult, Provider, ProviderMessage, ThinkingLevel } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { Entry, newRunId, SessionQueue, SessionStore } from './sessions.js';
@@ -12,6 +12,7 @@ import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
   | { type: 'delta'; text: string }
+  | { type: 'thinking:delta'; text: string; sessionId?: string }
   | { type: 'tool:start'; name: string; args: Record<string, unknown>; toolCallId?: string; sessionId?: string }
   | { type: 'tool:end'; name: string; ok: boolean; preview: string; result: string; toolCallId?: string; sessionId?: string }
   | { type: 'run:end'; runId: string; text: string; sessionId: string; iterations: number }
@@ -41,6 +42,7 @@ export interface RunOpts {
   agent?: string;
   /** Model tier: 'local' uses ctx.localProvider when configured (falls back to cloud). */
   tier?: 'cloud' | 'local';
+  thinkingLevel?: ThinkingLevel;
   onEvent?: (ev: AgentEvent) => void;
   /** Abort signal for interrupt support. */
   signal?: AbortSignal;
@@ -94,11 +96,12 @@ async function chatWithTimeout(
   provider: Provider,
   req: Parameters<Provider['chat']>[0],
   onDelta?: (chunk: string) => void,
+  onThinkingDelta?: (chunk: string) => void,
 ): Promise<ChatResult> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), PROVIDER_TIMEOUT_MS);
   try {
-    return await provider.chat(req, { signal: ctrl.signal, onDelta });
+    return await provider.chat(req, { signal: ctrl.signal, onDelta, onThinkingDelta });
   } finally {
     clearTimeout(timer);
   }
@@ -212,11 +215,19 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
       }
       const messages = toProviderMessages(ctx.sessions.read(sessionId), provider.name);
       let streamedChars = 0;
-      const result = await chatWithTimeout(provider, { system, messages, tools: tools.map((t) => t.def) }, (chunk) => {
-        if (!chunk) return;
-        streamedChars += chunk.length;
-        emit({ type: 'delta', text: chunk });
-      });
+      const result = await chatWithTimeout(
+        provider,
+        { system, messages, tools: tools.map((t) => t.def), thinkingLevel: opts.thinkingLevel },
+        (chunk) => {
+          if (!chunk) return;
+          streamedChars += chunk.length;
+          emit({ type: 'delta', text: chunk });
+        },
+        (thinkingChunk) => {
+          if (!thinkingChunk) return;
+          emit({ type: 'thinking:delta', text: thinkingChunk, sessionId });
+        },
+      );
 
       if (result.toolCalls.length) {
         // Persist the assistant tool-call turn, then execute each tool.
