@@ -106,13 +106,56 @@ function check() {
   if (!newest.body.trim()) {
     fail(`the CHANGELOG entry for ${newest.version} is empty — write the notes before releasing`);
   }
+  // The lock file carries the same version, and a bump that forgets it is how
+  // `npm ci` ends up quoting an old release (this happened for real: 0.58.0 in
+  // package.json against 0.52.0 in package-lock.json).
+  const lockVersion = readLockVersion();
+  if (lockVersion && lockVersion !== pkg.version) {
+    fail(
+      `package-lock.json says ${lockVersion} but package.json says ${pkg.version} — ` +
+        'sync it with: npm install --package-lock-only',
+    );
+  }
+  const lockNote = lockVersion ? `, package-lock.json ${lockVersion}` : '';
   const lines = newest.body.split('\n').filter((l) => l.trim()).length;
-  console.log(`✓ version ${pkg.version} matches the newest CHANGELOG entry (${newest.date}, ${lines} line(s) of notes)`);
+  console.log(
+    `✓ version ${pkg.version} matches the newest CHANGELOG entry (${newest.date}, ${lines} line(s) of notes)${lockNote}`,
+  );
   if (flag('--notes')) {
     console.log('');
     console.log(newest.body);
   }
   return { pkg, newest };
+}
+
+/**
+ * The version recorded in package-lock.json, or null when there is no lock
+ * (a checkout without one is fine; a *stale* one is not).
+ */
+function readLockVersion() {
+  const lockPath = path.join(root, 'package-lock.json');
+  if (!fs.existsSync(lockPath)) return null;
+  try {
+    const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    return lock.version ?? lock.packages?.['']?.version ?? null;
+  } catch (err) {
+    fail(`cannot read ${lockPath}: ${err.message}`);
+  }
+}
+
+/** Keep the lock's own version fields in step when one is present. */
+function syncLock(version) {
+  const lockPath = path.join(root, 'package-lock.json');
+  if (!fs.existsSync(lockPath)) return;
+  try {
+    const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    lock.version = version;
+    if (lock.packages?.['']) lock.packages[''].version = version;
+    fs.writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`, 'utf8');
+    console.log(`✓ package-lock.json ${version}`);
+  } catch (err) {
+    fail(`cannot update ${lockPath}: ${err.message}`);
+  }
 }
 
 function write(version) {
@@ -129,6 +172,7 @@ function write(version) {
   pkg.version = next;
   fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
   console.log(`✓ package.json ${next} + a CHANGELOG section written`);
+  syncLock(next);
   console.log(`  next: write the notes in CHANGELOG.md, then  git add -A && git commit -m "release: ${next}"`);
   if (inRepo) {
     console.log(`  then: node scripts/release.mjs --check   and   git tag -a v${next} -m "v${next}"`);

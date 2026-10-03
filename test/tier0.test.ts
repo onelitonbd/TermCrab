@@ -402,6 +402,26 @@ test('10.7 the release version and the CHANGELOG cannot drift apart', async (t) 
     assert.notEqual(code, 0, 'a mismatch must fail the check');
     assert.match(stdout, /9\.9\.9/);
     assert.match(stdout, /0\.1\.0/);
+
+    // The lock file carries the version too: a bump that forgets it must fail
+    // here rather than surprise somebody running npm ci later.
+    fs.writeFileSync(path.join(tmp, 'CHANGELOG.md'), '# Changelog\n\n## 9.9.9 - 2020-01-01\n\n- fixed\n');
+    fs.writeFileSync(
+      path.join(tmp, 'package-lock.json'),
+      JSON.stringify({ name: 'termcrab', version: '9.9.8', lockfileVersion: 3, packages: { '': { version: '9.9.8' } } }, null, 2),
+    );
+    const stale = await runNode([path.join(repo, 'scripts/release.mjs'), '--check', '--root', tmp], repo);
+    assert.notEqual(stale.code, 0, 'a stale lock file fails the release check');
+    assert.match(stale.stdout, /package-lock\.json says 9\.9\.8/);
+    assert.match(stale.stdout, /npm install --package-lock-only/, 'the fix is named');
+
+    // And a bump writes both files together.
+    const bumped = await runNode([path.join(repo, 'scripts/release.mjs'), '9.9.10', '--root', tmp], repo);
+    assert.equal(bumped.code, 0, bumped.stdout);
+    const lock = JSON.parse(fs.readFileSync(path.join(tmp, 'package-lock.json'), 'utf8')) as { version: string; packages: Record<string, { version: string }> };
+    assert.equal(lock.version, '9.9.10');
+    assert.equal(lock.packages['']!.version, '9.9.10', 'the bump keeps the lock in step');
+
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 });
