@@ -121,6 +121,10 @@ one device; its token stops working on the next request.
 ```json
 { "message": "list files in my workspace", "sessionId": "web:main" }
 ```
+Leave `sessionId` out and the turn lands in the **rolling main session** (28.1,
+`agent.rollingSession`, default `main`): the panel, the terminal and a Telegram
+DM with the owner share one thread, archived daily. Name a `sessionId` and you
+get exactly that thread — the panel does this when you pick another chat.
 Headers: `authorization: Bearer <token>`, optional `idempotency-key: <any string>`.
 → `202 { "turnId": "…", "sessionId": "web:main", "status": "queued" }` (runs the full agent loop)
 Conversation history: `GET /api/sessions` lists chats; each session's working
@@ -136,8 +140,17 @@ too many requests answer `429 { "error": "Too many messages at once — try agai
 with a `retry-after` header.
 
 ### `GET /api/sessions`
-→ `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000, "bytes": 4096 } ] }`
-→ `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000 } ] }`
+→ `{ "sessions": [ { "id": "main", "messages": 12, "modified": 1790000000, "bytes": 4096, "viewers": 2, "running": "turn-1a2b" } ] }`
+`viewers` is how many clients are attached (28.2); `running` is the turn id
+currently executing in that conversation, or `null`.
+
+### `GET /api/sessions/:id/attach` — server-sent events
+One conversation, live, for as many clients as want it (28.2). The first frame
+is `state`: the last 60 transcript entries, the running turn and the viewer
+count, so a tab that just opened catches up without a second request. After
+that it is the same wire format as `/api/events`, filtered to this session, so
+two phones, a laptop and the terminal can watch one thread and none of them
+misses a message. 404 for an unknown session.
 
 ### `GET /api/sessions/:id`
 → `{ "messages": [ …transcript entries… ] }`

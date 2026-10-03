@@ -127,6 +127,17 @@ export interface Config {
      */
     parallelTools?: number;
     /**
+     * The owner's rolling main session (28.1). On (the default), the panel,
+     * the terminal and a Telegram DM with the owner share one session named
+     * `main` (or `mainSession` below), and it rolls over on the first turn of
+     * a new day — the old transcript is archived, not deleted. Groups, other
+     * people, cron jobs and subagents keep their own keys. Off restores one
+     * thread per surface.
+     */
+    rollingSession?: boolean;
+    /** Name of that session. Default `main`. */
+    mainSession?: string;
+    /**
      * The longest one turn may run, in seconds (27.4). When it is reached the
      * turn stops with a plain sentence rather than hanging a phone's battery
      * away. Default 900 (15 minutes); 0 disables the cap.
@@ -180,6 +191,13 @@ export interface Config {
       notifyChatId?: number;
       /** Groups: answer only when addressed (default) or to everything. */
       groupPolicy?: 'mention' | 'all';
+      /**
+       * What a session key is scoped to (28.3): `chat` (default) — one thread
+       * per room, which is what a group wants; `user` — one thread per person,
+       * so their DM and their mentions follow them between chats. The owner's
+       * own messages go to the rolling main session either way.
+       */
+      scoping?: 'chat' | 'user';
       /** Largest file accepted from a chat, in MB (default 20). */
       maxFileMb?: number;
       /** Read the text out of a document that arrives (default true). */
@@ -285,7 +303,7 @@ export function defaults(): Config {
     providers: [],
     media: { imageModel: '', size: '1024x1024' },
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000, parallelTools: 4, turnBudgetSec: 900, idleSec: 120 },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000, parallelTools: 4, turnBudgetSec: 900, idleSec: 120, rollingSession: true, mainSession: 'main' },
     fallbackProviders: [],
     mcpServers: [],
     hooks: [],
@@ -595,6 +613,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'parallelTools',
       'turnBudgetSec',
       'idleSec',
+      'rollingSession',
+      'mainSession',
     ]),
   );
   if (agent) {
@@ -610,6 +630,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     numIn(agent, 'agent.', 'parallelTools', 1, 8);
     numIn(agent, 'agent.', 'turnBudgetSec', 0, 86_400);
     numIn(agent, 'agent.', 'idleSec', 0, 3_600);
+    bool(agent, 'agent.', 'rollingSession');
+    str(agent, 'agent.', 'mainSession');
     numIn(agent, 'agent.', 'execTimeoutSec', 1, 3600);
     bool(agent, 'agent.', 'execAllowDangerous');
     strArr(agent, 'agent.', 'execDenyPatterns');

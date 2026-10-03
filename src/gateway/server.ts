@@ -100,6 +100,7 @@ import { formatSessionHits, searchSessions } from '../agent/session-search.js';
 import { healthLine, runHealth } from '../agent/run-health.js';
 import { buildPresence, presenceLine, withSummary, type Presence, type PresenceChannelInput } from './presence.js';
 import { KNOWN_EVENTS, describeTrigger, planTriggers, triggerMessage, triggerSession, watcherMatches, type TriggerPayload } from './triggers.js';
+import { rollingLine, rollingSessionKey } from '../agent/rolling.js';
 import { addIntent, listIntents, removeIntent } from '../agent/intents.js';
 import { generateImage } from '../media/image.js';
 import { structuredLog } from '../core/structured-log.js';
@@ -483,7 +484,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   const wake = new WakeService({
     onCommand: async (text: string) => {
       const reply = await runQueuedTurn(agent, {
-        sessionId: 'wake:main',
+        // 28.1: the wake word is the owner speaking, so the answer lands in the
+        // same rolling main session as the panel and the terminal.
+        sessionId: rollingSessionKey(config, { fallback: 'wake:main', channel: 'voice', chatId: 'main' }),
         userMessage: text,
         channel: 'voice',
         onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
@@ -650,6 +653,10 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
    * includes the server watching itself is a lie.
    */
   let watcherCount = 0;
+  // 28.2: who is attached to which conversation. A session can be open in the
+  // panel, on a phone and in the terminal at once; each attachment is one
+  // viewer, and the count is on GET /api/sessions.
+  const sessionViewers = new Map<string, Set<unknown>>();
 
   /** The presence picture for this process, built from what it already owns. */
   function presenceNow(): Presence {
@@ -816,7 +823,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     displayName: string,
   ): Promise<string> {
     recordInbound(channel, String(chatId), text);
-    const baseSession = `${channel}:${chatId}`;
+    // 28.1: the owner's own conversations share one rolling main session;
+    // 28.3: with channels.telegram.scoping = 'user' the key is the person, not
+    // the room, so their DM and their mentions follow them between chats.
+    const group = channel === 'telegram' && Number(chatId) < 0;
+    const scoping = config.channels?.telegram?.scoping ?? 'chat';
+    const fallbackSession =
+      scoping === 'user' && userId ? `${channel}:u:${userId}` : `${channel}:${chatId}`;
+    const baseSession = rollingSessionKey(config, {
+      fallback: fallbackSession,
+      channel,
+      chatId: String(chatId),
+      group,
+    });
 
     if (text === '/new') {
       sessions.reset(baseSession);
@@ -984,6 +1003,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       sessionId: baseSession,
       userMessage: routed.text,
       channel,
+      user: userId ? String(userId) : undefined,
       agent: routed.agent ?? undefined,
       onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
     });
@@ -1400,7 +1420,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             return;
           }
           const message = parsed.value.message;
-          const sessionId = parsed.value.sessionId;
+          // 28.1: a client that does not name a session is the owner talking
+          // from the panel, so it lands in the rolling main session unless
+          // rolling is off. A client that names one gets exactly that session.
+          const defaulted = !(body as { sessionId?: unknown }).sessionId;
+          const sessionId = defaulted
+            ? rollingSessionKey(config, { fallback: parsed.value.sessionId, channel: 'web', chatId: 'main' })
+            : parsed.value.sessionId;
           const agentName = parsed.value.agent ? sanitizeAgentName(parsed.value.agent) ?? undefined : undefined;
           // Only the six known levels; anything else is treated as "auto" so a
           // stray value can never reach a provider request.
@@ -1435,6 +1461,59 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           };
           if (parsed.value.idempotencyKey) rememberIdempotent(parsed.value.idempotencyKey, accepted);
           json(res, 202, accepted);
+          return;
+        }
+
+        /**
+         * Attach to one conversation (28.2). Same bus frames as /api/events,
+         * filtered to this session, plus a first `state` frame carrying the
+         * tail of the transcript and whether a turn is running — so a client
+         * that just opened a tab sees what happened while it was away without
+         * asking a second endpoint. Several clients may attach at once; the
+         * queue still runs one turn at a time (that is what makes "no message
+         * lost" true), and the viewer count is on GET /api/sessions.
+         */
+        const attachMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/attach$/);
+        if (attachMatch && req.method === 'GET') {
+          const sid = decodeURIComponent(attachMatch[1]!);
+          if (!sessions.exists(sid)) {
+            json(res, 404, { error: `no such session: ${sid}` });
+            return;
+          }
+          res.writeHead(200, {
+            'content-type': 'text/event-stream',
+            'cache-control': 'no-cache',
+            connection: 'keep-alive',
+          });
+          const running = agentQueue.getRunning(sid);
+          const tail = sessions.readHot(sid, 60);
+          res.write(
+            `event: state\ndata: ${JSON.stringify({
+              v: WIRE_VERSION,
+              sessionId: sid,
+              running: running ? { turnId: running.id, status: running.status } : null,
+              viewers: (sessionViewers.get(sid)?.size ?? 0) + 1,
+              transcript: tail.map((e) => ({ role: e.role, content: 'content' in e ? e.content : '', ts: e.ts, name: 'name' in e ? e.name : undefined })),
+            })}\n\n`,
+          );
+          const mine = sessionViewers.get(sid) ?? new Set<unknown>();
+          mine.add(res);
+          sessionViewers.set(sid, mine);
+          const unsubscribe = bus.subscribe((ev) => {
+            const any = ev as Record<string, unknown>;
+            if (any.sessionId !== sid) return;
+            const frame = wrapEvent(any);
+            res.write(`event: ${frame.type}\ndata: ${JSON.stringify(frame)}\n\n`);
+          });
+          const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
+          ping.unref();
+          req.on('close', () => {
+            clearInterval(ping);
+            unsubscribe();
+            const set = sessionViewers.get(sid);
+            set?.delete(res);
+            if (!set?.size) sessionViewers.delete(sid);
+          });
           return;
         }
 
@@ -1539,7 +1618,16 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/sessions') {
-          json(res, 200, { sessions: sessions.list() });
+          // 28.2: who is attached, alongside what exists — a client can see
+          // that the same conversation is open somewhere else.
+          const running = new Map(agentQueue.listRunning().map((r) => [r.sessionId, r]));
+          json(res, 200, {
+            sessions: sessions.list().map((s) => ({
+              ...s,
+              viewers: sessionViewers.get(s.id)?.size ?? 0,
+              running: running.get(s.id)?.turnId ?? null,
+            })),
+          });
           return;
         }
 
@@ -2342,6 +2430,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             },
             memory: { ...memory.stats(), index: memory.indexStats(), facts: countMemoryFacts() },
             agents: listAgents(),
+            // 28.1: the session the owner's own surfaces share, in one line.
+            sessions: {
+              main: config.agent.mainSession || 'main',
+              rolling: config.agent.rollingSession !== false,
+              note: rollingLine(config, config.agent.mainSession || 'main'),
+            },
             queue: agentQueue.stats(),
             presence: (() => {
               const p = presenceNow();

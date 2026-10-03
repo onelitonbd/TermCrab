@@ -673,6 +673,11 @@ export class SessionStore {
     return ok;
   }
 
+  /** Does this conversation exist — live or archive-only? (28.2) */
+  exists(sessionId: string): boolean {
+    return fs.existsSync(this.file(sessionId)) || fs.existsSync(this.archivePath(sessionId));
+  }
+
   reset(sessionId: string): void {
     for (const f of [this.file(sessionId), this.archiveFile(sessionId)]) {
       if (fs.existsSync(f)) {
@@ -997,6 +1002,8 @@ export interface QueuedTurn {
   agent?: string;
   tier?: 'cloud' | 'local';
   thinkingLevel?: import('../providers/types.js').ThinkingLevel;
+  /** Who in the channel is speaking (28.3) — recorded in fact provenance. */
+  user?: string;
   enqueuedAt: number;
   /** When the runner picked it up (absent while it is still queued). */
   startedAt?: number;

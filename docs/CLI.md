@@ -34,7 +34,7 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | Command | `data` |
 |---|---|
 | `termcrab status --json` | `{name, brain, localBrain, panel, queue, channels, memory, heartbeat, cron, dream, agents, configProblems}` |
-| `termcrab sessions ls --json` | `{count, sessions:[{id, messages, bytes, modified}]}` |
+| `termcrab sessions ls --json` | `{count, main, rolling, sessions:[{id, messages, bytes, modified}]}` — the human list marks the shared `main` session |
 | `termcrab sessions export <id> --json` | `{id, file, bytes}` |
 | `termcrab sessions purge --older-than <days> --json` | `{purged, freedBytes, olderThanDays}` |
 | `termcrab sessions rename <old> <new> --json` | `{from, to, renamed}` |
@@ -63,6 +63,7 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab orders --json` | `{count, orders:[{id, text, createdAt}]}` — standing orders: injected into every turn, ahead of memory, never over the safety rules |
 | `termcrab sessions search <words> --json` | `{query, count, hits:[{sessionId, part, line, role, when, score, snippet}]}` — ranked across every transcript, archive included |
 | `termcrab sessions show <id> --json` | `{id, file, archive, entries, bytes, firstAt, lastAt, roles, digest, fence, policy, resetDue, resetReason, attachment:{files, facts, approvals, tools}}` |
+| ↳ | `rolling` is a plain-English line: is this the shared main session, and does it roll? |
 | `termcrab sessions verify --json` | `{sessions:[{id, entries, hot, archived, badLines, repairedBytes, bytes}], sessionsWithDamage, badLines, repaired, bytes, repairedNow}` |
 | `termcrab sessions reset <id> --json` | `{id, archivedTo, entries}` |
 | `termcrab config set agent.execTimeoutSec 30` | seconds a shell command may run before it is killed (default 30) |

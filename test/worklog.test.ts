@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -59,13 +60,27 @@ test('work tracker: fresh, reachable, and on the panel', async (t) => {
   const root = process.cwd();
   const file = path.join(root, 'WORKLOG.md');
 
-  await t.test('WORKLOG.md carries a current batch, a done log and the rules', () => {
+  await t.test('WORKLOG.md carries a current batch, a done log and the rules', async () => {
     const text = fs.readFileSync(file, 'utf8');
     assert.match(text, /^## 2\. Now/m, 'a "Now" section with the active batch');
     assert.match(text, /^## 3\. Next/m, 'a "Next" section with the queue');
     assert.match(text, /^## 4\. Done/m, 'a "Done" section with commits + proofs');
-    assert.match(text, /^\| 27\.\d+ /m, 'the current batch is a step table');
-    assert.match(text, /^\| 28\.\d+ /m, 'the next batch is a step table');
+    // The batch numbers move every batch, so the check is the shape, not the
+    // digits: the Now table names one batch, the Next table names the one after
+    // it, and every row in each table belongs to that single batch.
+    const { parseWorklog: parse } = (await import(
+      pathToFileURL(path.join(root, 'scripts', 'worklog-parse.mjs')).href
+    )) as { parseWorklog: (s: string) => { stepLines: { id: string }[]; nextSteps: { id: string }[] } };
+    const ids = parse(text);
+    const batchOf = (id: string): number => Number(id.split('.')[0]);
+    const nowBatches = new Set(ids.stepLines.map((r) => batchOf(r.id)));
+    const nextBatches = new Set(ids.nextSteps.map((r) => batchOf(r.id)));
+    assert.equal(nowBatches.size, 1, 'the Now table is one batch');
+    assert.equal(nextBatches.size, 1, 'the Next table is one batch');
+    const now = [...nowBatches][0]!;
+    const next = [...nextBatches][0]!;
+    assert.equal(next, now + 1, `Next is the batch after Now (now ${now}, next ${next})`);
+    assert.ok(ids.nextSteps.length >= 4, 'the next batch is queued with steps');
     assert.match(text, /fails? the suite|npm test/i, 'the rules say a stale tracker fails the suite');
   });
 

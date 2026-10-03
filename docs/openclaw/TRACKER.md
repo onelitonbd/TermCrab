@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৮৫%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৮৫টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৯টা আধা (PARTIAL), ৪টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৩৬ দিন, later ~৩৫ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৮৬%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৮৮টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৭টা আধা (PARTIAL), ৩টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৩৩ দিন, later ~১৯ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 85 | wired and observable |
+| ✅ WORKING | 88 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 29 | exists, narrower than theirs |
+| 🟡 PARTIAL | 27 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 4 | nothing in the tree |
+| ⚪ ABSENT | 3 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 85%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 86%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~136d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 14 | ~35d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~171d | in-scope only |
+| **parity** | 103 | ~133d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 14 | ~19d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 132 | ~152d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -250,7 +250,7 @@ Out of scope, and why:
 | Security audits / doctor | openclaw security audit, policy CLI | 🟡 PARTIAL | src/mobile/doctor.ts checks Termux-specific hazards, not policy | parity | 3 |
 | Rate limiting / loop protection | bot-loop protection, caps | ✅ WORKING | src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4 | later | — |
 
-### sessions — 74% (8 in-scope checks)
+### sessions — 100% (8 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -258,10 +258,10 @@ Out of scope, and why:
 | Transcript write fencing | expectedWriterRunId on every append | ✅ WORKING | SessionStore.claim() writes a writer lock (owner + pid + heartbeat) before a turn writes anything: a second writer is refused by name (or waits), a dead/expired claim is reclaimed, append() is one O_APPEND write of one line and heals a torn tail, and the gateway/CLI/cron/voice all share it. Pinned by test/writer-fence.test.ts (8.1-8.4) | core | — |
 | Session search | anchored snippet search + redaction | ✅ WORKING | src/agent/session-search.ts ranks every line of every transcript: BM25-ish weights with a document-frequency table, an all-terms bonus, an exact-phrase boost, a 30-day recency half-life and a down-weight for tool output; the archive file is searched too, so an old conversation is findable, and every hit carries session, role, when, file:line and a snippet with the matched words marked. One function serves `termcrab sessions search`, `/sessions search` and the agent tool `sessions_search`. Redaction of secrets before indexing is not attempted — the transcript is a plain file on the owner device | parity | — |
 | Lifecycle reset policies | mode none|daily|idle + atHour | ✅ WORKING | src/agent/session-policy.ts: `agent.sessionReset` = never (default) | daily | idle:<minutes>, parsed forgivingly and validated by config. The policy is applied before a turn (the loop calls applyReset), it archives the live transcript into `<session>.archive.jsonl` and never deletes a line, `/status` and `sessions show` state the policy and why a reset is or is not due, and `termcrab sessions reset <id>` does it on demand. An hour-of-day variant (`atHour`) is not implemented; idle and daily are the two the phone needs | parity | — |
-| Multi-user scoping | dmScope 4 modes + identity links | 🟡 PARTIAL | per-chat key `${channel}:${chatId}` (server.ts:496) — isolated by accident | parity | 3 |
+| Multi-user scoping | dmScope 4 modes + identity links | ✅ WORKING | src/agent/rolling.ts + gateway intake: the owner is one identity across surfaces (the panel, the terminal and a Telegram DM from an id in channels.telegram.allowedUserIds all share the rolling main session), while everyone else is scoped by channels.telegram.scoping = chat (default: one thread per room, what a group wants) or user (one thread per person, so their DM and their mentions follow them between chats). Who spoke is recorded, not guessed: runTurn takes a user and the run trace carries it (startRun user, tracing.ts), and memory facts written through the run carry it as their source. Groups, strangers, cron, heartbeat, dream and subagents never touch the owner thread. 4 dmScope modes with identity links (linking two channel accounts as one person) are not implemented; scoping is per-channel config | parity | — |
 | Session tools surface | sessions_list/history/search/send/status | ✅ WORKING | src/agent/toolbox.ts:644-880 | parity | — |
-| Main rolling session | agent:<id>:main with background routing | ⚪ ABSENT | five separate session keys (web:main, telegram:*, cron:*, heartbeat, dream) | later | 8 |
-| Session attachment (multi-client) | openclaw attach, projections | 🟡 PARTIAL | src/agent/session-view.ts answers "what belongs to this conversation": files touched (with read/write and counts), facts learned in it (found by their provenance stamp), approvals waiting on it, tools used, the digest, the reset policy and the live writer fence, through `termcrab sessions show <id>` / `/sessions show <id>`. What is not there yet is a projection/merge protocol for two clients writing one session — today the write fence serialises them (one writer at a time) rather than merging two views | later | 8 |
+| Main rolling session | agent:<id>:main with background routing | ✅ WORKING | src/agent/rolling.ts: one main session (agent.rollingSession, default true; name from agent.mainSession, default main) shared by the owner surfaces — panel, CLI/REPL, voice and a Telegram DM whose chat id is an allowed id. It rolls over on the first turn of a new local day: the live transcript is appended to <session>.archive.jsonl, the file is emptied and the fresh thread opens with a [rolling] system note naming the archive and how to search it, so nothing is deleted and the model is not dropped mid-conversation. The loop rolls before the turn writes (so the roll judges yesterday by what was there), emits session:reset with reason rolling, /api/status reports the session plus a plain line, `sessions ls` marks it and `sessions show` explains it, and the panel opens on it. Scheduled and background work (cron, heartbeat, dream, subagents) keeps its own key by routing, not by exclusion | later | — |
+| Session attachment (multi-client) | openclaw attach, projections | ✅ WORKING | GET /api/sessions/:id/attach (src/gateway/server.ts, 28.2) is a per-conversation SSE stream: the first frame is a state snapshot (last 60 transcript entries, the running turn id, the viewer count) so a tab that just opened catches up in one request, then it is the same versioned wire format as /api/events filtered to that session, so a phone, a laptop and the terminal watch one thread and none of them misses a message (the queue still runs one turn at a time, which is what makes that true). GET /api/sessions reports viewers and running per session, closing a tab releases its viewer, and src/agent/session-view.ts answers what belongs to a conversation (files touched, facts with their provenance, approvals, tools, digest, reset policy, writer fence) through `termcrab sessions show`. No projection/merge protocol for two clients editing one transcript at the same instant: the write fence serialises writers by design | later | — |
 
 ### skills — 78% (5 in-scope checks, 1 out of scope)
 

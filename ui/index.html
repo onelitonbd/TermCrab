@@ -2983,7 +2983,7 @@
     /** Config-file problems the panel was told about (they are never silent). */
     configProblems: [],
   };
-  const currentSession = () => $('session').value || 'web:main';
+  const currentSession = () => $('session').value || MAIN_SESSION;
 
 
   // ==== markdown renderer (zero-dependency, mobile-first) ====
@@ -3791,6 +3791,12 @@
     try {
       const s = await api('/api/status');
       const facts = s.memory ? (s.memory.facts || 0) : 0;
+      // 28.1: the panel talks in the same rolling main session as the terminal
+      // and your Telegram DM. The name comes from the server, not from here.
+      if (s.sessions) {
+        // Rolling off means the panel goes back to its own thread.
+        MAIN_SESSION = s.sessions.rolling ? s.sessions.main : 'web:main';
+      }
       $('heroStatus').textContent = 'awake \u00b7 ' + s.provider + ' \u00b7 ' + facts + (facts === 1 ? ' memory' : ' memories');
     } catch { $('heroStatus').textContent = 'awake'; }
   }
@@ -3809,7 +3815,11 @@
     sub: { label: 'Subagent', color: '#39c5cf', d: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.6 8l3 7.5M16.4 8l-3 7.5M8.5 6h7"/>' },
     dream: { label: 'Dream', color: '#a78bfa', d: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>' },
     heartbeat: { label: 'Heartbeat', color: '#f85149', d: '<path d="M3 12h4l2-5 3 10 2.5-6 1.5 3h6"/>' },
+    // 28.1: the one session the panel, the terminal and your Telegram DM share.
+    main: { label: 'Main', color: '#3fb950', d: '<path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/>' },
   };
+  /** The main session id, learnt from /api/status (rolling can rename it). */
+  let MAIN_SESSION = 'main';
   function sessionSource(id) {
     const raw = String(id || '');
     const parts = raw.split(':');
@@ -4250,7 +4260,7 @@
   }
 
   function updateChatLabel() {
-    const id = currentSession() || 'web:main';
+    const id = currentSession() || MAIN_SESSION;
     const health = $('health');
     health.innerHTML = '';
     const ic = document.createElement('span');
@@ -4827,14 +4837,14 @@
     try {
       const data = await api('/api/sessions');
       const sel = $('session');
-      const keep = state.pendingSession || sel.value || 'web:main';
+      const keep = state.pendingSession || sel.value || MAIN_SESSION;
       const opts = [];
       const seen = new Set();
       for (const s of data.sessions || []) {
         opts.push(s); seen.add(s.id);
       }
-      if (!seen.has('web:main')) opts.unshift({ id: 'web:main', messages: 0 });
-      if (keep && keep !== 'web:main' && !seen.has(keep)) opts.push({ id: keep, messages: 0 });
+      if (!seen.has(MAIN_SESSION)) opts.unshift({ id: MAIN_SESSION, messages: 0 });
+      if (keep && keep !== MAIN_SESSION && !seen.has(keep)) opts.push({ id: keep, messages: 0 });
       sel.innerHTML = '';
       for (const s of opts) {
         const o = document.createElement('option');
@@ -4845,7 +4855,7 @@
       }
       sel.value = keep;
       state.sessions = data.sessions || [];
-      if (keep && keep !== 'web:main' && !state.sessions.some((s) => s.id === keep)) {
+      if (keep && keep !== MAIN_SESSION && !state.sessions.some((s) => s.id === keep)) {
         state.sessions.unshift({ id: keep, messages: 0, modified: Math.floor(Date.now() / 1000) });
       }
       renderHistory(state.sessions);
@@ -6978,6 +6988,7 @@
       parts.push('Dream: ' + (s.dream?.enabled ? 'on' : 'off'));
       parts.push('Heartbeat: ' + (s.heartbeat?.enabled ? 'on' : 'off'));
       parts.push('Memory: ' + (s.memory?.memoryBytes || 0) + ' bytes');
+      if (s.sessions) parts.push('Session: ' + s.sessions.main + (s.sessions.rolling ? ' (rolling)' : ' (fixed)'));
       if (s.presence?.summary) {
         // "👀 here: 1 watcher · telegram running…" — the same sentence the CLI
         // and /status use, without the emoji the chip already implies.
@@ -7184,10 +7195,12 @@
 async function bootstrap() {
     // Login removed — walk straight in.
     try {
+      // 28.1: learn the main session's name before anything builds a session
+      // list from it, so the panel opens on the shared thread.
+      await refreshHero();
       updateChatLabel();
       refreshModelBtn();
       refreshThinkingBtn();
-      refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       refreshUsage(); setInterval(refreshUsage, 60000);
       connectEvents();

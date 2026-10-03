@@ -66,6 +66,7 @@ import { formatLogRecord, structuredLog } from './core/structured-log.js';
 import { listRuns } from './core/tracing.js';
 import { formatSessionHits, searchSessions } from './agent/session-search.js';
 import { applyReset } from './agent/session-policy.js';
+import { rollingLine, rollingSessionKey } from './agent/rolling.js';
 import { formatSessionView, sessionView } from './agent/session-view.js';
 import { ANSI, paint } from './core/color.js';
 
@@ -521,7 +522,12 @@ export async function main(argv: string[]): Promise<void> {
         console.error('(offline demo: answering with the built-in mock brain - no network, no key)');
       }
       const tier: 'local' | 'cloud' | undefined = values.tier === 'local' ? 'local' : undefined;
-      const sessionId = values.session || 'cli:main';
+      // 28.1: unless --session says otherwise, the terminal talks in the same
+      // rolling main session as the panel and your Telegram DM.
+      const explicitSession = rest.includes('--session');
+      const sessionId = explicitSession
+        ? values.session || 'cli:main'
+        : rollingSessionKey(ctx.config, { fallback: values.session || 'cli:main', channel: 'cli', chatId: 'main' });
       let currentAgent = values.as ? sanitizeAgentName(values.as) ?? undefined : undefined;
       if (values.as && !currentAgent) {
         console.error(`invalid agent name: ${values.as} (use lowercase letters, digits, - or _)`);
@@ -1773,8 +1779,12 @@ export async function main(argv: string[]): Promise<void> {
       const store = new SessionStore();
       if (sub === 'ls' || sub === 'list') {
         const list = store.list();
+        // 28.1: mark the one session the owner's surfaces share.
+        const cfg = loadConfig();
+        const mainId = cfg.agent.mainSession || 'main';
+        const rolling = cfg.agent.rollingSession !== false;
         if (machine) {
-          emitJson('sessions', { count: list.length, sessions: list });
+          emitJson('sessions', { count: list.length, main: mainId, rolling, sessions: list });
           return;
         }
         if (!list.length) {
@@ -1783,7 +1793,8 @@ export async function main(argv: string[]): Promise<void> {
         }
         for (const s of list) {
           const kb = Math.max(1, Math.round(s.bytes / 1024));
-          console.log(`${s.id.padEnd(30)} ${String(s.messages).padStart(4)} messages  ${kb} KB  ${new Date(s.modified * 1000).toISOString().slice(0, 10)}`);
+          const mark = s.id === mainId && rolling ? '  ← main (panel + terminal + your Telegram DM)' : '';
+          console.log(`${s.id.padEnd(30)} ${String(s.messages).padStart(4)} messages  ${kb} KB  ${new Date(s.modified * 1000).toISOString().slice(0, 10)}${mark}`);
         }
         return;
       }
@@ -1907,13 +1918,18 @@ export async function main(argv: string[]): Promise<void> {
           }
           return;
         }
-        const view = sessionView(a, { store, memory: await makeMemoryStore(), resetPolicy: loadConfig().agent.sessionReset });
+        const cfg = loadConfig();
+        const view = sessionView(a, { store, memory: await makeMemoryStore(), resetPolicy: cfg.agent.sessionReset });
+        // 28.1: say whether this id is the shared main session, so `sessions ls`
+        // showing `main` next to `telegram:-100…` is not a mystery.
+        const rolling = rollingLine(cfg, a);
         if (machine) {
-          emitJson('sessions', view);
+          emitJson('sessions', { ...view, rolling });
           return;
         }
         console.log('');
         console.log(formatSessionView(view).split('\n').map((l) => (l.startsWith('💬') || l.startsWith('   ') ? `  ${l}` : `  ${l}`)).join('\n'));
+        console.log(`  🔄 ${rolling}`);
         console.log('');
         return;
       }

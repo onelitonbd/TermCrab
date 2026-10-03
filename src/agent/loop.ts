@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
 import { providerSummary, resolveProvider, resolveProviderChain } from '../providers/index.js';
@@ -7,6 +8,7 @@ import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { contextEngine, pruneToolResults } from './context.js';
 import { applyReset, parseResetPolicy } from './session-policy.js';
+import { rollMainSession } from './rolling.js';
 import { Entry, newRunId, QueueFullError, QueuedTurn, SessionQueue, SessionStore } from './sessions.js';
 import {
   approvalTimeoutMs,
@@ -25,6 +27,8 @@ import { recordUsage } from '../core/usage.js';
 
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
+  /** The working context started over: the transcript was archived, not deleted. */
+  | { type: 'session:reset'; sessionId: string; reason: string; entries: number }
   | { type: 'delta'; text: string }
   | { type: 'thinking:delta'; text: string; sessionId?: string }
   | { type: 'tool:start'; name: string; args: Record<string, unknown>; toolCallId?: string; sessionId?: string }
@@ -91,6 +95,12 @@ export interface RunOpts {
   skipQueue?: boolean;
   /** Surface that takes the transcript write claim (defaults to the channel, else 'agent'). */
   owner?: string;
+  /**
+   * Who in that channel is speaking (28.3): a Telegram user id, a device id.
+   * Recorded in the provenance of every fact this turn writes, so "who told
+   * you that" has an answer when more than one person can talk to the agent.
+   */
+  user?: string;
   /** Wait this long for a busy session before refusing (0 = refuse now). */
   waitMs?: number;
 }
@@ -269,6 +279,28 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     ctx.sessions.append(sessionId, entry, { owner });
   };
 
+  // ---- Reset / rolling policy (21.3, 28.1) -------------------------------
+  // Before anything is read or written: the policy decides what this turn can
+  // even see. Until batch 28 this was only *described* — `sessions show` and
+  // `/status` printed "daily", and no turn ever reset. Now it runs.
+  const resetPolicy = parseResetPolicy(ctx.config.agent.sessionReset);
+  const mainSession = ctx.config.agent.mainSession || 'main';
+  if (sessionId === mainSession && ctx.config.agent.rollingSession !== false) {
+    const roll = rollMainSession(ctx.sessions, sessionId);
+    if (roll.rolled) {
+      log.info(`main session rolled over: ${roll.entries} entries archived to ${roll.archivedTo ? path.basename(roll.archivedTo) : '(nothing)'}`);
+      emit({ type: 'session:reset', sessionId, reason: 'rolling', entries: roll.entries });
+    }
+  } else {
+    const outcome = applyReset(ctx.sessions, sessionId, resetPolicy);
+    if (outcome.reset) {
+      log.info(`session reset (${outcome.reason}): ${outcome.entries} entries archived`);
+      emit({ type: 'session:reset', sessionId, reason: resetPolicy.label, entries: outcome.entries });
+    }
+  }
+
+  // Only now does this turn join the transcript: a roll must judge yesterday
+  // by what was there before this message, not by itself.
   appendEntry({
     role: 'user',
     content: userMessage,
@@ -279,7 +311,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
 
   // Tracing: start a run span
   const providerName = providerLabel(ctx.config);
-  startRun(runId, sessionId, providerName, ctx.config.provider.model);
+  startRun(runId, sessionId, providerName, ctx.config.provider.model, { user: opts.user });
 
   // Resolve provider: local tier > failover chain > single provider
   let provider: Provider;
@@ -343,7 +375,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     sessions: ctx.sessions,
     sessionId,
     memoryOrigin,
-    runSource: `${opts.channel ?? 'cli'} · session:${opts.sessionId} · run:${sessionId}`,
+    runSource: `${opts.channel ?? 'cli'}${opts.user ? ` u:${opts.user}` : ''} · session:${opts.sessionId} · run:${sessionId}`,
     providerLabel: providerLabel(ctx.config),
     spawnTask: (sid, prompt) =>
       spawnBgTask({

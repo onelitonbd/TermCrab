@@ -96,6 +96,7 @@ users' runtime.
 | `src/agent/memory.ts` | MEMORY.md + daily logs + lexical search + compacted digests |
 | `src/agent/progress.ts` | Per-session progress card the agent maintains and the UI shows |
 | `src/agent/prompt.ts` | system prompt (SOUL + memory + skills index + env) |
+| `src/agent/rolling.ts` | One rolling main session for the owner, daily, archived (28.1) |
 | `src/agent/run-health.ts` | "Why is it stuck?" (23.1) The data to answer that already exists in three places — the queue knows which turns are running and since when, the run trace know… |
 | `src/agent/secrets.ts` | Protected credentials: values are only returned on explicit request (audited) |
 | `src/agent/session-policy.ts` | When a conversation should start fresh (21.3) |
@@ -126,7 +127,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
@@ -175,8 +176,8 @@ users' runtime.
 | `src/mobile/whisper.ts` | Offline audio transcription via whisper.cpp (`whisper-cli`) |
 | `src/onboard.ts` | wizard (interactive + flags) |
 | `src/providers/anthropic.ts` | Anthropic's own wire format (messages, content blocks, input_schema tools, tool_result turns, thinking blocks, SSE) behind the shared Provider contract (27.2). |
-| `src/providers/catalog.ts` | Model catalog: what an endpoint has (asked live, offline fallback) and what each model can do (27.3). |
 | `src/providers/capabilities.ts` | per-model thinking/reasoning capability table |
+| `src/providers/catalog.ts` | Model catalog: what an endpoint has (asked live, offline fallback) and what each model can do (27.3). |
 | `src/providers/gemini.ts` | Google Gemini's generateContent wire format: contents/parts, functionDeclarations, functionResponse merges, inlineData images, SSE (27.2). |
 | `src/providers/index.ts` | resolveProvider() + resolveProviderChain() |
 | `src/providers/mcp.ts` | MCP client (stdio JSON-RPC, no external deps) |

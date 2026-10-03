@@ -112,11 +112,30 @@ agent the truth about the rest:
   trimmed instead of failing on a missing path. Names from a chat are never
   paths: separators and `..` are refused before anything is opened.
 
+## Your own thread, and other people's
+
+The owner's own conversations are one thread (28.1): the panel, the terminal
+and a DM from an id in `channels.telegram.allowedUserIds` all use the session
+`main`, so asking the phone and then opening the laptop continues the same
+conversation. It rolls over on the first turn of a new day — the old transcript
+is archived, never deleted (`termcrab sessions search` still finds it) and the
+fresh thread opens with a note saying so. Turn it off with
+`agent.rollingSession = false` or rename it with `agent.mainSession`.
+
+Everything that is *not* the owner keeps its own key: a group chat, a stranger
+who somehow got past the allow-list, a cron job, the heartbeat, a subagent.
+With `channels.telegram.scoping = "user"` each person gets a thread of their
+own instead of one per room — their DM and their mentions in a group follow
+them between chats. Facts remember who said them (28.3): the run records the
+person, and memory entries carry that as their source, so "who told you that"
+has an answer.
+
 ## Config worth knowing
 
 ```bash
 termcrab config set channels.telegram.allowedUserIds [123456789]   # who may talk to it
 termcrab config set channels.telegram.groupPolicy mention          # or: all
+termcrab config set channels.telegram.scoping user                 # one thread per person (default: chat)
 termcrab config set channels.telegram.maxFileMb 10                 # smaller inbox
 termcrab config set channels.telegram.readDocuments false          # do not open documents
 termcrab config set channels.telegram.transcribeVoice false        # keep voice notes as files

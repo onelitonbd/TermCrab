@@ -27,6 +27,11 @@ export interface RunTrace {
   error?: string;
   provider?: string;
   model?: string;
+  /**
+   * Who asked (28.3). On a gateway more than one person can talk to, a run
+   * that does not say who started it is a run nobody can explain later.
+   */
+  user?: string;
   tokensIn?: number;
   tokensOut?: number;
   toolCalls?: { name: string; durationMs: number; ok: boolean }[];
@@ -36,7 +41,13 @@ export interface RunTrace {
 const runs = new Map<string, RunTrace>();
 const MAX_RUNS = 100;
 
-export function startRun(runId: string, sessionId: string, provider?: string, model?: string): RunTrace {
+export function startRun(
+  runId: string,
+  sessionId: string,
+  provider?: string,
+  model?: string,
+  opts: { user?: string } = {},
+): RunTrace {
   const trace: RunTrace = {
     runId,
     sessionId,
@@ -44,6 +55,7 @@ export function startRun(runId: string, sessionId: string, provider?: string, mo
     status: 'running',
     provider,
     model,
+    user: opts.user,
     spans: [],
     toolCalls: [],
   };
