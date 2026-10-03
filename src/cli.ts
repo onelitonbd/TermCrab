@@ -49,6 +49,8 @@ import { transcribeFile } from './mobile/whisper.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
+import { commandHelp, completionScript, renderCommandIndex } from './command-help.js';
+import { ANSI, paint } from './core/color.js';
 
 const HELP = `🦀 TermCrab — your personal AI assistant that runs on your own device.
 
@@ -88,6 +90,8 @@ Everyday extras:
   termcrab stop [session]           stop what the agent is doing right now (partial answer is kept)
   termcrab disk [--trim]            how much space the agent uses (--trim = enforce the budget now)
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
+  termcrab help <cmd>                what one command does (same as: termcrab <cmd> --help)
+  termcrab completion bash|zsh|fish  shell completion script for your shell
   termcrab supervisor                start the gateway with auto-restart (always-on mode)
   termcrab onboard                   first-time setup wizard
       options: --provider p --model m --api-key k --base-url u --telegram-token t
@@ -167,7 +171,7 @@ function printEvents(ev: AgentEvent): void {
       break;
     case 'error': {
       const f = friendlyError(ev.message);
-      process.stdout.write(`\n\x1b[31m${f.headline}\x1b[0m\n  \u2192 ${f.fix}\n`);
+      process.stdout.write(`\n${paint(ANSI.red, f.headline)}\n  \u2192 ${f.fix}\n`);
       break;
     }
     default:
@@ -225,12 +229,53 @@ export async function main(argv: string[]): Promise<void> {
 
   if (process.env.TCRAB_LOG_LEVEL === 'debug') setLogLevel('debug');
 
+  // `termcrab <cmd> --help` must work on every command, including the ones
+  // whose flag parser would otherwise reject an unknown option (13.3).
+  if (rest.includes('--help') && cmd !== 'help') {
+    const doc = commandHelp(cmd);
+    if (doc) {
+      console.log(doc);
+      return;
+    }
+  }
+
   switch (cmd) {
     case 'help':
     case '--help':
-    case '-h':
+    case '-h': {
+      const topic = rest.find((a) => !a.startsWith('-'));
+      if (topic) {
+        const doc = commandHelp(topic);
+        if (!doc) {
+          console.error(`unknown command: ${topic}\ntry: termcrab help`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(doc);
+        return;
+      }
       console.log(HELP);
+      console.log('All commands:\n' + renderCommandIndex());
+      console.log('\nOne command in detail: termcrab help <command>   (or: termcrab <command> --help)');
       return;
+    }
+
+    case 'completion': {
+      const shell = rest.find((a) => !a.startsWith('-'));
+      if (!shell) {
+        console.error('usage: termcrab completion bash|zsh|fish');
+        process.exitCode = 1;
+        return;
+      }
+      const script = completionScript(shell);
+      if (!script) {
+        console.error(`unsupported shell: ${shell} (try bash, zsh or fish)`);
+        process.exitCode = 1;
+        return;
+      }
+      process.stdout.write(script);
+      return;
+    }
 
     case 'version':
     case '--version':
@@ -1394,7 +1439,7 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     default:
-      console.error(`unknown command: ${cmd}\n`);
+      console.error(`${paint(ANSI.red, `unknown command: ${cmd}`)}\n`);
       console.log(HELP);
       process.exitCode = 1;
   }

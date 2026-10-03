@@ -1,3 +1,5 @@
+import { ANSI, paint } from './color.js';
+
 const LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 export type LogLevel = (typeof LEVELS)[number];
 
@@ -8,10 +10,10 @@ export function setLogLevel(level: LogLevel): void {
 }
 
 const COLORS: Record<LogLevel, string> = {
-  debug: '\x1b[90m',
-  info: '\x1b[36m',
-  warn: '\x1b[33m',
-  error: '\x1b[31m',
+  debug: ANSI.dim,
+  info: ANSI.cyan,
+  warn: ANSI.yellow,
+  error: ANSI.red,
 };
 
 function enabled(level: LogLevel): boolean {
@@ -21,7 +23,9 @@ function enabled(level: LogLevel): boolean {
 function line(level: LogLevel, tag: string, args: unknown[]): void {
   if (!enabled(level)) return;
   const ts = new Date().toISOString().slice(11, 19);
-  const prefix = `${COLORS[level]}${ts} ${level.toUpperCase().padEnd(5)}\x1b[0m ${tag}`;
+  const stream = level === 'error' || level === 'warn' ? process.stderr : process.stdout;
+  const head = paint(COLORS[level], `${ts} ${level.toUpperCase().padEnd(5)}`, { stream });
+  const prefix = `${head} ${tag}`;
   const body = args
     .map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.stack || a.message : JSON.stringify(a)))
     .join(' ');

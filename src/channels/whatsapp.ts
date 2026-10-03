@@ -115,24 +115,26 @@ export class WhatsAppChannel {
     return this.sock !== null;
   }
 
-  /** Fire-and-forget send used by flush; returns false on failure (no outbox). */
-  async trySend(jid: string, text: string): Promise<boolean> {
-    if (!this.sock) return false;
+  /** Fire-and-forget send: `true` on success, the failure reason otherwise. */
+  async trySend(jid: string, text: string): Promise<true | string> {
+    if (!this.sock) return 'not connected';
     try {
       for (let i = 0; i < text.length; i += CHUNK) {
         await this.sock.sendMessage(jid, { text: text.slice(i, i + CHUNK) });
       }
       return true;
     } catch (err) {
-      log.warn('whatsapp send failed:', err instanceof Error ? err.message : err);
-      return false;
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn('whatsapp send failed:', message);
+      return message;
     }
   }
 
   /** Send with outbox fallback (mobile networks drop packets). */
   async send(jid: string, text: string): Promise<void> {
-    if (await this.trySend(jid, text)) return;
-    outboxPush({ channel: 'whatsapp', chatId: jid, text });
+    const result = await this.trySend(jid, text);
+    if (result === true) return;
+    outboxPush({ channel: 'whatsapp', chatId: jid, text, error: result });
   }
 
   /** Retry queued whatsapp items; called by the gateway's outbox flusher. */
@@ -140,11 +142,12 @@ export class WhatsAppChannel {
     let sent = 0;
     for (const item of outboxPending('whatsapp')) {
       outboxMarkSending(item.id);
-      if (await this.trySend(String(item.chatId), item.text)) {
+      const result = await this.trySend(String(item.chatId), item.text);
+      if (result === true) {
         outboxAck(item.id);
         sent++;
       } else {
-        outboxFail(item.id, 'send failed');
+        outboxFail(item.id, result);
       }
     }
     return sent;

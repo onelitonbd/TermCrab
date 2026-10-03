@@ -114,7 +114,9 @@ users' runtime.
 | `src/channels/telegram.ts` | long-poll loop, allowlist, chunking, outbox |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\|zsh\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
+| `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |
 | `src/core/disk.ts` | The disk budget (10.6) |
 | `src/core/friendly.ts` | Turn raw failures into sentences a non-coder can act on |

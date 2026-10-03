@@ -17,8 +17,11 @@ export interface TelegramDeps {
   getOffset: () => number;
   setOffset: (n: number) => void;
   /** Test seam: the real API client is built from cfg.token. */
-  api?: Pick<TelegramApi, 'sendMessage' | 'getUpdates' | 'getMe'>;
+  api?: Pick<TelegramApi, 'sendMessage' | 'getUpdates' | 'getMe'> & Partial<Pick<TelegramApi, 'sendChatAction'>>;
 }
+
+/** Telegram forgets a typing indicator after ~5s, so long turns re-send it. */
+export const TYPING_REFRESH_MS = 4000;
 
 export function chunkText(text: string, size = 3900): string[] {
   if (text.length <= size) return [text];
@@ -78,7 +81,7 @@ export class TelegramChannel {
     try {
       await this.deliver(chatId, text);
     } catch (err) {
-      const item = outboxPush({ channel: 'telegram', chatId, text });
+      const item = outboxPush({ channel: 'telegram', chatId, text, error: err instanceof Error ? err.message : String(err) });
       log.warn('telegram send failed, queuing to outbox:', err instanceof Error ? err.message : err);
       void item;
     }
@@ -132,6 +135,29 @@ export class TelegramChannel {
     }
   }
 
+  /**
+   * Show "typing…" while the agent works, and stop the moment the reply is
+   * ready (13.1). Best effort by design: a chat that blocks the indicator
+   * must never cost a reply or an inbound message.
+   */
+  private async withTyping<T>(chatId: number, fn: () => Promise<T>): Promise<T> {
+    const send = (this.api as Partial<TelegramApi>).sendChatAction;
+    if (typeof send !== 'function') return fn();
+    const tick = (): void => {
+      void Promise.resolve()
+        .then(() => send.call(this.api, chatId, 'typing'))
+        .catch((err) => log.debug('telegram typing indicator failed:', err instanceof Error ? err.message : err));
+    };
+    tick();
+    const timer = setInterval(tick, TYPING_REFRESH_MS);
+    timer.unref?.();
+    try {
+      return await fn();
+    } finally {
+      clearInterval(timer);
+    }
+  }
+
   private async handleUpdate(update: TelegramUpdate): Promise<void> {
     const msg = update.message;
     if (!msg || !msg.text) return;
@@ -148,7 +174,7 @@ export class TelegramChannel {
     const text = msg.text.trim();
     let reply: string;
     try {
-      reply = await this.deps.onMessage(userId, chatId, text, name);
+      reply = await this.withTyping(chatId, () => this.deps.onMessage(userId, chatId, text, name));
     } catch (err) {
       reply = `⚠️ ${err instanceof Error ? err.message : String(err)}`;
     }

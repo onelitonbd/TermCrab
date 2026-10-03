@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { outboxPath, stateDir } from '../core/paths.js';
+import type { ChannelName } from '../channels/api.js';
 
 /**
  * Offline outbox: outbound messages that could not be sent (flaky mobile data)
@@ -25,7 +26,7 @@ import { outboxPath, stateDir } from '../core/paths.js';
  */
 export interface OutboxItem {
   id: string;
-  channel: 'telegram' | 'whatsapp';
+  channel: ChannelName;
   chatId: number | string;
   text: string;
   ts: number;
@@ -90,8 +91,16 @@ function update(id: string, patch: (item: OutboxItem) => OutboxItem): void {
 }
 
 /** Queue a message. Returns the stored item (with its id) so callers can ack it. */
-export function outboxPush(item: { channel: OutboxItem['channel']; chatId: number | string; text: string; ts?: number }): OutboxItem {
-  const stored = normalize({ ...item, attempts: 0, state: 'pending' });
+export function outboxPush(item: {
+  channel: OutboxItem['channel'];
+  chatId: number | string;
+  text: string;
+  ts?: number;
+  /** Why the send failed, kept on the item so a retry has context. */
+  error?: string;
+}): OutboxItem {
+  const { error, ...rest } = item;
+  const stored = normalize({ ...rest, attempts: 0, state: 'pending', ...(error ? { lastError: error } : {}) });
   const items = load();
   items.push(stored);
   save(items);

@@ -47,3 +47,18 @@ export class TelegramApi {
     return this.call('sendChatAction', { chat_id: chatId, action }, 10_000);
   }
 }
+
+/**
+ * How every chat channel hands one inbound message to the agent: return the
+ * text to send back, or an empty string to say nothing. Channels differ only in
+ * transport (13.5), so they all share this shape.
+ */
+/** Every chat surface that can talk to the agent. */
+export type ChannelName = 'telegram' | 'whatsapp' | 'discord' | 'slack' | 'signal' | 'sms' | 'matrix';
+
+export type ChannelOnMessage = (
+  userId: string | number,
+  chatId: string | number,
+  text: string,
+  displayName: string,
+) => Promise<string>;

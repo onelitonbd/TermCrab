@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৫৩%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৪১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৫৩টা আধা (PARTIAL), ৪২টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৬৬ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৫৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫০টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৮টা আধা (PARTIAL), ৩৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪৯ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 41 | wired and observable |
+| ✅ WORKING | 50 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 53 | exists, narrower than theirs |
+| 🟡 PARTIAL | 48 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 42 | nothing in the tree |
+| ⚪ ABSENT | 38 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 53%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 57%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~266d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 108 | ~249d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~430d | |
+| **total** | 150 | ~413d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -102,22 +102,22 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Scheduled delivery to channels | deliver cron output to a chat | 🟡 PARTIAL | cron runs a prompt in a session; delivery routing is manual | parity | 2 |
 | Gmail / IMAP watchers | PubSub + IMAP integrations | ⚪ ABSENT | no mail integration | later | 5 |
 
-### channels — 35% (13 checks)
+### channels — 64% (13 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Telegram | grammY bot + groups + topics | ✅ WORKING | src/channels/telegram.ts long-poll, allowlist, chunking, outbox | parity | 1 |
 | WhatsApp | Baileys QR pairing | 🟡 PARTIAL | src/channels/whatsapp.ts optional Baileys (npm install baileys) | parity | 3 |
-| Discord | official plugin | 🟡 PARTIAL | src/channels/discord.ts needs discord.js | parity | 2 |
-| Slack | official plugin | 🟡 PARTIAL | src/channels/slack.ts needs bolt | parity | 2 |
-| Signal | signal-cli bridge | 🟡 PARTIAL | src/channels/signal.ts needs signal-cli | parity | 2 |
-| SMS / MMS | Twilio plugin | 🟡 PARTIAL | src/channels/sms.ts needs Twilio creds | parity | 2 |
-| Matrix | official plugin | 🟡 PARTIAL | src/channels/matrix.ts | parity | 2 |
+| Discord | official plugin | ✅ WORKING | src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
+| Slack | official plugin | ✅ WORKING | src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
+| Signal | signal-cli bridge | ✅ WORKING | src/channels/signal.ts parses signal-cli --json envelopes line by line, routes to the agent, sends with signal-cli send and queues failures; both spawn and send are injectable. test/adapters.test.ts 13.5 | parity | — |
+| SMS / MMS | Twilio plugin | ✅ WORKING | src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope | parity | — |
+| Matrix | official plugin | ✅ WORKING | src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
 | iMessage / Teams / Google Chat / LINE / Feishu / IRC… | 25+ further channels | ⚪ ABSENT | no further adapters | parity | 25 |
 | Channel routing rules | per-room routing, access groups, broadcast groups | ⚪ ABSENT | what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix) | parity | 6 |
 | Group / ambient events | history reads, mention policy | ⚪ ABSENT | no ambient-room reading, no mention/participation policy beyond the allowlist | parity | 4 |
 | Slash commands in chat | 30+ TUI / channel commands | 🟡 PARTIAL | 4 Telegram commands (/new /agents /status /heartbeat, server.ts:498-515) and 5 web commands (/api/slash, server.ts:1026) | parity | 4 |
-| Typing indicators | per-channel, on enqueue | ⚪ ABSENT | no typing action calls | parity | 1 |
+| Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
 | Media send/receive | images, audio, documents | 🟡 PARTIAL | markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only | parity | 4 |
 
 ### context — 45% (13 checks)
@@ -261,18 +261,18 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
 | Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6 | parity | — |
 
-### surfaces — 25% (11 checks)
+### surfaces — 53% (11 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Web control UI | React+Vite dashboard, rebuilt in 2.0 | 🟡 PARTIAL | ui/index.html — one 6,779-line file, 9 views, no build step, no component model | parity | 8 |
 | Full-screen TUI | openclaw tui / chat / terminal | ⚪ ABSENT | no raw mode, no alternate screen anywhere in src/ | parity | 15 |
 | Interactive REPL | TUI --local | 🟡 PARTIAL | src/cli.ts:336 readline REPL, 4 slash commands | parity | 5 |
-| CLI command coverage | ~90 commands, 101 doc pages | 🟡 PARTIAL | 23 commands in one switch (src/cli.ts:148-938) | parity | 10 |
-| Per-command help | every command documents its flags | ⚪ ABSENT | one flat HELP string (src/cli.ts:38-76); --help throws on 21 of 22 commands | parity | 2 |
+| CLI command coverage | ~90 commands, 101 doc pages | 🟡 PARTIAL | 29 commands in one switch (src/cli.ts) — still far fewer words than their ~90, but every one of them documents itself (13.3) and completes (13.4) | parity | 8 |
+| Per-command help | every command documents its flags | ✅ WORKING | src/command-help.ts is one table (usage, summary, flags, example) for every command: `termcrab help <cmd>` and `termcrab <cmd> --help` work on all of them — including commands whose flag parser used to reject --help. The test fails if a command in the CLI switch has no entry, or a documented flag is never parsed. test/tier2b.test.ts 13.3 | parity | — |
 | JSON output mode | reserved stdout + failure envelope | 🟡 PARTIAL | doctor --json only (src/cli.ts:238) | parity | 3 |
-| Shell completion | openclaw completion bash|zsh|fish | ⚪ ABSENT | not implemented (the only "completion" in the tree is chat-completion) | parity | 1 |
-| Colour / TTY discipline | NO_COLOR, TTY-only ANSI, OSC links | ⚪ ABSENT | unconditional ANSI in src/core/logger.ts:11-24 | parity | 1 |
+| Shell completion | openclaw completion bash|zsh|fish | ✅ WORKING | termcrab completion bash|zsh|fish prints a script generated from the same command table — every command name appears in all three, and an unknown shell exits 1 with the usage line. test/tier2b.test.ts 13.4 | parity | — |
+| Colour / TTY discipline | NO_COLOR, TTY-only ANSI, OSC links | ✅ WORKING | src/core/color.ts: NO_COLOR (non-empty) beats FORCE_COLOR, TCRAB_COLOR=always|never is the explicit override, otherwise colour only on a TTY — pipes, log files and chat bridges stay plain. The logger, the CLI error paths and the bin go through it; test/tier2b.test.ts 13.2 runs the real binary both ways. (OSC 8 hyperlinks: not used.) | parity | — |
 | Terminal voice loop | Talk Mode, wake words | 🏅 BETTER | termcrab wake: keyword → STT → command → TTS (src/mobile/wake.ts) — no desktop equivalent in Termux | parity | 1 |
 | macOS/Windows/Linux apps | native desktop apps | ⚪ ABSENT | Termux-first by design | later | — |
 | iOS / Android companion apps | paired nodes with camera/screen | ⚪ ABSENT | no native app; Termux:API is the bridge | later | — |

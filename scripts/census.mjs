@@ -286,16 +286,21 @@ check('channels', 'Telegram', 'grammY bot + groups + topics', 'WORKING',
   'src/channels/telegram.ts long-poll, allowlist, chunking, outbox', { pattern: /getUpdates|sendMessage/, expect: 'present' }, 1);
 check('channels', 'WhatsApp', 'Baileys QR pairing', 'PARTIAL',
   'src/channels/whatsapp.ts optional Baileys (npm install baileys)', { pattern: /baileys/i, expect: 'present' }, 3);
-check('channels', 'Discord', 'official plugin', 'PARTIAL',
-  'src/channels/discord.ts needs discord.js', { pattern: 'DiscordChannel', expect: 'present' }, 2);
-check('channels', 'Slack', 'official plugin', 'PARTIAL',
-  'src/channels/slack.ts needs bolt', { pattern: 'SlackChannel', expect: 'present' }, 2);
-check('channels', 'Signal', 'signal-cli bridge', 'PARTIAL',
-  'src/channels/signal.ts needs signal-cli', { pattern: 'SignalChannel', expect: 'present' }, 2);
-check('channels', 'SMS / MMS', 'Twilio plugin', 'PARTIAL',
-  'src/channels/sms.ts needs Twilio creds', { pattern: 'SmsChannel', expect: 'present' }, 2);
-check('channels', 'Matrix', 'official plugin', 'PARTIAL',
-  'src/channels/matrix.ts', { pattern: 'MatrixChannel', expect: 'present' }, 2);
+check('channels', 'Discord', 'official plugin', 'WORKING',
+  'src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5',
+  { pattern: 'DiscordChannel', expect: 'present' }, 0);
+check('channels', 'Slack', 'official plugin', 'WORKING',
+  'src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5',
+  { pattern: 'SlackChannel', expect: 'present' }, 0);
+check('channels', 'Signal', 'signal-cli bridge', 'WORKING',
+  'src/channels/signal.ts parses signal-cli --json envelopes line by line, routes to the agent, sends with signal-cli send and queues failures; both spawn and send are injectable. test/adapters.test.ts 13.5',
+  { pattern: 'SignalChannel', expect: 'present' }, 0);
+check('channels', 'SMS / MMS', 'Twilio plugin', 'WORKING',
+  'src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope',
+  { pattern: 'SmsChannel', expect: 'present' }, 0);
+check('channels', 'Matrix', 'official plugin', 'WORKING',
+  'src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5',
+  { pattern: 'MatrixChannel', expect: 'present' }, 0);
 check('channels', 'iMessage / Teams / Google Chat / LINE / Feishu / IRC…', '25+ further channels', 'ABSENT',
   'no further adapters', { pattern: 'imessage|msteams|googlechat', expect: 'absent' }, 25);
 check('channels', 'Channel routing rules', 'per-room routing, access groups, broadcast groups', 'ABSENT',
@@ -307,8 +312,9 @@ check('channels', 'Group / ambient events', 'history reads, mention policy', 'AB
 check('channels', 'Slash commands in chat', '30+ TUI / channel commands', 'PARTIAL',
   '4 Telegram commands (/new /agents /status /heartbeat, server.ts:498-515) and 5 web commands (/api/slash, server.ts:1026)',
   { pattern: /text === '\/new'/, expect: 'present' }, 4);
-check('channels', 'Typing indicators', 'per-channel, on enqueue', 'ABSENT',
-  'no typing action calls', { pattern: 'sendChatAction', expect: 'present' }, 1);
+check('channels', 'Typing indicators', 'per-channel, on enqueue', 'WORKING',
+  'src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1',
+  { pattern: 'sendChatAction', expect: 'present' }, 0);
 check('channels', 'Media send/receive', 'images, audio, documents', 'PARTIAL',
   'markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only',
   { pattern: /mdToTelegramHtml|chunkText/, expect: 'present' }, 4);
@@ -363,16 +369,19 @@ check('surfaces', 'Full-screen TUI', 'openclaw tui / chat / terminal', 'ABSENT',
 check('surfaces', 'Interactive REPL', 'TUI --local', 'PARTIAL',
   'src/cli.ts:336 readline REPL, 4 slash commands', { pattern: 'readline', expect: 'present' }, 5);
 check('surfaces', 'CLI command coverage', '~90 commands, 101 doc pages', 'PARTIAL',
-  '23 commands in one switch (src/cli.ts:148-938)', { pattern: 'case \'', expect: 'present' }, 10);
-check('surfaces', 'Per-command help', 'every command documents its flags', 'ABSENT',
-  'one flat HELP string (src/cli.ts:38-76); --help throws on 21 of 22 commands', { pattern: 'HELP', expect: 'present' }, 2);
+  '29 commands in one switch (src/cli.ts) — still far fewer words than their ~90, but every one of them documents itself (13.3) and completes (13.4)',
+  { pattern: 'case \'', expect: 'present' }, 8);
+check('surfaces', 'Per-command help', 'every command documents its flags', 'WORKING',
+  'src/command-help.ts is one table (usage, summary, flags, example) for every command: `termcrab help <cmd>` and `termcrab <cmd> --help` work on all of them — including commands whose flag parser used to reject --help. The test fails if a command in the CLI switch has no entry, or a documented flag is never parsed. test/tier2b.test.ts 13.3',
+  { pattern: 'command-help', expect: 'present' }, 0);
 check('surfaces', 'JSON output mode', 'reserved stdout + failure envelope', 'PARTIAL',
   'doctor --json only (src/cli.ts:238)', { pattern: '--json', expect: 'present' }, 3);
-check('surfaces', 'Shell completion', 'openclaw completion bash|zsh|fish', 'ABSENT',
-  'not implemented (the only "completion" in the tree is chat-completion)',
-  { pattern: /shellCompletion|completion bash|__complete/, expect: 'absent' }, 1);
-check('surfaces', 'Colour / TTY discipline', 'NO_COLOR, TTY-only ANSI, OSC links', 'ABSENT',
-  'unconditional ANSI in src/core/logger.ts:11-24', { pattern: 'NO_COLOR', expect: 'absent' }, 1);
+check('surfaces', 'Shell completion', 'openclaw completion bash|zsh|fish', 'WORKING',
+  'termcrab completion bash|zsh|fish prints a script generated from the same command table — every command name appears in all three, and an unknown shell exits 1 with the usage line. test/tier2b.test.ts 13.4',
+  { pattern: /completionScript\(shell\)|_termcrab/, expect: 'present' }, 0);
+check('surfaces', 'Colour / TTY discipline', 'NO_COLOR, TTY-only ANSI, OSC links', 'WORKING',
+  'src/core/color.ts: NO_COLOR (non-empty) beats FORCE_COLOR, TCRAB_COLOR=always|never is the explicit override, otherwise colour only on a TTY — pipes, log files and chat bridges stay plain. The logger, the CLI error paths and the bin go through it; test/tier2b.test.ts 13.2 runs the real binary both ways. (OSC 8 hyperlinks: not used.)',
+  { pattern: 'NO_COLOR', expect: 'present' }, 0);
 check('surfaces', 'Terminal voice loop', 'Talk Mode, wake words', 'BETTER',
   'termcrab wake: keyword → STT → command → TTS (src/mobile/wake.ts) — no desktop equivalent in Termux',
   { pattern: 'wake', expect: 'present' }, 1);

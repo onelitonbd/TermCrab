@@ -59,6 +59,7 @@ import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
+import { ChannelName } from '../channels/api.js';
 import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
@@ -414,11 +415,29 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   });
 
   // ---- Optional channels (Discord, Slack, Signal, SMS, Matrix) ----
-  const discord = config.channels.discord ? new DiscordChannel(config.channels.discord) : null;
-  const slack = config.channels.slack ? new SlackChannel(config.channels.slack) : null;
-  const signal = config.channels.signal ? new SignalChannel(config.channels.signal) : null;
-  const sms = config.channels.sms ? new SmsChannel(config.channels.sms) : null;
-  const matrix = config.channels.matrix ? new MatrixChannel(config.channels.matrix) : null;
+  // Each one routes inbound text through the same handler as Telegram, so an
+  // agent turn started from Discord behaves exactly like one from the panel.
+  const onChannel = (channel: ChannelName) => async (
+    userId: string | number,
+    chatId: string | number,
+    text: string,
+    displayName: string,
+  ): Promise<string> => handleChannelMessage(channel, chatId, text, userId, displayName);
+  const discord = config.channels.discord
+    ? new DiscordChannel({ cfg: config.channels.discord, onMessage: onChannel('discord') })
+    : null;
+  const slack = config.channels.slack
+    ? new SlackChannel({ cfg: config.channels.slack, onMessage: onChannel('slack') })
+    : null;
+  const signal = config.channels.signal
+    ? new SignalChannel({ cfg: config.channels.signal, onMessage: onChannel('signal') })
+    : null;
+  const sms = config.channels.sms
+    ? new SmsChannel({ cfg: config.channels.sms, onMessage: onChannel('sms') })
+    : null;
+  const matrix = config.channels.matrix
+    ? new MatrixChannel({ cfg: config.channels.matrix, onMessage: onChannel('matrix') })
+    : null;
   if (discord) discord.start().catch((e) => log.warn('discord:', e instanceof Error ? e.message : String(e)));
   if (slack) slack.start().catch((e) => log.warn('slack:', e instanceof Error ? e.message : String(e)));
   if (signal) signal.start().catch((e) => log.warn('signal:', e instanceof Error ? e.message : String(e)));
@@ -508,10 +527,40 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       await wa.send(address, text);
     });
   }
+  if (discord) {
+    const c = discord;
+    registerSender('discord', async (address, text) => {
+      await c.send(String(address), text);
+    });
+  }
+  if (slack) {
+    const c = slack;
+    registerSender('slack', async (address, text) => {
+      await c.send(String(address), text);
+    });
+  }
+  if (signal) {
+    const c = signal;
+    registerSender('signal', async (address, text) => {
+      await c.send(String(address), text);
+    });
+  }
+  if (sms) {
+    const c = sms;
+    registerSender('sms', async (address, text) => {
+      await c.send(String(address), text);
+    });
+  }
+  if (matrix) {
+    const c = matrix;
+    registerSender('matrix', async (address, text) => {
+      await c.send(String(address), text);
+    });
+  }
 
   /** Shared inbound handler for text channels (telegram/whatsapp). */
   async function handleChannelMessage(
-    channel: 'telegram' | 'whatsapp',
+    channel: ChannelName,
     chatId: string | number,
     text: string,
     userId: string | number,
@@ -576,6 +625,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     if (whatsapp) {
       void whatsapp.flushOutbox().then((n) => {
         if (n > 0) log.info(`outbox: flushed ${n} whatsapp message(s)`);
+      });
+    }
+    for (const [name, ch] of [
+      ['discord', discord],
+      ['slack', slack],
+      ['signal', signal],
+      ['sms', sms],
+      ['matrix', matrix],
+    ] as const) {
+      if (!ch) continue;
+      void ch.flushOutbox().then((n) => {
+        if (n > 0) log.info(`outbox: flushed ${n} ${name} message(s)`);
       });
     }
   }, 30_000);

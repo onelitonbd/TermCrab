@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T08:56:31.795Z",
+ "measured": "2026-10-03T09:07:33.588Z",
  "tally": {
-  "WORKING": 41,
+  "WORKING": 50,
   "BETTER": 14,
-  "PARTIAL": 53,
+  "PARTIAL": 48,
   "BROKEN": 0,
-  "ABSENT": 42
+  "ABSENT": 38
  },
- "coverage": 53,
- "effortLeft": 430,
+ "coverage": 57,
+ "effortLeft": 413,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:803"
+    "detail": "1 match(es): src/gateway/server.ts:864"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:805"
+    "detail": "1 match(es): src/gateway/server.ts:866"
    }
   },
   {
@@ -76,7 +76,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:761"
+    "detail": "0 match(es): src/gateway/server.ts:822"
    }
   },
   {
@@ -93,7 +93,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:274"
+    "detail": "1 match(es): src/gateway/server.ts:275"
    }
   },
   {
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1644"
+    "detail": "1 match(es): src/gateway/server.ts:1705"
    }
   },
   {
@@ -178,7 +178,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:720"
+    "detail": "4 match(es): src/gateway/server.ts:781"
    }
   },
   {
@@ -212,7 +212,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:84"
+    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:85"
    }
   },
   {
@@ -263,7 +263,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:274"
+    "detail": "1 match(es): src/gateway/server.ts:275"
    }
   },
   {
@@ -280,7 +280,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/loop.ts:370, src/cli.ts:859, src/core/pricing.ts:61"
+    "detail": "7 match(es): src/agent/loop.ts:370, src/cli.ts:902, src/core/pricing.ts:61"
    }
   },
   {
@@ -297,7 +297,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "70 match(es)"
+    "detail": "72 match(es)"
    }
   },
   {
@@ -314,7 +314,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:165"
+    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:167"
    }
   },
   {
@@ -331,7 +331,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:155"
+    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:157"
    }
   },
   {
@@ -382,7 +382,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:124"
+    "detail": "1 match(es): src/cli.ts:126"
    }
   },
   {
@@ -467,7 +467,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): src/agent/loop.ts:26, src/agent/sessions.ts:16, src/gateway/server.ts:335"
+    "detail": "87 match(es): src/agent/loop.ts:26, src/agent/sessions.ts:16, src/gateway/server.ts:336"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:950, src/gateway/server.ts:919"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:993, src/gateway/server.ts:980"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "410 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
+    "detail": "426 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -688,7 +688,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/heartbeat.ts:53, src/cli.ts:466, src/core/config.ts:372"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:509, src/command-help.ts:108"
    }
   },
   {
@@ -739,7 +739,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:296, src/agent/sessions.ts:747, src/cli.ts:1263"
+    "detail": "4 match(es): src/agent/loop.ts:296, src/agent/sessions.ts:747, src/cli.ts:1306"
    }
   },
   {
@@ -824,7 +824,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1276"
+    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1319"
    }
   },
   {
@@ -909,7 +909,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "77 match(es): src/agent/dream.ts:3, src/agent/loop.ts:58, src/agent/prompt.ts:19"
+    "detail": "80 match(es): src/agent/dream.ts:3, src/agent/loop.ts:58, src/agent/prompt.ts:19"
    }
   },
   {
@@ -926,7 +926,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "37 match(es): src/agent/loop.ts:71, src/agent/prompt.ts:17, src/cli.ts:65"
+    "detail": "39 match(es): src/agent/loop.ts:71, src/agent/prompt.ts:17, src/cli.ts:67"
    }
   },
   {
@@ -1045,7 +1045,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
+    "detail": "59 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
    }
   },
   {
@@ -1319,7 +1319,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/api.ts:34, src/channels/telegram.ts:20, src/channels/whatsapp.ts:35"
+    "detail": "4 match(es): src/channels/api.ts:34, src/channels/matrix.ts:34, src/channels/telegram.ts:20"
    }
   },
   {
@@ -1336,92 +1336,92 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:478, src/mobile/doctor.ts:354"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:497, src/mobile/doctor.ts:354"
    }
   },
   {
    "area": "channels",
    "capability": "Discord",
    "openclaw": "official plugin",
-   "verdict": "PARTIAL",
-   "evidence": "src/channels/discord.ts needs discord.js",
+   "verdict": "WORKING",
+   "evidence": "src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5",
    "probe": {
     "pattern": "DiscordChannel",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/discord.ts:15, src/gateway/server.ts:50"
+    "detail": "3 match(es): src/channels/discord.ts:72, src/gateway/server.ts:50"
    }
   },
   {
    "area": "channels",
    "capability": "Slack",
    "openclaw": "official plugin",
-   "verdict": "PARTIAL",
-   "evidence": "src/channels/slack.ts needs bolt",
+   "verdict": "WORKING",
+   "evidence": "src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5",
    "probe": {
     "pattern": "SlackChannel",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/slack.ts:16, src/gateway/server.ts:51"
+    "detail": "3 match(es): src/channels/slack.ts:44, src/gateway/server.ts:51"
    }
   },
   {
    "area": "channels",
    "capability": "Signal",
    "openclaw": "signal-cli bridge",
-   "verdict": "PARTIAL",
-   "evidence": "src/channels/signal.ts needs signal-cli",
+   "verdict": "WORKING",
+   "evidence": "src/channels/signal.ts parses signal-cli --json envelopes line by line, routes to the agent, sends with signal-cli send and queues failures; both spawn and send are injectable. test/adapters.test.ts 13.5",
    "probe": {
     "pattern": "SignalChannel",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/signal.ts:15, src/gateway/server.ts:52"
+    "detail": "3 match(es): src/channels/signal.ts:59, src/gateway/server.ts:52"
    }
   },
   {
    "area": "channels",
    "capability": "SMS / MMS",
    "openclaw": "Twilio plugin",
-   "verdict": "PARTIAL",
-   "evidence": "src/channels/sms.ts needs Twilio creds",
+   "verdict": "WORKING",
+   "evidence": "src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope",
    "probe": {
     "pattern": "SmsChannel",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/sms.ts:16, src/gateway/server.ts:53"
+    "detail": "3 match(es): src/channels/sms.ts:39, src/gateway/server.ts:53"
    }
   },
   {
    "area": "channels",
    "capability": "Matrix",
    "openclaw": "official plugin",
-   "verdict": "PARTIAL",
-   "evidence": "src/channels/matrix.ts",
+   "verdict": "WORKING",
+   "evidence": "src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5",
    "probe": {
     "pattern": "MatrixChannel",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/matrix.ts:16, src/gateway/server.ts:54"
+    "detail": "3 match(es): src/channels/matrix.ts:43, src/gateway/server.ts:54"
    }
   },
   {
@@ -1489,24 +1489,24 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:523"
+    "detail": "1 match(es): src/gateway/server.ts:572"
    }
   },
   {
    "area": "channels",
    "capability": "Typing indicators",
    "openclaw": "per-channel, on enqueue",
-   "verdict": "ABSENT",
-   "evidence": "no typing action calls",
+   "verdict": "WORKING",
+   "evidence": "src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1",
    "probe": {
     "pattern": "sendChatAction",
     "expect": "present"
    },
-   "effort": 1,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/api.ts:46"
+    "detail": "4 match(es): src/channels/api.ts:46, src/channels/telegram.ts:20"
    }
   },
   {
@@ -1627,7 +1627,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:76"
+    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:77"
    }
   },
   {
@@ -1678,7 +1678,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:64, src/agent/tools.ts:34, src/gateway/server.ts:367"
+    "detail": "8 match(es): src/agent/loop.ts:64, src/agent/tools.ts:34, src/gateway/server.ts:368"
    }
   },
   {
@@ -1695,7 +1695,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "72 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "78 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1712,7 +1712,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "73 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
+    "detail": "75 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
    }
   },
   {
@@ -1780,7 +1780,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/heartbeat.ts:25, src/agent/prompt.ts:19, src/channels/picker.ts:10"
+    "detail": "21 match(es): src/agent/heartbeat.ts:25, src/agent/prompt.ts:19, src/channels/picker.ts:10"
    }
   },
   {
@@ -1849,7 +1849,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/cli.ts:4, src/gateway/wake-service.ts:2, src/mobile/wake.ts:1"
+    "detail": "16 match(es): src/channels/signal.ts:3, src/cli.ts:4, src/gateway/wake-service.ts:2"
    }
   },
   {
@@ -1857,33 +1857,33 @@
    "capability": "CLI command coverage",
    "openclaw": "~90 commands, 101 doc pages",
    "verdict": "PARTIAL",
-   "evidence": "23 commands in one switch (src/cli.ts:148-938)",
+   "evidence": "29 commands in one switch (src/cli.ts) — still far fewer words than their ~90, but every one of them documents itself (13.3) and completes (13.4)",
    "probe": {
     "pattern": "case '",
     "expect": "present"
    },
-   "effort": 10,
+   "effort": 8,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "54 match(es): src/cli.ts:155, src/gateway/server.ts:1210, src/providers/capabilities.ts:148"
+    "detail": "58 match(es): src/cli.ts:157, src/command-help.ts:321, src/gateway/server.ts:1271"
    }
   },
   {
    "area": "surfaces",
    "capability": "Per-command help",
    "openclaw": "every command documents its flags",
-   "verdict": "ABSENT",
-   "evidence": "one flat HELP string (src/cli.ts:38-76); --help throws on 21 of 22 commands",
+   "verdict": "WORKING",
+   "evidence": "src/command-help.ts is one table (usage, summary, flags, example) for every command: `termcrab help <cmd>` and `termcrab <cmd> --help` work on all of them — including commands whose flag parser used to reject --help. The test fails if a command in the CLI switch has no entry, or a documented flag is never parsed. test/tier2b.test.ts 13.3",
    "probe": {
-    "pattern": "HELP",
+    "pattern": "command-help",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/cli.ts:53"
+    "detail": "1 match(es): src/cli.ts:52"
    }
   },
   {
@@ -1900,41 +1900,41 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/channels/signal.ts:28, src/cli.ts:85"
+    "detail": "27 match(es): src/channels/signal.ts:25, src/cli.ts:87, src/command-help.ts:75"
    }
   },
   {
    "area": "surfaces",
    "capability": "Shell completion",
    "openclaw": "openclaw completion bash|zsh|fish",
-   "verdict": "ABSENT",
-   "evidence": "not implemented (the only \"completion\" in the tree is chat-completion)",
+   "verdict": "WORKING",
+   "evidence": "termcrab completion bash|zsh|fish prints a script generated from the same command table — every command name appears in all three, and an unknown shell exits 1 with the usage line. test/tier2b.test.ts 13.4",
    "probe": {
     "pattern": {},
-    "expect": "absent"
+    "expect": "present"
    },
-   "effort": 1,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "2 match(es): src/cli.ts:268, src/command-help.ts:325"
    }
   },
   {
    "area": "surfaces",
    "capability": "Colour / TTY discipline",
    "openclaw": "NO_COLOR, TTY-only ANSI, OSC links",
-   "verdict": "ABSENT",
-   "evidence": "unconditional ANSI in src/core/logger.ts:11-24",
+   "verdict": "WORKING",
+   "evidence": "src/core/color.ts: NO_COLOR (non-empty) beats FORCE_COLOR, TCRAB_COLOR=always|never is the explicit override, otherwise colour only on a TTY — pipes, log files and chat bridges stay plain. The logger, the CLI error paths and the bin go through it; test/tier2b.test.ts 13.2 runs the real binary both ways. (OSC 8 hyperlinks: not used.)",
    "probe": {
     "pattern": "NO_COLOR",
-    "expect": "absent"
+    "expect": "present"
    },
-   "effort": 1,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "3 match(es): src/core/color.ts:7"
    }
   },
   {
@@ -1951,7 +1951,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "55 match(es): src/agent/loop.ts:207, src/cli.ts:35, src/gateway/server.ts:65"
+    "detail": "58 match(es): src/agent/loop.ts:207, src/cli.ts:35, src/command-help.ts:210"
    }
   },
   {
@@ -2002,7 +2002,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:274"
+    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:275"
    }
   },
   {
@@ -2019,7 +2019,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:761"
+    "detail": "0 match(es): src/gateway/server.ts:822"
    }
   },
   {
@@ -2053,7 +2053,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "12 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:39"
+    "detail": "13 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:39"
    }
   },
   {
@@ -2105,7 +2105,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
+    "detail": "24 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
    }
   },
   {
@@ -2173,7 +2173,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "449 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
+    "detail": "486 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
    }
   },
   {
@@ -2190,7 +2190,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "132 match(es): src/agent/goals.ts:13, src/agent/memory.ts:139, src/agent/progress.ts:11"
+    "detail": "134 match(es): src/agent/goals.ts:13, src/agent/memory.ts:139, src/agent/progress.ts:11"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "17 match(es): src/cli.ts:24, src/gateway/server.ts:2033, src/mobile/boot.ts:26"
+    "detail": "19 match(es): src/cli.ts:24, src/command-help.ts:68, src/gateway/server.ts:2094"
    }
   },
   {
@@ -2275,7 +2275,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:26, src/gateway/server.ts:78, src/mobile/boot.ts:10"
+    "detail": "6 match(es): src/cli.ts:26, src/command-help.ts:259, src/gateway/server.ts:79"
    }
   },
   {
@@ -2292,7 +2292,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
+    "detail": "59 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
    }
   },
   {
@@ -2309,7 +2309,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/channels/telegram.ts:3, src/channels/whatsapp.ts:4, src/mobile/outbox.ts:14"
+    "detail": "16 match(es): src/channels/discord.ts:4, src/channels/matrix.ts:4, src/channels/signal.ts:6"
    }
   },
   {
@@ -2326,7 +2326,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
+    "detail": "24 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
    }
   },
   {
@@ -2343,7 +2343,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "32 match(es): src/cli.ts:48, src/mobile/doctor.ts:457, src/mobile/whisper.ts:7"
+    "detail": "34 match(es): src/cli.ts:48, src/command-help.ts:237, src/mobile/doctor.ts:457"
    }
   },
   {
@@ -2360,7 +2360,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/cli.ts:48, src/mobile/doctor.ts:470, src/mobile/whisper.ts:101"
+    "detail": "10 match(es): src/cli.ts:48, src/command-help.ts:235, src/mobile/doctor.ts:470"
    }
   },
   {
@@ -2540,7 +2540,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "60 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/approvals.test.ts:15"
+    "detail": "62 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

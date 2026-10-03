@@ -55,6 +55,14 @@ somewhere else, and a phone that "keeps killing the agent" is almost always one 
 
 After changing anything, check with `termcrab doctor` and `termcrab boot status`.
 
+## Finding your way around
+
+```bash
+termcrab help              # every command, one line each
+termcrab help gateway      # one command in detail (same as: termcrab gateway --help)
+termcrab completion bash   # tab-completion for your shell (bash | zsh | fish)
+```
+
 ## Keep it up for weeks
 
 ```bash
