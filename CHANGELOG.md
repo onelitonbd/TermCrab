@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.50.0 - 2026-10-03
+
+- **Memory you can trust.** Search is now ranked, not counted: BM25 over MEMORY.md, USER.md, the daily logs and the compacted digests, with an all-terms bonus, a 2.2× exact-phrase boost and a 30-day recency half-life taken from each fact's own stamp. Results carry a snippet with the matched terms marked, and the CLI prints them as `termcrab memory search <words> --json` (`{score, snippet, origin, when, source}`) — the chat gets `/memory search`, the agent gets `search_memory`, and all three call the same function.
+- **Every fact says where it came from.** A fact line can carry `[from:owner|agent|system|untrusted]` and `(src: telegram · session:s1 · run:t3)`; the run decides the origin (a chat message is the owner, a subagent is the agent, a background job is the system) and the model can state one explicitly. A prompt that contains untrusted facts says so and tells the model to treat them as data, never as instructions.
+- **De-duplication that does not destroy lists.** Re-stating a fact updates its own line instead of appending (the file stops growing); a fact that was *extended* merges into the same line; and a pair that differs in its numbers — "fact number 1" vs "fact number 2" — can never merge. This guard came out of the tests: the first version silently collapsed sixty list items into one.
+- **USER.md is the owner model.** A real file, injected into every prompt as `## About the user` (600-character budget, never trimmed by the fact budget), written by the agent through `update_user`, by the owner through `termcrab memory user <line>` or `/memory user <line>` in a chat, searched like any other memory file.
+- **Old tool results stop being re-sent.** `pruneToolResults()` keeps the newest six verbatim and replaces older bulky ones with one line naming the tool, the size and how to re-run it; small results and tools that cannot be re-run (`remember`, `update_user`) are untouched, and a user message is never touched. The loop applies it before every provider call, so the wire body is really smaller.
+- **You can see what the model is sent.** `termcrab context [session] [--json]` and `/context` print the real prompt section by section (identity, memory, USER.md, skills, environment, standing intents, goals, roster) with bytes each, plus tool-schema bytes, the hot transcript and how much pruning would save. The report is built from the same pieces as the prompt, so it cannot describe a prompt the model never receives.
+- **Two context engines, swappable and inspectable.** `agent.contextEngine = default | compact`: `default` carries everything, `compact` halves the memory budget, keeps 2 verbatim tool results and drops the roster/goals — for long chats on a small phone. Each engine describes itself in one sentence, and an unknown name falls back to `default` rather than failing a turn.
+- Tests: **665 cases, 0 failures** (3 skipped by design; 42 new across `test/tier2g.test.ts` and `test/tier2h.test.ts`). Census: **WORKING 54 → 61 · ABSENT 36 → 31 · BROKEN 0**, score **59% → 63%**, drift 0, core lane still empty.
+
+
 ## 0.49.0 - 2026-10-03
 
 - **The agent can browse what was sent to it.** Two new tools — `inbox_list` (newest first: name, kind, size, age, whether the text was saved, and `GONE` when the disk budget trimmed it) and `inbox_read` (the text of one arrival) — plus `/inbox` and `/inbox <name>` in the chat. "The file I sent you yesterday" now works without a path.

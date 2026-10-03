@@ -261,15 +261,26 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'memory',
-    usage: 'memory [show | search <query> | compact <session>] [--json]',
+    usage: 'memory [show | search <query> | user [line] | compact <session>] [--json]',
     summary: 'look inside memory, or summarise an old chat with the model',
     flags: [
       'show                 the newest facts with their source line',
-      'search <query>       search the memory files',
+      'search <query>       ranked search (exact phrase and recent facts first) with provenance',
+      'user [line]          show USER.md, or add one line to it',
       'compact <session>    summarise an old chat (the full transcript stays on disk)',
-      '--json               show/search/compact as one JSON document',
+      '--json               show/search/user/compact as one JSON document',
     ],
-    json: 'show → {text, facts, totalFacts, bytes, budget, stats, files} · search → {query, count, hits} · compact → {session, compacted, coveredTurns, by, model, note, file}',
+    json: 'show → {text, facts, totalFacts, bytes, budget, stats, files} · search → {query, count, hits{file,line,score,snippet,origin,when,source}} · user → {file, text} · compact → {session, compacted, coveredTurns, by, model, note, file}',
+  },
+  {
+    cmd: 'context',
+    usage: 'context [session] [--json]',
+    summary: 'what the model is really sent: prompt sections, tool schemas, hot transcript',
+    flags: [
+      'session              which transcript to measure (default: "default")',
+      '--json               the same numbers as one JSON document',
+    ],
+    json: 'context → {engine, sections[{section,bytes,note}], totalBytes, tools{count,schemaBytes}, history{messages,bytes,pruned}, memory{facts,totalFacts,budget,userBytes}, skills{count,bytes}, notes}',
   },
   {
     cmd: 'boot',

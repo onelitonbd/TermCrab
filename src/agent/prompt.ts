@@ -20,6 +20,14 @@ export interface PromptCtx {
   channel?: string;
   /** Session whose transcript this prompt is for (its compacted digest is injected). */
   sessionId?: string;
+  /** Override the memory budget (the context engine decides; 19.3). */
+  memoryBudget?: number;
+  /**
+   * Keep the verbose sections (standing intents, active goals, agent roster).
+   * The `compact` context engine sets this false so a long chat on a small
+   * phone carries only what the turn needs (19.4).
+   */
+  includeExtras?: boolean;
 }
 
 const AGENT_NAME_RE = /^[a-z0-9][a-z0-9-_]{0,63}$/;
@@ -140,10 +148,55 @@ function readSoul(agentName?: string): { name: string; soul: string } {
   return { name: 'Crabby', soul: readWorkspaceFile('SOUL.md') };
 }
 
+/**
+ * The prompt broken into named sections (19.3). `buildSystemPrompt` is written
+ * from these same pieces, so `termcrab context` can never measure a prompt the
+ * model does not actually receive.
+ */
+export function promptSectionSizes(ctx: {
+  config: Config;
+  memoryBlock: string;
+  skills: SkillStore;
+  agentName?: string;
+  channel?: string;
+  includeExtras?: boolean;
+}): { section: string; bytes: number; note: string }[] {
+  const { name, soul } = readSoul(ctx.agentName);
+  const displayName = ctx.agentName ? name : ctx.config.agent.name || name;
+  const bytes = (s: string): number => Buffer.byteLength(s, 'utf8');
+  const extras = ctx.includeExtras !== false;
+  const parts: { section: string; text: string; note: string }[] = [
+    {
+      section: 'identity + rules',
+      text: `You are ${displayName}.\n${soul}\n${channelGuide(ctx.channel)}`,
+      note: 'who the agent is and how it must behave',
+    },
+    { section: 'memory', text: `# Long-term memory\n${ctx.memoryBlock}`, note: 'facts injected newest-first within the budget' },
+    { section: 'skills index', text: ctx.skills.promptIndex(), note: 'skill names + one line each (full text loads on demand)' },
+    { section: 'environment', text: environmentBlurb(), note: 'device, platform and paths' },
+  ];
+  if (ctx.agentName) parts.push({ section: 'agent profile', text: `You are running as "${ctx.agentName}"`, note: 'named-agent role line' });
+  if (extras) {
+    const intents = listIntents();
+    if (intents.length) parts.push({ section: 'standing intents', text: intents.map((i) => `- ${i.text}`).join('\n'), note: 'always-follow instructions' });
+    const goals = listGoals().filter((g) => g.status === 'open').slice(0, 5);
+    if (goals.length) parts.push({ section: 'active goals', text: goals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n'), note: 'what the agent is working toward' });
+    const roster = readAgentsRoster();
+    if (roster) parts.push({ section: 'agent roster', text: roster, note: 'other named agents on this device' });
+  }
+  return parts.map((p) => ({ section: p.section, bytes: bytes(p.text), note: p.note }));
+}
+
+/** How big the skills index is (count + bytes) — used by the context report. */
+export function detectSkillsIndexBytes(skills: SkillStore): { count: number; bytes: number } {
+  const index = skills.promptIndex();
+  return { count: skills.list().length, bytes: Buffer.byteLength(index, 'utf8') };
+}
+
 export function buildSystemPrompt(ctx: PromptCtx): string {
   // Newest facts first (see MemoryStore.readForPrompt) — the old head-only read
   // meant a fact written today could never reach the prompt.
-  const memory = ctx.memory.readForPrompt(ctx.config.agent.memoryBudget ?? 3000).text;
+  const memory = ctx.memory.readForPrompt(ctx.memoryBudget ?? ctx.config.agent.memoryBudget ?? 3000).text;
   const digest = ctx.sessionId ? readDigest(ctx.sessionId, 1200) : null;
   // Never let the model mistake a summary for the turns themselves: the blurb
   // says who wrote it, how much it covers, and where the originals are.
@@ -157,15 +210,16 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   const { name, soul } = readSoul(ctx.agentName);
   const displayName = ctx.agentName ? name : ctx.config.agent.name || name;
 
-  const intents = listIntents();
+  const extras = ctx.includeExtras !== false;
+  const intents = extras ? listIntents() : [];
   const intentsBlurb = intents.length
     ? `\n# Standing intents (always follow these)\n${intents.map((i) => `- ${i.text}`).join('\n')}\n`
     : '';
-  const openGoals = listGoals().filter((g) => g.status === 'open').slice(0, 5);
+  const openGoals = extras ? listGoals().filter((g) => g.status === 'open').slice(0, 5) : [];
   const goalsBlurb = openGoals.length
     ? `\n# Active goals\n${openGoals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n')}\n`
     : '';
-  const roster = readAgentsRoster();
+  const roster = extras ? readAgentsRoster() : '';
   const rosterBlurb = roster
     ? `\n# Agent roster\n${roster}\n`
     : '';

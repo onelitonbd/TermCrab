@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T14:36:40.094Z",
+ "measured": "2026-10-03T14:51:05.875Z",
  "tally": {
-  "WORKING": 54,
+  "WORKING": 61,
   "BETTER": 14,
-  "PARTIAL": 46,
+  "PARTIAL": 44,
   "BROKEN": 0,
-  "ABSENT": 36
+  "ABSENT": 31
  },
- "coverage": 59,
- "effortLeft": 404,
+ "coverage": 63,
+ "effortLeft": 363,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:927"
+    "detail": "1 match(es): src/gateway/server.ts:964"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:929"
+    "detail": "1 match(es): src/gateway/server.ts:966"
    }
   },
   {
@@ -76,7 +76,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:885"
+    "detail": "0 match(es): src/gateway/server.ts:922"
    }
   },
   {
@@ -93,7 +93,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:277"
+    "detail": "1 match(es): src/gateway/server.ts:279"
    }
   },
   {
@@ -144,7 +144,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:255"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:263"
    }
   },
   {
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1768"
+    "detail": "1 match(es): src/gateway/server.ts:1805"
    }
   },
   {
@@ -178,7 +178,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:844"
+    "detail": "4 match(es): src/gateway/server.ts:881"
    }
   },
   {
@@ -195,7 +195,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:519, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:534, src/core/approvals.ts:135"
    }
   },
   {
@@ -212,7 +212,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:87"
+    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:89"
    }
   },
   {
@@ -229,7 +229,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "15 match(es): src/agent/prompt.ts:84, src/agent/status.ts:11, src/cli.ts:31"
+    "detail": "15 match(es): src/agent/prompt.ts:92, src/agent/status.ts:11, src/cli.ts:34"
    }
   },
   {
@@ -263,7 +263,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:277"
+    "detail": "1 match(es): src/gateway/server.ts:279"
    }
   },
   {
@@ -280,7 +280,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:370, src/cli.ts:987, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:381, src/cli.ts:991, src/command-help.ts:168"
    }
   },
   {
@@ -314,7 +314,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:187"
+    "detail": "5 match(es): src/agent/loop.ts:26, src/cli.ts:191"
    }
   },
   {
@@ -331,7 +331,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:177"
+    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:28, src/cli.ts:181"
    }
   },
   {
@@ -382,7 +382,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:129"
+    "detail": "1 match(es): src/cli.ts:133"
    }
   },
   {
@@ -416,7 +416,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:89"
+    "detail": "2 match(es): src/agent/loop.ts:90"
    }
   },
   {
@@ -433,7 +433,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:330"
+    "detail": "1 match(es): src/agent/loop.ts:341"
    }
   },
   {
@@ -467,7 +467,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): src/agent/loop.ts:26, src/agent/sessions.ts:16, src/gateway/server.ts:338"
+    "detail": "87 match(es): src/agent/loop.ts:27, src/agent/sessions.ts:16, src/gateway/server.ts:340"
    }
   },
   {
@@ -484,7 +484,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:440, src/agent/sessions.ts:1093"
+    "detail": "2 match(es): src/agent/loop.ts:451, src/agent/sessions.ts:1093"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1087, src/gateway/server.ts:1043"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1091, src/gateway/server.ts:1080"
    }
   },
   {
@@ -552,7 +552,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:46"
+    "detail": "1 match(es): src/agent/loop.ts:47"
    }
   },
   {
@@ -586,7 +586,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/memory.ts:135, src/agent/secrets.ts:40, src/agent/sessions.ts:682"
+    "detail": "9 match(es): src/agent/memory.ts:322, src/agent/secrets.ts:40, src/agent/sessions.ts:682"
    }
   },
   {
@@ -688,7 +688,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:536, src/command-help.ts:111"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:540, src/command-help.ts:111"
    }
   },
   {
@@ -739,75 +739,80 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:296, src/agent/sessions.ts:747, src/cli.ts:1439"
+    "detail": "4 match(es): src/agent/loop.ts:297, src/agent/sessions.ts:747, src/cli.ts:1502"
    }
   },
   {
    "area": "context",
    "capability": "Tool-result pruning",
    "openclaw": "contextPruning cache-ttl, provider-side clear",
-   "verdict": "ABSENT",
-   "evidence": "no pruning path",
+   "verdict": "WORKING",
+   "evidence": "pruneToolResults() (src/agent/context.ts) keeps the newest N tool results verbatim and replaces older big ones with a one-line stub naming the tool, the size and how to re-run it — wired into the loop before every provider call, so the wire body really is smaller (a fake provider in test/tier2h.test.ts 19.2 sees the stub). The window is agent.keepToolResults (default 6) and the engine can narrow it (19.4). Cache TTLs and provider-side clearing are OpenAI-specific and not applicable here; what a phone needs is that a 20 KB file read ten turns ago is not re-sent on every call",
    "probe": {
-    "pattern": "prune",
-    "expect": "absent"
+    "file": "src/agent/context.ts",
+    "pattern": "export function pruneToolResults",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/context.ts:65"
    }
   },
   {
    "area": "context",
    "capability": "Pluggable context engine",
    "openclaw": "ContextEngine info/ingest/assemble/compact",
-   "verdict": "ABSENT",
-   "evidence": "prompt is assembled inline in src/agent/prompt.ts",
+   "verdict": "WORKING",
+   "evidence": "a ContextEngine interface with two registered engines (default, compact) chosen by agent.contextEngine: each declares its memory budget, its tool-result window and whether the verbose sections (roster, goals, intents) are included, and each describes itself in one sentence that `termcrab context` prints (19.3/19.4). \"Pluggable\" here means swappable by config with an inspectable description — loading an engine from a user package is the plugin-API row, which is still ABSENT",
    "probe": {
-    "pattern": "ContextEngine",
-    "expect": "absent"
+    "file": "src/agent/context.ts",
+    "pattern": "export interface ContextEngine",
+    "expect": "present"
    },
-   "effort": 10,
+   "effort": 0,
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/context.ts:91"
    }
   },
   {
    "area": "context",
    "capability": "Context introspection (/context)",
    "openclaw": "list|detail|map breakdown",
-   "verdict": "ABSENT",
-   "evidence": "no /context command or route",
+   "verdict": "WORKING",
+   "evidence": "`termcrab context [session] [--json]` and `/context` in a chat print the real prompt section by section (identity, memory, USER.md, skills, environment, intents, goals, roster) with bytes each, the tool-schema bytes, the hot transcript size and how many tool results pruning would stub — measured by promptSectionSizes(), which buildSystemPrompt is written from, so the numbers cannot describe a prompt the model does not get (19.3). test/tier2h.test.ts",
    "probe": {
-    "pattern": "/context",
-    "expect": "absent"
+    "file": "src/agent/context.ts",
+    "pattern": "export function contextReport",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/context.ts:131"
    }
   },
   {
    "area": "context",
    "capability": "Memory store layout",
    "openclaw": "MEMORY.md, USER.md, daily logs, DREAMS.md",
-   "verdict": "PARTIAL",
-   "evidence": "src/agent/memory.ts MEMORY.md + daily/*.md + compacted/*.md; no USER.md",
+   "verdict": "WORKING",
+   "evidence": "src/agent/memory.ts: MEMORY.md (facts, append-only in shape but merge-on-duplicate), USER.md (the owner model, injected into every prompt), daily/<day>.md logs and compacted/*.md digests; all four are searched by the same ranked search (18.1-18.4); the layout is created on first use and a store always has its files. DREAMS.md is the dreaming feature, which lives in src/agent/dream.ts and is separate. test/tier2g.test.ts",
    "probe": {
-    "pattern": "MEMORY.md",
+    "paths": [
+     "src/agent/memory.ts"
+    ],
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/dream.ts:51, src/agent/memory.ts:16, src/agent/status.ts:20"
+    "detail": "found: src/agent/memory.ts"
    }
   },
   {
@@ -824,58 +829,59 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1464"
+    "detail": "7 match(es): src/agent/context.ts:143, src/agent/memory.ts:186, src/agent/prompt.ts:197"
    }
   },
   {
    "area": "context",
    "capability": "USER.md user model",
    "openclaw": "separate, imperative, supersede-in-place",
-   "verdict": "ABSENT",
-   "evidence": "grep USER.md in src/ hits only src/migrate/openclaw.ts",
+   "verdict": "WORKING",
+   "evidence": "memory/USER.md is a real file: injected into every prompt as \"## About the user\" (600-character budget, never trimmed by the fact budget), written by the agent through the update_user tool, by the owner through `termcrab memory user <line>` and `/memory user <line>` in a chat, duplicated lines refused, searched like any other memory file (18.4). test/tier2g.test.ts 18.4",
    "probe": {
-    "pattern": "USER\\.md",
-    "expect": "only-migration"
+    "pattern": "readUserBlock",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es)"
+    "detail": "3 match(es): src/agent/context.ts:178, src/agent/memory.ts:227"
    }
   },
   {
    "area": "context",
    "capability": "Memory provenance / taint",
    "openclaw": "owner|agent|untrusted|system columns",
-   "verdict": "ABSENT",
-   "evidence": "no provenance anywhere",
+   "verdict": "WORKING",
+   "evidence": "every fact line carries its origin ([from:owner|agent|system|untrusted]) and where it was learned ((src: <channel> · session:<id> · run:<id>)); the run decides the origin (a chat is the owner, a subagent is the agent, a background job is the system) and the model can state one explicitly; a prompt holding untrusted facts says so and tells the model to treat them as data, never instructions; search results carry the same columns (18.2-18.1). test/tier2g.test.ts 18.2",
    "probe": {
-    "pattern": "provenance|taint",
-    "expect": "absent"
+    "file": "src/agent/memory.ts",
+    "pattern": "export function parseFact",
+    "expect": "present"
    },
-   "effort": 10,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es)"
+    "detail": "1 match(es): src/agent/memory.ts:84"
    }
   },
   {
    "area": "context",
    "capability": "Memory search quality",
    "openclaw": "hybrid vector+BM25, decay, MMR, trigger injection",
-   "verdict": "PARTIAL",
-   "evidence": "lexical counting + optional cosine (src/agent/embed.ts), no BM25/decay/importance/injection",
+   "verdict": "WORKING",
+   "evidence": "searchDetailed(): BM25 with document frequency over MEMORY.md/USER.md/daily/compacted, an all-terms bonus and a 2.2x exact-phrase boost, a 30-day recency half-life from each fact's own stamp, untrusted facts ranked lower but never hidden, snippets with the matched terms marked, and the optional embedding index added as explicitly-labelled semantic hits on top (never required). CLI `memory search --json` carries score/snippet/provenance, the chat has /memory search, and the agent has search_memory (18.1). test/tier2g.test.ts",
    "probe": {
-    "pattern": "cosine",
+    "pattern": "searchDetailed",
     "expect": "present"
    },
-   "effort": 8,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/embed.ts:18"
+    "detail": "5 match(es): src/agent/memory.ts:375, src/agent/tools.ts:374, src/cli.ts:1440"
    }
   },
   {
@@ -892,7 +898,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:178"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:186"
    }
   },
   {
@@ -909,7 +915,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "89 match(es): src/agent/dream.ts:3, src/agent/loop.ts:58, src/agent/prompt.ts:19"
+    "detail": "89 match(es): src/agent/dream.ts:3, src/agent/loop.ts:59, src/agent/prompt.ts:19"
    }
   },
   {
@@ -917,16 +923,16 @@
    "capability": "Bootstrap file set",
    "openclaw": "AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY",
    "verdict": "PARTIAL",
-   "evidence": "SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent",
+   "evidence": "SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose",
    "probe": {
-    "pattern": "SOUL.md",
+    "pattern": "readUserBlock",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 2,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "39 match(es): src/agent/loop.ts:71, src/agent/prompt.ts:17, src/cli.ts:68"
+    "detail": "3 match(es): src/agent/context.ts:178, src/agent/memory.ts:227"
    }
   },
   {
@@ -943,7 +949,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/tools.ts:256"
+    "detail": "1 match(es): src/agent/tools.ts:265"
    }
   },
   {
@@ -960,7 +966,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:634, src/channels/inbox.ts:13"
+    "detail": "2 match(es): src/agent/context.ts:55, src/agent/toolbox.ts:634"
    }
   },
   {
@@ -977,7 +983,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:68"
+    "detail": "3 match(es): src/agent/context.ts:54, src/agent/toolbox.ts:68"
    }
   },
   {
@@ -994,7 +1000,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:30, src/agent/toolbox.ts:1499, src/agent/tools.ts:452"
+    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1499, src/agent/tools.ts:498"
    }
   },
   {
@@ -1011,7 +1017,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/tools.ts:513"
+    "detail": "1 match(es): src/agent/tools.ts:559"
    }
   },
   {
@@ -1062,7 +1068,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es)"
    }
   },
   {
@@ -1099,7 +1105,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "80 match(es): src/agent/prompt.ts:140, src/agent/toolbox.ts:248, src/agent/tools.ts:127"
+    "detail": "83 match(es): src/agent/context.ts:105, src/agent/prompt.ts:148, src/agent/toolbox.ts:248"
    }
   },
   {
@@ -1150,7 +1156,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/prompt.ts:185, src/agent/tools.ts:318"
+    "detail": "2 match(es): src/agent/prompt.ts:239, src/agent/tools.ts:327"
    }
   },
   {
@@ -1218,7 +1224,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "27 match(es)"
+    "detail": "28 match(es)"
    }
   },
   {
@@ -1339,7 +1345,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:502, src/mobile/doctor.ts:383"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:504, src/mobile/doctor.ts:383"
    }
   },
   {
@@ -1475,7 +1481,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:108"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:116"
    }
   },
   {
@@ -1492,7 +1498,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:617"
+    "detail": "1 match(es): src/gateway/server.ts:620"
    }
   },
   {
@@ -1613,7 +1619,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:59, src/agent/status.ts:112"
+    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:60, src/agent/status.ts:112"
    }
   },
   {
@@ -1630,7 +1636,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:79"
+    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:81"
    }
   },
   {
@@ -1681,7 +1687,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:64, src/agent/tools.ts:34, src/gateway/server.ts:370"
+    "detail": "8 match(es): src/agent/loop.ts:65, src/agent/tools.ts:43, src/gateway/server.ts:372"
    }
   },
   {
@@ -1698,7 +1704,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "94 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "94 match(es): src/agent/loop.ts:208, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1715,7 +1721,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
+    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:192"
    }
   },
   {
@@ -1869,7 +1875,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "69 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:177"
+    "detail": "70 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:181"
    }
   },
   {
@@ -1886,7 +1892,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:53"
+    "detail": "1 match(es): src/cli.ts:56"
    }
   },
   {
@@ -1903,7 +1909,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/cli.ts:21, src/core/json-out.ts:30"
+    "detail": "29 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -1920,7 +1926,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:293, src/command-help.ts:349"
+    "detail": "2 match(es): src/cli.ts:297, src/command-help.ts:360"
    }
   },
   {
@@ -1954,7 +1960,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "58 match(es): src/agent/loop.ts:207, src/cli.ts:36, src/command-help.ts:224"
+    "detail": "58 match(es): src/agent/loop.ts:208, src/cli.ts:39, src/command-help.ts:224"
    }
   },
   {
@@ -2005,7 +2011,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:277"
+    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:279"
    }
   },
   {
@@ -2022,7 +2028,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:885"
+    "detail": "0 match(es): src/gateway/server.ts:922"
    }
   },
   {
@@ -2056,7 +2062,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:42"
+    "detail": "13 match(es): src/agent/prompt.ts:244, src/agent/secrets.ts:16, src/agent/toolbox.ts:42"
    }
   },
   {
@@ -2108,7 +2114,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:561"
+    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
    }
   },
   {
@@ -2176,7 +2182,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "556 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
+    "detail": "577 match(es): src/agent/ask.ts:14, src/agent/context.ts:27, src/agent/dream.ts:31"
    }
   },
   {
@@ -2193,7 +2199,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "134 match(es): src/agent/goals.ts:13, src/agent/memory.ts:139, src/agent/progress.ts:11"
+    "detail": "136 match(es): src/agent/goals.ts:13, src/agent/memory.ts:286, src/agent/progress.ts:11"
    }
   },
   {
@@ -2261,7 +2267,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:25, src/command-help.ts:70, src/gateway/server.ts:2157"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2194"
    }
   },
   {
@@ -2278,7 +2284,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:27, src/command-help.ts:277, src/gateway/server.ts:81"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:288, src/gateway/server.ts:83"
    }
   },
   {
@@ -2329,7 +2335,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:561"
+    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
    }
   },
   {
@@ -2346,7 +2352,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "38 match(es): src/channels/intake.ts:9, src/channels/media.ts:26, src/cli.ts:49"
+    "detail": "38 match(es): src/channels/intake.ts:9, src/channels/media.ts:26, src/cli.ts:52"
    }
   },
   {
@@ -2363,7 +2369,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/channels/inbox.ts:124, src/channels/intake.ts:21, src/channels/telegram.ts:43"
+    "detail": "25 match(es): src/channels/inbox.ts:113, src/channels/intake.ts:21, src/channels/telegram.ts:43"
    }
   },
   {
@@ -2543,7 +2549,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "68 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

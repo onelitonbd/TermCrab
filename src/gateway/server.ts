@@ -58,6 +58,8 @@ import { SkillStore } from '../skills/loader.js';
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { makeIntake } from '../channels/intake.js';
+import { contextReport, renderContext } from '../agent/context.js';
+import { toProviderMessages } from '../agent/loop.js';
 import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
@@ -606,7 +608,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         '  /status     is everything running',
         '  /usage      tokens and cost today',
         '  /sessions   your recent conversations',
-        '  /memory     what I have remembered',
+        '  /memory     what I have remembered (search: /memory search <words>)',
+        '  /context    what the model is actually sent (sizes per section)',
         '  /inbox      files people sent you (and /inbox <name> to read one)',
         '  /agents     named personalities (@name <message>)',
         '  /providers  pick the model',
@@ -631,11 +634,45 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         list.map((c) => `  ${c.id} — ${c.messages} lines, ${Math.max(1, Math.round(c.bytes / 1024))} KB`).join('\n')
       );
     }
-    if (text === '/memory') {
+    if (text === '/memory' || text.startsWith('/memory ')) {
+      const arg = text.slice('/memory'.length).trim();
+      if (arg.startsWith('search ')) {
+        const q = arg.slice('search '.length).trim();
+        if (!q) return '🧠 Usage: /memory search <words>';
+        const hits = await memory.searchDetailed(q, 6);
+        if (!hits.length) return `🧠 Nothing in memory matches “${q}”.`;
+        const lines = hits.map((h) => {
+          const trust = h.origin && h.origin !== 'agent' ? ` [${h.origin}]` : '';
+          const when = h.when ? ` (${h.when})` : '';
+          return `  ${h.score.toFixed(2)}  ${h.file}${h.lineNo ? `:${h.lineNo}` : ''}${when}${trust}\n      ${h.snippet}`;
+        });
+        return `🧠 Memory matches for “${q}”:\n${lines.join('\n')}`;
+      }
+      if (arg.startsWith('user ')) {
+        const line = arg.slice('user '.length).trim();
+        return `👤 ${memory.rememberUser(line)}`;
+      }
       const block = memory.readForPrompt(1200);
       const stats = memory.stats();
+      const user = memory.readUser().trim();
       const head = `🧠 ${block.facts}/${block.totalFacts} facts injected, ${stats.dailyFiles} daily log(s)`;
-      return block.text.trim() ? `${head}\n\n${block.text.trim()}` : `${head}\n(nothing remembered yet — tell me something worth keeping)`;
+      const userLine = user ? `\n\n👤 USER.md:\n${user.slice(0, 600)}` : '';
+      const hint = '\n(/memory search <words> to look something up, /memory user <line> to teach me about you)';
+      return block.text.trim()
+        ? `${head}${userLine}\n\n${block.text.trim()}${hint}`
+        : `${head}${userLine}\n(nothing remembered yet — tell me something worth keeping)${hint}`;
+    }
+    if (text === '/context') {
+      const report = contextReport({
+        config,
+        memory,
+        skills,
+        sessionId: `${channel}:${chatId}`,
+        channel,
+        messages: toProviderMessages(sessions.readHot(`${channel}:${chatId}`, 400)),
+        toolCount: 0,
+      });
+      return `📐 ${renderContext(report).split('\n').slice(1).join('\n').trim().slice(0, 3000)}`;
     }
     if (text === '/inbox' || text.startsWith('/inbox ')) {
       const name = text.slice('/inbox'.length).trim();

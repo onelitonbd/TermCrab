@@ -16,6 +16,9 @@ import {
   configProblems,
 } from './core/config.js';
 import { diskBudgetBytes, diskKeepDays, diskUsage, enforceDiskBudget } from './core/disk.js';
+import { contextReport, renderContext } from './agent/context.js';
+import { buildTools } from './agent/tools.js';
+import { toProviderMessages } from './agent/loop.js';
 import { ensureLayout, home, workspaceDir, memoryDir, configPath } from './core/paths.js';
 import { log, setLogLevel, setLogToStderr } from './core/logger.js';
 import { emitJson, errorText, failJson, jsonWanted } from './core/json-out.js';
@@ -90,6 +93,7 @@ Everyday extras:
   termcrab run --wait <id>          wait for a run you started (0 done · 1 failed · 124 timeout · 130 stopped)
   termcrab stop [session]           stop what the agent is doing right now (partial answer is kept)
   termcrab disk [--trim]            how much space the agent uses (--trim = enforce the budget now)
+  termcrab context [session]        what the model is actually sent, section by section (--json)
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
   termcrab help <cmd>                what one command does (same as: termcrab <cmd> --help)
   termcrab completion bash|zsh|fish  shell completion script for your shell
@@ -1400,6 +1404,26 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'context': {
+      const ctx = await makeAgentCtx();
+      const sessionId = rest.find((a) => !a.startsWith('-')) ?? 'default';
+      const report = contextReport({
+        config: ctx.config,
+        memory: ctx.memory,
+        skills: ctx.skills,
+        sessionId,
+        channel: 'cli',
+        messages: toProviderMessages(ctx.sessions.readHot(sessionId, 400)),
+        toolCount: (await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills })).length,
+      });
+      if (machine) {
+        emitJson('context', report as unknown as Record<string, unknown>);
+        return;
+      }
+      console.log(renderContext(report));
+      return;
+    }
+
     case 'memory': {
       const [sub = 'show', ...queryParts] = rest;
       const memory = await makeMemoryStore();
@@ -1413,13 +1437,52 @@ export async function main(argv: string[]): Promise<void> {
           }
           return;
         }
-        const hits = await memory.search(q);
+        const hits = await memory.searchDetailed(q);
         if (machine) {
-          emitJson('memory', { query: q, count: hits.length, hits });
+          emitJson('memory', {
+            query: q,
+            count: hits.length,
+            hits: hits.map((h) => ({
+              file: h.file,
+              line: h.lineNo,
+              score: h.score,
+              snippet: h.snippet,
+              origin: h.origin,
+              when: h.when,
+              source: h.source,
+              semantic: h.semantic ?? false,
+            })),
+          });
           return;
         }
         if (!hits.length) console.log('no matches');
-        else for (const h of hits) console.log(`[${h.file}] ${h.line}`);
+        else
+          for (const h of hits) {
+            const trust = h.origin && h.origin !== 'agent' ? ` [${h.origin}]` : '';
+            const when = h.when ? ` (${h.when})` : '';
+            console.log(`${h.score.toFixed(2)}  [${h.file}${h.lineNo ? `:${h.lineNo}` : ''}]${when}${trust}  ${h.snippet}`);
+          }
+        return;
+      }
+      if (sub === 'user') {
+        const line = queryParts.join(' ').trim();
+        if (line === '--json') {
+          emitJson('memory', { file: 'USER.md', text: memory.readUser() });
+          return;
+        }
+        if (line) {
+          const res = memory.rememberUser(line);
+          if (machine) emitJson('memory', { file: 'USER.md', added: line, result: res });
+          else console.log(res);
+          return;
+        }
+        const text = memory.readUser().trim();
+        if (machine) {
+          emitJson('memory', { file: 'USER.md', text });
+          return;
+        }
+        if (!text) console.log('USER.md is empty. Add a line: termcrab memory user <what to remember about the owner>');
+        else console.log(text);
         return;
       }
       if (sub === 'compact') {

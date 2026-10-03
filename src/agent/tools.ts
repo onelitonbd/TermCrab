@@ -28,6 +28,15 @@ export interface ToolEnv {
   sessionId?: string;
   /** Human-readable provider label for session_status. */
   providerLabel?: string;
+  /**
+   * How much a fact written by this run may be trusted (18.2). A chat from the
+   * owner is `owner`; anything the agent writes itself is `agent`; text that
+   * came in through a tool result (a web page, a file a stranger sent) is
+   * `untrusted`, and the prompt then warns the model to treat it as data.
+   */
+  memoryOrigin?: 'owner' | 'agent' | 'system' | 'untrusted';
+  /** Where this run came from, recorded on every fact it writes. */
+  runSource?: string;
   /** Spawn a background subagent turn (wired by the agent loop). */
   spawnTask?: (sessionId: string, prompt: string) => import('./tasks.js').Task;
   /** MCP clients keyed by server name (wired by the agent loop). */
@@ -333,23 +342,60 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
     def: {
       name: 'remember',
       description: 'Store a durable fact in long-term memory (MEMORY.md). Use for preferences, people, projects.',
-      schema: { type: 'object', properties: { fact: { type: 'string' } }, required: ['fact'] },
+      schema: {
+        type: 'object',
+        properties: {
+          fact: { type: 'string' },
+          origin: {
+            type: 'string',
+            enum: ['owner', 'agent', 'system', 'untrusted'],
+            description: 'who said it (default: the run\'s own origin — owner for a chat message)',
+          },
+        },
+        required: ['fact'],
+      },
     },
     async execute(args) {
-      return env.memory.remember(str(args, 'fact'));
+      const origin = (typeof args.origin === 'string' ? args.origin : env.memoryOrigin) as
+        | 'owner' | 'agent' | 'system' | 'untrusted' | undefined;
+      return env.memory.remember(str(args, 'fact'), { origin, source: env.runSource });
     },
   });
 
   tools.push({
     def: {
       name: 'search_memory',
-      description: 'Search long-term memory and daily logs. Returns matching lines.',
+      description:
+        'Search long-term memory, the user model and daily logs. Results are ranked (exact phrases and recent facts first) ' +
+        'and each one says where it came from.',
       schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
     },
     async execute(args) {
-      const hits = await env.memory.search(str(args, 'query'));
+      const hits = await env.memory.searchDetailed(str(args, 'query'));
       if (!hits.length) return 'no matches';
-      return clip(hits.map((h) => `[${h.file}] ${h.line}`).join('\n'));
+      return clip(
+        hits
+          .map((h) => {
+            const where = `${h.file}${h.lineNo ? `:${h.lineNo}` : ''}`;
+            const trust = h.origin && h.origin !== 'agent' ? ` [${h.origin}]` : '';
+            const when = h.when ? ` (${h.when})` : '';
+            return `${h.score.toFixed(2)}  ${where}${when}${trust}  ${h.snippet}`;
+          })
+          .join('\n'),
+      );
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'update_user',
+      description:
+        'Add one line to USER.md — what you know about the owner (name, timezone, how they like answers, ' +
+        'their devices). This is the owner\'s own file and is always in your prompt.',
+      schema: { type: 'object', properties: { line: { type: 'string' } }, required: ['line'] },
+    },
+    async execute(args) {
+      return env.memory.rememberUser(str(args, 'line'));
     },
   });
 

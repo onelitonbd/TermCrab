@@ -84,6 +84,7 @@ users' runtime.
 | file | what it does |
 |---|---|
 | `src/agent/ask.ts` | ask_user: the agent poses a question, the operator answers from the UI |
+| `src/agent/context.ts` | The context a turn really sends, and what to do about its size (19.1-19.4) |
 | `src/agent/dream.ts` | Dream pass: replays recent sessions and distils durable facts into memory |
 | `src/agent/embed-setup.ts` | Embedding-model setup for memory search: status, install, and the checks the doctor reports (`termcrab embeddings ...`) |
 | `src/agent/embed.ts` | Optional embedding search |
@@ -119,7 +120,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\|zsh\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\|zsh\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |

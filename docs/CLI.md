@@ -45,7 +45,9 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab cron add … --json` | `{job, nextRun}` |
 | `termcrab cron rm <id> --json` | `{removed}` |
 | `termcrab memory show --json` | `{text, facts, totalFacts, bytes, budget, stats, files}` |
-| `termcrab memory search <q> --json` | `{query, count, hits}` |
+| `termcrab memory search <q> --json` | `{query, count, hits:[{file, line, score, snippet, origin, when, source, semantic}]}` — ranked (BM25 + exact phrase + 30-day recency), and every hit says where it came from |
+| `termcrab memory user [line] --json` | `{file, text}` (or `{file, added, result}` when a line was added) |
+| `termcrab context [session] --json` | `{engine, sections:[{section, bytes, note}], totalBytes, tools:{count, schemaBytes}, history:{messages, bytes, pruned}, memory:{facts, totalFacts, budget, userBytes}, skills:{count, bytes}, notes}` |
 | `termcrab memory compact <session> --json` | `{session, compacted, coveredTurns, by, model, note, file}` |
 | `termcrab approvals --json` | `{count, approvals:[{id, tool, args, sessionId, createdAt}]}` |
 | `termcrab approvals approve\|deny <id> --json` | `{id, decision, by, ok}` |

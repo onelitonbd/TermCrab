@@ -202,30 +202,37 @@ check('context', 'Compaction that preserves history', 'summary + full history st
 check('context', 'LLM summarisation for compaction', 'separate compaction model', 'WORKING',
   'SessionStore.compactWithModel() hands the turns leaving the hot window to a configured model (the local tier when present, else the model answering the turn) in bounded chunks; each block records who wrote it, how much it covers and any reason it could not (TCRAB_COMPACT=off, no model, model failure -> the extractive digest); the prompt blurb says "the earlier N turns are summarised above ... the full transcript is on disk". Pinned by test/compaction-llm.test.ts 11.1-11.4',
   { pattern: 'compactWithModel', expect: 'present' }, 0);
-check('context', 'Tool-result pruning', 'contextPruning cache-ttl, provider-side clear', 'ABSENT',
-  'no pruning path', { pattern: 'prune', expect: 'absent' }, 3);
-check('context', 'Pluggable context engine', 'ContextEngine info/ingest/assemble/compact', 'ABSENT',
-  'prompt is assembled inline in src/agent/prompt.ts', { pattern: 'ContextEngine', expect: 'absent' }, 10);
-check('context', 'Context introspection (/context)', 'list|detail|map breakdown', 'ABSENT',
-  'no /context command or route', { pattern: '/context', expect: 'absent' }, 3);
-check('context', 'Memory store layout', 'MEMORY.md, USER.md, daily logs, DREAMS.md', 'PARTIAL',
-  'src/agent/memory.ts MEMORY.md + daily/*.md + compacted/*.md; no USER.md', { pattern: 'MEMORY.md', expect: 'present' }, 3);
+check('context', 'Tool-result pruning', 'contextPruning cache-ttl, provider-side clear', 'WORKING',
+  'pruneToolResults() (src/agent/context.ts) keeps the newest N tool results verbatim and replaces older big ones with a one-line stub naming the tool, the size and how to re-run it — wired into the loop before every provider call, so the wire body really is smaller (a fake provider in test/tier2h.test.ts 19.2 sees the stub). The window is agent.keepToolResults (default 6) and the engine can narrow it (19.4). Cache TTLs and provider-side clearing are OpenAI-specific and not applicable here; what a phone needs is that a 20 KB file read ten turns ago is not re-sent on every call',
+  { file: 'src/agent/context.ts', pattern: 'export function pruneToolResults', expect: 'present' }, 0);
+check('context', 'Pluggable context engine', 'ContextEngine info/ingest/assemble/compact', 'WORKING',
+  'a ContextEngine interface with two registered engines (default, compact) chosen by agent.contextEngine: each declares its memory budget, its tool-result window and whether the verbose sections (roster, goals, intents) are included, and each describes itself in one sentence that `termcrab context` prints (19.3/19.4). "Pluggable" here means swappable by config with an inspectable description — loading an engine from a user package is the plugin-API row, which is still ABSENT',
+  { file: 'src/agent/context.ts', pattern: 'export interface ContextEngine', expect: 'present' }, 0);
+check('context', 'Context introspection (/context)', 'list|detail|map breakdown', 'WORKING',
+  '`termcrab context [session] [--json]` and `/context` in a chat print the real prompt section by section (identity, memory, USER.md, skills, environment, intents, goals, roster) with bytes each, the tool-schema bytes, the hot transcript size and how many tool results pruning would stub — measured by promptSectionSizes(), which buildSystemPrompt is written from, so the numbers cannot describe a prompt the model does not get (19.3). test/tier2h.test.ts',
+  { file: 'src/agent/context.ts', pattern: 'export function contextReport', expect: 'present' }, 0);
+check('context', 'Memory store layout', 'MEMORY.md, USER.md, daily logs, DREAMS.md', 'WORKING',
+  'src/agent/memory.ts: MEMORY.md (facts, append-only in shape but merge-on-duplicate), USER.md (the owner model, injected into every prompt), daily/<day>.md logs and compacted/*.md digests; all four are searched by the same ranked search (18.1-18.4); the layout is created on first use and a store always has its files. DREAMS.md is the dreaming feature, which lives in src/agent/dream.ts and is separate. test/tier2g.test.ts',
+  { paths: ['src/agent/memory.ts'], expect: 'present' }, 0);
 check('context', 'Memory bootstrap injection', 'budgeted, provenance-gated, refreshed', 'WORKING',
   'MemoryStore.readForPrompt(budget) injects the NEWEST facts until the byte budget is spent, renders each with its source (MEMORY.md:<line>) and always names the budget plus how many facts stayed on disk; remember() reports the line it wrote; the budget is configurable (agent.memoryBudget). Pinned by test/memory-truth.test.ts 7.1/7.1b/7.3/7.4',
   { pattern: 'readForPrompt', expect: 'present' }, 0);
-check('context', 'USER.md user model', 'separate, imperative, supersede-in-place', 'ABSENT',
-  'grep USER.md in src/ hits only src/migrate/openclaw.ts', { pattern: 'USER\\.md', expect: 'only-migration' }, 3);
-check('context', 'Memory provenance / taint', 'owner|agent|untrusted|system columns', 'ABSENT',
-  'no provenance anywhere', { pattern: 'provenance|taint', expect: 'absent' }, 10);
-check('context', 'Memory search quality', 'hybrid vector+BM25, decay, MMR, trigger injection', 'PARTIAL',
-  'lexical counting + optional cosine (src/agent/embed.ts), no BM25/decay/importance/injection',
-  { pattern: 'cosine', expect: 'present' }, 8);
+check('context', 'USER.md user model', 'separate, imperative, supersede-in-place', 'WORKING',
+  'memory/USER.md is a real file: injected into every prompt as "## About the user" (600-character budget, never trimmed by the fact budget), written by the agent through the update_user tool, by the owner through `termcrab memory user <line>` and `/memory user <line>` in a chat, duplicated lines refused, searched like any other memory file (18.4). test/tier2g.test.ts 18.4',
+  { pattern: 'readUserBlock', expect: 'present' }, 0);
+check('context', 'Memory provenance / taint', 'owner|agent|untrusted|system columns', 'WORKING',
+  'every fact line carries its origin ([from:owner|agent|system|untrusted]) and where it was learned ((src: <channel> · session:<id> · run:<id>)); the run decides the origin (a chat is the owner, a subagent is the agent, a background job is the system) and the model can state one explicitly; a prompt holding untrusted facts says so and tells the model to treat them as data, never instructions; search results carry the same columns (18.2-18.1). test/tier2g.test.ts 18.2',
+  { file: 'src/agent/memory.ts', pattern: 'export function parseFact', expect: 'present' }, 0);
+check('context', 'Memory search quality', 'hybrid vector+BM25, decay, MMR, trigger injection', 'WORKING',
+  'searchDetailed(): BM25 with document frequency over MEMORY.md/USER.md/daily/compacted, an all-terms bonus and a 2.2x exact-phrase boost, a 30-day recency half-life from each fact\'s own stamp, untrusted facts ranked lower but never hidden, snippets with the matched terms marked, and the optional embedding index added as explicitly-labelled semantic hits on top (never required). CLI `memory search --json` carries score/snippet/provenance, the chat has /memory search, and the agent has search_memory (18.1). test/tier2g.test.ts',
+  { pattern: 'searchDetailed', expect: 'present' }, 0);
 check('context', 'Embedding providers', 'OpenAI, Voyage, Gemini, Ollama, local GGUF, FTS-only', 'PARTIAL',
   'local transformers.js only (Xenova/all-MiniLM-L6-v2), optional install', { pattern: 'transformers', expect: 'present' }, 4);
 check('context', 'Dreaming / idle consolidation', 'idle-cycle log → memory distillation', 'WORKING',
   'src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength', { pattern: 'dream', expect: 'present' }, 0);
 check('context', 'Bootstrap file set', 'AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY', 'PARTIAL',
-  'SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent', { pattern: 'SOUL.md', expect: 'present' }, 3);
+  'SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent\'s identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose',
+  { pattern: 'readUserBlock', expect: 'present' }, 2);
 
 // ------------------------------------------------------------------ 5. tools
 check('tools', 'Shell execution', 'exec with policy + approvals', 'PARTIAL',

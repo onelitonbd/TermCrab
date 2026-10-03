@@ -64,6 +64,14 @@ export interface Config {
     compactThreshold: number;
     /** Bytes of MEMORY.md injected into the system prompt (newest facts win). */
     memoryBudget: number;
+    /**
+     * Which context engine builds the prompt: `default` (everything) or
+     * `compact` (half the memory budget, fewer verbatim tool results, no roster
+     * or goals) for long chats on a small phone (19.3).
+     */
+    contextEngine?: 'default' | 'compact';
+    /** How many tool results stay verbatim in the prompt (default 6). */
+    keepToolResults?: number;
     /** Enable model failover chain (default true). */
     failover: boolean;
     /** Queue mode: followup (default) | steer | collect | interrupt. */
@@ -494,6 +502,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'timezone',
       'compactThreshold',
       'memoryBudget',
+      'contextEngine',
+      'keepToolResults',
       'failover',
       'queueMode',
       'allowBrowser',

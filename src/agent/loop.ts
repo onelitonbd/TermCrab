@@ -4,6 +4,7 @@ import { providerSummary, resolveProvider, resolveProviderChain } from '../provi
 import { ChatResult, Provider, ProviderMessage, ThinkingLevel, Usage } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
+import { contextEngine, pruneToolResults } from './context.js';
 import { Entry, newRunId, QueueFullError, QueuedTurn, SessionQueue, SessionStore } from './sessions.js';
 import {
   approvalTimeoutMs,
@@ -303,12 +304,19 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
       );
     }
   }
+  // 18.2: a fact written in this turn records where the turn came from, and how
+  // much it may be trusted. A chat message is the owner speaking; a subagent is
+  // the agent itself; background jobs are the system.
+  const memoryOrigin: NonNullable<ToolEnv['memoryOrigin']> =
+    opts.channel === 'subagent' ? 'agent' : opts.channel ? 'owner' : 'system';
   const toolEnv: ToolEnv = {
     config: ctx.config,
     memory: ctx.memory,
     skills: ctx.skills,
     sessions: ctx.sessions,
     sessionId,
+    memoryOrigin,
+    runSource: `${opts.channel ?? 'cli'} · session:${opts.sessionId} · run:${sessionId}`,
     providerLabel: providerLabel(ctx.config),
     spawnTask: (sid, prompt) =>
       spawnBgTask({
@@ -319,6 +327,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
   };
   const tools = await buildTools(toolEnv);
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));
+  const engine = contextEngine(ctx.config.agent.contextEngine);
   const system = buildSystemPrompt({
     config: ctx.config,
     memory: ctx.memory,
@@ -326,6 +335,8 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     agentName,
     channel: opts.channel,
     sessionId,
+    memoryBudget: engine.memoryBudget(ctx.config),
+    includeExtras: engine.includeExtras(),
   });
   // No hard iteration cap — the repetition detector below stops runaway loops.
   const maxIter = 1000;
@@ -455,11 +466,15 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
       drainSteers();
       // The prompt gets the hot window; the archive on disk keeps the rest
       // (compaction summarises the overflow instead of deleting it).
-      const messages = toProviderMessages(ctx.sessions.readHot(sessionId), provider.name);
+      // 19.2: older tool results are stubbed before they are sent, so a turn
+      // that read five big files does not carry all five on every later call.
+      const pruned = pruneToolResults(toProviderMessages(ctx.sessions.readHot(sessionId), provider.name), {
+        keep: ctx.config.agent.keepToolResults ?? 6,
+      });
       let streamedChars = 0;
       const result = await chatWithTimeout(
         provider,
-        { system, messages, tools: tools.map((t) => t.def), thinkingLevel: opts.thinkingLevel },
+        { system, messages: pruned.messages, tools: tools.map((t) => t.def), thinkingLevel: opts.thinkingLevel },
         (chunk) => {
           if (!chunk) return;
           streamedChars += chunk.length;

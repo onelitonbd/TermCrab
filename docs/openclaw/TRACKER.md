@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৫৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫৪টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৬টা আধা (PARTIAL), ৩৬টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪০ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৬৩%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৪টা আধা (PARTIAL), ৩১টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২০৯ দিন, later ~১৫৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 54 | wired and observable |
+| ✅ WORKING | 61 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 46 | exists, narrower than theirs |
+| 🟡 PARTIAL | 44 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 36 | nothing in the tree |
+| ⚪ ABSENT | 31 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 59%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 63%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~240d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~404d | |
+| **parity** | 108 | ~209d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 28 | ~154d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 150 | ~363d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -120,23 +120,23 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
 | Media send/receive | images, audio, documents | ✅ WORKING | inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2 | parity | 3 |
 
-### context — 45% (13 checks)
+### context — 92% (13 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Compaction that preserves history | summary + full history stays on disk | ✅ WORKING | compact() writes an extractive digest to memory/compacted/<session>.md and moves the overflow to <session>.archive.jsonl; read() merges archive + live so every original line survives, while the prompt gets the hot window (readHot) plus the last digest block (sessions.ts latestDigest -> prompt.ts). Pinned by test/memory-truth.test.ts 7.2/7.2b and test/compaction.test.ts | core | — |
 | LLM summarisation for compaction | separate compaction model | ✅ WORKING | SessionStore.compactWithModel() hands the turns leaving the hot window to a configured model (the local tier when present, else the model answering the turn) in bounded chunks; each block records who wrote it, how much it covers and any reason it could not (TCRAB_COMPACT=off, no model, model failure -> the extractive digest); the prompt blurb says "the earlier N turns are summarised above ... the full transcript is on disk". Pinned by test/compaction-llm.test.ts 11.1-11.4 | core | — |
-| Tool-result pruning | contextPruning cache-ttl, provider-side clear | ⚪ ABSENT | no pruning path | parity | 3 |
-| Pluggable context engine | ContextEngine info/ingest/assemble/compact | ⚪ ABSENT | prompt is assembled inline in src/agent/prompt.ts | later | 10 |
-| Context introspection (/context) | list|detail|map breakdown | ⚪ ABSENT | no /context command or route | parity | 3 |
-| Memory store layout | MEMORY.md, USER.md, daily logs, DREAMS.md | 🟡 PARTIAL | src/agent/memory.ts MEMORY.md + daily/*.md + compacted/*.md; no USER.md | parity | 3 |
+| Tool-result pruning | contextPruning cache-ttl, provider-side clear | ✅ WORKING | pruneToolResults() (src/agent/context.ts) keeps the newest N tool results verbatim and replaces older big ones with a one-line stub naming the tool, the size and how to re-run it — wired into the loop before every provider call, so the wire body really is smaller (a fake provider in test/tier2h.test.ts 19.2 sees the stub). The window is agent.keepToolResults (default 6) and the engine can narrow it (19.4). Cache TTLs and provider-side clearing are OpenAI-specific and not applicable here; what a phone needs is that a 20 KB file read ten turns ago is not re-sent on every call | parity | — |
+| Pluggable context engine | ContextEngine info/ingest/assemble/compact | ✅ WORKING | a ContextEngine interface with two registered engines (default, compact) chosen by agent.contextEngine: each declares its memory budget, its tool-result window and whether the verbose sections (roster, goals, intents) are included, and each describes itself in one sentence that `termcrab context` prints (19.3/19.4). "Pluggable" here means swappable by config with an inspectable description — loading an engine from a user package is the plugin-API row, which is still ABSENT | later | — |
+| Context introspection (/context) | list|detail|map breakdown | ✅ WORKING | `termcrab context [session] [--json]` and `/context` in a chat print the real prompt section by section (identity, memory, USER.md, skills, environment, intents, goals, roster) with bytes each, the tool-schema bytes, the hot transcript size and how many tool results pruning would stub — measured by promptSectionSizes(), which buildSystemPrompt is written from, so the numbers cannot describe a prompt the model does not get (19.3). test/tier2h.test.ts | parity | — |
+| Memory store layout | MEMORY.md, USER.md, daily logs, DREAMS.md | ✅ WORKING | src/agent/memory.ts: MEMORY.md (facts, append-only in shape but merge-on-duplicate), USER.md (the owner model, injected into every prompt), daily/<day>.md logs and compacted/*.md digests; all four are searched by the same ranked search (18.1-18.4); the layout is created on first use and a store always has its files. DREAMS.md is the dreaming feature, which lives in src/agent/dream.ts and is separate. test/tier2g.test.ts | parity | — |
 | Memory bootstrap injection | budgeted, provenance-gated, refreshed | ✅ WORKING | MemoryStore.readForPrompt(budget) injects the NEWEST facts until the byte budget is spent, renders each with its source (MEMORY.md:<line>) and always names the budget plus how many facts stayed on disk; remember() reports the line it wrote; the budget is configurable (agent.memoryBudget). Pinned by test/memory-truth.test.ts 7.1/7.1b/7.3/7.4 | core | — |
-| USER.md user model | separate, imperative, supersede-in-place | ⚪ ABSENT | grep USER.md in src/ hits only src/migrate/openclaw.ts | parity | 3 |
-| Memory provenance / taint | owner|agent|untrusted|system columns | ⚪ ABSENT | no provenance anywhere | parity | 10 |
-| Memory search quality | hybrid vector+BM25, decay, MMR, trigger injection | 🟡 PARTIAL | lexical counting + optional cosine (src/agent/embed.ts), no BM25/decay/importance/injection | parity | 8 |
+| USER.md user model | separate, imperative, supersede-in-place | ✅ WORKING | memory/USER.md is a real file: injected into every prompt as "## About the user" (600-character budget, never trimmed by the fact budget), written by the agent through the update_user tool, by the owner through `termcrab memory user <line>` and `/memory user <line>` in a chat, duplicated lines refused, searched like any other memory file (18.4). test/tier2g.test.ts 18.4 | parity | — |
+| Memory provenance / taint | owner|agent|untrusted|system columns | ✅ WORKING | every fact line carries its origin ([from:owner|agent|system|untrusted]) and where it was learned ((src: <channel> · session:<id> · run:<id>)); the run decides the origin (a chat is the owner, a subagent is the agent, a background job is the system) and the model can state one explicitly; a prompt holding untrusted facts says so and tells the model to treat them as data, never instructions; search results carry the same columns (18.2-18.1). test/tier2g.test.ts 18.2 | parity | — |
+| Memory search quality | hybrid vector+BM25, decay, MMR, trigger injection | ✅ WORKING | searchDetailed(): BM25 with document frequency over MEMORY.md/USER.md/daily/compacted, an all-terms bonus and a 2.2x exact-phrase boost, a 30-day recency half-life from each fact's own stamp, untrusted facts ranked lower but never hidden, snippets with the matched terms marked, and the optional embedding index added as explicitly-labelled semantic hits on top (never required). CLI `memory search --json` carries score/snippet/provenance, the chat has /memory search, and the agent has search_memory (18.1). test/tier2g.test.ts | parity | — |
 | Embedding providers | OpenAI, Voyage, Gemini, Ollama, local GGUF, FTS-only | 🟡 PARTIAL | local transformers.js only (Xenova/all-MiniLM-L6-v2), optional install | parity | 4 |
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
-| Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent | parity | 3 |
+| Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
 
 ### gateway — 61% (16 checks)
 
