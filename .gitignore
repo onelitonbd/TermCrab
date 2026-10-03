@@ -9,3 +9,6 @@ termcrab-data/
 .DS_Store
 
 .smoke-home/
+
+# OpenClaw docs checkout used by scripts/openclaw-docs-report.mjs
+.cache/
