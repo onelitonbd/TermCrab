@@ -161,7 +161,7 @@ test('process: background exec lists, captures output, kills', async () => {
   const listed = await run('process', { action: 'list' });
   assert.match(listed, new RegExp(`${id}`));
 
-  const sleeper = await run('exec', { command: 'sleep 30', background: true });
+  const sleeper = await run('exec', { command: 'sleep 5', background: true });
   const sid = /id=(\w+)/.exec(sleeper)?.[1]!;
   assert.match(await run('process', { action: 'kill', id: sid }), /SIGTERM/);
 });
@@ -169,7 +169,7 @@ test('process: background exec lists, captures output, kills', async () => {
 // ---- terminal ----
 
 test('terminal: spawn, read output, close', async () => {
-  const opened = await run('terminal', { action: 'spawn', command: 'echo term-ready; sleep 20' });
+  const opened = await run('terminal', { action: 'spawn', command: 'echo term-ready; sleep 5' });
   const id = /terminal (\w+) open/.exec(opened)?.[1];
   assert.ok(id, 'terminal id');
   let fresh = '';
@@ -313,7 +313,7 @@ test('sessions_spawn / agents_wait / subagents / sessions_yield / sessions_send'
   const status = await (await tool('subagents')).execute({ action: 'status', id: taskId });
   assert.match(status, /running|done/);
 
-  const waited = await (await tool('agents_wait')).execute({ timeoutSec: 10 });
+  const waited = await (await tool('agents_wait')).execute({ timeoutSec: 5 });
   assert.match(waited, /done: collect weather/);
   assert.equal(getTask(taskId)?.status, 'done');
 
@@ -331,7 +331,7 @@ test('sessions_spawn / agents_wait / subagents / sessions_yield / sessions_send'
 // ---- ask_user ----
 
 test('ask_user: operator answers from the UI path', async () => {
-  const pending = run('ask_user', { question: 'Ship it?', options: ['yes', 'no'], timeoutSec: 20 });
+  const pending = run('ask_user', { question: 'Ship it?', options: ['yes', 'no'], timeoutSec: 5 });
   let id = '';
   for (let i = 0; i < 30 && !id; i++) {
     const asks = listAsks();
