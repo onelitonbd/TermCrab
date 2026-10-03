@@ -47,21 +47,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 28 | wired and observable |
+| ✅ WORKING | 30 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 60 | exists, narrower than theirs |
-| ⛔ BROKEN | 3 | **the code exists but nothing reaches it** |
+| ⛔ BROKEN | 1 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 45 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 46%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 47%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~18d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~12d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~460d | |
+| **total** | 150 | ~454d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -116,17 +116,17 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Typing indicators | per-channel, on enqueue | ⚪ ABSENT | no typing action calls | parity | 1 |
 | Media send/receive | images, audio, documents | 🟡 PARTIAL | markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only | parity | 4 |
 
-### context — 23% (13 checks)
+### context — 37% (13 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Compaction that preserves history | summary + full history stays on disk | ⛔ BROKEN | src/agent/sessions.ts:154,187 rewrite the .jsonl in place; buildDigest truncates entries to 200 chars | core | 4 |
-| LLM summarisation for compaction | separate compaction model | ⚪ ABSENT | no summarisation call; truncation only | core | 3 |
+| Compaction that preserves history | summary + full history stays on disk | ✅ WORKING | compact() writes an extractive digest to memory/compacted/<session>.md and moves the overflow to <session>.archive.jsonl; read() merges archive + live so every original line survives, while the prompt gets the hot window (readHot) plus the last digest block (sessions.ts latestDigest -> prompt.ts). Pinned by test/memory-truth.test.ts 7.2/7.2b and test/compaction.test.ts | core | — |
+| LLM summarisation for compaction | separate compaction model | ⚪ ABSENT | the digest is extractive (key lines, 200-char slices), not a model-written summary - the history is now preserved, the summary quality is what is still missing | core | 3 |
 | Tool-result pruning | contextPruning cache-ttl, provider-side clear | ⚪ ABSENT | no pruning path | parity | 3 |
 | Pluggable context engine | ContextEngine info/ingest/assemble/compact | ⚪ ABSENT | prompt is assembled inline in src/agent/prompt.ts | later | 10 |
 | Context introspection (/context) | list|detail|map breakdown | ⚪ ABSENT | no /context command or route | parity | 3 |
 | Memory store layout | MEMORY.md, USER.md, daily logs, DREAMS.md | 🟡 PARTIAL | src/agent/memory.ts MEMORY.md + daily/*.md + compacted/*.md; no USER.md | parity | 3 |
-| Memory bootstrap injection | budgeted, provenance-gated, refreshed | ⛔ BROKEN | src/agent/prompt.ts readHead(3000) is head-only while remember() appends — new facts can never enter context | core | 2 |
+| Memory bootstrap injection | budgeted, provenance-gated, refreshed | ✅ WORKING | MemoryStore.readForPrompt(budget) injects the NEWEST facts until the byte budget is spent, renders each with its source (MEMORY.md:<line>) and always names the budget plus how many facts stayed on disk; remember() reports the line it wrote; the budget is configurable (agent.memoryBudget). Pinned by test/memory-truth.test.ts 7.1/7.1b/7.3/7.4 | core | — |
 | USER.md user model | separate, imperative, supersede-in-place | ⚪ ABSENT | grep USER.md in src/ hits only src/migrate/openclaw.ts | parity | 3 |
 | Memory provenance / taint | owner|agent|untrusted|system columns | ⚪ ABSENT | no provenance anywhere | parity | 10 |
 | Memory search quality | hybrid vector+BM25, decay, MMR, trigger injection | 🟡 PARTIAL | lexical counting + optional cosine (src/agent/embed.ts), no BM25/decay/importance/injection | parity | 8 |
@@ -298,19 +298,17 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 This is the single most important list in this repository. Each one is a feature you can see in the file tree, that the docs and the UI may both imply exists, and that no code path reaches.
 
-**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run* — and now the **approval gate**: `needsApproval()` runs before tool dispatch, the request reaches the panel (SSE card) and the CLI (`termcrab approvals`), refusals are tool results, and the timeout policy is configurable — pinned by `test/approvals.test.ts` (7 cases, including the real CLI binary over HTTP). The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases: unit, loop, and real HTTP against a slow upstream) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
+**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run* — the **approval gate**, and now the **memory pair**: *Compaction that preserves history* (digest + `sessions/<id>.archive.jsonl`, `read()` merges archive + live) and *Memory bootstrap injection* (newest facts first, budgeted in bytes, every fact citing `MEMORY.md:<line>`), pinned by `test/memory-truth.test.ts` (6 cases) and `test/compaction.test.ts`. The **approval gate**: `needsApproval()` runs before tool dispatch, the request reaches the panel (SSE card) and the CLI (`termcrab approvals`), refusals are tool results, and the timeout policy is configurable — pinned by `test/approvals.test.ts` (7 cases, including the real CLI binary over HTTP). The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases: unit, loop, and real HTTP against a slow upstream) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
 
 | # | Capability | Evidence | What it costs you today |
 |---|---|---|---|
-| 1 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
-| 2 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
-| 3 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
-| 4 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
-| 5 | **Docs that match the code** *(census: PARTIAL)* | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
+| 1 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
+| 2 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
+| 3 | **Docs that match the code** *(census: PARTIAL)* | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
 
-*(The census carries 3 BROKEN rows. Three of the five here are those rows; token accounting and docs sit under their own verdicts and stay in this table because they are what makes you distrust the map.)*
+*(The census carries 1 BROKEN row — transcript write fencing, row 1 below. Token accounting and docs sit under their own verdicts and stay in this table because they are what makes you distrust the map.)*
 
-Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 7 (compaction + memory) → batch 8 (write fencing) → batch 9 (usage/tokens). The first two change the character of the product.
+Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 8 (write fencing) → batch 9 (usage/tokens).
 
 ---
 

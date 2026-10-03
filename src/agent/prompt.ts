@@ -5,6 +5,7 @@ import { Config } from '../core/config.js';
 import { workspaceDir } from '../core/paths.js';
 import { isLikelyAndroid } from '../mobile/bionic.js';
 import { MemoryStore } from './memory.js';
+import { latestDigest } from './sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { listIntents } from './intents.js';
 import { listGoals } from './goals.js';
@@ -17,6 +18,8 @@ export interface PromptCtx {
   agentName?: string;
   /** Where the reply is delivered: web, telegram, whatsapp, cli, voice, cron, heartbeat, dream, subagent. */
   channel?: string;
+  /** Session whose transcript this prompt is for (its compacted digest is injected). */
+  sessionId?: string;
 }
 
 const AGENT_NAME_RE = /^[a-z0-9][a-z0-9-_]{0,63}$/;
@@ -138,7 +141,13 @@ function readSoul(agentName?: string): { name: string; soul: string } {
 }
 
 export function buildSystemPrompt(ctx: PromptCtx): string {
-  const memory = ctx.memory.readHead(3000);
+  // Newest facts first (see MemoryStore.readForPrompt) — the old head-only read
+  // meant a fact written today could never reach the prompt.
+  const memory = ctx.memory.readForPrompt(ctx.config.agent.memoryBudget ?? 3000).text;
+  const digest = ctx.sessionId ? latestDigest(ctx.sessionId, 1200) : '';
+  const digestBlurb = digest
+    ? `\n# Earlier in this conversation (compacted)\n${digest}\n`
+    : '';
   const skills = ctx.skills.promptIndex();
   const { name, soul } = readSoul(ctx.agentName);
   const displayName = ctx.agentName ? name : ctx.config.agent.name || name;
@@ -166,7 +175,7 @@ ${agentNote}${channelGuide(ctx.channel)}# Identity
 ${soul || `You are ${displayName}, friendly, practical, and concise.`}
 
 # Long-term memory
-${memory || '(empty - use the remember tool to record durable facts)'}
+${memory || '(empty - use the remember tool to record durable facts)'}${digestBlurb}
 
 # Skills index (load a skill with load_skill before using it)
 ${skills}${intentsBlurb}${goalsBlurb}${rosterBlurb}

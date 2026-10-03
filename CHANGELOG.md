@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.0 - 2026-10-03
+
+- **Your agent now remembers what it just learned.** `MEMORY.md` is append-only, so the newest facts are the important ones — but the prompt injected the *oldest* 3000 characters (`readHead`), which meant a fact written today could never enter context. The prompt now takes the newest facts first until its byte budget is spent, renders each one with its source (`MEMORY.md:<line>`), and always states the budget and how many facts stayed on disk ("showing the newest 34 of 120 facts"); `remember()` reports the line it wrote. The budget is configurable: `agent.memoryBudget` (bytes, default 3000).
+- **Compaction summarises; it no longer deletes.** Compacting a session used to rewrite the transcript with only the kept lines — the removed turns survived only as 200-character fragments in a digest. Now the digest is written and the overflow moves to `sessions/<id>.archive.jsonl`; `read()` merges archive + live, so every original line is still on disk and still readable, while the model gets a small hot window plus the last compacted digest (`# Earlier in this conversation (compacted)`). Session totals in the panel count hot + archived, so the number you see is the real length of the conversation.
+- Tests: **450 cases, 0 failures** (6 new in `test/memory-truth.test.ts`, plus the compaction contract updated). Full run ~19 s. Census: **BROKEN 3 → 1** (only transcript write fencing remains), drift 0, capability 47%, core-lane work left ~12 focused days.
+
 ## 0.38.0 - 2026-10-03
 
 - **Dangerous tools now ask first.** `exec`, `write_file` and `kill_process` (configurable via `security.approvals`) no longer run on the model's word alone: the loop stops *before* dispatch, raises an approval, and continues only when an answer arrives. `src/core/approvals.ts` finally has call sites — the census row that said "the code exists but nothing reaches it" is gone (**BROKEN 4 → 3**).

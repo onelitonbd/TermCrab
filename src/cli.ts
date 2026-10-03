@@ -1000,8 +1000,13 @@ export async function main(argv: string[]): Promise<void> {
         else for (const h of hits) console.log(`[${h.file}] ${h.line}`);
         return;
       }
-      console.log(memory.readHead(8000));
-      console.log(`\n--- stats: ${JSON.stringify(memory.stats())} | files: ${memoryDir()}`);
+      const shown = memory.readForPrompt(8000);
+      console.log(shown.text);
+      console.log(
+        `\n--- injected into prompts: ${shown.facts}/${shown.totalFacts} facts, ${shown.bytes}/${shown.budget} bytes` +
+          `${shown.facts < shown.totalFacts ? ' (newest first; older facts stay searchable)' : ''}` +
+          ` | stats: ${JSON.stringify(memory.stats())} | files: ${memoryDir()}`,
+      );
       return;
     }
 

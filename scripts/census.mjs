@@ -192,11 +192,12 @@ check('sessions', 'Session attachment (multi-client)', 'openclaw attach, project
   { pattern: /attachSession|attachToGateway/, expect: 'absent' }, 8);
 
 // ---------------------------------------------------------- 4. context/memory
-check('context', 'Compaction that preserves history', 'summary + full history stays on disk', 'BROKEN',
-  'src/agent/sessions.ts:154,187 rewrite the .jsonl in place; buildDigest truncates entries to 200 chars',
-  { pattern: 'buildDigest', expect: 'present' }, 4);
+check('context', 'Compaction that preserves history', 'summary + full history stays on disk', 'WORKING',
+  'compact() writes an extractive digest to memory/compacted/<session>.md and moves the overflow to <session>.archive.jsonl; read() merges archive + live so every original line survives, while the prompt gets the hot window (readHot) plus the last digest block (sessions.ts latestDigest -> prompt.ts). Pinned by test/memory-truth.test.ts 7.2/7.2b and test/compaction.test.ts',
+  { pattern: 'archiveOverflow', expect: 'present' }, 0);
 check('context', 'LLM summarisation for compaction', 'separate compaction model', 'ABSENT',
-  'no summarisation call; truncation only', { pattern: 'compactionModel|compactWith', expect: 'absent' }, 3);
+  'the digest is extractive (key lines, 200-char slices), not a model-written summary - the history is now preserved, the summary quality is what is still missing',
+  { pattern: 'compactionModel|compactWith', expect: 'absent' }, 3);
 check('context', 'Tool-result pruning', 'contextPruning cache-ttl, provider-side clear', 'ABSENT',
   'no pruning path', { pattern: 'prune', expect: 'absent' }, 3);
 check('context', 'Pluggable context engine', 'ContextEngine info/ingest/assemble/compact', 'ABSENT',
@@ -205,9 +206,9 @@ check('context', 'Context introspection (/context)', 'list|detail|map breakdown'
   'no /context command or route', { pattern: '/context', expect: 'absent' }, 3);
 check('context', 'Memory store layout', 'MEMORY.md, USER.md, daily logs, DREAMS.md', 'PARTIAL',
   'src/agent/memory.ts MEMORY.md + daily/*.md + compacted/*.md; no USER.md', { pattern: 'MEMORY.md', expect: 'present' }, 3);
-check('context', 'Memory bootstrap injection', 'budgeted, provenance-gated, refreshed', 'BROKEN',
-  'src/agent/prompt.ts readHead(3000) is head-only while remember() appends — new facts can never enter context',
-  { pattern: 'readHead', expect: 'present' }, 2);
+check('context', 'Memory bootstrap injection', 'budgeted, provenance-gated, refreshed', 'WORKING',
+  'MemoryStore.readForPrompt(budget) injects the NEWEST facts until the byte budget is spent, renders each with its source (MEMORY.md:<line>) and always names the budget plus how many facts stayed on disk; remember() reports the line it wrote; the budget is configurable (agent.memoryBudget). Pinned by test/memory-truth.test.ts 7.1/7.1b/7.3/7.4',
+  { pattern: 'readForPrompt', expect: 'present' }, 0);
 check('context', 'USER.md user model', 'separate, imperative, supersede-in-place', 'ABSENT',
   'grep USER.md in src/ hits only src/migrate/openclaw.ts', { pattern: 'USER\\.md', expect: 'only-migration' }, 3);
 check('context', 'Memory provenance / taint', 'owner|agent|untrusted|system columns', 'ABSENT',

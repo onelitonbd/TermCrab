@@ -105,7 +105,7 @@
 | Phase | কত দিন | কী | কোন সারি বদলায় |
 |---|---|---|---|
 | **A** | ~২ সপ্তাহ | batch 5 (কিউ) ✔ — BROKEN **7→4**, drift 0 (২০২৬-১০-০৩) + Tier 0-র ৭টা ছোট ফ্লিপ | BROKEN ≤4 · WORKING +7 |
-| **B** | ~৪ সপ্তাহ | batch 6–9 (approvals, স্মৃতি, fencing, usage) | core lane খালি, BROKEN ≤1 |
+| **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals (2026-10-03) · batch 7 ✔ স্মৃতি (2026-10-03) · batch 8 fencing · batch 9 usage | BROKEN 1 (fencing), core lane প্রায় খালি |
 | **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোত-দাবির টেস্ট + মাপা সংখ্যা (T3.1–T3.4) | BETTER 14 → ~22, দাবিগুলো প্রমাণিত |
 | **D** | ~৩ সপ্তাহ | Tier 0-র বাকি + যেসব PARTIAL ফ্লিপ করা সস্তা (চ্যানেল: Discord/Slack/Signal/SMS/Matrix ~২দিন করে) | BETTER ~25, PARTIAL কমতে থাকে |
 

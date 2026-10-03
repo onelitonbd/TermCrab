@@ -211,6 +211,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     skills: ctx.skills,
     agentName,
     channel: opts.channel,
+    sessionId,
   });
   // No hard iteration cap — the repetition detector below stops runaway loops.
   const maxIter = 1000;
@@ -245,7 +246,9 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         return finalText;
       }
       drainSteers();
-      const messages = toProviderMessages(ctx.sessions.read(sessionId), provider.name);
+      // The prompt gets the hot window; the archive on disk keeps the rest
+      // (compaction summarises the overflow instead of deleting it).
+      const messages = toProviderMessages(ctx.sessions.readHot(sessionId), provider.name);
       let streamedChars = 0;
       const result = await chatWithTimeout(
         provider,

@@ -55,6 +55,8 @@ export interface Config {
     timezone: string;
     /** Compact session when entries exceed this threshold (default 60). */
     compactThreshold: number;
+    /** Bytes of MEMORY.md injected into the system prompt (newest facts win). */
+    memoryBudget: number;
     /** Enable model failover chain (default true). */
     failover: boolean;
     /** Queue mode: followup (default) | steer | collect | interrupt. */
@@ -174,7 +176,7 @@ export function defaults(): Config {
     provider: { type: 'openai', model: '', baseUrl: '', apiKey: '' },
     providers: [],
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared' },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000 },
     fallbackProviders: [],
     mcpServers: [],
     hooks: [],

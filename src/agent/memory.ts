@@ -4,6 +4,19 @@ import crypto from 'node:crypto';
 import { memoryDir, ensureLayout } from '../core/paths.js';
 import { EmbeddingIndex } from './embed.js';
 
+export interface MemoryBlock {
+  /** Text to inject into a prompt (facts + provenance + the budget note). */
+  text: string;
+  /** How many facts are in the block / how many exist on disk. */
+  facts: number;
+  totalFacts: number;
+  /** Bytes of `text`, and the budget that was allowed. */
+  bytes: number;
+  budget: number;
+  /** 1-based line numbers in MEMORY.md for the included facts, oldest first. */
+  lines: number[];
+}
+
 /**
  * Human-readable memory:
  *   memory/MEMORY.md        - long-term facts (always injected, head-limited)
@@ -30,15 +43,79 @@ export class MemoryStore {
   }
 
   readHead(maxChars = 3000): string {
+    return this.readForPrompt(maxChars).text;
+  }
+
+  /**
+   * The block that goes into a prompt.
+   *
+   * MEMORY.md is append-only: `remember()` writes at the bottom, so the newest
+   * facts are the ones that matter and they are the ones that fit. The old
+   * `readHead(3000)` did the opposite - it injected the *oldest* 3000 chars, so
+   * a fact written today could never enter context (census: BROKEN). Facts are
+   * injected newest-first until the budget is spent, rendered oldest-first, each
+   * one citing the file and line it came from, and the block always says which
+   * budget applied and how many facts stayed on disk.
+   */
+  readForPrompt(budgetBytes = 3000): MemoryBlock {
     this.ensureFiles();
-    let text: string;
+    let raw = '';
     try {
-      text = fs.readFileSync(this.memoryFile(), 'utf8');
+      raw = fs.readFileSync(this.memoryFile(), 'utf8');
     } catch {
-      return '';
+      raw = '';
     }
-    if (text.length <= maxChars) return text;
-    return `${text.slice(0, maxChars)}\n... (truncated)`;
+    const budget = Math.max(200, Math.floor(budgetBytes));
+
+    const headerLines: string[] = [];
+    const facts: { line: number; stamp: string; body: string }[] = [];
+    const all = raw.split('\n');
+    let seenFact = false;
+    for (let i = 0; i < all.length; i++) {
+      const line = all[i] ?? '';
+      const m = /^- \[([^\]]+)\]\s*(.+)$/.exec(line.trim());
+      if (m) {
+        seenFact = true;
+        facts.push({ line: i + 1, stamp: m[1]!, body: m[2]! });
+      } else if (!seenFact && line.trim()) {
+        headerLines.push(line);
+      }
+    }
+    const header = headerLines.join('\n').trim();
+
+    const render = (subset: { line: number; stamp: string; body: string }[]): string => {
+      const lines = subset.map((f) => `- [${f.stamp}] ${f.body}  (MEMORY.md:${f.line})`);
+      const note =
+        facts.length > subset.length
+          ? `(showing the newest ${subset.length} of ${facts.length} facts - memory budget ${budget} bytes; the rest stay on disk and are searchable with search_memory)`
+          : `(all ${facts.length} facts fit the memory budget of ${budget} bytes)`;
+      return [header, ...lines, note].filter(Boolean).join('\n') + '\n';
+    };
+
+    let subset: { line: number; stamp: string; body: string }[] = [];
+    for (let i = facts.length - 1; i >= 0; i--) {
+      const candidate = [facts[i]!, ...subset];
+      if (Buffer.byteLength(render(candidate), 'utf8') > budget) break;
+      subset = candidate;
+    }
+    let text: string;
+    if (!facts.length) {
+      text = `${header || '# Long-term memory'}\n(no facts yet - memory budget ${budget} bytes; use the remember tool)\n`;
+    } else if (!subset.length) {
+      // Even one fact is bigger than the budget: say so instead of hiding it.
+      text = `${header}\n(memory holds ${facts.length} facts, none fit the ${budget}-byte budget - raise agent.memoryBudget)\n`;
+    } else {
+      text = render(subset);
+    }
+
+    return {
+      text,
+      facts: subset.length,
+      totalFacts: facts.length,
+      bytes: Buffer.byteLength(text, 'utf8'),
+      budget,
+      lines: subset.map((f) => f.line),
+    };
   }
 
   remember(fact: string): string {
@@ -51,6 +128,8 @@ export class MemoryStore {
 
     const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
     const entry = `- [${stamp}] ${clean}\n`;
+    const beforeLines = existing.length ? existing.replace(/\n$/, '').split('\n').length : 0;
+    const factLine = beforeLines + 1;
 
     // Long-term facts: append under a Facts section.
     fs.appendFileSync(this.memoryFile(), entry, 'utf8');
@@ -66,7 +145,8 @@ export class MemoryStore {
     const daily = path.join(this.root, 'daily', `${day}.md`);
     if (!fs.existsSync(daily)) fs.writeFileSync(daily, `# ${day}\n\n`, 'utf8');
     fs.appendFileSync(daily, entry, 'utf8');
-    return 'Remembered.';
+    // Provenance, so the model (and the human) can check the source line.
+    return `Remembered (MEMORY.md:${factLine}, daily/${day}.md).`;
   }
 
   logDaily(line: string): void {

@@ -19,6 +19,8 @@ export type Entry =
   | { role: 'tool'; toolCallId: string; name: string; result: string; ts: number };
 
 const KEEP = 80;
+/** Overflow moves here instead of being deleted (full history stays on disk). */
+const ARCHIVE_SUFFIX = '.archive.jsonl';
 
 export function sanitizeSessionId(id: string): string {
   const clean = id.replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, 64);
@@ -34,18 +36,45 @@ export class SessionStore {
     return path.join(this.root, `${sanitizeSessionId(sessionId)}.jsonl`);
   }
 
+  /** Cold storage for a session that outgrew the hot window. Never deleted. */
+  private archiveFile(sessionId: string): string {
+    return path.join(this.root, `${sanitizeSessionId(sessionId)}${ARCHIVE_SUFFIX}`);
+  }
+
   append(sessionId: string, entry: Entry): void {
     const f = this.file(sessionId);
     fs.appendFileSync(f, `${JSON.stringify(entry)}\n`, 'utf8');
-    this.maybeTrim(sessionId);
+    // Keep the live file small; older lines move to the archive (not the bin).
+    this.archiveOverflow(sessionId, KEEP + 40);
   }
 
+  /** Read a transcript: the archive first, then the live file. Nothing is lost. */
   read(sessionId: string): Entry[] {
+    const out: Entry[] = [];
+    for (const f of [this.archiveFile(sessionId), this.file(sessionId)]) {
+      if (!fs.existsSync(f)) continue;
+      for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
+        if (!line.trim()) continue;
+        try {
+          out.push(JSON.parse(line) as Entry);
+        } catch {
+          /* skip corrupt lines */
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The hot window: the newest `maxEntries` entries of the live file. This is
+   * what goes to the model - the disk keeps everything, the prompt stays small.
+   */
+  readHot(sessionId: string, maxEntries = KEEP): Entry[] {
     const f = this.file(sessionId);
     if (!fs.existsSync(f)) return [];
+    const lines = fs.readFileSync(f, 'utf8').split('\n').filter((l) => l.trim());
     const out: Entry[] = [];
-    for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
-      if (!line.trim()) continue;
+    for (const line of lines.slice(Math.max(0, lines.length - maxEntries))) {
       try {
         out.push(JSON.parse(line) as Entry);
       } catch {
@@ -55,36 +84,56 @@ export class SessionStore {
     return out;
   }
 
+  /** How much of a session is hot vs archived (used by tests and the panel). */
+  archiveStats(sessionId: string): { hot: number; archived: number; total: number } {
+    const count = (f: string): number =>
+      fs.existsSync(f) ? fs.readFileSync(f, 'utf8').split('\n').filter((l) => l.trim()).length : 0;
+    const hot = count(this.file(sessionId));
+    const archived = count(this.archiveFile(sessionId));
+    return { hot, archived, total: hot + archived };
+  }
+
   delete(sessionId: string): boolean {
-    try {
-      fs.unlinkSync(this.file(sessionId));
-      return true;
-    } catch {
-      return false;
+    let ok = false;
+    for (const f of [this.file(sessionId), this.archiveFile(sessionId)]) {
+      try {
+        fs.unlinkSync(f);
+        ok = true;
+      } catch {
+        /* already gone */
+      }
     }
+    return ok;
   }
 
   reset(sessionId: string): void {
-    const f = this.file(sessionId);
-    if (fs.existsSync(f)) {
-      const backup = `${f}.${Date.now()}.bak`;
-      fs.renameSync(f, backup);
+    for (const f of [this.file(sessionId), this.archiveFile(sessionId)]) {
+      if (fs.existsSync(f)) {
+        const backup = `${f}.${Date.now()}.bak`;
+        fs.renameSync(f, backup);
+      }
     }
   }
 
-  list(): { id: string; messages: number; modified: number; bytes: number }[] {
+  list(): { id: string; messages: number; hot: number; archived: number; modified: number; bytes: number }[] {
     if (!fs.existsSync(this.root)) return [];
     return fs
       .readdirSync(this.root)
-      .filter((f) => f.endsWith('.jsonl'))
+      .filter((f) => f.endsWith('.jsonl') && !f.endsWith(ARCHIVE_SUFFIX))
       .map((f) => {
         const full = path.join(this.root, f);
         const content = fs.readFileSync(full, 'utf8');
+        const hot = content.split('\n').filter((l) => l.trim()).length;
+        const archive = this.archiveFile(f.replace(/\.jsonl$/, ''));
+        const archivedContent = fs.existsSync(archive) ? fs.readFileSync(archive, 'utf8') : '';
+        const archived = archivedContent.split('\n').filter((l) => l.trim()).length;
         return {
           id: f.replace(/\.jsonl$/, ''),
-          messages: content.split('\n').filter((l) => l.trim()).length,
+          messages: hot + archived,
+          hot,
+          archived,
           modified: Math.floor(fs.statSync(full).mtimeMs / 1000),
-          bytes: Buffer.byteLength(content, 'utf8'),
+          bytes: Buffer.byteLength(content, 'utf8') + Buffer.byteLength(archivedContent, 'utf8'),
         };
       })
       .sort((a, b) => b.modified - a.modified);
@@ -142,24 +191,28 @@ export class SessionStore {
   }
 
   /**
-   * Rolling window: keep the newest KEEP entries. Older context lives in
-   * MEMORY.md / daily logs instead of the hot transcript (cheap on mobile).
+   * Move the oldest lines out of the hot file into the archive file.
+   * The hot file stays small (cheap context on mobile); nothing is deleted —
+   * `read()` reads archive + live, so the full transcript stays on disk.
    */
-  private maybeTrim(sessionId: string): void {
+  private archiveOverflow(sessionId: string, keep: number): void {
     const f = this.file(sessionId);
+    if (!fs.existsSync(f)) return;
     const lines = fs.readFileSync(f, 'utf8').split('\n').filter((l) => l.trim());
-    if (lines.length <= KEEP + 10) return;
-    const kept = lines.slice(-KEEP);
+    if (lines.length <= keep) return;
+    const overflow = lines.slice(0, lines.length - keep);
+    const kept = lines.slice(lines.length - keep);
+    fs.appendFileSync(this.archiveFile(sessionId), `${overflow.join('\n')}\n`, 'utf8');
     const tmp = `${f}.tmp`;
     fs.writeFileSync(tmp, `${kept.join('\n')}\n`, 'utf8');
     fs.renameSync(tmp, f);
   }
 
   /**
-   * Compact a session: summarize old entries into a digest file, then trim.
+   * Compact a session: summarise the overflow into a digest file and move those
+   * lines to the archive. Nothing is deleted - every original line is still on
+   * disk (read() sees archive + live), the digest is what the model reads.
    * Returns the summary text (or empty string if no compaction was needed).
-   * The digest is written to memory/compacted/<sessionId>.md so the agent
-   * can still search it via search_memory.
    */
   compact(sessionId: string, maxEntries = 60): string {
     const f = this.file(sessionId);
@@ -169,7 +222,6 @@ export class SessionStore {
 
     const overflowCount = lines.length - maxEntries;
     const overflow = lines.slice(0, overflowCount);
-    const kept = lines.slice(overflowCount);
 
     // Build a simple digest of the overflow (no LLM needed — just extract key lines).
     const digest = this.buildDigest(overflow, sessionId);
@@ -177,15 +229,13 @@ export class SessionStore {
     // Write digest to memory/compacted/<sessionId>.md
     const compactedDir = path.join(home(), 'memory', 'compacted');
     fs.mkdirSync(compactedDir, { recursive: true });
-    const digestFile = path.join(compactedDir, `${sessionId}.md`);
+    const digestFile = path.join(compactedDir, `${sanitizeSessionId(sessionId)}.md`);
     const timestamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
     const digestEntry = `\n\n## Compacted ${timestamp}\n${digest}\n`;
     fs.appendFileSync(digestFile, digestEntry, 'utf8');
 
-    // Trim the session file
-    const tmp = `${f}.tmp`;
-    fs.writeFileSync(tmp, `${kept.join('\n')}\n`, 'utf8');
-    fs.renameSync(tmp, f);
+    // Shrink the *hot* window; the lines live on in the archive file.
+    this.archiveOverflow(sessionId, maxEntries);
 
     return digest;
   }
@@ -216,6 +266,25 @@ export class SessionStore {
       }
     }
     return parts.join('\n');
+  }
+}
+
+/**
+ * The last compacted digest block for a session, for prompt injection.
+ * Standalone (not on the class) so the prompt builder can call it without
+ * holding a SessionStore.
+ */
+export function latestDigest(sessionId: string, maxChars = 1500): string {
+  const f = path.join(home(), 'memory', 'compacted', `${sanitizeSessionId(sessionId)}.md`);
+  if (!fs.existsSync(f)) return '';
+  try {
+    const text = fs.readFileSync(f, 'utf8');
+    const blocks = text.split(/\n## Compacted /).filter((b) => b.trim());
+    const last = blocks[blocks.length - 1] ?? '';
+    const body = last.replace(/^## Compacted /, '').trim();
+    return body.length > maxChars ? `${body.slice(0, maxChars)}\n...` : body;
+  } catch {
+    return '';
   }
 }
 
