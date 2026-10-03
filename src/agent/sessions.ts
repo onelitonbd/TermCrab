@@ -16,6 +16,10 @@ export type Entry =
       thinking?: string;
       /** Raw provider reasoning blocks (Anthropic) — echoed back verbatim. */
       thinkingBlocks?: unknown[];
+      /** Tokens this turn used (from the provider) — shown as a footer, not sent upstream. */
+      usage?: import('../providers/types.js').Usage;
+      /** Cost when a price was known at the time of the turn. */
+      costUsd?: number;
     }
   | { role: 'tool'; toolCallId: string; name: string; result: string; ts: number };
 

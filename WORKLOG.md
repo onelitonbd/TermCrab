@@ -16,50 +16,52 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এইমাত্র শেষ (ব্যাচ ৮):** এক ট্রান্সক্রিপ্টে এখন এক লেখক — `SessionStore.claim()` টার্ন শুরুর আগেই owner+pid+heartbeat সহ writer lock নেয়; দ্বিতীয় লেখককে নাম ধরে (owner + pid) ফিরিয়ে দেওয়া হয়, মরা প্রসেস বা বাসি heartbeat-এর claim নিজে থেকে উদ্ধার হয়, append এক লাইনে এক O_APPEND লেখা (মাঝপথে kill করলেও বাকি লাইনগুলো পড়া যায়), আর telegram/whatsapp/voice/cron সব এখন একই per-session lane দিয়ে যায় — অর্থাৎ ব্যাচ ৫-এ যেটাকে "শুধু এক প্রসেসের ভিতরে" সীমা বলে ঘোষণা করা হয়েছিল, সেটা আর নেই।
-- **ডকুমেন্টও আর মিথ্যা বলে না:** `docs/ARCHITECTURE.md`-এ যেসব provider ফাইল নেই (`gemini.ts`, `anthropic.ts`, `ollama.ts`) সেগুলো বাদ দেওয়া হয়েছে, আর `test/docs-map.test.ts` এখন ফেল করে যদি ARCHITECTURE.md/API.md-তে এমন `.ts` ফাইলের নাম থাকে যেটা রেপোতে নেই — census-এর শেষ BROKEN সারিটাও তাই গেল।
-- **সংখ্যায়:** ৪৫৭টা টেস্ট · ০ ফেল · ~১৯ সেকেন্ড; census **BROKEN ১ → ০**, drift ০, capability ৪৭% → ৪৮%; core lane-এ বাকি ~৭ দিন (আগে ~১২), অর্থাৎ core checklist কার্যত শেষ — এরপর যা বাকি তা parity/later।
-- **পরের কাজ (ব্যাচ ৯):** usage/token হিসাব — প্রতি টার্নের টোকেন সংখ্যা (এবং দাম জানা থাকলে খরচ) লুপ থেকে প্যানেল আর CLI পর্যন্ত; এখন কোনো সংখ্যাই নেই। **~৩ দিন।**
-- **কীভাবে নিজে যাচাই করবে:** `node scripts/status.mjs` (এক সেকেন্ড), `node scripts/status.mjs --tests` (স্যুট সহ), `node scripts/census.mjs`, আর প্যানেলের **Work** পেজ।
+- **এইমাত্র শেষ (ব্যাচ ৯):** এখন হিসাব আছে — প্রোভাইডার যা রিপোর্ট করে (streaming আর non-streaming দুটোতেই) সেটা প্রতি টার্নে যোগ হয়ে `run:end`-এ যায়, `TCRAB_HOME/usage/<দিন>.jsonl`-এ লেখা হয়, আর প্যানেলে প্রতি উত্তরের নিচে টোকেন ফুটার + উপরে "N tok today" পিল দেখায়; `termcrab usage [--json]` ঠিক একই সংখ্যা দেয়। দাম শুধু তখনই দেখায় যখন দাম জানা (নিজের config বা ডেটাংকা snapshot) — **কোনো সংখ্যা বানানো হয় না**, সার্ভার কিছু না দিলে কিছুই দেখায় না, আর অফলাইন mock-এর সংখ্যা `≈ estimated` লেবেল পায়।
+- **সংখ্যায়:** ৪৬৩টা টেস্ট · ০ ফেল · ~২০ সেকেন্ড; census core-এর শেষ সারিটাও গেল — **core lane ~৭ দিন → ~৪ দিন বাকি** (BROKEN আগেই ০)।
+- **পরের কাজ (ব্যাচ ১০):** Tier-0 sweep — সাতটা ছোট ফ্লিপ (config যাচাই করে hot-reload, `run --wait`, বাইরে থেকে stop, progress draft, skill precedence, disk budget, release discipline), মোট **~৫.৫ দিন**।
+- **কীভাবে নিজে যাচাই করবে:** প্যানেলে একটা মেসেজ দাও — উত্তরের নিচে টোকেন দেখবে; তারপর `termcrab usage`, `node scripts/status.mjs`, `node scripts/census.mjs`, প্যানেলের **Work** পেজ।
 
 ---
 
-## 2. Now — batch 8: one writer per transcript (this commit)
+## 2. Now — batch 9: usage and cost accounting (this commit)
 
-**Why:** this was the last census **BROKEN** row, and it was real. `SessionQueue` serialised turns *inside one process*; the gateway installed its runner with `skipQueue`, and `SessionStore.append` had no writer claim at all — so the panel and a `termcrab agent` (or a cron tick against the same session id) could interleave lines into one `sessions/<id>.jsonl`, and a kill between `open` and `write` could leave a half-written line that every later reader had to guess at. The fix had to live in the store, because CLI/dream/heartbeat/cron all call `runTurn` directly and never touch the queue.
+**Why:** the census called this row **ABSENT** and it was the last one in the core lane: no provider parsed `usage`, no event carried it, no surface showed it. On a phone on mobile data the token count is the number that decides whether an always-on agent is affordable — and a number nobody may invent. So the rule for this batch: **measured, never modelled**; absent when the server says nothing; the one estimated number (the offline mock) is labelled as estimated everywhere it appears.
 
 | # | Step | Status | Evidence / acceptance test |
 |---|---|---|---|
-| 8.1 | A session has one writer at a time | ✔ done | `test/writer-fence.test.ts` 8.1: a second claim is refused and names the holder (owner + pid); 8.1b: a real `runTurn` on a held session returns `[busy] … cli …`, emits an error event, and writes **nothing** |
-| 8.2 | The claim survives a crash | ✔ done | 8.2: a dead pid and a stale heartbeat are both reclaimed; a live holder with a fresh heartbeat is still honoured |
-| 8.3 | Appends are atomic per entry | ✔ done | 8.3: a torn tail (`{"role":"assis`) is cut before the next write, every remaining line parses, and one append adds exactly one line (single `O_APPEND` write, no rewrite) |
-| 8.4 | Channel, voice and cron turns go through the lane | ✔ done | 8.4: two surfaces on one session id serialise — the provider never sees two calls at once, order is preserved; telegram/whatsapp, the wake loop and cron now submit via `runQueuedTurn`, closing the batch-5 limit |
-| 8.5 | The last BROKEN row leaves the census | ✔ done | `node scripts/census.mjs` → **BROKEN 1 → 0**, drift 0 (probes: `WriterHolder`); the remaining BROKEN row was the docs map, so it was fixed for real and is now guarded by `test/docs-map.test.ts` |
+| 9.1 | Provider responses carry usage | ✔ done | `test/usage.test.ts` 9.1: a non-streamed body is parsed; a streamed turn reads the final usage frame (and the request asks for it with `stream_options.include_usage`); a server that reports nothing yields `usage: undefined`; the mock reports deterministic numbers with `estimated: true` |
+| 9.2 | The loop records usage per turn | ✔ done | 9.2: a real turn sums every provider call (the mock makes two), `run:end` carries the sum, and `TCRAB_HOME/usage/<day>.jsonl` gets one line per turn; a second turn adds to the day. 9.2b: cost comes from `provider.priceInPerM/priceOutPerM` or from a **dated** snapshot, and an unpriced model returns no cost at all |
+| 9.3 | The panel shows tokens per turn and per day | ✔ done | 9.3: the transcript footer is rendered from the event *and* persisted on the assistant entry (a reload keeps it); the top bar shows "N tok today" from `/api/usage`; the mock's numbers carry the `≈ estimated` label |
+| 9.4 | The CLI reports it | ✔ done | 9.4: `termcrab usage [--json]` is asserted equal to the panel's numbers against a live gateway, and with the panel down it prints "The panel is not running, so there is nothing to measure." and exits non-zero |
+| 9.5 | The token row leaves the census | ✔ done | `node scripts/census.mjs` → that row ABSENT → **WORKING**, drift 0, core lane ~7d → **~4d** (probe: `promptTokens\|totalTokens\|completionTokens` present) |
 
-**Extras the tests forced:** the fence is re-entrant for the *same* surface in the same process (a tool that starts a nested turn on the same session is not a second writer), and a live writer whose claim lapsed (TTL expiry while stalled) retakes it on its next append instead of losing an entry — losing transcript lines would be worse than a lock that lapsed. Lock files are `sessions/<id>.lock`, so `list()` and `purgeOlderThan()` ignore them by construction and the panel shows no phantom sessions.
+**Extras the tests forced:** the meter had to survive the *whole* turn, not the last call — the number you see is the sum of the tool loop (that is the number you are billed for); and it is written on every exit path (normal, aborted, capped, error), because a turn that burned tokens and then failed still cost money. The offline mock got a deterministic estimator (4 chars ≈ 1 token, marked estimated) so the UI, the CLI and the tests all have the same numbers without a tokeniser.
 
-**Known limits (declared, not hidden):** the claim is a lock file, not an OS advisory lock — a writer that bypasses `SessionStore.append` can still write the file (nothing in Node can stop that portably); `waitMs` waits synchronously (`Atomics.wait`) because the store is synchronous, so waiting is for short handovers, while queueing remains the mechanism for real work; only the last line of a torn file is healed (a torn line in the middle means something else rewrote the file, which is exactly what the fence prevents).
+**Known limits (declared, not hidden):** streaming usage depends on the server honouring `stream_options.include_usage` — when it does not, the turn shows tokens only if a non-streamed retry happened; nothing is inferred from text length. The built-in price table is a snapshot (`PRICING_AS_OF`, shown next to every cost) and prices change; set `provider.priceInPerM`/`priceOutPerM` for exact numbers. There is no daily budget *enforcement* ("stop spending at $X") — that is a separate capability, and it is not invented here. Usage lines are per day and never rotated.
 
-**Next action:** batch 9 step 9.1 — take the usage numbers the providers already return and stop throwing them away.
+**Next action:** batch 10 step 10.1 — make a bad config unable to break a running agent (Tier-0 sweep).
 
 ---
 
-## 3. Next — batch 9: usage and cost accounting (core lane, ~3 days)
+## 3. Next — batch 10: the Tier-0 sweep (7 small flips, ~5.5 days)
 
-The census calls this row **ABSENT**: `usage` (prompt/completion tokens) is parsed by no provider, carried by no event, shown by no surface. On a phone on mobile data that is the one number the owner needs to trust an always-on agent — and it is also the last core-lane row in the plan.
+Everything left in the core plan is small and each item flips one census row in hours, not weeks. All seven are named in [BEAT-PLAN.md](docs/openclaw/BEAT-PLAN.md) Tier 0 with their own acceptance test.
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 9.1 | Provider responses carry usage | ☐ todo | `ChatResult` exposes prompt/completion tokens for every provider, mock included (the mock reports deterministic numbers so tests never guess) |
-| 9.2 | The loop records usage per turn | ☐ todo | a finished turn reports its tokens (and cost when the model is priced); `run:end` carries them to the panel |
-| 9.3 | The panel shows tokens per turn and per day | ☐ todo | the transcript footer shows the turn's tokens; the header/status line shows today's total, from real events — never an estimate |
-| 9.4 | The CLI reports it | ☐ todo | `termcrab usage` prints today's tokens (and cost) for the running panel, or says the panel is down instead of inventing numbers |
-| 9.5 | The token row leaves the census | ☐ todo | `census.mjs`: that row ABSENT → PARTIAL/WORKING with a probe on the real code, drift 0 |
+| 10.1 | A broken config never breaks a running agent | ☐ todo | invalid JSON or an unknown key → config stays unchanged, a warning says why (T0.1) |
+| 10.2 | `termcrab run --wait <id>` | ☐ todo | a script can wait for a run and read its output + exit code (T0.2) |
+| 10.3 | Stop a running turn from outside | ☐ todo | abort mid-run from the panel → `[interrupted]`, no orphaned work (T0.3) |
+| 10.4 | Progress drafts while thinking | ☐ todo | at least two partial-text events before the final reply (T0.4) |
+| 10.5 | Skill precedence written and tested | ☐ todo | a user skill overrides a bundled one, and the order is documented (T0.5) |
+| 10.6 | A disk budget that trims instead of crashing | ☐ todo | over budget → keeps the last N days and prints the freed bytes (T0.6) |
+| 10.7 | Release discipline | ☐ todo | a release script writes the notes from CHANGELOG and tags the commit (T0.7) |
 
 ## 4. Done — batches, commits, and the proof
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 9 | `_this commit_` | **Usage, measured**: providers parse `usage` (stream + non-stream, mock deterministic and marked estimated), the loop sums it across the tool loop and emits/persists it per turn, `TCRAB_HOME/usage/<day>.jsonl` is the meter, `/api/usage` + `termcrab usage [--json]` report it, the panel shows a per-turn footer and a daily pill; cost only from known prices (config or a dated snapshot) | `test/usage.test.ts` (6 cases incl. a live gateway + the real CLI binary, and the panel-down path) | census: usage row ABSENT → WORKING, core lane ~7d → **~4d**, drift 0 |
 | 8 | `f1283d9` | **One writer per transcript**: `SessionStore.claim()` — writer lock (owner + pid + heartbeat), refused-by-name second writer, stale-claim reclaim, atomic one-line appends with torn-tail healing, and a live writer that never loses an entry; telegram/whatsapp/wake/cron now run through the per-session lane; `docs/ARCHITECTURE.md` fixed and guarded by a test | `test/writer-fence.test.ts` (5 cases: claim/refuse, stale reclaim, torn write, refusal to write, two surfaces one lane) + `test/docs-map.test.ts` (2 cases) | **457 tests · 0 fail · ~19 s**; census **BROKEN 1 → 0**, drift 0, capability 48%, core lane 12d → ~7d |
 | 7 | `4562b6c` | **Memory that does not forget**: the prompt gets the newest facts first, budgeted and sourced (`MEMORY.md:<line>`), `remember()` reports where it wrote; compaction writes a digest and archives the overflow instead of deleting it, `read()` returns the whole conversation, and the model still sees the compacted digest; new `agent.memoryBudget` (3000 bytes) | `test/memory-truth.test.ts` (6 cases: newest-fact injection, a real run's system prompt, no-deletion compaction, digest injection, budget honesty, provenance) + `test/compaction.test.ts` | census **BROKEN 3 → 1**, drift 0, core lane 18d → 12d |
 | 6 | `4dd35be` | **An approval gate that really stops the tool**: the loop consults `needsApproval()` before dispatch, emits the pending record over SSE, waits with a timeout + default policy, and the decision is answerable from the panel card or `termcrab approvals`; refusal is a tool result, abort is honoured | `test/approvals.test.ts` (7 cases: gate, refusal, timeout, `onTimeout:allow`, real CLI over HTTP, panel source) | census **BROKEN 4 → 3**, drift 0, core lane 23d → 18d |

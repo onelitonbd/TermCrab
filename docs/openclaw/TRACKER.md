@@ -47,21 +47,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 31 | wired and observable |
+| ✅ WORKING | 32 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 61 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 44 | nothing in the tree |
+| ⚪ ABSENT | 43 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 48%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 49%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~7d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~4d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~449d | |
+| **total** | 150 | ~446d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -134,7 +134,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent | parity | 3 |
 
-### gateway — 52% (16 checks)
+### gateway — 58% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -152,7 +152,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Multi-agent routing | per-agent workspace, session, store | 🟡 PARTIAL | workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48) | parity | 3 |
 | Presence | online/typing/presence events | ⚪ ABSENT | no presence module | later | 2 |
 | Remote access story | Tailscale, SSH, trusted proxy, TLS pinning | 🟡 PARTIAL | docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth | parity | 3 |
-| Usage / token accounting | per-run, per-model, per-session | ⚪ ABSENT | no usage field in src/providers/types.ts or src/agent/loop.ts; the UI cannot show cost | core | 3 |
+| Usage / token accounting | per-run, per-model, per-session | ✅ WORKING | providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4) | core | — |
 | Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ⚪ ABSENT | no session watchdog | later | 3 |
 
 ### mobile — 79% (10 checks)
@@ -296,17 +296,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 ## 3. The broken rows — code that exists and does nothing
 
-This is the single most important list in this repository. Each one is a feature you can see in the file tree, that the docs and the UI may both imply exists, and that no code path reaches.
+**This list is empty, and that is the point.**
 
-**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run* — the **approval gate** (`needsApproval()` runs before tool dispatch, the request reaches the panel and the CLI, refusals are tool results, `test/approvals.test.ts`), the **memory pair** (*compaction that preserves history* + *memory bootstrap injection*, `test/memory-truth.test.ts`, `test/compaction.test.ts`), the **write fence** (*transcript write fencing*: a claim per session, stale claims reclaimed, atomic appends; `test/writer-fence.test.ts`) and the **docs map** (`docs/ARCHITECTURE.md` finally names `src/providers/` as it is, and `test/docs-map.test.ts` fails if either map doc names a `.ts` file that is not in the repo). The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
+The rule that built it: a row leaves this table only when a test proves it, not when the code looks better. Everything that was on it has left that way — *Request authentication* and *Inbound webhooks* (`test/auth.test.ts`), the queue trio (`test/queue-serialize.test.ts`), the **approval gate** (`test/approvals.test.ts`), the **memory pair** (`test/memory-truth.test.ts`, `test/compaction.test.ts`), **transcript write fencing** (`test/writer-fence.test.ts`), the **docs map** (`test/docs-map.test.ts`) and the last one, **token/cost accounting** (`test/usage.test.ts`: providers → loop → the day meter → `/api/usage` → `termcrab usage` → the panel footer).
 
 | # | Capability | Evidence | What it costs you today |
 |---|---|---|---|
-| 1 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). Batch 9. |
+| — | *(nothing)* | — | Nothing in the tree is a feature that no code path reaches. It stays that way because every batch ends with `node scripts/census.mjs` (BROKEN must stay 0, drift must stay 0) and because a new claim has to arrive with its test. |
 
-*(The census carries **0 BROKEN rows** as of batch 8. Token accounting is the last one that matters enough to stay on this page — it is ABSENT rather than BROKEN, i.e. nothing pretends it exists, which is why the census no longer counts it here.)*
-
-Fix order, evidence and effort for the remaining row are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 9 (usage/tokens), then parity work.
+**What is still missing is *absent*, not broken** — nobody pretends it exists. The core lane is nearly finished (~4 focused days left, all of it Tier-0 polish in [BEAT-PLAN.md](BEAT-PLAN.md)); the long tail is parity work (channels, plugins, provider breadth) and by design wait until the phone-first story is airtight.
 
 ---
 

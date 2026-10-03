@@ -2218,6 +2218,25 @@
   }
   .menuBtn:hover { background: var(--soft); color: var(--ink); }
   .menuBtn svg { color: #f0517d; flex-shrink: 0; }
+  .usagePill {
+    margin-left: auto;
+    margin-right: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--b1, #f1e7f6);
+    color: var(--mut);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: default;
+  }
+  .usagePill.hidden { display: none; }
+  .turnUsage {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--mut);
+    opacity: 0.85;
+  }
   #health {
     font-size: 12.5px;
     font-weight: 500;
@@ -2297,6 +2316,7 @@
   <button id="navBtn" class="ib" aria-label="Open menu" title="Menu">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
   </button>
+  <span id="usageToday" class="usagePill hidden" title="today's tokens, measured from what the model reported"></span>
   <button id="menuBtn" class="ib" aria-label="More actions" title="More actions">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
   </button>
@@ -4288,6 +4308,13 @@
       clearTimeout(state.liveTimer);
       state.liveTimer = setTimeout(() => { state.livePaint = 0; paint(); }, 150);
     });
+    es.addEventListener('run:end', (e) => {
+      try {
+        const ev = JSON.parse(e.data);
+        if (ev.usage) addUsageFooter(ev.usage, ev.costUsd);
+        refreshUsage();
+      } catch { /* malformed event */ }
+    });
     es.addEventListener('thinkingCaps', (e) => {
       try {
         const ev = JSON.parse(e.data);
@@ -4768,6 +4795,52 @@
     } catch { /* non-fatal */ }
   }
 
+  /** Token counts, short: 1234 -> "1.2k". */
+  function fmtTok(n) {
+    const v = Number(n) || 0;
+    if (v < 1000) return String(v);
+    if (v < 1000000) return (v / 1000).toFixed(v < 10000 ? 1 : 0) + 'k';
+    return (v / 1000000).toFixed(2) + 'M';
+  }
+
+  /** The per-turn meter under an assistant bubble: measured, or explicitly estimated. */
+  function addUsageFooter(usage, costUsd) {
+    if (!usage || !usage.totalTokens) return;
+    const target = (state.live && log.contains(state.live))
+      ? state.live
+      : [...log.querySelectorAll('.msg.bot')].pop();
+    if (!target) return;
+    if (target.querySelector('.turnUsage')) return;
+    const est = usage.estimated ? '≈ ' : '';
+    const parts = [est + fmtTok(usage.totalTokens) + ' tokens'];
+    if (usage.promptTokens) parts.push('in ' + fmtTok(usage.promptTokens));
+    if (usage.completionTokens) parts.push('out ' + fmtTok(usage.completionTokens));
+    if (typeof costUsd === 'number') parts.push('~$' + costUsd.toFixed(4));
+    const node = document.createElement('div');
+    node.className = 'turnUsage';
+    node.textContent = parts.join(' · ');
+    node.title = usage.estimated
+      ? 'Estimated by the offline mock provider — a real server reports measured tokens'
+      : 'Reported by the model provider for this turn' + (typeof costUsd === 'number' ? '; cost from a dated price snapshot' : '');
+    target.appendChild(node);
+  }
+
+  /** Today's total in the top bar. Reads the meter; never renders a guess. */
+  async function refreshUsage() {
+    const pill = $('usageToday');
+    if (!pill) return;
+    try {
+      const d = await api('/api/usage');
+      if (!d || !d.turns) { pill.classList.add('hidden'); return; }
+      pill.textContent = fmtTok(d.totalTokens) + ' tok today';
+      pill.title = `${d.turns} turn(s), ${d.calls} model call(s) today\ntokens: in ${d.promptTokens} · out ${d.completionTokens}` +
+        (typeof d.costUsd === 'number' && d.priced ? `\n~$${d.costUsd.toFixed(4)} (price snapshot ${d.pricingAsOf})` : '\ncost unknown for this model');
+      pill.classList.remove('hidden');
+    } catch {
+      pill.classList.add('hidden');
+    }
+  }
+
   async function loadSession(id, quiet) {
     updateChatLabel();
     try {
@@ -4807,6 +4880,8 @@
             }
             tb.innerHTML = renderMarkdown(m.content);
           }
+          // The meter is part of the transcript, so a reload keeps the footer.
+          if (m.usage) addUsageFooter(m.usage, m.costUsd);
         }
       }
       state.live = null;
@@ -7019,6 +7094,7 @@ async function bootstrap() {
       refreshThinkingBtn();
       refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
+      refreshUsage(); setInterval(refreshUsage, 60000);
       connectEvents();
       refreshApprovals();
       loadSlashCommands();

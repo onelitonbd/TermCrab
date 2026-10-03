@@ -1,14 +1,4 @@
-import {
-  ChatOpts,
-  ChatRequest,
-  ChatResult,
-  FetchLike,
-  Provider,
-  ProviderError,
-  readError,
-  ToolDef,
-  isAbortError,
-} from './types.js';
+import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider, ProviderError, ToolDef, Usage, isAbortError, readError } from './types.js';
 import { sseData } from './sse.js';
 import {
   getModelCapabilities,
@@ -121,6 +111,22 @@ function clampLevel(requested: ThinkingLevel, supported: readonly ThinkingLevel[
  * Works for OpenAI, OpenRouter, Groq, DeepSeek, Ollama (/v1), and most compatible
  * servers - including SSE streaming of text and tool-call fragments.
  */
+/**
+ * Turn a provider's `usage` object into our shape, or undefined when there is
+ * nothing to read. Never invents a missing count from the other two: a server
+ * that reports partial numbers gets partial numbers shown.
+ */
+function parseUsage(raw?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }): Usage | undefined {
+  if (!raw) return undefined;
+  const p = typeof raw.prompt_tokens === 'number' ? raw.prompt_tokens : undefined;
+  const c = typeof raw.completion_tokens === 'number' ? raw.completion_tokens : undefined;
+  const t = typeof raw.total_tokens === 'number' ? raw.total_tokens : undefined;
+  if (p === undefined && c === undefined && t === undefined) return undefined;
+  const prompt = p ?? 0;
+  const completion = c ?? 0;
+  return { promptTokens: prompt, completionTokens: completion, totalTokens: t ?? prompt + completion };
+}
+
 export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Provider {
 
   /**
@@ -231,6 +237,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     tools: Map<number, ToolAcc>,
     finish: string,
     thinking?: string,
+    usage?: Usage,
   ): ChatResult {
     // If text contains inline <think>...</think> tags, extract them
     let cleanText = text;
@@ -252,7 +259,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
           : finish === 'stop'
             ? 'end'
             : 'unknown';
-    return { text: cleanText, toolCalls, stopReason, thinking: extractedThinking || undefined };
+    return { text: cleanText, toolCalls, stopReason, thinking: extractedThinking || undefined, usage };
   }
 
   async function basic(req: ChatRequest, opts?: ChatOpts): Promise<ChatResult> {
@@ -288,6 +295,8 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
         };
         finish_reason?: string;
       }[];
+      /** OpenAI-compatible servers report this on every non-streamed call. */
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
     };
     const choice = data.choices?.[0];
     const msg = choice?.message;
@@ -302,7 +311,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     for (const tc of msg?.tool_calls ?? []) {
       toolsOut.set(toolsOut.size, { id: tc.id, name: tc.function.name, args: tc.function.arguments || '{}' });
     }
-    const result = finalize(text || '', toolsOut, choice?.finish_reason ?? '', thinkingText);
+    const result = finalize(text || '', toolsOut, choice?.finish_reason ?? '', thinkingText, parseUsage(data.usage));
     // A caller that passed onDelta may be rendering incrementally (this is also
     // the retry path when streaming fails). Flush what we got as one chunk so
     // the UI actually shows the reply instead of waiting on nothing.
@@ -318,6 +327,11 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
       [tokenLimitKey()]: req.maxTokens ?? cfg.maxTokens,
       temperature: req.temperature ?? cfg.temperature,
       stream: true,
+      // Ask for a final frame carrying `usage`. Servers that do not know the
+      // option ignore it; the ones that do make streaming metered. A server
+      // that rejects it outright fails before any delta, and the caller's
+      // existing retry path falls back to the non-streaming shape.
+      stream_options: { include_usage: true },
     };
     applyThinking(body, req);
     const tools = toOpenAiTools(req.tools);
@@ -338,6 +352,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     let text = '';
     let thinkingText = '';
     let finish = '';
+    let usage: Usage | undefined;
     const acc = new Map<number, ToolAcc>();
 
     for await (const data of sseData(res)) {
@@ -353,6 +368,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
           };
           finish_reason?: string | null;
         }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
       };
       try {
         frame = JSON.parse(data);
@@ -381,9 +397,12 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
         if (tc.function?.arguments) a.args += tc.function.arguments;
       }
       if (choice?.finish_reason) finish = choice.finish_reason;
+      // The usage frame usually has an empty choices array — read it outside
+      // the choice check above or the whole number is dropped.
+      if (frame.usage) usage = parseUsage(frame.usage) ?? usage;
     }
 
-    return finalize(text, acc, finish, thinkingText);
+    return finalize(text, acc, finish, thinkingText, usage);
   }
 
   return {

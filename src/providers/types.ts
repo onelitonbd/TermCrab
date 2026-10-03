@@ -37,6 +37,21 @@ export interface ChatRequest {
   thinkingLevel?: ThinkingLevel;
 }
 
+/**
+ * What a provider really billed for one call.
+ *
+ * `estimated` marks a number this client computed (the offline mock provider)
+ * rather than one a server reported — every surface that shows it says so.
+ * When a server reports nothing, `ChatResult.usage` stays `undefined`: we never
+ * guess a token count from text length and present it as a measurement.
+ */
+export interface Usage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimated?: boolean;
+}
+
 export interface ChatResult {
   text: string;
   toolCalls: { id: string; name: string; args: Record<string, unknown> }[];
@@ -44,6 +59,8 @@ export interface ChatResult {
   thinking?: string;
   /** Raw reasoning blocks to store and send back verbatim (Anthropic). */
   thinkingBlocks?: unknown[];
+  /** Tokens reported by the server for this call, when it reported any. */
+  usage?: Usage;
 }
 
 export interface ChatOpts {

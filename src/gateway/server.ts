@@ -25,6 +25,8 @@ import { MemoryStore } from '../agent/memory.js';
 import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
 import { runDream, startDreamScheduler, readDreamState, dreamHistory } from '../agent/dream.js';
 import { countMemoryFacts } from '../agent/status.js';
+import { usageForDay } from '../core/usage.js';
+import { PRICING_AS_OF } from '../core/pricing.js';
 import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
@@ -1555,6 +1557,29 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         if (req.method === 'POST' && pathname === '/api/doctor') {
           const checks = await runDoctor();
           json(res, 200, { checks });
+          return;
+        }
+
+        // Token meter for the day (and any past day by ?day=YYYY-MM-DD).
+        // Measured, never modelled: an empty day is all zeros, and a model
+        // nobody priced comes back with no costUsd at all.
+        if (req.method === 'GET' && pathname === '/api/usage') {
+          const raw = new URL(req.url || '/', 'http://localhost').searchParams.get('day');
+          let when = new Date();
+          if (raw) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+            if (!m) {
+              json(res, 400, { error: 'day must look like YYYY-MM-DD' });
+              return;
+            }
+            when = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+          }
+          json(res, 200, {
+            ...usageForDay(when),
+            pricingAsOf: PRICING_AS_OF,
+            priceConfigured:
+              typeof config.provider.priceInPerM === 'number' || typeof config.provider.priceOutPerM === 'number',
+          });
           return;
         }
 

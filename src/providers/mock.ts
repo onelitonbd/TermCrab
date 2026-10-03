@@ -1,4 +1,4 @@
-import { ChatOpts, ChatRequest, ChatResult, Provider } from './types.js';
+import { ChatOpts, ChatRequest, ChatResult, Provider, Usage } from './types.js';
 
 /**
  * The offline brain.
@@ -20,6 +20,21 @@ import { ChatOpts, ChatRequest, ChatResult, Provider } from './types.js';
 
 /** Split text into a few deltas so onDelta / SSE streaming is exercised. */
 const CHUNKS = 4;
+
+/**
+ * The mock's token counter: 4 characters per token, plus a small per-message
+ * overhead. Deterministic on purpose — a test that asserts a number must not
+ * depend on a tokeniser — and honest about what it is: every Usage this
+ * provider returns carries `estimated: true`, and the panel/CLI label it.
+ */
+function estimate(messages: { content?: string }[], text = ''): Usage {
+  const overhead = 4;
+  let chars = text.length;
+  for (const m of messages) chars += m.content?.length ?? 0;
+  const promptTokens = messages.length * overhead + Math.ceil(messages.reduce((a, m) => a + (m.content?.length ?? 0), 0) / 4);
+  const completionTokens = Math.ceil(text.length / 4);
+  return { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens, estimated: true };
+}
 
 export function createMock(model = 'mock-1'): Provider {
   const resolved = model && model.trim() ? model.trim() : 'mock-1';
@@ -44,6 +59,7 @@ export function createMock(model = 'mock-1'): Provider {
             text: '',
             toolCalls: [{ id: `mock-call-${resolved}`, name: tool.name, args: {} }],
             stopReason: 'tool',
+            usage: estimate(messages),
           };
         }
         // No tools offered at all: still answer, so a tools-less caller works.
@@ -64,7 +80,7 @@ export function createMock(model = 'mock-1'): Provider {
         }
       }
 
-      return { text, toolCalls: [], stopReason: 'end' };
+      return { text, toolCalls: [], stopReason: 'end', usage: estimate(messages, text) };
     },
   };
 }

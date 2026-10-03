@@ -129,9 +129,9 @@ check('gateway', 'Presence', 'online/typing/presence events', 'ABSENT',
 check('gateway', 'Remote access story', 'Tailscale, SSH, trusted proxy, TLS pinning', 'PARTIAL',
   'docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth',
   { pattern: /non-loopback/, expect: 'present' }, 3);
-check('gateway', 'Usage / token accounting', 'per-run, per-model, per-session', 'ABSENT',
-  'no usage field in src/providers/types.ts or src/agent/loop.ts; the UI cannot show cost',
-  { pattern: /promptTokens|totalTokens|completionTokens/, expect: 'absent' }, 3);
+check('gateway', 'Usage / token accounting', 'per-run, per-model, per-session', 'WORKING',
+  'providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4)',
+  { pattern: /promptTokens|totalTokens|completionTokens/, expect: 'present' }, 0);
 check('gateway', 'Stuck-run diagnostics', 'stalled/stuck session notices, watchdogs', 'ABSENT',
   'no session watchdog', { pattern: 'stalled|stuck', expect: 'absent' }, 3);
 

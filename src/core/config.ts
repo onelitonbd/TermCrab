@@ -17,6 +17,13 @@ export interface ProviderCfg {
   temperature?: number;
   /** Stream tokens over SSE (default true). Set false to force request-per-reply. */
   stream?: boolean;
+  /**
+   * Your provider's prices, per 1,000,000 tokens. Set these to make the cost
+   * column exact; when unset, a dated snapshot is used (and labelled), and a
+   * model nobody priced shows tokens with no cost at all.
+   */
+  priceInPerM?: number;
+  priceOutPerM?: number;
 }
 
 export interface ProviderKeyEntry {

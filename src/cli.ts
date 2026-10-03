@@ -18,6 +18,7 @@ import { nextRun, parseCron } from './cron/parser.js';
 import { listAgents, agentExists, sanitizeAgentName } from './agent/prompt.js';
 import { speak } from './mobile/tts.js';
 import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
+import { formatTokens, usageForDay, type UsageDay } from './core/usage.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
 import { statusReport } from './agent/status.js';
@@ -68,6 +69,7 @@ Everyday extras:
   termcrab approvals [list]          dangerous tools waiting for your yes/no (panel card answers too)
   termcrab approvals approve <id>    let that one tool run
   termcrab approvals deny <id>       refuse it — the agent is told and moves on
+  termcrab usage [--json]           today's tokens (and cost when a price is known)
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
   termcrab supervisor                start the gateway with auto-restart (always-on mode)
   termcrab onboard                   first-time setup wizard
@@ -757,6 +759,48 @@ export async function main(argv: string[]): Promise<void> {
           console.error('Approvals live inside the running panel (that is where the blocked tool is waiting).');
         } else {
           console.error(`approvals: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    case 'usage': {
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      const asJson = rest.includes('--json');
+      type UsageResponse = UsageDay & { pricingAsOf: string; priceConfigured: boolean };
+      try {
+        const data = await client.json<UsageResponse>('/api/usage');
+        if (asJson) {
+          console.log(JSON.stringify(data, null, 2));
+          return;
+        }
+        console.log('');
+        if (!data.turns) {
+          console.log(`  📊 No turns metered today (${data.day}).`);
+          console.log('     Tokens show up as soon as a model reports them, and never before.');
+          console.log('');
+          return;
+        }
+        console.log(`  📊 Today (${data.day}) — ${data.turns} turn(s), ${data.calls} model call(s)`);
+        console.log(`     tokens   ${formatTokens(data.totalTokens)}   (in ${formatTokens(data.promptTokens)} · out ${formatTokens(data.completionTokens)})`);
+        if (data.priced) {
+          console.log(`     cost     ~$${data.costUsd.toFixed(4)}   (price snapshot ${data.pricingAsOf}${data.priceConfigured ? ' · your configured prices' : ''})`);
+        } else {
+          console.log('     cost     unknown — set provider.priceInPerM / priceOutPerM to make it exact');
+        }
+        for (const [model, m] of Object.entries(data.byModel)) {
+          console.log(`     ${model.padEnd(22)} ${formatTokens(m.totalTokens).padStart(8)} tokens`);
+        }
+        console.log('');
+        return;
+      } catch (err) {
+        if (err instanceof GatewayNotRunningError) {
+          console.error('The panel is not running, so there is nothing to measure.');
+          console.error('Start it with `termcrab gateway`, then ask again.');
+        } else {
+          console.error(`usage: ${err instanceof Error ? err.message : String(err)}`);
         }
         process.exitCode = 1;
       }

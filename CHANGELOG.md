@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.41.0 - 2026-10-03
+
+- **You can see what the agent costs.** Providers now parse the `usage` block they were already being sent — both on streamed calls (the request asks for a usage frame) and non-streamed ones — and the loop **sums a whole turn** across its tool loop, because that is the number you are billed for. Every turn writes one line to `TCRAB_HOME/usage/<day>.jsonl`, `run:end` carries the numbers to the panel, and the assistant entry stores them so the footer survives a reload.
+- **Three surfaces, one number.** The panel shows a per-turn footer under the reply (`1.2k tokens · in 900 · out 334 · ~$0.0042`) and a "N tok today" pill in the top bar; `termcrab usage [--json]` prints the same totals and per-model breakdown; `GET /api/usage[?day=YYYY-MM-DD]` is the source both read. With the panel down the CLI says so instead of inventing a number.
+- **Measured, never modelled.** A server that reports nothing yields no usage at all — nothing is inferred from text length. The only estimated numbers come from the offline mock, and they carry `≈ estimated` in the panel. Cost appears only when a price is known: your `provider.priceInPerM` / `priceOutPerM`, or a **dated** built-in snapshot (`PRICING_AS_OF`) that is printed next to every cost. An unpriced model shows tokens with no cost.
+- Tests: **463 cases, 0 failures** (6 new in `test/usage.test.ts`, including a live gateway and the real CLI binary). Full run ~20 s. Census: the usage row **ABSENT → WORKING**, drift 0, core lane ~7d → **~4d** — that was the last core-lane capability.
+
 ## 0.40.0 - 2026-10-03
 
 - **One writer per transcript — the last BROKEN row.** `SessionStore` now takes a writer **claim** before a turn writes anything: a lock file holding owner, pid and a heartbeat. A second writer (the CLI while the panel is answering, a cron tick against a live chat, another surface in the same process) is **refused by name** — `[busy] session web:main is being written by gateway (pid 4242, last write 0s ago); nothing was written.` — instead of interleaving lines into the same JSONL. The claim survives a crash: a dead pid or a heartbeat older than the TTL is reclaimed, and a live writer whose claim lapsed retakes it on its next append rather than losing an entry.

@@ -1,7 +1,7 @@
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
 import { providerSummary, resolveProvider, resolveProviderChain } from '../providers/index.js';
-import { ChatResult, Provider, ProviderMessage, ThinkingLevel } from '../providers/types.js';
+import { ChatResult, Provider, ProviderMessage, ThinkingLevel, Usage } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { Entry, newRunId, QueueFullError, QueuedTurn, SessionQueue, SessionStore } from './sessions.js';
@@ -16,6 +16,8 @@ import {
 import { buildTools, Tool, ToolEnv } from './tools.js';
 import { spawnTask as spawnBgTask } from './tasks.js';
 import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing.js';
+import { computeCost } from '../core/pricing.js';
+import { recordUsage } from '../core/usage.js';
 
 export type AgentEvent =
   | { type: 'run:start'; runId: string; sessionId: string }
@@ -23,7 +25,17 @@ export type AgentEvent =
   | { type: 'thinking:delta'; text: string; sessionId?: string }
   | { type: 'tool:start'; name: string; args: Record<string, unknown>; toolCallId?: string; sessionId?: string }
   | { type: 'tool:end'; name: string; ok: boolean; preview: string; result: string; toolCallId?: string; sessionId?: string }
-  | { type: 'run:end'; runId: string; text: string; sessionId: string; iterations: number }
+  | {
+      type: 'run:end';
+      runId: string;
+      text: string;
+      sessionId: string;
+      iterations: number;
+      /** Summed over every provider call this turn made (absent when unreported). */
+      usage?: Usage;
+      /** Only when a price was known for the model. */
+      costUsd?: number;
+    }
   /** A message steered into the running turn (queue mode 'steer'). */
   | { type: 'steer'; text: string; sessionId: string }
   | { type: 'approval'; approval: import('../core/approvals.js').Approval }
@@ -263,6 +275,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
   } else {
     provider = resolveProvider(ctx.config.provider, ctx.fetchImpl);
   }
+  const meterProvider = { name: provider.name, model: provider.model };
   const toolEnv: ToolEnv = {
     config: ctx.config,
     memory: ctx.memory,
@@ -300,6 +313,56 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     if (opts.signal.aborted) abortCtrl.abort();
     else opts.signal.addEventListener('abort', () => abortCtrl.abort(), { once: true });
   }
+  // Usage is accumulated across the whole turn: a tool loop makes several
+  // provider calls, and the owner cares about the turn, not the call.
+  const usageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0, estimated: false };
+  const noteUsage = (usage?: Usage): void => {
+    if (!usage) return;
+    usageTotals.promptTokens += usage.promptTokens;
+    usageTotals.completionTokens += usage.completionTokens;
+    usageTotals.totalTokens += usage.totalTokens;
+    usageTotals.calls += 1;
+    if (usage.estimated) usageTotals.estimated = true;
+  };
+  /** Nothing reported by any call → nothing to report. Never a zero-filled guess. */
+  const turnUsage = (): Usage | undefined => {
+    if (usageTotals.calls === 0) return undefined;
+    return {
+      promptTokens: usageTotals.promptTokens,
+      completionTokens: usageTotals.completionTokens,
+      totalTokens: usageTotals.totalTokens,
+      ...(usageTotals.estimated ? { estimated: true } : {}),
+    };
+  };
+  const turnCost = (): number | undefined => {
+    const usage = turnUsage();
+    if (!usage) return undefined;
+    return computeCost(meterProvider.model, usage, ctx.config.provider);
+  };
+  /**
+   * The single exit of a turn: report the numbers to the surface and write one
+   * meter line for the day. Called on every path (normal, aborted, capped,
+   * error) so a turn that burned tokens never goes unaccounted.
+   */
+  const finishTurn = (text: string, iterations: number, error?: string): void => {
+    const usage = turnUsage();
+    const costUsd = turnCost();
+    if (usage) {
+      recordUsage({
+        sessionId,
+        provider: meterProvider.name,
+        model: meterProvider.model,
+        calls: usageTotals.calls,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        costUsd,
+      });
+    }
+    if (error) emit({ type: 'error', message: error });
+    emit({ type: 'run:end', runId, text, sessionId, iterations, usage, costUsd });
+  };
+
   try {
     // Steered messages land in the transcript and are picked up by the next
     // provider call, inside this same run (same run id). Consumed exactly once.
@@ -316,7 +379,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
       if (abortCtrl.signal.aborted) {
         finalText = '[interrupted] The user cancelled this request.';
         appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
-        emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
+        finishTurn(finalText, i);
         return finalText;
       }
       drainSteers();
@@ -337,6 +400,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
           emit({ type: 'thinking:delta', text: thinkingChunk, sessionId });
         },
       );
+      noteUsage(result.usage);
 
       if (result.toolCalls.length) {
         // Persist the assistant tool-call turn, then execute each tool.
@@ -367,7 +431,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
           if (repeatCount >= 8) {
             finalText = `[stopped] You repeated ${call.name} with the same arguments ${repeatCount} times.`;
             appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
-            emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
+            finishTurn(finalText, i);
             return finalText;
           }
           let output: string;
@@ -399,7 +463,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
                 resolveApproval(approval.id, false, 'aborted');
                 finalText = '[interrupted] The user cancelled this request.';
                 appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
-                emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
+                finishTurn(finalText, i);
                 if (span) endSpan(runId, span.id);
                 return finalText;
               }
@@ -466,15 +530,19 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         // reads was wiped on the next refresh even though the tools survived.
         thinking: result.thinking,
         thinkingBlocks: result.thinkingBlocks,
+        // Same reason for the meter: a reloaded transcript shows the turn's
+        // tokens because they are part of the entry, not a live-only event.
+        usage: turnUsage(),
+        costUsd: turnCost(),
       });
       endRun(runId);
-      emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i + 1 });
+      finishTurn(finalText, i + 1);
       return finalText;
     }
 
     finalText = `${finalText}\n\n[stopped: reached max tool iterations (${maxIter})]`.trim();
     appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
-    emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: maxIter });
+    finishTurn(finalText, maxIter);
     return finalText;
   } catch (err) {
     // Keep the cause (ECONNREFUSED, TLS, DNS codes) — the UI prints friendly
@@ -492,10 +560,10 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         ? `${base} (${causeBits})`
         : base;
     log.error('agent run failed:', message);
-    emit({ type: 'error', message });
     const fallback = `[agent error] ${message}`;
     appendEntry({ role: 'assistant', content: fallback, ts: Date.now() });
-    emit({ type: 'run:end', runId, text: fallback, sessionId, iterations: 0 });
+    // The provider may have billed the calls that did happen before the throw.
+    finishTurn(fallback, 0, message);
     return fallback;
   }
 }
