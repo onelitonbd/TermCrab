@@ -16,6 +16,8 @@ import {
 import { parseCron, CronParseError, nextRun } from '../cron/parser.js';
 import { saveConfig } from '../core/config.js';
 import { parseFrontmatter } from '../core/frontmatter.js';
+import { channelsWithDocuments, sendDocumentTo } from '../channels/conversations.js';
+import { acceptIncoming } from '../channels/media.js';
 import {
   listIntents,
   addIntent,
@@ -603,6 +605,40 @@ export function extraTools(env: ToolEnv): Tool[] {
     async execute(args) {
       await sendTo(argStr(args, 'channel'), argStr(args, 'address'), argStr(args, 'text'));
       return 'sent';
+    },
+  });
+  tools.push({
+    def: {
+      name: 'send_file',
+      description:
+        'Send a local file (photo, PDF, …) to a chat through a configured channel. ' +
+        'With no address it goes to the most recent conversation on that channel.',
+      schema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'file to send (inside the workspace/home)' },
+          caption: { type: 'string', description: 'short note to send with it' },
+          channel: { type: 'string', description: 'telegram | whatsapp | … (default: the only channel that can send files)' },
+          address: { type: 'string', description: 'chat id / jid (default: the last conversation on that channel)' },
+        },
+        required: ['path'],
+      },
+    },
+    async execute(args) {
+      const requested = argStr(args, 'path');
+      if (!requested) throw new Error('path is required');
+      const file = resolveInRoots(requested, [home(), process.cwd(), ...(env.extraRoots ?? [])]);
+      if (!fs.existsSync(file)) throw new Error(`no file at ${requested}`);
+      const size = fs.statSync(file).size;
+      const allowed = acceptIncoming({ name: path.basename(file), size });
+      if (!allowed.ok) throw new Error(`refusing to send ${path.basename(file)}: ${allowed.reason}`);
+      const channels = channelsWithDocuments();
+      if (!channels.length) throw new Error('no channel on this device can send files yet (Telegram is the one that can)');
+      const channel = argStr(args, 'channel') || channels[0]!;
+      const address = argStr(args, 'address') || undefined;
+      const caption = argStr(args, 'caption') || undefined;
+      const sent = await sendDocumentTo(channel, address, file, caption);
+      return `sent ${path.basename(file)} (${Math.max(1, Math.round(size / 1024))} KB) to ${sent.channel}:${sent.address}`;
     },
   });
   tools.push({

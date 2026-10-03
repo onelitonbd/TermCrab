@@ -246,7 +246,8 @@ check('tools', 'Phone / device tools', 'iOS+Android nodes (camera, screen, locat
 check('tools', 'Image / media generation', 'image, video, music generation', 'ABSENT',
   'no generation tools', { pattern: 'image_gen|generate_image', expect: 'absent' }, 6);
 check('tools', 'Document extraction', 'pdf/docx/pptx extraction', 'ABSENT',
-  'no document tools', { pattern: 'pdf', expect: 'absent' }, 3);
+  'no extraction libraries (a PDF that arrives is saved intact — see the channels media row — but its text is not parsed out)',
+  { pattern: /pdf-parse|pdfjs-dist|mammoth|pptx2json|libreoffice --convert/, expect: 'absent' }, 3);
 check('tools', 'Tool count', '~44 in-loop tools + plugin tools', 'PARTIAL',
   '41 in toolbox.ts + 13 in tools.ts', { pattern: "name: '", expect: 'present' }, 0);
 check('tools', 'Tool schema validation', 'TypeBox-validated arguments', 'PARTIAL',
@@ -306,18 +307,18 @@ check('channels', 'iMessage / Teams / Google Chat / LINE / Feishu / IRC…', '25
 check('channels', 'Channel routing rules', 'per-room routing, access groups, broadcast groups', 'ABSENT',
   'what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix)',
   { pattern: /broadcastGroup|accessGroup|roomRouting/, expect: 'absent' }, 6);
-check('channels', 'Group / ambient events', 'history reads, mention policy', 'ABSENT',
-  'no ambient-room reading, no mention/participation policy beyond the allowlist',
-  { pattern: /ambientRoom|groupHistory|historyRead/, expect: 'absent' }, 4);
-check('channels', 'Slash commands in chat', '30+ TUI / channel commands', 'PARTIAL',
-  '4 Telegram commands (/new /agents /status /heartbeat, server.ts:498-515) and 5 web commands (/api/slash, server.ts:1026)',
-  { pattern: /text === '\/new'/, expect: 'present' }, 4);
+check('channels', 'Group / ambient events', 'history reads, mention policy', 'PARTIAL',
+  'groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3',
+  { pattern: /groupPolicy/, expect: 'present' }, 3);
+check('channels', 'Slash commands in chat', '30+ TUI / channel commands', 'WORKING',
+  'every text channel shares the same commands: /new, /status, /usage (the real meter), /sessions (the real store), /memory (the real memory files), /agents, /providers, /heartbeat, /help (15.4, src/gateway/server.ts handleChannelMessage); the web panel has its own /api/slash set. Fewer words than their 30+, but each one answers from live data — pinned by test/tier2d.test.ts 15.4',
+  { pattern: /text === '\/usage'/, expect: 'present' }, 0);
 check('channels', 'Typing indicators', 'per-channel, on enqueue', 'WORKING',
   'src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1',
   { pattern: 'sendChatAction', expect: 'present' }, 0);
-check('channels', 'Media send/receive', 'images, audio, documents', 'PARTIAL',
-  'markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only',
-  { pattern: /mdToTelegramHtml|chunkText/, expect: 'present' }, 4);
+check('channels', 'Media send/receive', 'images, audio, documents', 'WORKING',
+  'inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2',
+  { pattern: 'sendDocument', expect: 'present' }, 3);
 
 // ------------------------------------------------------ 9. providers/models
 check('providers', 'Model providers', '35+ provider plugins + OAuth', 'PARTIAL',

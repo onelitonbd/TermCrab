@@ -105,6 +105,7 @@ users' runtime.
 | `src/channels/api.ts` | Telegram Bot API client (global fetch) |
 | `src/channels/conversations.ts` | Registry of external conversations (telegram/whatsapp/...) the channels touch |
 | `src/channels/discord.ts` | Discord (optional, discord.js) |
+| `src/channels/media.ts` | What a chat may hand the agent and the agent may send back: size/extension rules, inbox paths (15.1/15.2) |
 | `src/channels/markdown.ts` | Telegram markdown rendering (zero dependencies) |
 | `src/channels/matrix.ts` | Matrix (optional, matrix-js-sdk) |
 | `src/channels/picker.ts` | Telegram provider/model picker (v0.29.0) |
@@ -114,10 +115,9 @@ users' runtime.
 | `src/channels/telegram.ts` | long-poll loop, allowlist, chunking, outbox |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\|zsh\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\|zsh\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
-| `src/core/json-out.ts` | The one-shot: the CLI's `--json` envelope, failure included (14.1) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |
 | `src/core/disk.ts` | The disk budget (10.6) |
 | `src/core/friendly.ts` | Turn raw failures into sentences a non-coder can act on |

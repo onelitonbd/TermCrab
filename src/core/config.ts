@@ -104,6 +104,10 @@ export interface Config {
       /** Empty allowlist = reject everyone (secure default). */
       allowedUserIds: number[];
       notifyChatId?: number;
+      /** Groups: answer only when addressed (default) or to everything. */
+      groupPolicy?: 'mention' | 'all';
+      /** Largest file accepted from a chat, in MB (default 20). */
+      maxFileMb?: number;
     };
     whatsapp?: {
       enabled: boolean;

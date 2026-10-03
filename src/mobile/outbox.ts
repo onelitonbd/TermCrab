@@ -29,6 +29,8 @@ export interface OutboxItem {
   channel: ChannelName;
   chatId: number | string;
   text: string;
+  /** A file to send instead of text (15.2: `text` is then the caption). */
+  file?: string;
   ts: number;
   attempts: number;
   state: 'pending' | 'sending' | 'sent';
@@ -51,6 +53,9 @@ function normalize(item: LegacyItem): OutboxItem {
     channel: item.channel,
     chatId: item.chatId,
     text: item.text,
+    // A queued *document* keeps its path (15.2); dropping it here would turn a
+    // retry into an empty text send.
+    file: item.file,
     ts: item.ts ?? Date.now(),
     attempts: item.attempts ?? 0,
     state: item.state ?? 'pending',
@@ -95,6 +100,8 @@ export function outboxPush(item: {
   channel: OutboxItem['channel'];
   chatId: number | string;
   text: string;
+  /** A local path to send as a document (15.2). */
+  file?: string;
   ts?: number;
   /** Why the send failed, kept on the item so a retry has context. */
   error?: string;

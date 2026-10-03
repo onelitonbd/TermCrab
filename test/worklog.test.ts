@@ -33,8 +33,8 @@ test('work tracker: fresh, reachable, and on the panel', async (t) => {
     assert.match(text, /^## 2\. Now/m, 'a "Now" section with the active batch');
     assert.match(text, /^## 3\. Next/m, 'a "Next" section with the queue');
     assert.match(text, /^## 4\. Done/m, 'a "Done" section with commits + proofs');
-    assert.match(text, /^\| 14\.\d+ /m, 'the current batch is a step table');
-    assert.match(text, /^\| 15\.\d+ /m, 'the next batch is a step table');
+    assert.match(text, /^\| 15\.\d+ /m, 'the current batch is a step table');
+    assert.match(text, /^\| 16\.\d+ /m, 'the next batch is a step table');
     assert.match(text, /fails? the suite|npm test/i, 'the rules say a stale tracker fails the suite');
   });
 

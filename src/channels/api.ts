@@ -46,6 +46,35 @@ export class TelegramApi {
   sendChatAction(chatId: number, action = 'typing'): Promise<unknown> {
     return this.call('sendChatAction', { chat_id: chatId, action }, 10_000);
   }
+
+  /** Where a file lives on Telegram's servers (then `downloadFile` fetches it). */
+  getFile(fileId: string): Promise<{ file_id: string; file_path?: string; file_size?: number }> {
+    return this.call('getFile', { file_id: fileId }, 20_000);
+  }
+
+  /** The bytes themselves — a different host, so not `call()`. */
+  async downloadFile(filePath: string, maxBytes = 20 * 1024 * 1024): Promise<Buffer> {
+    const url = `https://api.telegram.org/file/bot${this.token}/${filePath}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`telegram download failed: ${res.status}`);
+    const declared = Number(res.headers.get('content-length') ?? 0);
+    if (declared && declared > maxBytes) throw new Error(`file is too large (${declared} bytes)`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength > maxBytes) throw new Error(`file is too large (${buf.byteLength} bytes)`);
+    return buf;
+  }
+
+  /** Send a file (multipart) with an optional caption. 20 MB is Telegram's bot cap. */
+  async sendDocument(chatId: number, filename: string, bytes: Buffer, caption?: string): Promise<unknown> {
+    const form = new FormData();
+    form.set('chat_id', String(chatId));
+    if (caption) form.set('caption', caption.slice(0, 1024));
+    form.set('document', new Blob([new Uint8Array(bytes)]), filename);
+    const res = await fetch(this.url('sendDocument'), { method: 'POST', body: form });
+    const data = (await res.json()) as { ok: boolean; result?: unknown; description?: string };
+    if (!data.ok) throw new Error(`telegram sendDocument: ${data.description || res.status}`);
+    return data.result;
+  }
 }
 
 /**

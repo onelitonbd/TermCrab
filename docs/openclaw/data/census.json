@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T13:50:46.503Z",
+ "measured": "2026-10-03T14:08:01.542Z",
  "tally": {
-  "WORKING": 51,
+  "WORKING": 53,
   "BETTER": 14,
-  "PARTIAL": 47,
+  "PARTIAL": 46,
   "BROKEN": 0,
-  "ABSENT": 38
+  "ABSENT": 37
  },
- "coverage": 57,
- "effortLeft": 410,
+ "coverage": 58,
+ "effortLeft": 404,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:864"
+    "detail": "1 match(es): src/gateway/server.ts:909"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:866"
+    "detail": "1 match(es): src/gateway/server.ts:911"
    }
   },
   {
@@ -76,7 +76,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:822"
+    "detail": "0 match(es): src/gateway/server.ts:867"
    }
   },
   {
@@ -144,7 +144,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:245"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:249"
    }
   },
   {
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1705"
+    "detail": "1 match(es): src/gateway/server.ts:1750"
    }
   },
   {
@@ -178,7 +178,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:781"
+    "detail": "4 match(es): src/gateway/server.ts:826"
    }
   },
   {
@@ -280,7 +280,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:370, src/cli.ts:987, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:370, src/cli.ts:987, src/command-help.ts:168"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1087, src/gateway/server.ts:980"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1087, src/gateway/server.ts:1025"
    }
   },
   {
@@ -535,7 +535,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:798"
+    "detail": "1 match(es): src/agent/toolbox.ts:834"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "450 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
+    "detail": "451 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -620,7 +620,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:681"
+    "detail": "1 match(es): src/agent/toolbox.ts:717"
    }
   },
   {
@@ -671,7 +671,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:644"
+    "detail": "1 match(es): src/agent/toolbox.ts:680"
    }
   },
   {
@@ -824,7 +824,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1464"
+    "detail": "6 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1464"
    }
   },
   {
@@ -892,7 +892,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:168"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:172"
    }
   },
   {
@@ -977,7 +977,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:65"
+    "detail": "2 match(es): src/agent/toolbox.ts:67"
    }
   },
   {
@@ -994,7 +994,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:30, src/agent/toolbox.ts:1414, src/agent/tools.ts:452"
+    "detail": "21 match(es): src/agent/prompt.ts:30, src/agent/toolbox.ts:1450, src/agent/tools.ts:452"
    }
   },
   {
@@ -1070,9 +1070,9 @@
    "capability": "Document extraction",
    "openclaw": "pdf/docx/pptx extraction",
    "verdict": "ABSENT",
-   "evidence": "no document tools",
+   "evidence": "no extraction libraries (a PDF that arrives is saved intact — see the channels media row — but its text is not parsed out)",
    "probe": {
-    "pattern": "pdf",
+    "pattern": {},
     "expect": "absent"
    },
    "effort": 3,
@@ -1096,7 +1096,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "76 match(es): src/agent/prompt.ts:140, src/agent/toolbox.ts:245, src/agent/tools.ts:127"
+    "detail": "77 match(es): src/agent/prompt.ts:140, src/agent/toolbox.ts:247, src/agent/tools.ts:127"
    }
   },
   {
@@ -1113,7 +1113,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "73 match(es): src/agent/toolbox.ts:50"
+    "detail": "77 match(es): src/agent/toolbox.ts:52"
    }
   },
   {
@@ -1130,7 +1130,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/ask.ts:3, src/agent/toolbox.ts:894"
+    "detail": "2 match(es): src/agent/ask.ts:3, src/agent/toolbox.ts:930"
    }
   },
   {
@@ -1164,7 +1164,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1044, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1080, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -1198,7 +1198,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1043"
+    "detail": "1 match(es): src/agent/toolbox.ts:1079"
    }
   },
   {
@@ -1319,7 +1319,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:34, src/channels/matrix.ts:34, src/channels/telegram.ts:20"
+    "detail": "4 match(es): src/channels/api.ts:34, src/channels/matrix.ts:34, src/channels/telegram.ts:35"
    }
   },
   {
@@ -1462,34 +1462,34 @@
    "area": "channels",
    "capability": "Group / ambient events",
    "openclaw": "history reads, mention policy",
-   "verdict": "ABSENT",
-   "evidence": "no ambient-room reading, no mention/participation policy beyond the allowlist",
+   "verdict": "PARTIAL",
+   "evidence": "groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy=\"all\" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3",
    "probe": {
     "pattern": {},
-    "expect": "absent"
+    "expect": "present"
    },
-   "effort": 4,
+   "effort": 3,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "2 match(es): src/channels/telegram.ts:24, src/core/config.ts:108"
    }
   },
   {
    "area": "channels",
    "capability": "Slash commands in chat",
    "openclaw": "30+ TUI / channel commands",
-   "verdict": "PARTIAL",
-   "evidence": "4 Telegram commands (/new /agents /status /heartbeat, server.ts:498-515) and 5 web commands (/api/slash, server.ts:1026)",
+   "verdict": "WORKING",
+   "evidence": "every text channel shares the same commands: /new, /status, /usage (the real meter), /sessions (the real store), /memory (the real memory files), /agents, /providers, /heartbeat, /help (15.4, src/gateway/server.ts handleChannelMessage); the web panel has its own /api/slash set. Fewer words than their 30+, but each one answers from live data — pinned by test/tier2d.test.ts 15.4",
    "probe": {
     "pattern": {},
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:572"
+    "detail": "1 match(es): src/gateway/server.ts:611"
    }
   },
   {
@@ -1506,24 +1506,24 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:46, src/channels/telegram.ts:20"
+    "detail": "4 match(es): src/channels/api.ts:46, src/channels/telegram.ts:36"
    }
   },
   {
    "area": "channels",
    "capability": "Media send/receive",
    "openclaw": "images, audio, documents",
-   "verdict": "PARTIAL",
-   "evidence": "markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only",
+   "verdict": "WORKING",
+   "evidence": "inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2",
    "probe": {
-    "pattern": {},
+    "pattern": "sendDocument",
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 3,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/markdown.ts:61, src/channels/telegram.ts:4"
+    "detail": "10 match(es): src/agent/toolbox.ts:19, src/channels/api.ts:68, src/channels/conversations.ts:92"
    }
   },
   {
@@ -1644,7 +1644,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/toolbox.ts:236, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
+    "detail": "18 match(es): src/agent/toolbox.ts:238, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
    }
   },
   {
@@ -1712,7 +1712,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "84 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
+    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
    }
   },
   {
@@ -1763,7 +1763,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:915"
+    "detail": "1 match(es): src/agent/toolbox.ts:951"
    }
   },
   {
@@ -2019,7 +2019,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:822"
+    "detail": "0 match(es): src/gateway/server.ts:867"
    }
   },
   {
@@ -2053,7 +2053,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:39"
+    "detail": "13 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:41"
    }
   },
   {
@@ -2070,7 +2070,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1044, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1080, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2173,7 +2173,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "502 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
+    "detail": "515 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:25, src/command-help.ts:70, src/gateway/server.ts:2094"
+    "detail": "19 match(es): src/cli.ts:25, src/command-help.ts:70, src/gateway/server.ts:2139"
    }
   },
   {
@@ -2343,7 +2343,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "34 match(es): src/cli.ts:49, src/command-help.ts:253, src/mobile/doctor.ts:457"
+    "detail": "35 match(es): src/channels/media.ts:24, src/cli.ts:49, src/command-help.ts:253"
    }
   },
   {
@@ -2540,7 +2540,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "63 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "64 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

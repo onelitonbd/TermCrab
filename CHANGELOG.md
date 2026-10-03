@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.47.0 - 2026-10-03
+
+- **Telegram can finally hand the agent a file.** A photo, a document or a voice note now lands in `workspace/inbox/<timestamp>-<name>` and the agent is asked about it with the path and the caption (`[photo saved to inbox/2026-10-03T…-shot.jpg (12 KB)] look at this`). Names are sanitised, two files cannot collide, and the fetch happens with the same bot token the poller already uses.
+- **There is a size limit, an allow-list, and a hard no.** `channels.telegram.maxFileMb` (default 20 MB) caps what is accepted; the extension allow-list decides what counts as a document; and **executables (`.apk .dex .exe .bin .so .sh .bat .cmd .msi .jar .dmg .iso`) are refused by name** — a refused file answers with one sentence and never touches the disk.
+- **The agent can send a file back: `send_file`.** Give it a path (inside the usual allowed roots — no new authority), an optional caption, and optionally a channel/chat; without one it goes to the most recent conversation on the first channel that can send files. Failures do not lose the file: it is queued in the outbox **with the file**, and the retry sends the document, not an empty message.
+- **A queue bug found by its own test:** `outbox.normalize()` was dropping the new `file` field, so a queued document would have been retried as blank text. Fixed, with the regression pinned.
+- **Groups get manners.** In a group the bot now answers only when it is `@mentioned` or when the message replies to one of its own; the mention is stripped before the agent sees the text; `channels.telegram.groupPolicy="all"` opts a room into everything. A second bug found here: `learnSelf()` raced the first poll, so a mention in the very first batch of updates was invisible — the bot now learns its own identity before it starts listening.
+- **The chat answers questions the CLI answers.** `/usage` (today's turns, tokens in/out, cost — the real meter), `/sessions` (the real store), `/memory` (the real files), `/help` (the list), joining `/new`, `/status`, `/agents`, `/providers`, `/heartbeat`. Every channel shares them; an unknown `/x` gets the list rather than silence.
+- **The rules are written down per channel.** `docs/CHANNELS.md` says honestly which of the seven adapters can send files (Telegram only, for now), what each needs to run, and what the limits are — so nobody has to read source to find out that WhatsApp will not carry a PDF.
+- **`doctor` stopped giving bad advice.** A busy gateway port was reported as `fail: port busy` with the fix "run termcrab gateway" — even when a gateway was already answering there from a different home. It now asks `/api/health` first: a TermCrab gateway already serving the address is reported `ok — already running (termcrab X on :7788; no pid file in this home)`, while a stranger on the port still fails, with the fix that actually moves the port.
+- Tests: **577 cases, 0 failures** (3 skipped by design; 20 new in `test/tier2d.test.ts`, 2 new in `test/gateway.test.ts`). Census: **WORKING 51 → 53 · PARTIAL 47 → 46 · ABSENT 38 → 37 · BROKEN 0**, score **57% → 58%**, channels area **64% → 76%**, drift 0, core lane still empty.
+
+
 ## 0.46.0 - 2026-10-03
 
 - **The CLI speaks JSON now, so scripts stop scraping.** Any structured command takes `--json` and then writes **exactly one document** to stdout: `{"ok":true,"command":"status","data":{…}}` on success, `{"ok":false,"command":"usage","error":{"message":"…","hint":"…"}}` on failure. It works on `status`, `sessions` (ls/export/purge/rename), `skills` (ls/import/new), `cron` (ls/add/rm/on/off), `memory` (show/search/compact), `approvals`, `usage`, `disk`, `doctor`, `run`/`wait` and `stop`.

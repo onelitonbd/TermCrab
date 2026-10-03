@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৫৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৭টা আধা (PARTIAL), ৩৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪৬ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৫৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫৩টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৬টা আধা (PARTIAL), ৩৭টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪০ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 51 | wired and observable |
+| ✅ WORKING | 53 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 47 | exists, narrower than theirs |
+| 🟡 PARTIAL | 46 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 38 | nothing in the tree |
+| ⚪ ABSENT | 37 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 57%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 58%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~246d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 108 | ~240d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~410d | |
+| **total** | 150 | ~404d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -102,7 +102,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Scheduled delivery to channels | deliver cron output to a chat | 🟡 PARTIAL | cron runs a prompt in a session; delivery routing is manual | parity | 2 |
 | Gmail / IMAP watchers | PubSub + IMAP integrations | ⚪ ABSENT | no mail integration | later | 5 |
 
-### channels — 64% (13 checks)
+### channels — 76% (13 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -115,10 +115,10 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Matrix | official plugin | ✅ WORKING | src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
 | iMessage / Teams / Google Chat / LINE / Feishu / IRC… | 25+ further channels | ⚪ ABSENT | no further adapters | parity | 25 |
 | Channel routing rules | per-room routing, access groups, broadcast groups | ⚪ ABSENT | what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix) | parity | 6 |
-| Group / ambient events | history reads, mention policy | ⚪ ABSENT | no ambient-room reading, no mention/participation policy beyond the allowlist | parity | 4 |
-| Slash commands in chat | 30+ TUI / channel commands | 🟡 PARTIAL | 4 Telegram commands (/new /agents /status /heartbeat, server.ts:498-515) and 5 web commands (/api/slash, server.ts:1026) | parity | 4 |
+| Group / ambient events | history reads, mention policy | 🟡 PARTIAL | groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3 | parity | 3 |
+| Slash commands in chat | 30+ TUI / channel commands | ✅ WORKING | every text channel shares the same commands: /new, /status, /usage (the real meter), /sessions (the real store), /memory (the real memory files), /agents, /providers, /heartbeat, /help (15.4, src/gateway/server.ts handleChannelMessage); the web panel has its own /api/slash set. Fewer words than their 30+, but each one answers from live data — pinned by test/tier2d.test.ts 15.4 | parity | — |
 | Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
-| Media send/receive | images, audio, documents | 🟡 PARTIAL | markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only | parity | 4 |
+| Media send/receive | images, audio, documents | ✅ WORKING | inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2 | parity | 3 |
 
 ### context — 45% (13 checks)
 
@@ -289,7 +289,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | MCP client | MCP + ACP protocols | ✅ WORKING | src/providers/mcp.ts (stdio JSON-RPC) wired at server.ts:345 into AgentCtx | parity | 2 |
 | Phone / device tools | iOS+Android nodes (camera, screen, location) | 🏅 BETTER | 15 Termux:API tools in src/agent/toolbox.ts (camera, location, sms, clipboard, battery, wifi, notification…) | parity | — |
 | Image / media generation | image, video, music generation | ⚪ ABSENT | no generation tools | later | 6 |
-| Document extraction | pdf/docx/pptx extraction | ⚪ ABSENT | no document tools | later | 3 |
+| Document extraction | pdf/docx/pptx extraction | ⚪ ABSENT | no extraction libraries (a PDF that arrives is saved intact — see the channels media row — but its text is not parsed out) | later | 3 |
 | Tool count | ~44 in-loop tools + plugin tools | 🟡 PARTIAL | 41 in toolbox.ts + 13 in tools.ts | parity | — |
 | Tool schema validation | TypeBox-validated arguments | 🟡 PARTIAL | lightweight hand-rolled argument parsing | parity | 3 |
 | Human-in-the-loop prompts | ask_user overlay + timers | 🟡 PARTIAL | ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer | parity | 2 |

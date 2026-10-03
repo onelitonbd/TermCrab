@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -84,6 +85,63 @@ test('doctor reports the web panel password state', async () => {
   assert.equal(c.status, 'info');
   assert.match(c.detail ?? '', /no panel is answering/);
   assert.match(c.fix ?? '', /termcrab gateway/);
+});
+
+test('doctor does not call a busy port broken when a termcrab gateway already serves it', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdoc-busy-'));
+  process.env.TCRAB_HOME = dir;
+  // A stand-in panel: same public /api/health a real gateway answers.
+  const srv = http.createServer((req, res) => {
+    if (req.url === '/api/health') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, name: 'termcrab', version: '9.9.9' }));
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
+  await new Promise<void>((resolve) => srv.listen(0, '127.0.0.1', resolve));
+  const port = (srv.address() as { port: number }).port;
+  try {
+    const { loadConfig, saveConfig } = await import('../src/core/config.js');
+    const cfg = loadConfig();
+    cfg.gateway.port = port;
+    cfg.gateway.host = '0.0.0.0';
+    saveConfig(cfg);
+    const { runDoctor } = await import('../src/mobile/doctor.js');
+    const check = (await runDoctor()).find((x) => x.id === 'gateway');
+    assert.ok(check, 'gateway check exists');
+    assert.equal(check.status, 'ok', 'an already-running gateway is healthy, not a failure');
+    assert.match(check.detail ?? '', /already running/);
+    assert.equal(check.fix, undefined, 'nothing to fix');
+  } finally {
+    await new Promise<void>((resolve) => srv.close(() => resolve()));
+  }
+});
+
+test('doctor still fails a busy port that is not a termcrab gateway, and says how to move', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdoc-taken-'));
+  process.env.TCRAB_HOME = dir;
+  const srv = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end('<h1>some other server</h1>');
+  });
+  await new Promise<void>((resolve) => srv.listen(0, '127.0.0.1', resolve));
+  const port = (srv.address() as { port: number }).port;
+  try {
+    const { loadConfig, saveConfig } = await import('../src/core/config.js');
+    const cfg = loadConfig();
+    cfg.gateway.port = port;
+    cfg.gateway.host = '0.0.0.0';
+    saveConfig(cfg);
+    const { runDoctor } = await import('../src/mobile/doctor.js');
+    const check = (await runDoctor()).find((x) => x.id === 'gateway');
+    assert.equal(check?.status, 'fail', 'a stranger on the port is a real problem');
+    assert.match(check?.detail ?? '', /not a termcrab gateway/);
+    assert.match(check?.fix ?? '', /gateway\.port/);
+  } finally {
+    await new Promise<void>((resolve) => srv.close(() => resolve()));
+  }
 });
 
 test('doctor treats a missing password as a choice when bound to this device', async () => {

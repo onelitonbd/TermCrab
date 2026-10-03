@@ -35,7 +35,7 @@ import { MemoryStore } from '../agent/memory.js';
 import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
 import { runDream, startDreamScheduler, readDreamState, dreamHistory } from '../agent/dream.js';
 import { countMemoryFacts } from '../agent/status.js';
-import { usageForDay } from '../core/usage.js';
+import { formatTokens, usageForDay } from '../core/usage.js';
 import { PRICING_AS_OF } from '../core/pricing.js';
 import { checkForUpdate } from '../core/update.js';
 import { applyUpdate, ApplyPhase } from '../core/updater.js';
@@ -80,7 +80,7 @@ import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
-import { registerSender, recordInbound } from '../channels/conversations.js';
+import { registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -527,6 +527,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       await wa.send(address, text);
     });
   }
+  // 15.2: files the agent sends go out the same door as its replies.
+  if (telegram) {
+    const tg = telegram;
+    registerDocumentSender('telegram', async (address, filePath, caption) => {
+      await tg.sendDocument(Number(address), filePath, caption);
+    });
+  }
   if (discord) {
     const c = discord;
     registerSender('discord', async (address, text) => {
@@ -585,6 +592,44 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
     if (text === '/status') {
       return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}`;
+    }
+    // 15.4: the same facts the CLI reports with --json, available in the chat.
+    if (text === '/help' || text === '/?') {
+      return [
+        '🦀 What I understand here:',
+        '  /new        start a fresh conversation',
+        '  /status     is everything running',
+        '  /usage      tokens and cost today',
+        '  /sessions   your recent conversations',
+        '  /memory     what I have remembered',
+        '  /agents     named personalities (@name <message>)',
+        '  /providers  pick the model',
+        '  /heartbeat  run a self-check now',
+        'Anything else is a message for the agent.',
+      ].join('\n');
+    }
+    if (text === '/usage') {
+      const day = usageForDay();
+      if (!day.turns) return `📊 No turns metered today (${day.day}). Tokens show up as soon as a model reports them.`;
+      const cost =
+        typeof day.costUsd === 'number'
+          ? `\n     cost ~$${day.costUsd.toFixed(4)}${config.provider.priceInPerM || config.provider.priceOutPerM ? '' : ' (from a dated price snapshot)'}`
+          : '';
+      return `📊 Today (${day.day}) — ${day.turns} turn(s), ${day.calls} model call(s)\n     tokens ${formatTokens(day.totalTokens)} (in ${formatTokens(day.promptTokens)} · out ${formatTokens(day.completionTokens)})${cost}`;
+    }
+    if (text === '/sessions') {
+      const list = sessions.list().slice(0, 8);
+      if (!list.length) return 'No conversations yet.';
+      return (
+        '💬 Recent conversations:\n' +
+        list.map((c) => `  ${c.id} — ${c.messages} lines, ${Math.max(1, Math.round(c.bytes / 1024))} KB`).join('\n')
+      );
+    }
+    if (text === '/memory') {
+      const block = memory.readForPrompt(1200);
+      const stats = memory.stats();
+      const head = `🧠 ${block.facts}/${block.totalFacts} facts injected, ${stats.dailyFiles} daily log(s)`;
+      return block.text.trim() ? `${head}\n\n${block.text.trim()}` : `${head}\n(nothing remembered yet — tell me something worth keeping)`;
     }
     if (channel === 'telegram' && text === '/heartbeat') {
       const res = await runHeartbeatOnce(agent);

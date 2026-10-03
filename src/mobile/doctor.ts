@@ -49,6 +49,20 @@ function panelHost(cfg: Config): string {
 }
 
 /** Version the running panel reports (public /api/health), or null if unreachable. */
+async function probeTermcrab(cfg: Config): Promise<string | null> {
+  try {
+    const res = await fetch(`http://${panelHost(cfg)}:${cfg.gateway.port}/api/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { name?: string; version?: string };
+    return data.name === 'termcrab' ? (data.version ?? '?') : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Version the running panel reports (public /api/health), or null if unreachable. */
 async function runningPanelVersion(cfg: Config): Promise<string | null> {
   try {
     const res = await fetch(`http://${panelHost(cfg)}:${cfg.gateway.port}/api/health`, {
@@ -290,12 +304,27 @@ export async function runDoctor(): Promise<Check[]> {
     running = false;
   }
   const free = await portFree(cfg.gateway.port, cfg.gateway.host);
+  // A busy port is not proof of a problem: another TermCrab gateway may already
+  // serve this address (a different home, or one that has not written this
+  // home's pid file). Ask it who it is before calling it a failure — telling a
+  // user to start a gateway that is already running is the worst kind of advice.
+  const serving = !running && !free ? await probeTermcrab(cfg) : null;
   checks.push({
     id: 'gateway',
     label: `gateway (${cfg.gateway.host}:${cfg.gateway.port})`,
-    status: running ? 'ok' : free ? 'warn' : 'fail',
-    detail: running ? `running (pid ${fs.readFileSync(pidPath(), 'utf8').trim()})` : free ? 'not running' : 'port busy',
-    fix: running ? undefined : 'termcrab gateway   (or: termcrab supervisor for auto-restart)',
+    status: running || serving ? 'ok' : free ? 'warn' : 'fail',
+    detail: running
+      ? `running (pid ${fs.readFileSync(pidPath(), 'utf8').trim()})`
+      : serving
+        ? `already running (termcrab ${serving} on :${cfg.gateway.port}; no pid file in this home)`
+        : free
+          ? 'not running'
+          : `port busy (something that is not a termcrab gateway holds :${cfg.gateway.port})`,
+    fix: running || serving
+      ? undefined
+      : free
+        ? 'termcrab gateway   (or: termcrab supervisor for auto-restart)'
+        : `termcrab config set gateway.port ${cfg.gateway.port + 1}   (or stop whatever holds :${cfg.gateway.port})`,
   });
 
   // Telegram
