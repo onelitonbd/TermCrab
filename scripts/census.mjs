@@ -450,6 +450,9 @@ check('ops', 'Telemetry stance', 'version check only, opt-out', 'BETTER',
 check('ops', 'Release discipline', 'CalVer, release notes, validation programme', 'PARTIAL',
   'CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme',
   { paths: ['CHANGELOG.md'], expect: 'present' }, 2);
+check('ops', 'Work tracking (what is being built, right now)', 'n/a', 'WORKING',
+  'WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker',
+  { paths: ['WORKLOG.md', 'scripts/status.mjs'], expect: 'present' }, 0, 'core');
 check('ops', 'Tests', 'contract tests per channel, 16k-PR CI', 'PARTIAL',
   '408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)',
   { pattern: /node:test/, scope: 'test', expect: 'present' }, 6);

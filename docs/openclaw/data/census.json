@@ -1,13 +1,13 @@
 {
- "measured": "2026-10-03T06:27:24.300Z",
+ "measured": "2026-10-03T06:35:38.229Z",
  "tally": {
-  "WORKING": 23,
+  "WORKING": 24,
   "BETTER": 14,
   "PARTIAL": 60,
   "BROKEN": 7,
   "ABSENT": 45
  },
- "coverage": 43,
+ "coverage": 44,
  "effortLeft": 482,
  "areas": [
   "agent",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:738"
+    "detail": "1 match(es): src/gateway/server.ts:773"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:740"
+    "detail": "1 match(es): src/gateway/server.ts:775"
    }
   },
   {
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1502"
+    "detail": "1 match(es): src/gateway/server.ts:1537"
    }
   },
   {
@@ -297,7 +297,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "65 match(es)"
+    "detail": "66 match(es)"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "316 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
+    "detail": "317 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -1815,7 +1815,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2276"
+    "detail": "1 match(es): ui/index.html:2277"
    }
   },
   {
@@ -1866,7 +1866,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "48 match(es): src/cli.ts:82, src/gateway/server.ts:1070, src/providers/capabilities.ts:148"
+    "detail": "48 match(es): src/cli.ts:82, src/gateway/server.ts:1105, src/providers/capabilities.ts:148"
    }
   },
   {
@@ -2207,7 +2207,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/sessions.ts:111, src/cli.ts:57, src/gateway/server.ts:864"
+    "detail": "8 match(es): src/agent/sessions.ts:111, src/cli.ts:57, src/gateway/server.ts:899"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "17 match(es): src/cli.ts:12, src/gateway/server.ts:1852, src/mobile/boot.ts:26"
+    "detail": "17 match(es): src/cli.ts:12, src/gateway/server.ts:1887, src/mobile/boot.ts:26"
    }
   },
   {
@@ -2506,6 +2506,26 @@
   },
   {
    "area": "ops",
+   "capability": "Work tracking (what is being built, right now)",
+   "openclaw": "n/a",
+   "verdict": "WORKING",
+   "evidence": "WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker",
+   "probe": {
+    "paths": [
+     "WORKLOG.md",
+     "scripts/status.mjs"
+    ],
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "core",
+   "probeResult": {
+    "state": "ok",
+    "detail": "found: WORKLOG.md, scripts/status.mjs"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "Tests",
    "openclaw": "contract tests per channel, 16k-PR CI",
    "verdict": "PARTIAL",
@@ -2519,7 +2539,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "49 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/auth.test.ts:1"
+    "detail": "50 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/auth.test.ts:1"
    }
   },
   {

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { defaults } from '../src/core/config.js';
@@ -65,6 +66,15 @@ test('doctor reports the web panel password state', async () => {
   const { loadConfig, saveConfig } = await import('../src/core/config.js');
   const cfg = loadConfig();
   cfg.gateway.token = 'doctor-token';
+  // Pin the port to a free one: "no panel is answering" must be true because
+  // nothing listens there, not because the default port happens to be idle.
+  cfg.gateway.port = await new Promise<number>((resolve) => {
+    const probe = net.createServer();
+    probe.listen(0, '127.0.0.1', () => {
+      const p = (probe.address() as { port: number }).port;
+      probe.close(() => resolve(p));
+    });
+  });
   saveConfig(cfg);
   const { runDoctor } = await import('../src/mobile/doctor.js');
   const checks = await runDoctor();

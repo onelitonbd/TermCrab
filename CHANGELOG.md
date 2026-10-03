@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.36.1 - 2026-10-03
+
+- **You can now see what is being built, from anywhere.** `WORKLOG.md` is the work tracker: the current batch with each step's status and the test that proves it, what is queued next with sizes, and every finished batch with its commit. `node scripts/status.mjs` prints the same thing in one screen (`--tests` also runs the suite), and the panel has a new **Work** page that renders it.
+- **The tracker cannot silently fall behind.** Freshness is computed from git — how many commits landed after the last commit that touched `WORKLOG.md`. Zero is the only healthy number: anything else prints `STALE`, exits non-zero, and fails `test/worklog.test.ts`. No hash to hand-maintain.
+- `/api/worklog` is served behind the panel password like every other API route (the tracker is content, not a public endpoint).
+- Tests: **421 cases, 0 failures** (8 new for the tracker: file structure, commit-age freshness, token-gated endpoint, panel view wiring); 3 skipped only when a panel already occupies the default port in the test environment.
+
 ## 0.36.0 - 2026-10-03
 
 - **The panel password finally does something.** Every `/api/*` route now requires the token when one is configured (`401` + `www-authenticate: Bearer realm="TermCrab"`). The panel notices the 401 and asks for the password in a sheet, stores it on that device and reloads; with **no** password set the loopback-only default is unchanged, so nothing about a local, open panel breaks. `doctor` tells you which of the two you are running.

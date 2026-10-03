@@ -1,6 +1,6 @@
 # TermCrab — where it actually is
 
-**Measured:** 2026-10-03 · **against:** commit `56455cd` · **measured by:** `scripts/census.mjs` (149 probes over `src/`, `test/`, `ui/`, `package.json`)
+**Measured:** 2026-10-03 · **against:** commit `56455cd` · **measured by:** `scripts/census.mjs` (150 probes over `src/`, `test/`, `ui/`, `package.json`, `WORKLOG.md`)
 **Compared with:** the whole of [docs.openclaw.ai](https://docs.openclaw.ai) — 1,335 documented pages, catalogued page-by-page in [`sections/`](sections/) and summarised in [`00-SITE-MAP.md`](00-SITE-MAP.md).
 
 ---
@@ -8,7 +8,7 @@
 ## সারসংক্ষেপ (বাংলায়)
 
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
-- **এখনকার স্কোর: ৪৩%।** ১৪৯টা ক্যাপাবিলিটির মধ্যে ২৩টা পুরো কাজ করে, ১৪টায় তুমি OpenClaw-এর চেয়ে এগিয়ে (মোবাইল লেয়ার), ৬০টা আধা, **৭টা ভাঙা**, ৪৫টা নেই।
+- **এখনকার স্কোর: ৪৪%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ২৪টা পুরো কাজ করে, ১৪টায় তুমি OpenClaw-এর চেয়ে এগিয়ে (মোবাইল লেয়ার), ৬০টা আধা, **৭টা ভাঙা**, ৪৫টা নেই।
 - **সবচেয়ে জরুরি কথা:** ৭টা জায়গায় কোড লেখা আছে কিন্তু **কিছুই সেটা ব্যবহার করে না** — কিউ, approvals, compaction, মেমোরি বুটস্ট্র্যাপ। এগুলো ঠিক করা মানে নতুন ফিচার নয়, **আগের কাজ শেষ করা**। এটার জন্য লেগবে **~৪০ দিন**।
 - **পূর্ণ প্রতিযোগিতার জন্য বাকি: ~৩২০ দিন (core + parity)।** আর OpenClaw-কে হুবহু ম্যাচ করতে চাইলে ~৪৮০ দিন — একা মানুষের পক্ষে যেটা প্রায় দুই বছর আর সেটা কোনো কাজে আসবে না।
 - **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি ২৮টা জিনিস consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
@@ -19,19 +19,19 @@
 
 | | |
 |---|---:|
-| Tracked capabilities | **149** (15 areas) |
-| ✅ Working | 23 |
+| Tracked capabilities | **150** (15 areas) |
+| ✅ Working | 24 |
 | 🏅 Better than OpenClaw | 14 |
 | 🟡 Partial | 60 |
 | ⛔ **Broken (code exists, nothing calls it)** | **7** |
 | ⚪ Absent | 45 |
-| **Capability score** | **43%** |
+| **Capability score** | **44%** |
 | Effort — **core lane** (fix what's broken) | **~40 days** |
 | Effort — **parity lane** (be genuinely competitive) | ~278 days |
 | Effort — **later lane** (deliberately not building) | ~164 days |
 | OpenClaw pages reviewed | 1,335 |
 
-**Read it like this.** "43%" is not a grade for the project, it is a distance to *their* feature list — and their feature list is built for desktops and servers, written by ~2,000 people. The number that should scare you is **7 broken**: capabilities that exist in the file tree, look complete in `docs/ARCHITECTURE.md`, and do nothing at runtime. Those are the ones that make you feel like you are further along than you are.
+**Read it like this.** "44%" is not a grade for the project, it is a distance to *their* feature list — and their feature list is built for desktops and servers, written by ~2,000 people. The number that should scare you is **7 broken**: capabilities that exist in the file tree, look complete in `docs/ARCHITECTURE.md`, and do nothing at runtime. Those are the ones that make you feel like you are further along than you are.
 
 ---
 
@@ -45,21 +45,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 23 | wired and observable |
+| ✅ WORKING | 24 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 60 | exists, narrower than theirs |
 | ⛔ BROKEN | 7 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 45 | nothing in the tree |
-| | **149** | tracked capabilities |
+| | **150** | tracked capabilities |
 
-**Capability score 43%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 44%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 13 | ~40d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~40d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 149 | ~482d | |
+| **total** | 150 | ~482d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -168,7 +168,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 48% (11 checks)
+### ops — 52% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -179,6 +179,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | 🟡 PARTIAL | src/core/logger.ts + doctor; /api/logs; no metrics export | parity | 4 |
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
 | Release discipline | CalVer, release notes, validation programme | 🟡 PARTIAL | CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme | parity | 2 |
+| Work tracking (what is being built, right now) | n/a | ✅ WORKING | WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker | core | — |
 | Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
@@ -394,7 +395,7 @@ Score is the census score for that area. "Their pages" is how many pages docs.op
 
 ## 5. Why the totals look like that
 
-- **You are comparing a 2-month, 1-person, 15k-line project against a 390k-star, 2,000-contributor, 421MB-of-TypeScript foundation project.** A 41% score against *that* list is not a bad score; it is an unreasonable denominator. The number that matters is: **how many of your 149 capabilities are broken (7) and how many of the remaining 45 absent ones are actually needed to win on a phone (about 20).**
+- **You are comparing a 2-month, 1-person, 15k-line project against a 390k-star, 2,000-contributor, 421MB-of-TypeScript foundation project.** A 41% score against *that* list is not a bad score; it is an unreasonable denominator. The number that matters is: **how many of your 150 capabilities are broken (7) and how many of the remaining 45 absent ones are actually needed to win on a phone (about 20).**
 - **Where the effort isn't:** 164 of the 482 remaining days sit in the `later` lane, and roughly a third of that is a native companion app (20 days alone) and a plugin registry you deliberately do not want.
 - **Where the effort is:** ~40 days of core work fixes the seven broken rows. That is the difference between "an agent that sometimes forgets and can be driven by anything on the LAN" and "an agent you can trust with a real task".
 - **The parity line that is actually reachable:** ~320 days (core + parity) with disciplined work. Part-time, that is about a year. Full-time, about 7–8 months. Everything past that is cloning their ecosystem, which is neither possible alone nor useful.

@@ -735,6 +735,41 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           });
           return;
         }
+      // Work tracker: the panel renders WORKLOG.md so "what is being built right
+      // now" lives on the same screen you test from. It also reports whether the
+      // file still points at HEAD, so a stale tracker is visible, not silent.
+      if (req.method === 'GET' && pathname === '/api/worklog') {
+        const file = path.join(PACKAGE_ROOT, 'WORKLOG.md');
+        if (!fs.existsSync(file)) {
+          json(res, 404, { error: 'no WORKLOG.md in this install' });
+          return;
+        }
+        const markdown = fs.readFileSync(file, 'utf8');
+        let head = '';
+        let lastTouched = '';
+        let behind = 0;
+        try {
+          const { execFileSync } = await import('node:child_process');
+          const git = (args: string[]) =>
+            execFileSync('git', args, { cwd: PACKAGE_ROOT, encoding: 'utf8' }).trim();
+          head = git(['rev-parse', '--short', 'HEAD']);
+          lastTouched = git(['log', '-1', '--format=%h', '--', 'WORKLOG.md']);
+          // Commits after the one that last touched the tracker = the tracker is behind.
+          if (lastTouched) behind = Number(git(['rev-list', '--count', `${lastTouched}..HEAD`])) || 0;
+        } catch {
+          // installed copy without git: freshness is unknowable, not false
+          behind = 0;
+        }
+        json(res, 200, {
+          markdown,
+          head,
+          lastTouched,
+          behind,
+          fresh: behind === 0,
+        });
+        return;
+      }
+
         if (req.method === 'GET' && pathname === '/api/events') {
           res.writeHead(200, {
             'content-type': 'text/event-stream',

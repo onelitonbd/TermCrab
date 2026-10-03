@@ -33,10 +33,10 @@ Conditions 1–5 are ~95 days of work. That is the plan. Everything after that i
 
 | Lane | Checks | Effort | What it means |
 |---|---:|---:|---|
-| **core** | 13 | **~40d** | finish what is already half-built; every item is a defect, not a feature |
+| **core** | 14 | **~40d** | finish what is already half-built; every item is a defect, not a feature |
 | **parity** | 108 | ~278d | be genuinely competitive on the axes a phone-first agent needs |
 | **later** | 28 | ~164d | deferred on purpose — a native companion app alone is 20d, the plugin registry/25 channels are an ecosystem you are deliberately not cloning |
-| total | 149 | ~482d | the cost of matching them 1:1, which is the wrong goal |
+| total | 150 | ~482d | the cost of matching them 1:1, which is the wrong goal |
 
 **Realistic calendar.** Core lane at a focused 3 days/week: **~14 weeks**. Core + parity at the same pace: **~2 years**. Core + parity full-time: **~7–8 months**. Anyone promising you faster is not counting the tests.
 
