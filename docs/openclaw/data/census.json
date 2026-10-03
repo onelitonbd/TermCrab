@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T17:11:16.193Z",
+ "measured": "2026-10-03T17:47:10.953Z",
  "tally": {
-  "WORKING": 69,
+  "WORKING": 76,
   "BETTER": 14,
-  "PARTIAL": 38,
+  "PARTIAL": 34,
   "BROKEN": 0,
-  "ABSENT": 19
+  "ABSENT": 8
  },
- "coverage": 72,
- "inScope": 140,
- "outOfScope": 10,
- "effortLeft": 291,
+ "coverage": 80,
+ "inScope": 132,
+ "outOfScope": 18,
+ "effortLeft": 204,
  "areas": [
   "agent",
   "automation",
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1250"
+    "detail": "1 match(es): src/gateway/server.ts:1338"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1252"
+    "detail": "1 match(es): src/gateway/server.ts:1340"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:296"
+    "detail": "1 match(es): src/gateway/server.ts:299"
    }
   },
   {
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:289"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:306"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2142"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2276"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1071"
+    "detail": "4 match(es): src/gateway/server.ts:1159"
    }
   },
   {
@@ -227,10 +227,11 @@
    "area": "gateway",
    "capability": "Canvas / A2UI widgets",
    "openclaw": "agent-driven UI widgets",
-   "verdict": "PARTIAL",
-   "evidence": "src/gateway/canvas.ts + /api/canvas",
+   "verdict": "WORKING",
+   "evidence": "src/gateway/canvas.ts + /api/canvas: the `canvas` tool pushes an HTML widget, it is broadcast as canvas:update / canvas:remove over SSE, the panel renders it, and GET /api/canvas returns what exists (with remove). Deliberately not an A2UI typed component protocol — a widget is HTML the agent wrote; test/tier2n.test.ts pins the round-trip",
    "probe": {
-    "pattern": "canvas",
+    "file": "src/gateway/canvas.ts",
+    "pattern": "export function canvasUpdate",
     "expect": "present"
    },
    "effort": 0,
@@ -239,7 +240,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "40 match(es): src/agent/toolbox.ts:10, src/gateway/canvas.ts:5, src/gateway/protocol.ts:36"
+    "detail": "1 match(es): src/gateway/canvas.ts:19"
    }
   },
   {
@@ -297,7 +298,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:296"
+    "detail": "1 match(es): src/gateway/server.ts:299"
    }
   },
   {
@@ -316,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:382, src/cli.ts:1044, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:382, src/cli.ts:1048, src/command-help.ts:168"
    }
   },
   {
@@ -355,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:27, src/cli.ts:244, src/gateway/protocol.ts:31"
+    "detail": "6 match(es): src/agent/loop.ts:27, src/cli.ts:248, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -374,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:234"
+    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:238"
    }
   },
   {
@@ -431,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:148, src/gateway/server.ts:1381, src/mobile/doctor.ts:525"
+    "detail": "5 match(es): src/cli.ts:152, src/gateway/server.ts:1469, src/mobile/doctor.ts:525"
    }
   },
   {
@@ -564,26 +565,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1144, src/gateway/server.ts:1417"
+    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1148, src/gateway/server.ts:1505"
    }
   },
   {
    "area": "agent",
    "capability": "Lifecycle hooks",
    "openclaw": "14 typed hooks + HOOK.md",
-   "verdict": "ABSENT",
-   "evidence": "no hook registry (no api.on / registerHook)",
+   "verdict": "WORKING",
+   "evidence": "run.start, run.end and session.reset joined the event-trigger vocabulary (src/gateway/triggers.ts + the bus bridge in server.ts), so a hook that names them is woken with the run/session payload and can act (queue a turn, report). Reactive by design, not intercepting: a hook is told after the fact and cannot rewrite or block a turn — blocking is the job of approvals and the exec guard, which do it in code. No HOOK.md/hook-directory discovery, because the plugin API is out of scope; hooks live in config. test/tier2n.test.ts pins a hook woken by run.end",
    "probe": {
-    "pattern": "registerHook|api\\.on\\(",
-    "expect": "absent"
+    "file": "src/gateway/triggers.ts",
+    "pattern": "'run.end'",
+    "expect": "present"
    },
-   "effort": 12,
-   "lane": "later",
+   "effort": 0,
+   "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/gateway/triggers.ts:29"
    }
   },
   {
@@ -602,7 +604,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:875"
+    "detail": "1 match(es): src/agent/toolbox.ts:902"
    }
   },
   {
@@ -640,7 +642,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "513 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
+    "detail": "522 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
    }
   },
   {
@@ -757,7 +759,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:730"
+    "detail": "1 match(es): src/agent/toolbox.ts:757"
    }
   },
   {
@@ -776,7 +778,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:593, src/command-help.ts:111"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:597, src/command-help.ts:111"
    }
   },
   {
@@ -834,7 +836,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:298, src/agent/sessions.ts:837, src/cli.ts:1882"
+    "detail": "4 match(es): src/agent/loop.ts:298, src/agent/sessions.ts:837, src/cli.ts:2008"
    }
   },
   {
@@ -934,7 +936,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/context.ts:131, src/agent/memory.ts:186, src/agent/prompt.ts:197"
+    "detail": "7 match(es): src/agent/context.ts:131, src/agent/memory.ts:186, src/agent/prompt.ts:203"
    }
   },
   {
@@ -992,7 +994,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:372, src/cli.ts:1820"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:372, src/cli.ts:1946"
    }
   },
   {
@@ -1011,7 +1013,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:212"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:228"
    }
   },
   {
@@ -1088,7 +1090,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:635"
+    "detail": "2 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:662"
    }
   },
   {
@@ -1107,7 +1109,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:69"
+    "detail": "3 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:70"
    }
   },
   {
@@ -1126,7 +1128,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1491, src/agent/tools.ts:496"
+    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:496"
    }
   },
   {
@@ -1164,7 +1166,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/tools.ts:16, src/gateway/server.ts:46, src/providers/mcp.ts:31"
+    "detail": "4 match(es): src/agent/tools.ts:16, src/gateway/server.ts:47, src/providers/mcp.ts:31"
    }
   },
   {
@@ -1190,19 +1192,20 @@
    "area": "tools",
    "capability": "Image / media generation",
    "openclaw": "image, video, music generation",
-   "verdict": "ABSENT",
-   "evidence": "no generation tools",
+   "verdict": "WORKING",
+   "evidence": "src/media/image.ts: a real PNG is produced either by the configured image endpoint (POST {baseUrl}/images/generations, b64_json or url, model from config.media.imageModel) or, under the mock provider, drawn locally by a hand-rolled PNG encoder on node:zlib — deterministic bytes, no deps, no network. One path behind three doors: the `generate_image` tool (writes workspace/outbox), `termcrab image \"prompt\" [--size] [--out]`, and POST /api/image for the panel; every result says placeholder: true when nothing was sent out. Video and music are not attempted",
    "probe": {
-    "pattern": "image_gen|generate_image",
-    "expect": "absent"
+    "file": "src/media/image.ts",
+    "pattern": "export async function generateImage",
+    "expect": "present"
    },
-   "effort": 6,
+   "effort": 0,
    "lane": "later",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es)"
+    "detail": "1 match(es): src/media/image.ts:180"
    }
   },
   {
@@ -1231,11 +1234,13 @@
    "area": "tools",
    "capability": "Tool count",
    "openclaw": "~44 in-loop tools + plugin tools",
-   "verdict": "PARTIAL",
-   "evidence": "41 in toolbox.ts + 13 in tools.ts",
+   "verdict": "WORKING",
+   "evidence": "more tools than the ~44 they ship in-loop, and every one of ours is reachable: 59 definitions (45 in toolbox.ts + 14 in tools.ts) of which 57 are live under a default config (a few are gated on capability, e.g. an unpaired device), counted at runtime by test/tier2n.test.ts. Their extra count is plugin tools, which are out of scope here. Each tool declares a JSON schema and every call is validated at the boundary (src/agent/tool-schema.ts)",
    "probe": {
-    "pattern": "name: '",
-    "expect": "present"
+    "file": "src/agent/toolbox.ts",
+    "pattern": "def: {",
+    "expect": "present",
+    "min": 45
    },
    "effort": 0,
    "lane": "parity",
@@ -1243,7 +1248,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): src/agent/context.ts:93, src/agent/prompt.ts:148, src/agent/toolbox.ts:249"
+    "detail": "45 match(es) (min 45): src/agent/toolbox.ts:249"
    }
   },
   {
@@ -1302,7 +1307,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/prompt.ts:239, src/agent/tools.ts:325"
+    "detail": "2 match(es): src/agent/prompt.ts:249, src/agent/tools.ts:325"
    }
   },
   {
@@ -1321,7 +1326,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1121, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1148, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -1359,7 +1364,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1120"
+    "detail": "1 match(es): src/agent/toolbox.ts:1147"
    }
   },
   {
@@ -1374,8 +1379,8 @@
    },
    "effort": 0,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "28 match(es)"
@@ -1414,8 +1419,8 @@
    },
    "effort": 15,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -1452,8 +1457,8 @@
    },
    "effort": 6,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -1471,8 +1476,8 @@
    },
    "effort": 6,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -1513,7 +1518,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:540, src/mobile/doctor.ts:385"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:543, src/mobile/doctor.ts:385"
    }
   },
   {
@@ -1532,7 +1537,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/discord.ts:72, src/gateway/server.ts:50"
+    "detail": "3 match(es): src/channels/discord.ts:72, src/gateway/server.ts:51"
    }
   },
   {
@@ -1551,7 +1556,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/slack.ts:44, src/gateway/server.ts:51"
+    "detail": "3 match(es): src/channels/slack.ts:44, src/gateway/server.ts:52"
    }
   },
   {
@@ -1570,7 +1575,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/signal.ts:59, src/gateway/server.ts:52"
+    "detail": "3 match(es): src/channels/signal.ts:59, src/gateway/server.ts:53"
    }
   },
   {
@@ -1589,7 +1594,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/sms.ts:39, src/gateway/server.ts:53"
+    "detail": "3 match(es): src/channels/sms.ts:39, src/gateway/server.ts:54"
    }
   },
   {
@@ -1608,7 +1613,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/matrix.ts:43, src/gateway/server.ts:54"
+    "detail": "3 match(es): src/channels/matrix.ts:43, src/gateway/server.ts:55"
    }
   },
   {
@@ -1642,8 +1647,8 @@
    },
    "effort": 6,
    "lane": "parity",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -1665,7 +1670,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:142"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:158"
    }
   },
   {
@@ -1684,7 +1689,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:790"
+    "detail": "1 match(es): src/gateway/server.ts:878"
    }
   },
   {
@@ -1838,7 +1843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:81"
+    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:82"
    }
   },
   {
@@ -1857,7 +1862,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/toolbox.ts:240, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
+    "detail": "18 match(es): src/agent/toolbox.ts:241, src/gateway/server.ts:44, src/providers/capabilities.ts:2"
    }
   },
   {
@@ -1895,7 +1900,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:66, src/agent/tools.ts:45, src/gateway/server.ts:398"
+    "detail": "8 match(es): src/agent/loop.ts:66, src/agent/tools.ts:45, src/gateway/server.ts:401"
    }
   },
   {
@@ -1940,39 +1945,40 @@
    "area": "automation",
    "capability": "Event triggers / watchers",
    "openclaw": "condition watchers, stream sources",
-   "verdict": "PARTIAL",
-   "evidence": "src/gateway/triggers.ts: a hook may name internal events (run.failed, device.paired, file.received, cron.finished — `on: [\"run.failed\"]`, `device.*` or `*`) and the gateway turns them into the same queued turn a webhook POST would, with two safety rules: a hook is never woken by its own session, and each hook has a 60s cooldown. `termcrab events` prints the catalogue and who listens; the gateway warns at startup about a hook listening for an event nothing emits. NOT attempted: watchers in the OpenClaw sense — no file-change/condition polling, no stream sources, no user-defined event vocabulary",
+   "verdict": "WORKING",
+   "evidence": "src/gateway/triggers.ts + config: a hook that names events (`on: [\"run.failed\"]`, `device.*`, `*`) is woken by what happens inside the gateway — run.failed, run.start, run.end, session.reset, device.paired, file.received, file.changed, cron.finished — and the turn is queued exactly like a webhook's, in session hook:<id>, with a self-loop guard and a 60s cooldown per hook. config.watchers adds file/folder watchers (fs.watch with a per-watcher debounce and an optional suffix `match`), so \"when a PDF lands in this folder, look at it\" works without a rule language. `termcrab events` prints the catalogue, the listeners and the watched paths. Not attempted: condition polling (battery/disk thresholds as events) and stream sources",
    "probe": {
     "file": "src/gateway/triggers.ts",
-    "pattern": "export function planTriggers",
+    "pattern": "export function watcherMatches",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "core",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/triggers.ts:77"
+    "detail": "1 match(es): src/gateway/triggers.ts:125"
    }
   },
   {
    "area": "automation",
    "capability": "Standing orders",
    "openclaw": "persistent programs with execute-verify-report",
-   "verdict": "ABSENT",
-   "evidence": "no standing-order concept (the nearest things are cron jobs and HEARTBEAT.md)",
+   "verdict": "WORKING",
+   "evidence": "src/agent/intents.ts (state/intents.json) stores them; the system prompt injects a `# Standing orders` block into every turn with the precedence spelled out (they outrank memory and workspace notes; they never override the safety rules). Surfaces: `termcrab orders [list|add|remove]`, the chat command `/orders [add|remove]`, and the agent's own `intent` tool — all one store. The run half is cron (schedule) + event triggers on run.end/run.failed (verify + report), so \"every morning brief me, and tell me if it breaks\" is expressible today. What is not attempted: a typed program object with phases and approval boundaries. test/tier2n.test.ts covers the CLI round-trip, the prompt block and the precedence line",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "file": "src/agent/intents.ts",
+    "pattern": "export function addIntent",
+    "expect": "present"
    },
-   "effort": 5,
-   "lane": "later",
+   "effort": 0,
+   "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/intents.ts:30"
    }
   },
   {
@@ -1991,7 +1997,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:992"
+    "detail": "1 match(es): src/agent/toolbox.ts:1019"
    }
   },
   {
@@ -2025,8 +2031,8 @@
    },
    "effort": 5,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -2106,7 +2112,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "77 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:231"
+    "detail": "81 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:235"
    }
   },
   {
@@ -2144,7 +2150,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "41 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "45 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2163,7 +2169,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:350, src/command-help.ts:414"
+    "detail": "2 match(es): src/cli.ts:354, src/command-help.ts:430"
    }
   },
   {
@@ -2201,7 +2207,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "64 match(es): src/agent/loop.ts:209, src/cli.ts:39, src/command-help.ts:224"
+    "detail": "65 match(es): src/agent/loop.ts:209, src/cli.ts:39, src/command-help.ts:224"
    }
   },
   {
@@ -2258,7 +2264,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:55, src/gateway/auth.ts:20, src/gateway/server.ts:296"
+    "detail": "5 match(es): src/core/config.ts:65, src/gateway/auth.ts:20, src/gateway/server.ts:299"
    }
   },
   {
@@ -2315,7 +2321,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/agent/prompt.ts:244, src/agent/secrets.ts:16, src/agent/toolbox.ts:43"
+    "detail": "13 match(es): src/agent/prompt.ts:254, src/agent/secrets.ts:16, src/agent/toolbox.ts:43"
    }
   },
   {
@@ -2334,7 +2340,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1121, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1148, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2400,8 +2406,8 @@
    "area": "storage",
    "capability": "State layout",
    "openclaw": "config JSON + Markdown brain + SQLite state + JSONL",
-   "verdict": "PARTIAL",
-   "evidence": "src/core/paths.ts: config.json, workspace/, sessions/, outbox, logs",
+   "verdict": "WORKING",
+   "evidence": "src/core/paths.ts is the single layout and everything derives from TCRAB_HOME: config.json, workspace/ (SOUL.md, USER.md, skills/, inbox/, agents/), sessions/<id>.jsonl (+ .archive.jsonl + .digest.md), state/ (crons, tasks, intents, approvals, conversations, tracing, outbox), logs/termcrab.jsonl, memory/ (facts.md + index). File-based on purpose (zero deps, greppable on a phone) where they use SQLite + Markdown; documented in docs/ARCHITECTURE.md and pinned by the paths tests",
    "probe": {
     "pattern": "TCRAB_HOME",
     "expect": "present"
@@ -2450,7 +2456,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "691 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "700 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2488,7 +2494,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:18, src/core/disk.ts:126, src/gateway/server.ts:30"
+    "detail": "6 match(es): src/cli.ts:18, src/core/disk.ts:126, src/gateway/server.ts:31"
    }
   },
   {
@@ -2545,7 +2551,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2553"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2687"
    }
   },
   {
@@ -2564,7 +2570,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:342, src/gateway/server.ts:83"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:358, src/gateway/server.ts:84"
    }
   },
   {
@@ -2674,8 +2680,8 @@
    },
    "effort": 20,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -2734,8 +2740,8 @@
    },
    "effort": 3,
    "lane": "later",
-   "scope": "in",
-   "why": "",
+   "scope": "out",
+   "why": "not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned",
    "probeResult": {
     "state": "ok",
     "detail": "0 match(es)"
@@ -2860,7 +2866,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "74 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "75 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

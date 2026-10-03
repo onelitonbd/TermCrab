@@ -178,7 +178,13 @@ export function promptSectionSizes(ctx: {
   if (ctx.agentName) parts.push({ section: 'agent profile', text: `You are running as "${ctx.agentName}"`, note: 'named-agent role line' });
   if (extras) {
     const intents = listIntents();
-    if (intents.length) parts.push({ section: 'standing intents', text: intents.map((i) => `- ${i.text}`).join('\n'), note: 'always-follow instructions' });
+    if (intents.length) {
+      parts.push({
+        section: 'standing orders',
+        text: intents.map((i) => `- ${i.text}`).join('\n'),
+        note: 'the user\'s always-follow instructions (outrank memory, never safety)',
+      });
+    }
     const goals = listGoals().filter((g) => g.status === 'open').slice(0, 5);
     if (goals.length) parts.push({ section: 'active goals', text: goals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n'), note: 'what the agent is working toward' });
     const roster = readAgentsRoster();
@@ -212,8 +218,12 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
 
   const extras = ctx.includeExtras !== false;
   const intents = extras ? listIntents() : [];
+  // 26.1: the user's standing orders, with the precedence spelled out so a
+  // small model does not have to guess between them and a memory fact.
   const intentsBlurb = intents.length
-    ? `\n# Standing intents (always follow these)\n${intents.map((i) => `- ${i.text}`).join('\n')}\n`
+    ? `\n# Standing orders (always follow these)\n${intents.map((i) => `- ${i.text}`).join('\n')}\n` +
+      `(These are the user's standing orders: they outrank long-term memory and workspace notes. ` +
+      `They never override the safety rules above.)\n`
     : '';
   const openGoals = extras ? listGoals().filter((g) => g.status === 'open').slice(0, 5) : [];
   const goalsBlurb = openGoals.length

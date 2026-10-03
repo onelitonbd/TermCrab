@@ -87,6 +87,7 @@ export function ensureLayout(): void {
   const dirs = [
     home(),
     workspaceDir(),
+    path.join(workspaceDir(), 'outbox'),
     memoryDir(),
     path.join(memoryDir(), 'daily'),
     sessionsDir(),

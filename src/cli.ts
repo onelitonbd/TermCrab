@@ -58,6 +58,8 @@ import { CODE_TTL_MS, formatDevice, listDevices, liveCodes, pairCode, revokeDevi
 import { formatRunHealth, runHealth } from './agent/run-health.js';
 import { formatPresence, localPresence, presenceLine, type Presence } from './gateway/presence.js';
 import { KNOWN_EVENTS, patternMatches } from './gateway/triggers.js';
+import { addIntent, listIntents, removeIntent } from './agent/intents.js';
+import { generateImage } from './media/image.js';
 import { formatLogRecord, structuredLog } from './core/structured-log.js';
 import { listRuns } from './core/tracing.js';
 import { formatSessionHits, searchSessions } from './agent/session-search.js';
@@ -106,6 +108,8 @@ Everyday extras:
   termcrab runs [--json]            what is running right now, and whether it is stuck (with what to do)
   termcrab presence [--json]        who can reach this agent right now (devices, channels, people)
   termcrab events [--json]          which internal events can wake a hook, and who listens
+  termcrab orders [list|add|remove] standing orders — always-follow instructions injected every turn
+  termcrab image "<prompt>"       make an image (provider endpoint, or a local placeholder under mock)
   termcrab logs [n] [--json]        the last n log records (logs/termcrab.jsonl; --path prints the file)
   termcrab pair [--name phone]      print a 5-minute code so a phone/tablet can pair (no shared password typing)
   termcrab devices [list|revoke]    the devices this gateway trusts (revoke one without touching the rest)
@@ -1252,14 +1256,21 @@ export async function main(argv: string[]): Promise<void> {
     case 'events': {
       // Which internal events exist, and which hooks listen for them (24.2).
       // A hook that names an event nothing emits would be silent forever, so
-      // the catalogue and the listeners are shown together.
-      const hooks = (loadConfig().hooks ?? []).filter((h) => h.on?.length);
+      // the catalogue and the listeners are shown together. Watchers (config)
+      // are listed here too: they are the source of file.changed.
+      const cfg = loadConfig();
+      const hooks = (cfg.hooks ?? []).filter((h) => h.on?.length);
+      const watchers = cfg.watchers ?? [];
       const rows = KNOWN_EVENTS.map((k) => ({
         ...k,
         hooks: hooks.filter((h) => (h.on ?? []).some((pattern) => patternMatches(pattern, k.name))).map((h) => h.id),
       }));
       if (machine) {
-        emitJson('events', { count: rows.length, events: rows });
+        emitJson('events', {
+          count: rows.length,
+          events: rows,
+          watchers: watchers.map((w) => ({ id: w.id, path: w.path, match: w.match ?? null })),
+        });
         return;
       }
       console.log('');
@@ -1269,10 +1280,124 @@ export async function main(argv: string[]): Promise<void> {
         console.log(`  ${r.name.padEnd(16)} ${r.what}`);
         console.log(`    ${r.hooks.length ? `→ ${r.hooks.map((h) => `hook:${h}`).join(', ')}` : '(no hook listens)'}`);
       }
+      if (watchers.length) {
+        console.log('');
+        console.log('  watching (a change fires file.changed):');
+        for (const w of watchers) console.log(`    ${w.id.padEnd(16)} ${w.path}${w.match ? `  (match: ${w.match})` : ''}`);
+      }
       console.log('');
       console.log('  hooks with `on` fire on these; hooks without one stay webhook-only.');
       console.log('  cooldown: one fire per hook per minute, and a hook is never woken by its own session.');
       console.log('  add one: termcrab config set hooks \'[{"id":"oncall","token":"s3cret","prompt":"what broke?","on":["run.failed"]}]\'');
+      console.log('');
+      return;
+    }
+
+    case 'image': {
+      // 26.2: create an image from a prompt. A configured image endpoint is
+      // used when there is one; otherwise the mock provider draws a real,
+      // deterministic PNG locally, and we say so rather than pretending.
+      const prompt = rest.filter((r) => !r.startsWith('--')).join(' ').trim();
+      if (!prompt) {
+        if (machine) failJson('image', 'missing prompt', 'usage: termcrab image "<prompt>" [--size 1024x1024] [--out <path>]');
+        else {
+          console.error('usage: termcrab image "<prompt>" [--size 1024x1024] [--out <path>]');
+          process.exitCode = 1;
+        }
+        return;
+      }
+      const outIdx = rest.indexOf('--out');
+      const sizeIdx = rest.indexOf('--size');
+      try {
+        const cfg = loadConfig();
+        const out = outIdx >= 0 ? rest[outIdx + 1] : undefined;
+        const result = await generateImage(cfg, {
+          prompt,
+          size: sizeIdx >= 0 ? rest[sizeIdx + 1] : undefined,
+          outFile: out,
+        });
+        if (machine) emitJson('image', { ...result });
+        else {
+          console.log('');
+          console.log(`  🖼  ${result.path}`);
+          const how = result.placeholder
+            ? 'drawn locally by the mock provider — nothing was sent out'
+            : `${result.model} via ${result.provider}`;
+          console.log(`     ${result.width}x${result.height} · ${Math.round(result.bytes / 1024)} KB · ${how}`);
+          console.log('');
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (machine) failJson('image', message, 'configure a provider with an image model: termcrab config set media.imageModel gpt-image-1');
+        else {
+          console.error(`image failed: ${message}`);
+          process.exitCode = 1;
+        }
+      }
+      return;
+    }
+
+    case 'orders': {
+      // 26.1: standing orders from the terminal — the same store the system
+      // prompt injects into every turn (state/intents.json).
+      const args = rest.filter((r) => !r.startsWith('--'));
+      const sub = (args[0] ?? 'list').toLowerCase();
+      if (sub === 'add') {
+        const text = args.slice(1).join(' ').trim();
+        if (!text) {
+          if (machine) failJson('orders', 'missing text', 'usage: termcrab orders add "<instruction>"');
+          else {
+            console.error('usage: termcrab orders add "<instruction>"');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const added = addIntent(text);
+        if (machine) emitJson('orders', { added: { id: added.id, text: added.text }, orders: listIntents() });
+        else console.log(`📌 Standing order added (${added.id}): ${added.text}`);
+        return;
+      }
+      if (sub === 'remove' || sub === 'rm' || sub === 'delete') {
+        const id = args[1] ?? '';
+        const gone = id ? listIntents().find((i) => i.id === id) : undefined;
+        if (!id || !removeIntent(id)) {
+          if (machine) failJson('orders', `no standing order ${id || '(missing id)'}`, 'run: termcrab orders');
+          else {
+            console.error(`no standing order ${id || '(missing id)'} — run: termcrab orders`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        if (machine) emitJson('orders', { removed: { id, text: gone?.text ?? '' }, orders: listIntents() });
+        else console.log(`🗑 Removed standing order ${id}.`);
+        return;
+      }
+      if (sub !== 'list') {
+        if (machine) failJson('orders', `unknown action ${sub}`, 'usage: termcrab orders [list|add <text>|remove <id>]');
+        else {
+          console.error('usage: termcrab orders [list|add <text>|remove <id>]');
+          process.exitCode = 1;
+        }
+        return;
+      }
+      const orders = listIntents();
+      if (machine) {
+        emitJson('orders', { count: orders.length, orders: orders.map((o) => ({ id: o.id, text: o.text, createdAt: o.createdAt })) });
+        return;
+      }
+      if (!orders.length) {
+        console.log('');
+        console.log('  📌 no standing orders yet — add one: termcrab orders add "always answer in Bengali"');
+        console.log('  they are injected into every turn, ahead of memory, and never override the safety rules.');
+        console.log('');
+        return;
+      }
+      console.log('');
+      console.log('  📌 standing orders (every turn, every surface)');
+      console.log('');
+      for (const o of orders) console.log(`    ${o.id.padEnd(10)} ${o.text}`);
+      console.log('');
+      console.log('  add: termcrab orders add "…" · remove: termcrab orders remove <id>');
       console.log('');
       return;
     }

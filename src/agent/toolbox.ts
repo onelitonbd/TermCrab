@@ -47,6 +47,7 @@ import {
   turn as convoTurn,
 } from '../channels/conversations.js';
 import { listPortals, addPortal, removePortal } from '../gateway/portal.js';
+import { generateImage } from '../media/image.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -361,6 +362,32 @@ export function extraTools(env: ToolEnv): Tool[] {
       }
       if (!applied.length) throw new Error('no file hunks found in patch');
       return `patched ${applied.length} file(s): ${applied.join(', ')}`;
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'generate_image',
+      description:
+        'Create an image from a text prompt and save it under workspace/outbox. With the mock provider (or no image endpoint) a deterministic local placeholder is drawn instead, and the result says so.',
+      schema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'what to draw' },
+          size: { type: 'string', description: 'e.g. 1024x1024 (default 1024x1024)' },
+          name: { type: 'string', description: 'file name without extension' },
+        },
+        required: ['prompt'],
+      },
+    },
+    async execute(args) {
+      const result = await generateImage(env.config, {
+        prompt: argStr(args, 'prompt'),
+        size: argStr(args, 'size', false) || undefined,
+        name: argStr(args, 'name', false) || undefined,
+      });
+      const note = result.placeholder ? ' (placeholder drawn locally — mock provider)' : '';
+      return `image saved: ${result.path} · ${result.width}x${result.height} · ${Math.round(result.bytes / 1024)} KB · ${result.model}${note}`;
     },
   });
 
@@ -1022,7 +1049,7 @@ export function extraTools(env: ToolEnv): Tool[] {
   tools.push({
     def: {
       name: 'intent',
-      description: 'Manage standing intents: durable directives injected into every reply. actions: list/add/remove.',
+      description: 'Manage standing orders: durable instructions injected into every turn, ahead of memory. actions: list/add/remove.',
       schema: {
         type: 'object',
         properties: {
@@ -1037,7 +1064,7 @@ export function extraTools(env: ToolEnv): Tool[] {
       const action = argStr(args, 'action');
       if (action === 'list') {
         const list = listIntents();
-        if (!list.length) return 'no standing intents';
+        if (!list.length) return 'no standing orders';
         return list.map((i) => `${i.id} · ${i.text}`).join('\n');
       }
       if (action === 'add') {

@@ -361,16 +361,17 @@ test('suggest_task / dismiss_task lifecycle', async () => {
 // ---- intent / goals / prompt ----
 
 test('intent: list/add/remove and prompt injection', async () => {
-  assert.match(await run('intent', { action: 'list' }), /no standing intents/);
+  assert.match(await run('intent', { action: 'list' }), /no standing orders/);
   assert.match(await run('intent', { action: 'add', text: 'Always answer in Banglish' }), /intent added/);
   assert.match(await run('intent', { action: 'list' }), /Always answer in Banglish/);
   const prompt = buildSystemPrompt({ config: env.config, memory: env.memory, skills: env.skills });
-  assert.match(prompt, /Standing intents/);
+  assert.match(prompt, /Standing orders/);
   assert.match(prompt, /Always answer in Banglish/);
+  assert.match(prompt, /outrank long-term memory and workspace notes/, 'the precedence over memory is in the prompt itself');
   const id = listIntents()[0]!.id;
   assert.match(await run('intent', { action: 'remove', id }), /removed/);
   assert.equal(listIntents().length, 0);
-  assert.ok(!buildSystemPrompt({ config: env.config, memory: env.memory, skills: env.skills }).includes('Standing intents'));
+  assert.ok(!buildSystemPrompt({ config: env.config, memory: env.memory, skills: env.skills }).includes('Standing orders'));
 });
 
 test('goals: create/get/update + open goals in prompt', async () => {

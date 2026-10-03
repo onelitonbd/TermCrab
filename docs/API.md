@@ -80,7 +80,22 @@ A hook entry may name the internal events it wakes on, and then nobody has to PO
 ```json
 { "id": "oncall", "token": "s3cret", "prompt": "what broke? tell me in telegram", "on": ["run.failed"] }
 ```
-Events: `run.failed` (a turn ended with an error), `device.paired` (a device redeemed a code), `file.received` (a file/photo/voice arrived in the inbox), `cron.finished` (`ok` in the payload). Patterns: an exact name, a family (`device.*`) or `*`. The turn is queued exactly like a webhook's — same lane, same queue mode, same rate limits — in session `hook:<id>`, and the message starts `[event:<name>]` so the transcript says where it came from. Two safety rules: **a hook is never woken by an event its own session produced** (otherwise a failing hook retries itself forever), and each hook has a **60-second cooldown**. `termcrab events` lists the catalogue and which hooks listen; the gateway logs a warning at startup when a hook listens for an event nothing emits. A hook without `on` stays webhook-only, exactly as before.
+Events: `run.failed` (a turn ended with an error), `run.start` / `run.end` / `session.reset` (lifecycle — reactive, a hook cannot block a turn), `device.paired` (a device redeemed a code), `file.received` (a file/photo/voice arrived in the inbox), `file.changed` (a watched path changed), `cron.finished` (`ok` in the payload). Watchers come from config: `"watchers": [{"id":"inboxdrop","path":"/sdcard/Download","match":".pdf","debounceMs":1500}]` — a change under `path` (optionally filtered by a comma list of suffixes) fires `file.changed` with `{watcher, path, name}`. Patterns: an exact name, a family (`device.*`) or `*`. The turn is queued exactly like a webhook's — same lane, same queue mode, same rate limits — in session `hook:<id>`, and the message starts `[event:<name>]` so the transcript says where it came from. Two safety rules: **a hook is never woken by an event its own session produced** (otherwise a failing hook retries itself forever), and each hook has a **60-second cooldown**. `termcrab events` lists the catalogue and which hooks listen; the gateway logs a warning at startup when a hook listens for an event nothing emits. A hook without `on` stays webhook-only, exactly as before.
+
+### Image generation (`POST /api/image`)
+`{"prompt": "a crab reading a book", "size": "1024x1024", "name": "crab"}` → `{ok, path, bytes, width, height, provider, model, placeholder}`. The provider's image endpoint is used when one is configured (`config.media.imageModel`); under the mock provider a deterministic PNG is drawn locally and `placeholder: true` says so. `400` when `prompt` is missing, `502` with the endpoint's message when generation fails.
+
+### Event watchers (config)
+`config.watchers` turns "something changed under this folder" into the `file.changed` event, which any hook with `on: ["file.changed"]` hears:
+
+```json
+{ "watchers": [ { "id": "inboxdrop", "path": "~/storage/downloads", "match": ".pdf,.jpg", "debounceMs": 1500 } ] }
+```
+
+`path` may be absolute or `~/…`; `match` is an optional comma list of suffixes (empty = everything); `debounceMs` collapses one save into one event. `fs.watch` is used with `recursive: true` where the platform allows it and falls back to the top level when it does not. `termcrab events` prints the catalogue, the listeners and what is being watched.
+
+### Standing orders (`/api/slash` command `/orders`)
+The web panel's command palette lists `/orders`; `POST /api/slash` with `{command:"/orders", args:"add <text>"}` (or `remove <id>`) edits the same store `termcrab orders` edits and the system prompt injects. `GET /api/slash` returns the palette including it.
 
 ### Approvals
 A gated tool (any name in `security.approvals.tools`) pauses the turn *before*

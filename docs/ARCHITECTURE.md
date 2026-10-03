@@ -158,6 +158,7 @@ users' runtime.
 | `src/gateway/server.ts` | HTTP API + SSE + static UI + channel/heartbeat wiring |
 | `src/gateway/triggers.ts` | Event triggers: a hook that names internal events is woken by them, with self-loop and cooldown rules (batch 24). |
 | `src/gateway/wake-service.ts` | Gateway-side wake loop: the same two-phase state machine as the CLI (`termcrab wake`), but running inside the gateway so the control UI can start/stop it and… |
+| `src/media/image.ts` | Image generation with zero dependencies: an OpenAI-compatible `/images/generations` call, or a real deterministic PNG drawn locally by the mock provider (26.3). |
 | `src/migrate/openclaw.ts` | Import an existing OpenClaw install (config, memory, sessions) into ~/.termcrab |
 | `src/mobile/bionic.ts` | Android guard: networkInterfaces + TMPDIR fixes |
 | `src/mobile/boot.ts` | Termux:Boot script installer |

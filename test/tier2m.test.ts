@@ -259,7 +259,7 @@ test('24.2 matching is exact, family-wide, everything — or nothing at all', ()
   // Every catalogued event is a name a hook can actually use.
   assert.deepEqual(
     KNOWN_EVENTS.map((e) => e.name),
-    ['run.failed', 'device.paired', 'file.received', 'cron.finished'],
+    ['run.failed', 'run.start', 'run.end', 'session.reset', 'device.paired', 'file.received', 'file.changed', 'cron.finished'],
   );
 });
 
@@ -354,7 +354,8 @@ test('24.2 termcrab events lists what can wake a hook, and who listens', async (
   const out = await runCliAsync(['events', '--json'], dir);
   assert.equal(out.status, 0);
   const parsed = JSON.parse(out.stdout) as { data: { count: number; events: { name: string; hooks: string[] }[] } };
-  assert.equal(parsed.data.count, 4);
+  assert.equal(parsed.data.count, 8, 'the catalogue grew with the lifecycle and watcher events');
+  assert.deepEqual((parsed.data as { watchers?: unknown[] }).watchers, [], 'nothing is watched until config says so');
   assert.deepEqual(parsed.data.events.find((e) => e.name === 'run.failed')?.hooks, ['oncall']);
   assert.deepEqual(parsed.data.events.find((e) => e.name === 'device.paired')?.hooks, []);
 

@@ -49,6 +49,16 @@ export interface Config {
   provider: ProviderCfg;
   /** Saved providers (OpenAI-compatible). Managed from the Providers page. */
   providers: ProviderEntry[];
+  /**
+   * Media generation (26.2): which model to ask for images and the default
+   * size. The endpoint is the active provider's, so no second key is needed.
+   */
+  media?: {
+    /** e.g. `gpt-image-1`, `dall-e-3`, `flux`. */
+    imageModel?: string;
+    /** e.g. `1024x1024`, `1536x1024`. */
+    size?: string;
+  };
   gateway: {
     host: string;
     port: number;
@@ -132,6 +142,12 @@ export interface Config {
    * internal events — see src/gateway/triggers.ts for the list.
    */
   hooks: { id: string; token: string; prompt: string; on?: string[] }[];
+  /**
+   * Watched files/folders (24.2 / 26.x): a change under the path fires the
+   * `file.changed` event, which any hook with `on: ['file.changed']` hears.
+   * `path` may be absolute or `~/…`; `match` is a comma list of suffixes.
+   */
+  watchers?: { id: string; path: string; match?: string; debounceMs?: number }[];
   channels: {
     telegram?: {
       token: string;
@@ -243,6 +259,7 @@ export function defaults(): Config {
     version: 1,
     provider: { type: 'openai', model: '', baseUrl: '', apiKey: '' },
     providers: [],
+    media: { imageModel: '', size: '1024x1024' },
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
     agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000 },
     fallbackProviders: [],
@@ -413,6 +430,8 @@ const KNOWN_TOP = new Set([
   'fallbackProviders',
   'mcpServers',
   'hooks',
+  'watchers',
+  'media',
   'channels',
   'heartbeat',
   'localProvider',

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -98,7 +99,9 @@ import { authKey, authenticate, constantTimeEqual, extractAuth } from './auth.js
 import { formatSessionHits, searchSessions } from '../agent/session-search.js';
 import { healthLine, runHealth } from '../agent/run-health.js';
 import { buildPresence, presenceLine, withSummary, type Presence, type PresenceChannelInput } from './presence.js';
-import { KNOWN_EVENTS, describeTrigger, planTriggers, triggerMessage, triggerSession, type TriggerPayload } from './triggers.js';
+import { KNOWN_EVENTS, describeTrigger, planTriggers, triggerMessage, triggerSession, watcherMatches, type TriggerPayload } from './triggers.js';
+import { addIntent, listIntents, removeIntent } from '../agent/intents.js';
+import { generateImage } from '../media/image.js';
 import { structuredLog } from '../core/structured-log.js';
 import { formatSessionView, policyLine, sessionView } from '../agent/session-view.js';
 import { CODE_TTL_MS, formatDevice, listDevices, pairCode, redeemCode, revokeDevice } from './devices.js';
@@ -707,8 +710,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   /** Which internal bus events are worth waking someone for. */
   function triggerFromBusEvent(ev: BusEvent): { event: string; data: Record<string, unknown>; fromSession?: string } | null {
     const any = ev as Record<string, unknown>;
+    const from = typeof any.sessionId === 'string' ? any.sessionId : undefined;
     if (any.type === 'error') {
-      return { event: 'run.failed', data: { message: String(any.message ?? '') }, fromSession: typeof any.sessionId === 'string' ? any.sessionId : undefined };
+      return { event: 'run.failed', data: { message: String(any.message ?? '') }, fromSession: from };
+    }
+    // Lifecycle (24.2/26.x): reactive, not intercepting — a hook is told and
+    // may act; it cannot rewrite or block the turn (approvals do that).
+    if (any.type === 'run:start') {
+      return { event: 'run.start', data: { runId: String(any.runId ?? '') }, fromSession: from };
+    }
+    if (any.type === 'run:end') {
+      return {
+        event: 'run.end',
+        data: { runId: String(any.runId ?? ''), iterations: Number(any.iterations ?? 0), costUsd: Number(any.costUsd ?? 0) },
+        fromSession: from,
+      };
+    }
+    if (any.type === 'session:reset') {
+      return { event: 'session.reset', data: { reason: String(any.reason ?? '') }, fromSession: from };
     }
     if (any.type === 'presence' && String(any.change ?? '').startsWith('paired:')) {
       return { event: 'device.paired', data: { deviceId: String(any.change).slice('paired:'.length) } };
@@ -723,6 +742,58 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     const trigger = triggerFromBusEvent(ev);
     if (trigger) fireTriggers(trigger.event, trigger.data, trigger.fromSession);
   });
+
+  // ---- Watchers (26.x): a path is the rule ----
+  // config.watchers entries turn "something changed under this folder" into the
+  // `file.changed` event. fs.watch is the platform's own mechanism (inotify on
+  // Android/Linux); a burst of events from one save is debounced per watcher.
+  const stopWatchers: (() => void)[] = [];
+  for (const watcher of config.watchers ?? []) {
+    if (!watcher?.id || !watcher.path) continue;
+    const target = watcher.path.startsWith('~') ? path.join(os.homedir(), watcher.path.slice(1)) : watcher.path;
+    const abs = path.isAbsolute(target) ? target : path.join(workspaceDir(), target);
+    if (!fs.existsSync(abs)) {
+      log.warn(`watcher ${watcher.id}: ${abs} does not exist yet — not watching`);
+      continue;
+    }
+    const debounceMs = Math.max(200, watcher.debounceMs ?? 1500);
+    const timers = new Map<string, NodeJS.Timeout>();
+    let handle: fs.FSWatcher;
+    try {
+      handle = fs.watch(abs, { recursive: true }, (_type, filename) => {
+        const changed = String(filename ?? '');
+        if (changed && !watcherMatches(watcher, changed)) return;
+        const key = changed || abs;
+        const existing = timers.get(key);
+        if (existing) clearTimeout(existing);
+        const timer = setTimeout(() => {
+          timers.delete(key);
+          fireTriggers('file.changed', { watcher: watcher.id, path: abs, name: changed || path.basename(abs) });
+        }, debounceMs);
+        timer.unref?.();
+        timers.set(key, timer);
+      });
+    } catch (err) {
+      // recursive watching is not available everywhere; fall back to the top level.
+      try {
+        handle = fs.watch(abs, (_type, filename) => {
+          const changed = String(filename ?? '');
+          if (changed && !watcherMatches(watcher, changed)) return;
+          fireTriggers('file.changed', { watcher: watcher.id, path: abs, name: changed || path.basename(abs) });
+        });
+        log.debug(`watcher ${watcher.id}: recursive watching unavailable (${err instanceof Error ? err.message : String(err)}), watching the top level`);
+      } catch (err2) {
+        log.warn(`watcher ${watcher.id} could not start:`, err2 instanceof Error ? err2.message : String(err2));
+        continue;
+      }
+    }
+    handle.on('error', (err) => log.warn(`watcher ${watcher.id}:`, err instanceof Error ? err.message : String(err)));
+    log.info(`watching ${abs} (${watcher.id}) — a change fires file.changed`);
+    stopWatchers.push(() => {
+      for (const timer of timers.values()) clearTimeout(timer);
+      handle.close();
+    });
+  }
 
   // A hook listening for an event nothing emits would be silent forever: say
   // so once at startup rather than letting the user guess.
@@ -755,6 +826,22 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       }
       return '🧹 Session reset. Fresh start!';
     }
+    if (text === '/orders' || text.startsWith('/orders ')) {
+      // 26.1: standing orders from any surface. They are read from the same
+      // store the prompt injects, so adding one here changes every next turn.
+      const rest = text.slice('/orders'.length).trim();
+      if (rest.startsWith('add ')) {
+        const added = addIntent(rest.slice(4).trim());
+        return `📌 Standing order added:\n• ${added.text}\n(id ${added.id} — /orders remove ${added.id} to drop it)`;
+      }
+      if (rest.startsWith('remove ')) {
+        const id = rest.slice(7).trim();
+        return removeIntent(id) ? `🗑 Removed standing order ${id}.` : `No standing order with id ${id} — /orders lists them.`;
+      }
+      const list = listIntents();
+      if (!list.length) return '📌 No standing orders yet. Add one: /orders add always answer in Bengali';
+      return `📌 Standing orders (followed in every conversation):\n${list.map((i) => `• ${i.id} — ${i.text}`).join('\n')}`;
+    }
     if (text === '/agents') {
       const agents = listAgents();
       return agents.length
@@ -781,6 +868,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         '  /memory     what I have remembered (search: /memory search <words>)',
         '  /context    what the model is actually sent (sizes per section)',
         '  /inbox      files people sent you (and /inbox <name> to read one)',
+        '  /orders     your standing orders (/orders add … , /orders remove <id>)',
         '  /agents     named personalities (@name <message>)',
         '  /providers  pick the model',
         '  /heartbeat  run a self-check now',
@@ -1693,6 +1781,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
               { name: '/clear', description: 'Clear the current chat', args: '' },
               { name: '/model', description: 'Pick a model', args: '[model-name]' },
               { name: '/status', description: 'Show agent status', args: '' },
+              { name: '/orders', description: 'Standing orders (list, add, remove)', args: '[add <text>|remove <id>]' },
               { name: '/help', description: 'Show available commands', args: '' },
             ],
           });
@@ -1705,6 +1794,27 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           const cmd = (body.command || '').trim();
           const args = (body.args || '').trim();
           switch (cmd) {
+            case '/orders': {
+              // 26.1: the same standing orders the prompt injects, editable
+              // from the web panel's command palette.
+              if (args.startsWith('add ')) {
+                const added = addIntent(args.slice(4).trim());
+                json(res, 200, { ok: true, message: `Standing order added: ${added.text}`, orders: listIntents() });
+                return;
+              }
+              if (args.startsWith('remove ')) {
+                const id = args.slice(7).trim();
+                const gone = id ? listIntents().find((i) => i.id === id) : undefined;
+                if (!id || !removeIntent(id)) {
+                  json(res, 404, { error: `no standing order ${id || '(missing id)'}`, orders: listIntents() });
+                  return;
+                }
+                json(res, 200, { ok: true, message: `Removed standing order ${id}`, removed: gone?.text ?? '', orders: listIntents() });
+                return;
+              }
+              json(res, 200, { ok: true, message: `${listIntents().length} standing order(s)`, orders: listIntents() });
+              return;
+            }
             case '/new':
               json(res, 200, { ok: true, action: 'new' });
               return;
@@ -1753,6 +1863,30 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         // Canvas / A2UI: live widgets pushed by the `canvas` tool.
         // The registry lives in-process; SSE carries live updates, this hydrates
         // a freshly loaded page.
+        /**
+         * 26.2: image generation from the panel. Same call as `termcrab image`
+         * and the agent's `generate_image` tool, so all three share one path.
+         */
+        if (req.method === 'POST' && pathname === '/api/image') {
+          const raw = await readBody(req);
+          const body = raw ? (JSON.parse(raw) as { prompt?: string; size?: string; name?: string }) : {};
+          if (!body.prompt?.trim()) {
+            json(res, 400, { error: 'prompt is required' });
+            return;
+          }
+          try {
+            const result = await generateImage(config, {
+              prompt: body.prompt,
+              size: body.size,
+              name: body.name,
+            });
+            json(res, 200, { ok: true, ...result });
+          } catch (err) {
+            json(res, 502, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/canvas') {
           json(res, 200, { widgets: canvasList() });
           return;
@@ -2653,6 +2787,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       stopCron();
       stopDream();
       unsubscribeTriggers();
+      for (const stop of stopWatchers) stop();
       wake.stop();
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();

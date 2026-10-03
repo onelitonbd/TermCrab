@@ -143,8 +143,9 @@ check('gateway', 'Inbound webhooks', 'authenticated agent hooks', 'WORKING',
 check('gateway', 'Approval queue + endpoint', 'operator approvals, HITL gates', 'WORKING',
   'src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5)',
   { pattern: /needsApproval\(/, expect: 'present' }, 0);
-check('gateway', 'Canvas / A2UI widgets', 'agent-driven UI widgets', 'PARTIAL',
-  'src/gateway/canvas.ts + /api/canvas', { pattern: 'canvas', expect: 'present' }, 0);
+check('gateway', 'Canvas / A2UI widgets', 'agent-driven UI widgets', 'WORKING',
+  'src/gateway/canvas.ts + /api/canvas: the `canvas` tool pushes an HTML widget, it is broadcast as canvas:update / canvas:remove over SSE, the panel renders it, and GET /api/canvas returns what exists (with remove). Deliberately not an A2UI typed component protocol — a widget is HTML the agent wrote; test/tier2n.test.ts pins the round-trip',
+  { file: 'src/gateway/canvas.ts', pattern: 'export function canvasUpdate', expect: 'present' }, 0);
 check('gateway', 'Multi-agent routing', 'per-agent workspace, session, store', 'PARTIAL',
   'workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48)', { pattern: 'listAgents', expect: 'present' }, 3);
 check('gateway', 'Presence', 'online/typing/presence events', 'WORKING',
@@ -190,8 +191,9 @@ check('agent', 'Steering into a live run', 'runtime-boundary steering', 'WORKING
 check('agent', 'Abort / stop a running turn', 'Esc, /stop, /abort', 'WORKING',
   'POST /api/stop (one session or everything) + `termcrab stop` + the panel stop button; the abort reaches the in-flight provider call, the partial answer is kept and marked [interrupted], and the lane stays busy until the runner settles so no work is orphaned. test/tier0.test.ts 10.3',
   { pattern: '/api/stop', expect: 'present' }, 0);
-check('agent', 'Lifecycle hooks', '14 typed hooks + HOOK.md', 'ABSENT',
-  'no hook registry (no api.on / registerHook)', { pattern: 'registerHook|api\\.on\\(', expect: 'absent' }, 12);
+check('agent', 'Lifecycle hooks', '14 typed hooks + HOOK.md', 'WORKING',
+  'run.start, run.end and session.reset joined the event-trigger vocabulary (src/gateway/triggers.ts + the bus bridge in server.ts), so a hook that names them is woken with the run/session payload and can act (queue a turn, report). Reactive by design, not intercepting: a hook is told after the fact and cannot rewrite or block a turn — blocking is the job of approvals and the exec guard, which do it in code. No HOOK.md/hook-directory discovery, because the plugin API is out of scope; hooks live in config. test/tier2n.test.ts pins a hook woken by run.end',
+  { file: 'src/gateway/triggers.ts', pattern: "'run.end'", expect: 'present' }, 0);
 check('agent', 'Subagents', 'sessions_spawn, agents_wait, lanes, worktrees', 'PARTIAL',
   'sessions_spawn/agents_wait/sessions_yield in src/agent/toolbox.ts:798+', { pattern: 'sessions_spawn', expect: 'present' }, 6);
 check('agent', 'Progress drafts / partial updates', 'incremental draft messages', 'WORKING',
@@ -279,13 +281,15 @@ check('tools', 'MCP client', 'MCP + ACP protocols', 'WORKING',
 check('tools', 'Phone / device tools', 'iOS+Android nodes (camera, screen, location)', 'BETTER',
   '15 Termux:API tools in src/agent/toolbox.ts (camera, location, sms, clipboard, battery, wifi, notification…)',
   { pattern: 'battery', expect: 'present' }, 0);
-check('tools', 'Image / media generation', 'image, video, music generation', 'ABSENT',
-  'no generation tools', { pattern: 'image_gen|generate_image', expect: 'absent' }, 6);
+check('tools', 'Image / media generation', 'image, video, music generation', 'WORKING',
+  'src/media/image.ts: a real PNG is produced either by the configured image endpoint (POST {baseUrl}/images/generations, b64_json or url, model from config.media.imageModel) or, under the mock provider, drawn locally by a hand-rolled PNG encoder on node:zlib — deterministic bytes, no deps, no network. One path behind three doors: the `generate_image` tool (writes workspace/outbox), `termcrab image "prompt" [--size] [--out]`, and POST /api/image for the panel; every result says placeholder: true when nothing was sent out. Video and music are not attempted',
+  { file: 'src/media/image.ts', pattern: 'export async function generateImage', expect: 'present' }, 0);
 check('tools', 'Document extraction', 'pdf/docx/pptx extraction', 'WORKING',
   'the text of what arrives is read by our own zero-dependency readers (src/channels/extract.ts): PDF content streams with FlateDecode, DOCX/PPTX/XLSX through a small ZIP reader on node:zlib, every text format as-is — capped at 20 000 characters with a truncation note, a scanned PDF refused with a sentence that names OCR, a .zip not opened and said so (16.1); pictures are read by a model that can see them, as a real image part on the wire, or the agent is told "I saved it but cannot see it" with the exact command (16.2, src/channels/vision.ts). Pinned by test/tier2e.test.ts',
   { paths: ['src/channels/extract.ts', 'src/channels/vision.ts'], expect: 'present' }, 3);
-check('tools', 'Tool count', '~44 in-loop tools + plugin tools', 'PARTIAL',
-  '41 in toolbox.ts + 13 in tools.ts', { pattern: "name: '", expect: 'present' }, 0);
+check('tools', 'Tool count', '~44 in-loop tools + plugin tools', 'WORKING',
+  'more tools than the ~44 they ship in-loop, and every one of ours is reachable: 59 definitions (45 in toolbox.ts + 14 in tools.ts) of which 57 are live under a default config (a few are gated on capability, e.g. an unpaired device), counted at runtime by test/tier2n.test.ts. Their extra count is plugin tools, which are out of scope here. Each tool declares a JSON schema and every call is validated at the boundary (src/agent/tool-schema.ts)',
+  { file: 'src/agent/toolbox.ts', pattern: 'def: {', expect: 'present', min: 45 }, 0);
 check('tools', 'Tool schema validation', 'TypeBox-validated arguments', 'WORKING',
   'src/agent/tool-schema.ts validates every tool call against the schema the tool already declares (type/required/properties/items/enum/integer, nested included) before execute() runs — buildTools() wraps all tools, so the check holds for the loop, the panel and tests alike. A bad call comes back as `[bad arguments for <tool>] missing required `path` (string)` plus the instruction to resend, which is what a small model can actually act on; a test walks every built-in tool and proves each one answers instead of crashing. TypeBox itself is not used: zero runtime dependencies is a promise this project keeps',
   { file: 'src/agent/tool-schema.ts', pattern: 'export function validateArgs', expect: 'present' }, 0);
@@ -304,20 +308,20 @@ check('skills', 'Skill precedence + overrides', 'multi-root precedence, allowlis
 check('skills', 'Agent-authored skills', 'skill-workshop review flow', 'PARTIAL',
   'skill_workshop tool (toolbox.ts) + scaffold.ts', { pattern: 'skill_workshop', expect: 'present' }, 3);
 check('skills', 'Skill registry / distribution', 'ClawHub + signed manifests', 'ABSENT',
-  'no registry by design; termcrab import openclaw is the only path', { pattern: 'clawhub|registry', expect: 'absent' }, 0);
+  'no registry by design; termcrab import openclaw is the only path', { pattern: 'clawhub|registry', expect: 'absent' }, 0, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 check('skills', 'OpenClaw compatibility', 'n/a', 'BETTER',
   'termcrab import openclaw reads their SKILL.md folders and workspace files unchanged (src/migrate/openclaw.ts, 558 lines)',
   { paths: ['src/migrate/openclaw.ts'], expect: 'present' }, 0);
 
 // ---------------------------------------------------------------- 7. plugins
 check('plugins', 'Plugin API + lifecycle', '164 extensions, typed SDK, hot reload', 'ABSENT',
-  'packages/plugin-sdk/index.ts is a stub; no loader', { pattern: 'registerPlugin|loadPlugin', expect: 'absent' }, 15);
+  'packages/plugin-sdk/index.ts is a stub; no loader', { pattern: 'registerPlugin|loadPlugin', expect: 'absent' }, 15, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 check('plugins', 'Channel plugin interface', 'external channel packages', 'ABSENT',
   'channels are compiled in (src/gateway/server.ts:37-48)', { pattern: 'channelPlugin', expect: 'absent' }, 8, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('plugins', 'Provider plugin interface', '35+ model providers as packages', 'ABSENT',
-  'one OpenAI-compatible client with host presets (src/providers/index.ts:10)', { pattern: 'providerPlugin', expect: 'absent' }, 6);
+  'one OpenAI-compatible client with host presets (src/providers/index.ts:10)', { pattern: 'providerPlugin', expect: 'absent' }, 6, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 check('plugins', 'Plugin manifest + permissions', 'manifest, allowlists, install policy', 'ABSENT',
-  'nothing to install and no permission model', { pattern: /pluginManifest|plugin\.json/, expect: 'absent' }, 6);
+  'nothing to install and no permission model', { pattern: /pluginManifest|plugin\.json/, expect: 'absent' }, 6, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 
 // --------------------------------------------------------------- 8. channels
 check('channels', 'Telegram', 'grammY bot + groups + topics', 'WORKING',
@@ -343,7 +347,7 @@ check('channels', 'iMessage / Teams / Google Chat / LINE / Feishu / IRC…', '25
   'no further adapters', { pattern: 'imessage|msteams|googlechat', expect: 'absent' }, 25, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Channel routing rules', 'per-room routing, access groups, broadcast groups', 'ABSENT',
   'what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix)',
-  { pattern: /broadcastGroup|accessGroup|roomRouting/, expect: 'absent' }, 6);
+  { pattern: /broadcastGroup|accessGroup|roomRouting/, expect: 'absent' }, 6, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 check('channels', 'Group / ambient events', 'history reads, mention policy', 'PARTIAL',
   'groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3',
   { pattern: /groupPolicy/, expect: 'present' }, 3);
@@ -385,18 +389,18 @@ check('automation', 'Cron scheduler', 'schedules, payloads, delivery, webhooks',
   'src/cron/{parser,store,scheduler}.ts, 5-field expressions', { pattern: 'cron', expect: 'present' }, 3);
 check('automation', 'Heartbeat / proactive tick', '30-min heartbeat + HEARTBEAT.md', 'WORKING',
   'src/agent/heartbeat.ts + power-aware gating — TermCrab is arguably better here', { pattern: 'heartbeat', expect: 'present' }, 0);
-check('automation', 'Event triggers / watchers', 'condition watchers, stream sources', 'PARTIAL',
-  'src/gateway/triggers.ts: a hook may name internal events (run.failed, device.paired, file.received, cron.finished — `on: ["run.failed"]`, `device.*` or `*`) and the gateway turns them into the same queued turn a webhook POST would, with two safety rules: a hook is never woken by its own session, and each hook has a 60s cooldown. `termcrab events` prints the catalogue and who listens; the gateway warns at startup about a hook listening for an event nothing emits. NOT attempted: watchers in the OpenClaw sense — no file-change/condition polling, no stream sources, no user-defined event vocabulary',
-  { file: 'src/gateway/triggers.ts', pattern: 'export function planTriggers', expect: 'present' }, 3);
-check('automation', 'Standing orders', 'persistent programs with execute-verify-report', 'ABSENT',
-  'no standing-order concept (the nearest things are cron jobs and HEARTBEAT.md)',
-  { pattern: /standingOrder/i, expect: 'absent' }, 5);
+check('automation', 'Event triggers / watchers', 'condition watchers, stream sources', 'WORKING',
+  'src/gateway/triggers.ts + config: a hook that names events (`on: ["run.failed"]`, `device.*`, `*`) is woken by what happens inside the gateway — run.failed, run.start, run.end, session.reset, device.paired, file.received, file.changed, cron.finished — and the turn is queued exactly like a webhook\'s, in session hook:<id>, with a self-loop guard and a 60s cooldown per hook. config.watchers adds file/folder watchers (fs.watch with a per-watcher debounce and an optional suffix `match`), so "when a PDF lands in this folder, look at it" works without a rule language. `termcrab events` prints the catalogue, the listeners and the watched paths. Not attempted: condition polling (battery/disk thresholds as events) and stream sources',
+  { file: 'src/gateway/triggers.ts', pattern: 'export function watcherMatches', expect: 'present' }, 0);
+check('automation', 'Standing orders', 'persistent programs with execute-verify-report', 'WORKING',
+  'src/agent/intents.ts (state/intents.json) stores them; the system prompt injects a `# Standing orders` block into every turn with the precedence spelled out (they outrank memory and workspace notes; they never override the safety rules). Surfaces: `termcrab orders [list|add|remove]`, the chat command `/orders [add|remove]`, and the agent\'s own `intent` tool — all one store. The run half is cron (schedule) + event triggers on run.end/run.failed (verify + report), so "every morning brief me, and tell me if it breaks" is expressible today. What is not attempted: a typed program object with phases and approval boundaries. test/tier2n.test.ts covers the CLI round-trip, the prompt block and the precedence line',
+  { file: 'src/agent/intents.ts', pattern: 'export function addIntent', expect: 'present' }, 0);
 check('automation', 'Task board', 'tasks, taskflow, workboard', 'PARTIAL',
   'src/agent/tasks.ts + suggest_task/dismiss_task tools + /api/tasks', { pattern: 'suggest_task', expect: 'present' }, 3);
 check('automation', 'Scheduled delivery to channels', 'deliver cron output to a chat', 'PARTIAL',
   'cron runs a prompt in a session; delivery routing is manual', { pattern: 'deliver', expect: 'present' }, 2);
 check('automation', 'Gmail / IMAP watchers', 'PubSub + IMAP integrations', 'ABSENT',
-  'no mail integration', { pattern: 'imap|gmail', expect: 'absent' }, 5);
+  'no mail integration', { pattern: 'imap|gmail', expect: 'absent' }, 5, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 
 // -------------------------------------------------------------- 11. surfaces
 check('surfaces', 'Web control UI', 'React+Vite dashboard, rebuilt in 2.0', 'PARTIAL',
@@ -452,8 +456,9 @@ check('security', 'Rate limiting / loop protection', 'bot-loop protection, caps'
   { file: 'src/gateway/ratelimit.ts', pattern: 'export class RateLimiter', expect: 'present' }, 0);
 
 // --------------------------------------------------------- 13. storage/state
-check('storage', 'State layout', 'config JSON + Markdown brain + SQLite state + JSONL', 'PARTIAL',
-  'src/core/paths.ts: config.json, workspace/, sessions/, outbox, logs', { pattern: 'TCRAB_HOME', expect: 'present' }, 0);
+check('storage', 'State layout', 'config JSON + Markdown brain + SQLite state + JSONL', 'WORKING',
+  'src/core/paths.ts is the single layout and everything derives from TCRAB_HOME: config.json, workspace/ (SOUL.md, USER.md, skills/, inbox/, agents/), sessions/<id>.jsonl (+ .archive.jsonl + .digest.md), state/ (crons, tasks, intents, approvals, conversations, tracing, outbox), logs/termcrab.jsonl, memory/ (facts.md + index). File-based on purpose (zero deps, greppable on a phone) where they use SQLite + Markdown; documented in docs/ARCHITECTURE.md and pinned by the paths tests',
+  { pattern: 'TCRAB_HOME', expect: 'present' }, 0);
 check('storage', 'Database + migrations', 'SQLite with schema migrations', 'ABSENT',
   'flat files throughout', { pattern: 'better-sqlite|node:sqlite', expect: 'absent' }, 8);
 check('storage', 'Backup / restore', 'openclaw backup', 'PARTIAL',
@@ -488,7 +493,7 @@ check('mobile', 'Transcription', 'realtime transcription service', 'PARTIAL',
   'a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL',
   { pattern: 'transcribe', expect: 'present' }, 3);
 check('mobile', 'Native GUI / foreground service', 'desktop apps + node apps', 'ABSENT',
-  'no companion app; a persistent notification is the closest', { pattern: 'foreground service', expect: 'absent' }, 20);
+  'no companion app; a persistent notification is the closest', { pattern: 'foreground service', expect: 'absent' }, 20, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 
 // ------------------------------------------------------------ 15. ops / docs
 check('ops', 'Install is download-only (no silent build)', 'n/a', 'WORKING',
@@ -498,7 +503,7 @@ check('ops', 'Installer', 'curl install.sh + Docker + Nix + Fly', 'PARTIAL',
   'install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths',
   { paths: ['install.sh'], expect: 'present' }, 2);
 check('ops', 'Container / server deploy', 'Docker, docker-compose, Fly, Nix, systemd', 'ABSENT',
-  'Termux/Node host only', { pattern: 'docker|Dockerfile', expect: 'absent' }, 3);
+  'Termux/Node host only', { pattern: 'docker|Dockerfile', expect: 'absent' }, 3, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
 check('ops', 'Service install', 'openclaw gateway install (systemd/launchd)', 'PARTIAL',
   'Termux supervisor; docs/LOCAL.md covers a systemd path', { pattern: 'systemd', expect: 'present' }, 3);
 check('ops', 'Logs + diagnostics', 'seven-page doctor, log levels, OTel, Prometheus', 'WORKING',
@@ -560,10 +565,13 @@ function runProbe(probe) {
     : (SCOPE_FILES[probe.scope || 'src'] || SCOPE_FILES.src)();
   const found = hits(probe.pattern, files);
   const occ = countMatches(probe.pattern, files);
-  const detail = `${occ} match(es)${found.length ? ': ' + found.slice(0, 3).join(', ') : ''}`;
+  const detail = `${occ} match(es)${probe.min ? ` (min ${probe.min})` : ''}${found.length ? ': ' + found.slice(0, 3).join(', ') : ''}`;
   let state = 'ok';
 
   if (expect === 'present' && found.length === 0) state = 'DRIFT';
+  // A count probe: a claim like "44 tool definitions" should break loudly when
+  // tools are deleted, not quietly rot into a smaller number.
+  if (typeof probe.min === 'number' && occ < probe.min) state = 'DRIFT';
   if (expect === 'absent' && found.length > 0) state = 'DRIFT';
   if (expect === 'defined-not-called' || expect === 'only-definition') {
     const distinct = new Set(found.map((f) => f.split(':')[0]));
@@ -585,8 +593,8 @@ function runProbe(probe) {
 //            would cost years and buys nothing on a phone.
 const LANE_BY_CAPABILITY = [
   [/Steering into a live run|Per-session run serialization|Queue modes|Compaction that preserves|Memory bootstrap injection|Approval queue|Request authentication|Inbound webhooks|Docs that match the code|Usage \/ token accounting|Transcript write fencing|LLM summarisation|Event triggers/, 'core'],
-  [/Shell completion|Colour \/ TTY discipline|Per-command help|JSON output mode|Typing indicators|Tool-result pruning|Context introspection|USER\.md|Memory store layout|Embedding providers|Memory search quality|Bootstrap file set|Lifecycle reset policies|Multi-user scoping|Session search|Session tools surface|CLI command coverage|Interactive REPL|Full-screen TUI|Web control UI|Tool schema validation|Human-in-the-loop|Bundled skill library|Skill precedence|Agent-authored skills|Reasoning \/ thinking levels|Model failover chain|Model catalog|Per-model capability|Local model tier|Cron scheduler|Task board|Scheduled delivery|Heartbeat|Parallel tool batches|Loop budget|Run identity|Abort \/ stop|Subagents|Progress drafts|MCP client|Browser automation|Sandboxed code execution|Shell execution|File operations|Web fetch|Phone \/ device tools|Telegram|WhatsApp|Group \/ ambient|Slash commands in chat|Media send|Channel routing|In-process|Voice STT|Transcription|Service install|Logs \+ diagnostics|Release discipline|Tests|CI matrix|Documentation site|Installer|Health \/ status|Canvas|Multi-agent routing|Remote access|Memory|Session tools|Repetition|Tool calling|Streaming|State layout|Backup|Atomic updates|Disk budget|Security audits|Secrets management|Doctor|Skills|MCP as tool source|Reasoning/, 'parity'],
-  [/companion apps|macOS\/Windows\/Linux apps|iOS \/ Android companion|Container \/ server deploy|25\+ further channels|Skill registry \/ distribution|Plugin API \+ lifecycle|Channel plugin interface|Provider plugin interface|Plugin manifest|Gmail \/ IMAP|Pairing \/ device identity|Typed wire protocol|Database \+ migrations|Cloud|Fleet|workboard|Rate limiting|Standing orders|Image \/ media generation|Document extraction|Anthropic native|Google Gemini native|Auth profiles|Sandboxing|Session attachment|Main rolling session|Lifecycle hooks|Context engine|Pluggable context engine|Memory provenance|Native GUI|Stuck-run diagnostics|Group \/ ambient events|Parallel tool batches/, 'later'],
+  [/Shell completion|Colour \/ TTY discipline|Per-command help|JSON output mode|Typing indicators|Tool-result pruning|Context introspection|USER\.md|Memory store layout|Embedding providers|Memory search quality|Bootstrap file set|Lifecycle reset policies|Multi-user scoping|Session search|Session tools surface|CLI command coverage|Interactive REPL|Full-screen TUI|Web control UI|Tool schema validation|Human-in-the-loop|Bundled skill library|Skill precedence|Agent-authored skills|Standing orders|Lifecycle hooks|Parallel tool batches|Reasoning \/ thinking levels|Model failover chain|Model catalog|Per-model capability|Local model tier|Cron scheduler|Task board|Scheduled delivery|Heartbeat|Parallel tool batches|Loop budget|Run identity|Abort \/ stop|Subagents|Progress drafts|MCP client|Browser automation|Sandboxed code execution|Shell execution|File operations|Web fetch|Phone \/ device tools|Telegram|WhatsApp|Group \/ ambient|Slash commands in chat|Media send|Channel routing|In-process|Voice STT|Transcription|Service install|Logs \+ diagnostics|Release discipline|Tests|CI matrix|Documentation site|Installer|Health \/ status|Canvas|Multi-agent routing|Remote access|Memory|Session tools|Repetition|Tool calling|Streaming|State layout|Backup|Atomic updates|Disk budget|Security audits|Secrets management|Doctor|Skills|MCP as tool source|Reasoning/, 'parity'],
+  [/companion apps|macOS\/Windows\/Linux apps|iOS \/ Android companion|Container \/ server deploy|25\+ further channels|Skill registry \/ distribution|Plugin API \+ lifecycle|Channel plugin interface|Provider plugin interface|Plugin manifest|Gmail \/ IMAP|Pairing \/ device identity|Typed wire protocol|Database \+ migrations|Cloud|Fleet|workboard|Rate limiting|Image \/ media generation|Document extraction|Anthropic native|Google Gemini native|Auth profiles|Sandboxing|Session attachment|Main rolling session|Context engine|Pluggable context engine|Memory provenance|Native GUI|Stuck-run diagnostics|Group \/ ambient events/, 'later'],
 ];
 for (const c of C) {
   for (const [re, lane] of LANE_BY_CAPABILITY) {
@@ -740,6 +748,11 @@ if (wantJson) {
   console.log('');
   for (const a of areas) {
     const list = rows.filter((r) => r.area === a && r.scope !== 'out');
+    const outHere = rows.filter((r) => r.area === a && r.scope === 'out').length;
+    if (!list.length) {
+      console.log(`  ${a.padEnd(12)} ${'·'.repeat(20)}  n/a  (all ${outHere} check(s) out of scope)`);
+      continue;
+    }
     const s = list.reduce((x, r) => x + WEIGHT[r.verdict], 0);
     const bar = '█'.repeat(Math.round((s / list.length) * 20)).padEnd(20, '·');
     const left = list.reduce((x, r) => x + r.effort, 0);

@@ -78,6 +78,18 @@ BEAT-PLAN-এর প্রমাণসহ দাবিগুলো এই দু
 - **চ্যানেলের হিসাব হয়ে গেছে** — তিনটেই (telegram + web + terminal)। অন্য চ্যানেল পরে দরকার পড়লে বলবেন, কোডটা রাখা আছে। উপরের ১–৫ ক্রমের বদল চাইলে বলুন; না বললে আমি ক্রম ধরে এগোব।
 - বাকিটা আমি করে যাচ্ছি: প্রতি batch = কোড + টেস্ট + docs + census + WORKLOG + release, কোনো PR ছাড়া, সরাসরি branch-এ।
 
+## ৫.১ ১০০%-এর দিকে — অগ্রগতি (চেকপয়েন্টের পরে)
+
+লক্ষ্য এখন **১০০%** (অর্থাৎ যেগুলো আমরা বানাচ্ছি তার সবগুলো WORKING/BETTER)। ক্রমটা দ্রুত-জেতা থেকে কঠিনের দিকে:
+
+| ধাপ | কী হলো | score |
+|---|---|---|
+| চেকপয়েন্ট | presence + event triggers; ৭০% | 70% |
+| scope লেখা | তিন surface, out-of-scope মাপা হয় কিন্তু গোনা হয় না | 72% |
+| ব্যাচ ২৬ | standing orders (CLI + panel palette + প্রম্পট, precedence লেখা), lifecycle events (run.start/run.end/session.reset), file watchers (`file.changed`), canvas যাচাই + টেস্ট; প্লাগিন/ডিপ্লয়/ইমেইল/রাউটিং/নেটিভ অ্যাপ out-of-scope | **79%** |
+
+বাকি: ৩৪টা PARTIAL + ৯টা ABSENT (মোট ~২১০ ডেভেলপার-দিনের কাজ) — বড়গুলো: Full-screen TUI, Session attachment, Sandboxing, Main rolling session, Auth profiles, ছবি বানানো, provider-native APIs, parallel tool batches, database/migration নীতি। ক্রম ধরে এক ব্যাচে কয়েকটা করে এগোব, প্রতিটা টেস্ট-ডক-প্রমাণসহ।
+
 ## ৬. এখন দাঁড়ানো অবস্থায় এক লাইনে
 
 > ফোনে চলে, ইন্টারনেট ছাড়াই চলে, ব্যর্থ হলে বোঝায়, আর অপ্স চোখে দেখা যায় — যা এখনো নেই তার বেশিরভাগ হয় ইচ্ছাকৃতভাবে বাদ, নয়তো plugins/providers-এর চওড়া কাজ; প্রতিটার সংখ্যা আর প্রমাণ উপরে।

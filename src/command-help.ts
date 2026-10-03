@@ -295,6 +295,22 @@ export const COMMANDS: CommandDoc[] = [
     json: '{count, live, watchers, summary, entries:[{kind, id, label, state, lastSeenAt, seenAgoMs, detail}]}',
   },
   {
+    cmd: 'image',
+    usage: 'image "<prompt>" [--size 1024x1024] [--out <path>]',
+    summary: 'make an image — provider image endpoint when configured, local placeholder under mock',
+    flags: ['--size WxH         1024x1024 (default) up to 2048x2048', '--out <file.png>   write here instead of workspace/outbox', '--json             path, bytes, width, height, prompt, provider, model, placeholder'],
+    example: 'termcrab image "a crab reading a book on a beach" --size 1536x1024',
+    json: '{path, bytes, width, height, prompt, provider, model, placeholder}',
+  },
+  {
+    cmd: 'orders',
+    usage: 'orders [list|add <text>|remove <id>]',
+    summary: 'standing orders — always-follow instructions injected into every turn',
+    flags: ['list               what is in force now (default)', 'add "<text>"       add one (every surface follows it from the next turn)', 'remove <id>        drop one immediately', '--json             count + orders[] with id, text, createdAt'],
+    example: 'termcrab orders add "always answer in Bengali"',
+    json: '{count, orders:[{id, text, createdAt}]}',
+  },
+  {
     cmd: 'events',
     usage: 'events [--json]',
     summary: 'which internal events can wake a hook on their own, and who listens',

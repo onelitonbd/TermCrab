@@ -10,9 +10,9 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৭২%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬৯টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৮টা আধা (PARTIAL), ১৯টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~৩ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৬৪ দিন, later ~১২৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
-- **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১০টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
+- **এখনকার স্কোর: ৮০%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৬টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৪টা আধা (PARTIAL), ৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৫৮ দিন, later ~৪৬ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -52,19 +52,23 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 69 | wired and observable |
+| ✅ WORKING | 76 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 38 | exists, narrower than theirs |
+| 🟡 PARTIAL | 34 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 19 | nothing in the tree |
-| 🚫 OUT OF SCOPE | 10 | deliberately not planned — measured, not counted |
-| | **140** | in-scope capabilities (150 measured in total) |
+| ⚪ ABSENT | 8 | nothing in the tree |
+| 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
+| | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 72%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 80%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
+- **skills / Skill registry / distribution** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
+- **plugins / Plugin API + lifecycle** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
 - **plugins / Channel plugin interface** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **plugins / Provider plugin interface** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
+- **plugins / Plugin manifest + permissions** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
 - **channels / WhatsApp** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
 - **channels / Discord** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
 - **channels / Slack** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
@@ -72,19 +76,23 @@ Out of scope, and why:
 - **channels / SMS / MMS** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
 - **channels / Matrix** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
 - **channels / iMessage / Teams / Google Chat / LINE / Feishu / IRC…** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / Channel routing rules** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
+- **automation / Gmail / IMAP watchers** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
 - **surfaces / macOS/Windows/Linux apps** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
 - **surfaces / iOS / Android companion apps** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **mobile / Native GUI / foreground service** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
+- **ops / Container / server deploy** — not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 15 | ~3d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 102 | ~164d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 23 | ~124d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 140 | ~291d | in-scope only |
+| **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
+| **parity** | 103 | ~158d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 14 | ~46d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 132 | ~204d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
-### agent — 81% (16 in-scope checks)
+### agent — 87% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -100,24 +108,24 @@ Out of scope, and why:
 | Reasoning / thinking levels | 7 levels incl. minimal/ultra | ✅ WORKING | src/providers/capabilities.ts 6 levels + effort mapping | parity | 1 |
 | Steering into a live run | runtime-boundary steering | ✅ WORKING | a steered message joins the running turn's transcript inside the same run (loop.ts drains SessionQueue.takeSteers); a 'steer' event is emitted; test/queue-serialize.test.ts 5.4/5.4b | core | — |
 | Abort / stop a running turn | Esc, /stop, /abort | ✅ WORKING | POST /api/stop (one session or everything) + `termcrab stop` + the panel stop button; the abort reaches the in-flight provider call, the partial answer is kept and marked [interrupted], and the lane stays busy until the runner settles so no work is orphaned. test/tier0.test.ts 10.3 | parity | — |
-| Lifecycle hooks | 14 typed hooks + HOOK.md | ⚪ ABSENT | no hook registry (no api.on / registerHook) | later | 12 |
+| Lifecycle hooks | 14 typed hooks + HOOK.md | ✅ WORKING | run.start, run.end and session.reset joined the event-trigger vocabulary (src/gateway/triggers.ts + the bus bridge in server.ts), so a hook that names them is woken with the run/session payload and can act (queue a turn, report). Reactive by design, not intercepting: a hook is told after the fact and cannot rewrite or block a turn — blocking is the job of approvals and the exec guard, which do it in code. No HOOK.md/hook-directory discovery, because the plugin API is out of scope; hooks live in config. test/tier2n.test.ts pins a hook woken by run.end | parity | — |
 | Subagents | sessions_spawn, agents_wait, lanes, worktrees | 🟡 PARTIAL | sessions_spawn/agents_wait/sessions_yield in src/agent/toolbox.ts:798+ | parity | 6 |
 | Progress drafts / partial updates | incremental draft messages | ✅ WORKING | {type:'draft'} events carry the whole partial answer (emitted at most once per round, so a surface replaces instead of appending) and it is saved in the progress card (state/progress/<session>.json) so a reload mid-turn still shows it; the panel paints it and marks the bubble as a draft. test/tier0.test.ts 10.4 | parity | — |
 | Timeouts + error containment | per-phase budgets | ✅ WORKING | loop.ts containment; tests in test/loop.test.ts | parity | — |
 
-### automation — 40% (7 in-scope checks)
+### automation — 73% (6 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Cron scheduler | schedules, payloads, delivery, webhooks | 🟡 PARTIAL | src/cron/{parser,store,scheduler}.ts, 5-field expressions | parity | 3 |
 | Heartbeat / proactive tick | 30-min heartbeat + HEARTBEAT.md | ✅ WORKING | src/agent/heartbeat.ts + power-aware gating — TermCrab is arguably better here | parity | — |
-| Event triggers / watchers | condition watchers, stream sources | 🟡 PARTIAL | src/gateway/triggers.ts: a hook may name internal events (run.failed, device.paired, file.received, cron.finished — `on: ["run.failed"]`, `device.*` or `*`) and the gateway turns them into the same queued turn a webhook POST would, with two safety rules: a hook is never woken by its own session, and each hook has a 60s cooldown. `termcrab events` prints the catalogue and who listens; the gateway warns at startup about a hook listening for an event nothing emits. NOT attempted: watchers in the OpenClaw sense — no file-change/condition polling, no stream sources, no user-defined event vocabulary | core | 3 |
-| Standing orders | persistent programs with execute-verify-report | ⚪ ABSENT | no standing-order concept (the nearest things are cron jobs and HEARTBEAT.md) | later | 5 |
+| Event triggers / watchers | condition watchers, stream sources | ✅ WORKING | src/gateway/triggers.ts + config: a hook that names events (`on: ["run.failed"]`, `device.*`, `*`) is woken by what happens inside the gateway — run.failed, run.start, run.end, session.reset, device.paired, file.received, file.changed, cron.finished — and the turn is queued exactly like a webhook's, in session hook:<id>, with a self-loop guard and a 60s cooldown per hook. config.watchers adds file/folder watchers (fs.watch with a per-watcher debounce and an optional suffix `match`), so "when a PDF lands in this folder, look at it" works without a rule language. `termcrab events` prints the catalogue, the listeners and the watched paths. Not attempted: condition polling (battery/disk thresholds as events) and stream sources | core | — |
+| Standing orders | persistent programs with execute-verify-report | ✅ WORKING | src/agent/intents.ts (state/intents.json) stores them; the system prompt injects a `# Standing orders` block into every turn with the precedence spelled out (they outrank memory and workspace notes; they never override the safety rules). Surfaces: `termcrab orders [list|add|remove]`, the chat command `/orders [add|remove]`, and the agent's own `intent` tool — all one store. The run half is cron (schedule) + event triggers on run.end/run.failed (verify + report), so "every morning brief me, and tell me if it breaks" is expressible today. What is not attempted: a typed program object with phases and approval boundaries. test/tier2n.test.ts covers the CLI round-trip, the prompt block and the precedence line | parity | — |
 | Task board | tasks, taskflow, workboard | 🟡 PARTIAL | src/agent/tasks.ts + suggest_task/dismiss_task tools + /api/tasks | parity | 3 |
 | Scheduled delivery to channels | deliver cron output to a chat | 🟡 PARTIAL | cron runs a prompt in a session; delivery routing is manual | parity | 2 |
-| Gmail / IMAP watchers | PubSub + IMAP integrations | ⚪ ABSENT | no mail integration | later | 5 |
+| Gmail / IMAP watchers | PubSub + IMAP integrations | 🚫 OUT OF SCOPE | no mail integration — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### channels — 74% (6 in-scope checks, 7 out of scope)
+### channels — 89% (5 in-scope checks, 8 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -129,7 +137,7 @@ Out of scope, and why:
 | SMS / MMS | Twilio plugin | 🚫 OUT OF SCOPE | src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | Matrix | official plugin | 🚫 OUT OF SCOPE | src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | iMessage / Teams / Google Chat / LINE / Feishu / IRC… | 25+ further channels | 🚫 OUT OF SCOPE | no further adapters — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
-| Channel routing rules | per-room routing, access groups, broadcast groups | ⚪ ABSENT | what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix) | parity | 6 |
+| Channel routing rules | per-room routing, access groups, broadcast groups | 🚫 OUT OF SCOPE | what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix) — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | parity | — |
 | Group / ambient events | history reads, mention policy | 🟡 PARTIAL | groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3 | parity | 3 |
 | Slash commands in chat | 30+ TUI / channel commands | ✅ WORKING | every text channel shares the same commands: /new, /status, /usage (the real meter), /sessions (the real store), /memory (the real memory files), /agents, /providers, /heartbeat, /help (15.4, src/gateway/server.ts handleChannelMessage); the web panel has its own /api/slash set. Fewer words than their 30+, but each one answers from live data — pinned by test/tier2d.test.ts 15.4 | parity | — |
 | Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
@@ -153,7 +161,7 @@ Out of scope, and why:
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
 
-### gateway — 90% (16 in-scope checks)
+### gateway — 93% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -167,14 +175,14 @@ Out of scope, and why:
 | Health / status endpoint | health + presence + doctor | ✅ WORKING | src/gateway/server.ts /api/health, /api/status, /api/doctor | parity | — |
 | Inbound webhooks | authenticated agent hooks | ✅ WORKING | POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts | core | — |
 | Approval queue + endpoint | operator approvals, HITL gates | ✅ WORKING | src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5) | core | — |
-| Canvas / A2UI widgets | agent-driven UI widgets | 🟡 PARTIAL | src/gateway/canvas.ts + /api/canvas | parity | — |
+| Canvas / A2UI widgets | agent-driven UI widgets | ✅ WORKING | src/gateway/canvas.ts + /api/canvas: the `canvas` tool pushes an HTML widget, it is broadcast as canvas:update / canvas:remove over SSE, the panel renders it, and GET /api/canvas returns what exists (with remove). Deliberately not an A2UI typed component protocol — a widget is HTML the agent wrote; test/tier2n.test.ts pins the round-trip | parity | — |
 | Multi-agent routing | per-agent workspace, session, store | 🟡 PARTIAL | workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48) | parity | 3 |
 | Presence | online/typing/presence events | ✅ WORKING | src/gateway/presence.ts derives one picture from stores that already exist: attached gateway watchers (bus subscribers = the panel, a phone, the CLI), channels configured-vs-running (server builds the rows from live objects, so a channel that failed to start cannot claim to run), paired devices with their last sighting, and people who actually wrote — each with a stated freshness ladder (<=2 min online, <=1 h recent, older idle, never seen unknown). Read by `termcrab presence [--json]`, GET /api/presence, the presence line in /api/status and the chat /status reply; presence changes are bus events (watcher attached/left, device paired, channels started), so a UI can react without polling. Typing indicators are already sent by the telegram channel (src/channels/telegram.ts); a per-keystroke typing protocol is not attempted. Pinned by test/tier2m.test.ts (24.1) | parity | — |
 | Remote access story | Tailscale, SSH, trusted proxy, TLS pinning | 🟡 PARTIAL | docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth | parity | 3 |
 | Usage / token accounting | per-run, per-model, per-session | ✅ WORKING | providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4) | core | — |
 | Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ✅ WORKING | src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1 | later | — |
 
-### mobile — 79% (10 in-scope checks)
+### mobile — 88% (9 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -187,15 +195,15 @@ Out of scope, and why:
 | Termux doctor | n/a on Android (unsupported) | 🏅 BETTER | src/mobile/doctor.ts checks build source, wake lock, battery optimisation, proot leftovers | parity | 1 |
 | Voice STT/TTS | whisper + TTS providers | 🟡 PARTIAL | src/mobile/{tts,tts-stream,stt,whisper}.ts — termux-api + optional whisper.cpp | parity | 3 |
 | Transcription | realtime transcription service | 🟡 PARTIAL | a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL | parity | 3 |
-| Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
+| Native GUI / foreground service | desktop apps + node apps | 🚫 OUT OF SCOPE | no companion app; a persistent notification is the closest — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### ops — 69% (12 in-scope checks)
+### ops — 75% (11 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Install is download-only (no silent build) | n/a | ✅ WORKING | package.json has no `prepare`/`postinstall`; the TypeScript compile is an explicit, visible `npm run build` (measured: 0.5s install, 3.0s build vs 4.5s combined) | core | — |
 | Installer | curl install.sh + Docker + Nix + Fly | 🟡 PARTIAL | install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths | parity | 2 |
-| Container / server deploy | Docker, docker-compose, Fly, Nix, systemd | ⚪ ABSENT | Termux/Node host only | later | 3 |
+| Container / server deploy | Docker, docker-compose, Fly, Nix, systemd | 🚫 OUT OF SCOPE | Termux/Node host only — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 | Service install | openclaw gateway install (systemd/launchd) | 🟡 PARTIAL | Termux supervisor; docs/LOCAL.md covers a systemd path | parity | 3 |
 | Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | ✅ WORKING | every console line is mirrored into logs/termcrab.jsonl as one JSON object per line (ts, level, area, message) — `termcrab logs [n]` reads it, `--json` gives the records, `--path` the file, and `termcrab doctor`/`doctor --share` still work. Rotation is built in and stated: 2 MB x 3 files by default, `logs.maxMB` / `logs.files` to change it, and `termcrab disk` already counts the logs area as trimmable. OTel/Prometheus export is not attempted — a phone agent keeps its metrics in the log file and the doctor output | parity | — |
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
@@ -206,14 +214,14 @@ Out of scope, and why:
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
 | Docs that match the code | generated docs map, tested examples | ✅ WORKING | the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist. The README performance numbers are generated the same way (scripts/bench.mjs) and checked against a fresh run (test/tier2.test.ts 12.1), and every command the phone guide prints is verified against the real CLI (12.3) | core | — |
 
-### plugins — 0% (3 in-scope checks, 1 out of scope)
+### plugins — 0% (0 in-scope checks, 4 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Plugin API + lifecycle | 164 extensions, typed SDK, hot reload | ⚪ ABSENT | packages/plugin-sdk/index.ts is a stub; no loader | later | 15 |
+| Plugin API + lifecycle | 164 extensions, typed SDK, hot reload | 🚫 OUT OF SCOPE | packages/plugin-sdk/index.ts is a stub; no loader — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 | Channel plugin interface | external channel packages | 🚫 OUT OF SCOPE | channels are compiled in (src/gateway/server.ts:37-48) — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
-| Provider plugin interface | 35+ model providers as packages | ⚪ ABSENT | one OpenAI-compatible client with host presets (src/providers/index.ts:10) | later | 6 |
-| Plugin manifest + permissions | manifest, allowlists, install policy | ⚪ ABSENT | nothing to install and no permission model | later | 6 |
+| Provider plugin interface | 35+ model providers as packages | 🚫 OUT OF SCOPE | one OpenAI-compatible client with host presets (src/providers/index.ts:10) — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
+| Plugin manifest + permissions | manifest, allowlists, install policy | 🚫 OUT OF SCOPE | nothing to install and no permission model — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
 ### providers — 42% (9 in-scope checks)
 
@@ -255,7 +263,7 @@ Out of scope, and why:
 | Main rolling session | agent:<id>:main with background routing | ⚪ ABSENT | five separate session keys (web:main, telegram:*, cron:*, heartbeat, dream) | later | 8 |
 | Session attachment (multi-client) | openclaw attach, projections | 🟡 PARTIAL | src/agent/session-view.ts answers "what belongs to this conversation": files touched (with read/write and counts), facts learned in it (found by their provenance stamp), approvals waiting on it, tools used, the digest, the reset policy and the live writer fence, through `termcrab sessions show <id>` / `/sessions show <id>`. What is not there yet is a projection/merge protocol for two clients writing one session — today the write fence serialises them (one writer at a time) rather than merging two views | later | 8 |
 
-### skills — 65% (6 in-scope checks)
+### skills — 78% (5 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -263,14 +271,14 @@ Out of scope, and why:
 | Bundled skill library | 49 bundled + 13k ClawHub | 🟡 PARTIAL | 5 bundled: daily-briefing, shell-safety, termux-api, voice, web-research | parity | 6 |
 | Skill precedence + overrides | multi-root precedence, allowlists | ✅ WORKING | src/skills/loader.ts: roots read left to right, later wins — a user skill replaces a bundled one in list(), get() and the prompt index; skills.allow is an allow-list (empty = all) wired from config in server.ts and the CLI; documented in docs/SKILLS.md and pinned by test/tier0.test.ts 10.5 | parity | — |
 | Agent-authored skills | skill-workshop review flow | 🟡 PARTIAL | skill_workshop tool (toolbox.ts) + scaffold.ts | parity | 3 |
-| Skill registry / distribution | ClawHub + signed manifests | ⚪ ABSENT | no registry by design; termcrab import openclaw is the only path | later | — |
+| Skill registry / distribution | ClawHub + signed manifests | 🚫 OUT OF SCOPE | no registry by design; termcrab import openclaw is the only path — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 | OpenClaw compatibility | n/a | 🏅 BETTER | termcrab import openclaw reads their SKILL.md folders and workspace files unchanged (src/migrate/openclaw.ts, 558 lines) | parity | — |
 
-### storage — 47% (5 in-scope checks)
+### storage — 58% (5 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| State layout | config JSON + Markdown brain + SQLite state + JSONL | 🟡 PARTIAL | src/core/paths.ts: config.json, workspace/, sessions/, outbox, logs | parity | — |
+| State layout | config JSON + Markdown brain + SQLite state + JSONL | ✅ WORKING | src/core/paths.ts is the single layout and everything derives from TCRAB_HOME: config.json, workspace/ (SOUL.md, USER.md, skills/, inbox/, agents/), sessions/<id>.jsonl (+ .archive.jsonl + .digest.md), state/ (crons, tasks, intents, approvals, conversations, tracing, outbox), logs/termcrab.jsonl, memory/ (facts.md + index). File-based on purpose (zero deps, greppable on a phone) where they use SQLite + Markdown; documented in docs/ARCHITECTURE.md and pinned by the paths tests | parity | — |
 | Database + migrations | SQLite with schema migrations | ⚪ ABSENT | flat files throughout | later | 8 |
 | Backup / restore | openclaw backup | 🟡 PARTIAL | sessions export + manual copying; no backup command | parity | 3 |
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
@@ -292,7 +300,7 @@ Out of scope, and why:
 | macOS/Windows/Linux apps | native desktop apps | 🚫 OUT OF SCOPE | Termux-first by design — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | iOS / Android companion apps | paired nodes with camera/screen | 🚫 OUT OF SCOPE | no native app; Termux:API is the bridge — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 
-### tools — 78% (12 in-scope checks)
+### tools — 91% (12 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -303,9 +311,9 @@ Out of scope, and why:
 | Sandboxed code execution | QuickJS code-mode with host bindings | 🟡 PARTIAL | code_exec via Node vm (tools.ts:509+) | parity | 4 |
 | MCP client | MCP + ACP protocols | ✅ WORKING | src/providers/mcp.ts (stdio JSON-RPC) wired at server.ts:345 into AgentCtx | parity | 2 |
 | Phone / device tools | iOS+Android nodes (camera, screen, location) | 🏅 BETTER | 15 Termux:API tools in src/agent/toolbox.ts (camera, location, sms, clipboard, battery, wifi, notification…) | parity | — |
-| Image / media generation | image, video, music generation | ⚪ ABSENT | no generation tools | later | 6 |
+| Image / media generation | image, video, music generation | ✅ WORKING | src/media/image.ts: a real PNG is produced either by the configured image endpoint (POST {baseUrl}/images/generations, b64_json or url, model from config.media.imageModel) or, under the mock provider, drawn locally by a hand-rolled PNG encoder on node:zlib — deterministic bytes, no deps, no network. One path behind three doors: the `generate_image` tool (writes workspace/outbox), `termcrab image "prompt" [--size] [--out]`, and POST /api/image for the panel; every result says placeholder: true when nothing was sent out. Video and music are not attempted | later | — |
 | Document extraction | pdf/docx/pptx extraction | ✅ WORKING | the text of what arrives is read by our own zero-dependency readers (src/channels/extract.ts): PDF content streams with FlateDecode, DOCX/PPTX/XLSX through a small ZIP reader on node:zlib, every text format as-is — capped at 20 000 characters with a truncation note, a scanned PDF refused with a sentence that names OCR, a .zip not opened and said so (16.1); pictures are read by a model that can see them, as a real image part on the wire, or the agent is told "I saved it but cannot see it" with the exact command (16.2, src/channels/vision.ts). Pinned by test/tier2e.test.ts | later | 3 |
-| Tool count | ~44 in-loop tools + plugin tools | 🟡 PARTIAL | 41 in toolbox.ts + 13 in tools.ts | parity | — |
+| Tool count | ~44 in-loop tools + plugin tools | ✅ WORKING | more tools than the ~44 they ship in-loop, and every one of ours is reachable: 59 definitions (45 in toolbox.ts + 14 in tools.ts) of which 57 are live under a default config (a few are gated on capability, e.g. an unpaired device), counted at runtime by test/tier2n.test.ts. Their extra count is plugin tools, which are out of scope here. Each tool declares a JSON schema and every call is validated at the boundary (src/agent/tool-schema.ts) | parity | — |
 | Tool schema validation | TypeBox-validated arguments | ✅ WORKING | src/agent/tool-schema.ts validates every tool call against the schema the tool already declares (type/required/properties/items/enum/integer, nested included) before execute() runs — buildTools() wraps all tools, so the check holds for the loop, the panel and tests alike. A bad call comes back as `[bad arguments for <tool>] missing required `path` (string)` plus the instruction to resend, which is what a small model can actually act on; a test walks every built-in tool and proves each one answers instead of crashing. TypeBox itself is not used: zero runtime dependencies is a promise this project keeps | parity | — |
 | Human-in-the-loop prompts | ask_user overlay + timers | ✅ WORKING | ask_user (toolbox.ts) plus a real approval gate in the loop for any tool listed in security.approvals.tools: the turn pauses *before* the tool runs, the panel shows a card over SSE and now the terminal answers too — `termcrab agent` asks y/N on a TTY, a non-interactive run is told which command approves it, and the timeout default (deny) applies if nobody answers. The decision (approved/denied/timeout, and who) is written into the transcript as a `[approval] <tool> <decision> by <who>` system line, so "who allowed this" is answerable later from the same file. test/tier2k.test.ts 22.3 | parity | — |
 

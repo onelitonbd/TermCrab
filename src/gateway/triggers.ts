@@ -25,8 +25,12 @@
 /** Every event the gateway can fire today, with what it means. */
 export const KNOWN_EVENTS: { name: string; what: string }[] = [
   { name: 'run.failed', what: 'a turn ended with an error (the provider failed, a tool blew up)' },
+  { name: 'run.start', what: 'a turn started (lifecycle: after the fact, a hook cannot block the turn)' },
+  { name: 'run.end', what: 'a turn finished (payload has iterations; costUsd when a price is known)' },
+  { name: 'session.reset', what: 'a conversation started over (the transcript is archived, not deleted)' },
   { name: 'device.paired', what: 'a phone or tablet redeemed a pairing code and now has its own token' },
   { name: 'file.received', what: 'a file, photo or voice note arrived in the inbox' },
+  { name: 'file.changed', what: 'a watched file or folder changed (see config watchers)' },
   { name: 'cron.finished', what: 'a scheduled job finished (payload has ok: true/false)' },
 ];
 
@@ -35,6 +39,22 @@ export interface TriggerHook {
   prompt: string;
   /** Event names or patterns; absent/empty means the hook is webhook-only. */
   on?: string[];
+}
+
+/**
+ * A folder (or file) the gateway watches: when something under it changes, the
+ * `file.changed` event fires and any hook listening for it wakes. This is the
+ * watcher a phone needs — "when a file lands here, look at it" — without a
+ * rule language: the path is the rule.
+ */
+export interface WatcherConfig {
+  id: string;
+  /** Absolute path, or `~/…`; a relative path is resolved against the workspace. */
+  path: string;
+  /** Optional glob-ish suffix filter, e.g. `.pdf` or `.jpg,.png`. */
+  match?: string;
+  /** Debounce in milliseconds (default 1500) so one save is not five events. */
+  debounceMs?: number;
 }
 
 export interface TriggerPayload {
@@ -99,6 +119,18 @@ export function planTriggers(
     out.push({ hook });
   }
   return out;
+}
+
+/** Does a changed path interest this watcher? (`match` is a comma list of suffixes.) */
+export function watcherMatches(watcher: WatcherConfig, changedPath: string): boolean {
+  const match = (watcher.match ?? '').trim();
+  if (!match) return true;
+  const name = changedPath.slice(changedPath.lastIndexOf('/') + 1).toLowerCase();
+  return match
+    .split(',')
+    .map((m) => m.trim().toLowerCase())
+    .filter(Boolean)
+    .some((suffix) => name.endsWith(suffix.startsWith('.') ? suffix : `.${suffix}`));
 }
 
 /** The message an event-triggered turn carries — the same shape as a webhook. */
