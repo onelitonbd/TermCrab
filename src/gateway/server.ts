@@ -1224,6 +1224,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         /**
+         * What is running, and is any of it stuck (23.1). Must come before the
+         * by-id route below, which would otherwise read "health" as a run id.
+         * The panel, `termcrab runs` and the /status line all read this; the
+         * verdicts are computed in src/agent/run-health.ts so every surface
+         * says the same sentence.
+         */
+        if (req.method === 'GET' && pathname === '/api/runs/health') {
+          const health = runHealth({ queue: agentQueue, traces: listRuns() });
+          json(res, 200, { ok: true, v: WIRE_VERSION, count: health.length, runs: health });
+          return;
+        }
+
+        /**
          * A run, by id, whatever surface started it (10.2). The queue knows the
          * turn (status, output, error); the trace knows the numbers (tokens,
          * duration). Both share one id.
@@ -1251,18 +1264,6 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           });
           return;
         }
-
-        /**
-       * What is running, and is any of it stuck (23.1). The panel and
-       * `termcrab runs` read this; the verdicts and the suggestions are
-       * computed in src/agent/run-health.ts so both surfaces say the same
-       * sentence.
-       */
-      if (req.method === 'GET' && pathname === '/api/runs/health') {
-        const health = runHealth({ queue: agentQueue, traces: listRuns() });
-        json(res, 200, { ok: true, v: WIRE_VERSION, count: health.length, runs: health });
-        return;
-      }
 
       /** Stop every running turn, or one session's (10.3). */
         if (req.method === 'POST' && pathname === '/api/stop') {

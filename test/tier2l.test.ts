@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { buildTools } from '../src/agent/tools.js';
 import { SessionQueue, SessionStore } from '../src/agent/sessions.js';
 import { healthLine, runHealth } from '../src/agent/run-health.js';
@@ -12,6 +12,9 @@ import { log, setLogLevel } from '../src/core/logger.js';
 import { defaults, validateConfig } from '../src/core/config.js';
 import { addToolCall, addSpan, clearRuns, endRun, startRun } from '../src/core/tracing.js';
 import { MemoryStore } from '../src/agent/memory.js';
+import { startGateway, type GatewayHandle } from '../src/gateway/server.js';
+import { saveConfig } from '../src/core/config.js';
+import net from 'node:net';
 import { SkillStore } from '../src/skills/loader.js';
 
 /**
@@ -38,6 +41,22 @@ function runCli(args: string[], dir: string): { stdout: string; status: number }
     const e = err as { stdout?: string; status?: number };
     return { stdout: e.stdout ?? '', status: e.status ?? 1 };
   }
+}
+
+function runCliAsync(args: string[], dir: string): Promise<{ stdout: string; status: number }> {
+  // execFileSync would block this process's event loop - and the panel under
+  // test lives in this process, so the child could never get an answer.
+  return new Promise((resolve) => {
+    execFile(
+      process.execPath,
+      [path.join(process.cwd(), 'dist/src/bin/termcrab.js'), ...args],
+      { encoding: 'utf8', env: { ...process.env, TCRAB_HOME: dir } },
+      (err, stdout) => {
+        const status = err ? ((err as { code?: number }).code ?? 1) : 0;
+        resolve({ stdout: stdout ?? '', status });
+      },
+    );
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -340,4 +359,57 @@ test('23.1 doctor reports running turns without crying wolf', async () => {
     skills: new SkillStore(),
     sessions: new SessionStore(),
   }));
+});
+
+// ---------------------------------------------------------------------------
+// 23.1b — the same verdicts over HTTP, where the CLI and the panel read them
+// ---------------------------------------------------------------------------
+
+async function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const p = (srv.address() as net.AddressInfo).port;
+      srv.close(() => resolve(p));
+    });
+  });
+}
+
+test('23.1b /api/runs/health answers over HTTP and is not read as a run id', async () => {
+  const dir = home('http');
+  clearRuns();
+  const config = defaults();
+  config.provider = { type: 'mock', model: 'mock-1' };
+  config.gateway.token = 'test-token';
+  config.gateway.port = await freePort();
+  saveConfig(config); // the CLI in the live check reads the same port and token
+
+  let handle: GatewayHandle | undefined;
+  try {
+    handle = await startGateway({ config, host: '127.0.0.1', port: config.gateway.port });
+    const base = `http://127.0.0.1:${config.gateway.port}`;
+    const auth = { authorization: 'Bearer test-token' };
+
+    const health = await fetch(`${base}/api/runs/health`, { headers: auth });
+    assert.equal(health.status, 200, 'health must not be shadowed by the by-id route');
+    const body = (await health.json()) as { ok: boolean; v: number; count: number; runs: unknown[] };
+    assert.equal(body.ok, true);
+    assert.equal(body.count, 0);
+    assert.deepEqual(body.runs, []);
+
+    // A real id route still behaves: an unknown run is a 404 in the run shape.
+    const missing = await fetch(`${base}/api/runs/nope`, { headers: auth });
+    assert.equal(missing.status, 404);
+    assert.deepEqual(await missing.json(), { error: 'no run nope' });
+
+    // And the CLI uses the live panel rather than quietly falling back local.
+    const out = await runCliAsync(['runs', '--json'], dir);
+    assert.equal(out.status, 0);
+    const parsed = JSON.parse(out.stdout) as { data: { live: boolean; count: number } };
+    assert.equal(parsed.data.live, true, 'a running panel must be the source');
+    assert.equal(parsed.data.count, 0);
+  } finally {
+    await handle?.stop();
+  }
 });

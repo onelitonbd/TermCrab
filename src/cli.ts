@@ -1176,8 +1176,14 @@ export async function main(argv: string[]): Promise<void> {
         health = res.runs ?? [];
       } catch (err) {
         live = false;
-        if (!machine && err instanceof GatewayNotRunningError) {
-          console.error('the panel is not running — showing this process instead (usually empty)');
+        if (!machine) {
+          if (err instanceof GatewayNotRunningError) {
+            console.error('the panel is not running — showing this process instead (usually empty)');
+          } else {
+            // The panel is up but did not answer this route: say so instead of
+            // quietly showing an empty local view (a route bug once hid here).
+            console.error(`the panel could not answer /api/runs/health (${errorText(err)}) — showing this process instead`);
+          }
         }
         health = runHealth({ traces: listRuns() });
       }
