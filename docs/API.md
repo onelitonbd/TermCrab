@@ -85,6 +85,9 @@ Events: `run.failed` (a turn ended with an error), `run.start` / `run.end` / `se
 ### Image generation (`POST /api/image`)
 `{"prompt": "a crab reading a book", "size": "1024x1024", "name": "crab"}` → `{ok, path, bytes, width, height, provider, model, placeholder}`. The provider's image endpoint is used when one is configured (`config.media.imageModel`); under the mock provider a deterministic PNG is drawn locally and `placeholder: true` says so. `400` when `prompt` is missing, `502` with the endpoint's message when generation fails.
 
+### Providers: native wire formats, keys, and the catalog (27.2–27.3)
+`provider.type` is one of `openai` (any OpenAI-compatible `/chat/completions`), `anthropic` (`POST {base}/v1/messages`, content blocks, `input_schema` tools, `tool_result` user turns) or `gemini` (`POST {base}/models/<model>:generateContent`, `functionDeclarations`, `functionResponse` parts), plus `mock` offline. Keys can live in a named profile instead of config: `termcrab auth add work --provider anthropic --key …` writes `state/auth-profiles.json` (mode 0600, audited in `state/auth-audit.log`) and `provider.authProfile: "work"` resolves at the one place a provider is built. `termcrab models` lists the endpoint's models with capabilities (context, vision, tools, thinking, price), falling back to the offline catalog with a note when the endpoint cannot be reached.
+
 ### Event watchers (config)
 `config.watchers` turns "something changed under this folder" into the `file.changed` event, which any hook with `on: ["file.changed"]` hears:
 

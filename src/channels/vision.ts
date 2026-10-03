@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ProviderCfg } from '../core/config.js';
 import { Provider, ChatImage } from '../providers/types.js';
+import { describeModel } from '../providers/catalog.js';
 import { providerSummary, resolveProvider } from '../providers/index.js';
 
 /** Largest picture we will send: base64 inflates by ~33% and servers cap this. */
@@ -56,7 +57,12 @@ export function canSeeImages(cfg: Pick<ProviderCfg, 'type' | 'model'>): boolean 
   if (cfg.type === 'mock') return true;
   if (!model) return false;
   if (NOT_VISION.some((n) => model.includes(n))) return false;
-  return VISION_MODEL_PATTERNS.some((p) => model.includes(p));
+  if (VISION_MODEL_PATTERNS.some((p) => model.includes(p))) return true;
+  // 27.3: the name patterns miss new ids; the catalog knows the ones we track,
+  // so a model listed there as seeing images is not called blind just because
+  // this list is older than it. An unknown model is still blind (a wasted call
+  // and a confusing error are worse than saying "I cannot see it").
+  return describeModel(model).vision === true;
 }
 
 export type VisionResult =

@@ -128,6 +128,7 @@ users' runtime.
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
 | `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
+| `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |
 | `src/core/disk.ts` | The disk budget (10.6) |
@@ -173,7 +174,10 @@ users' runtime.
 | `src/mobile/wake.ts` | Voice wake loop for Termux |
 | `src/mobile/whisper.ts` | Offline audio transcription via whisper.cpp (`whisper-cli`) |
 | `src/onboard.ts` | wizard (interactive + flags) |
+| `src/providers/anthropic.ts` | Anthropic's own wire format (messages, content blocks, input_schema tools, tool_result turns, thinking blocks, SSE) behind the shared Provider contract (27.2). |
+| `src/providers/catalog.ts` | Model catalog: what an endpoint has (asked live, offline fallback) and what each model can do (27.3). |
 | `src/providers/capabilities.ts` | per-model thinking/reasoning capability table |
+| `src/providers/gemini.ts` | Google Gemini's generateContent wire format: contents/parts, functionDeclarations, functionResponse merges, inlineData images, SSE (27.2). |
 | `src/providers/index.ts` | resolveProvider() + resolveProviderChain() |
 | `src/providers/mcp.ts` | MCP client (stdio JSON-RPC, no external deps) |
 | `src/providers/mock.ts` | offline deterministic provider (tests + demo) |

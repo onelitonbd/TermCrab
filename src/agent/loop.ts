@@ -1,6 +1,7 @@
 import { Config } from '../core/config.js';
 import { log } from '../core/logger.js';
 import { providerSummary, resolveProvider, resolveProviderChain } from '../providers/index.js';
+import { resolveAuth } from '../core/auth-profiles.js';
 import { ChatResult, Provider, ProviderMessage, ThinkingLevel, Usage } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
@@ -287,9 +288,28 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
   } else if (ctx.provider) {
     provider = ctx.provider;
   } else if (ctx.config.agent.failover && ctx.config.fallbackProviders.length > 0) {
-    provider = resolveProviderChain(ctx.config.provider, ctx.config.fallbackProviders, ctx.fetchImpl);
+    // A profile name in config is resolved to a key here (27.3): the loop is
+    // the only place a provider is constructed, so it is the only place that
+    // needs to know a profile exists.
+    provider = resolveProviderChain(
+      resolveAuth(ctx.config.provider),
+      ctx.config.fallbackProviders.map((f) => resolveAuth(f)),
+      ctx.fetchImpl,
+    );
   } else {
-    provider = resolveProvider(ctx.config.provider, ctx.fetchImpl);
+    provider = resolveProvider(resolveAuth(ctx.config.provider), ctx.fetchImpl);
+  }
+  if (opts.tier === 'local' && !ctx.localProvider) {
+    // 27.3: a silent fallback to the cloud is how a phone burns data without
+    // anyone noticing. Say it in the transcript instead.
+    log.warn('local tier requested, but config.localProvider is empty — using the cloud provider');
+    appendEntry({
+      role: 'system',
+      content:
+        '[local tier] no local model is configured (config.localProvider.enabled + model) — ' +
+        `this turn ran on ${providerLabel(ctx.config)}. See docs/LOCAL.md.`,
+      ts: Date.now(),
+    });
   }
   const meterProvider = { name: provider.name, model: provider.model };
 
@@ -353,6 +373,8 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
   let lastCallKey = '';
   let repeatCount = 0;
   const abortCtrl = new AbortController();
+  let watchdogRef: NodeJS.Timeout | null = null;
+  let watchdogHit: string | null = null;
   // Link external abort signal (from queue interrupt) to our internal controller
   if (opts.signal) {
     if (opts.signal.aborted) abortCtrl.abort();
@@ -420,6 +442,10 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     opts: { error?: string; status?: 'done' | 'error' | 'interrupted' } = {},
   ): void => {
     const { error } = opts;
+    if (watchdogRef) {
+      clearInterval(watchdogRef);
+      watchdogRef = null;
+    }
     try {
       clearDraft(sessionId);
     } catch {
@@ -462,7 +488,52 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
       }
       return steers.length > 0;
     };
+    // 27.4: two clocks, one purpose — a turn that cannot finish must stop
+    // saying why. `progressAt` moves on every model reply and every finished
+    // tool, so a long but healthy turn is never killed; `startedAt` bounds the
+    // turn whatever it is doing.
+    const budgetMs = Math.max(0, (ctx.config.agent.turnBudgetSec ?? 900)) * 1000;
+    const idleMs = Math.max(0, (ctx.config.agent.idleSec ?? 120)) * 1000;
+    const startedAt = Date.now();
+    let progressAt = startedAt;
+    let lastProgress = 'starting the turn';
+
+    const watchdogReason = (): string | null => {
+      if (budgetMs && Date.now() - startedAt >= budgetMs) {
+        return `[stopped] this turn ran for ${Math.round((Date.now() - startedAt) / 1000)}s (agent.turnBudgetSec=${Math.round(budgetMs / 1000)}). Ask for a smaller piece, or raise the budget.`;
+      }
+      if (idleMs && Date.now() - progressAt >= idleMs) {
+        return `[stopped] no progress for ${Math.round((Date.now() - progressAt) / 1000)}s while ${lastProgress} (agent.idleSec=${Math.round(idleMs / 1000)}).`;
+      }
+      return null;
+    };
+
+    // A turn waiting on a hung network call makes no progress *between*
+    // iterations, so the check must fire while we wait: the watchdog aborts the
+    // turn, and the abort path knows the difference between this and a person
+    // pressing stop. `stopReason` is read by finishTurn and by the tests.
+    const watchdog = setInterval(() => {
+      if (watchdogHit) return;
+      const reason = watchdogReason();
+      if (!reason) return;
+      watchdogHit = reason;
+      log.warn(`watchdog: ${reason.replace('[stopped] ', '')}`);
+      try {
+        abortCtrl.abort();
+      } catch {
+        /* aborts cannot throw in practice */
+      }
+    }, 250);
+    watchdog.unref?.();
+    watchdogRef = watchdog;
+
     for (let i = 0; i < maxIter; i++) {
+      if (watchdogHit) {
+        finalText = watchdogHit;
+        appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
+        finishTurn(finalText, i, { status: 'error', error: 'watchdog' });
+        return finalText;
+      }
       if (abortCtrl.signal.aborted) {
         finalText = interruptedText();
         appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
@@ -479,6 +550,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         keep: ctx.config.agent.keepToolResults ?? 6,
       });
       let streamedChars = 0;
+      lastProgress = `waiting for ${provider.name} to reply (iteration ${i + 1})`;
       const result = await chatWithTimeout(
         provider,
         { system, messages: pruned.messages, tools: tools.map((t) => t.def), thinkingLevel: opts.thinkingLevel },
@@ -506,6 +578,8 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
           thinking: result.thinking,
           thinkingBlocks: result.thinkingBlocks,
         });
+        progressAt = Date.now();
+        lastProgress = `the model replied (iteration ${i + 1}${result.toolCalls.length ? `, asking for ${result.toolCalls.map((c) => c.name).join(', ')}` : ''})`;
         if (result.text && !streamedChars) emit({ type: 'delta', text: result.text });
         // The model spoke before calling a tool: that is a draft of the answer,
         // not the answer (10.4).
@@ -670,6 +744,8 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
           });
         }
         await flush();
+        progressAt = Date.now();
+        lastProgress = 'running tools';
         // Keep the repetition detector's memory across turns (it was file-scope
         // before this restructure).
         lastCallKey = state.lastCallKey;
@@ -730,6 +806,14 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     // keep whatever the model had said so far (10.3). The queue already knows it
     // was interrupted; hand it the text so `run --wait` / the poll can read it.
     if (abortCtrl.signal.aborted) {
+      // A watchdog stop is not a person's stop: report it as the failure it is
+      // (with the reason), not as `interrupted`.
+      if (watchdogHit) {
+        const text = partial.trim() ? `${partial.trim()}\n\n${watchdogHit}` : watchdogHit;
+        appendEntry({ role: 'assistant', content: text, ts: Date.now() });
+        finishTurn(text, 0, { status: 'error', error: 'watchdog' });
+        return text;
+      }
       const text = interruptedText();
       appendEntry({ role: 'assistant', content: text, ts: Date.now() });
       ctx.queue?.recordInterrupt(sessionId, text);

@@ -178,8 +178,9 @@ check('agent', 'Run identity + terminal wait', 'runId + agent.wait replay', 'WOR
 check('agent', 'Parallel tool batches', 'launched together, results merged', 'WORKING',
   'src/agent/loop.ts runs consecutive read-only calls from one model turn as a bounded batch (Promise.all, agent.parallelTools default 4, 1 = off); a mutating or approval-gated call flushes the batch and runs alone, so ordering is never guessed; transcript entries are written in the model order and tool:start/tool:end keep their per-call ids; one tool failing is that tool result, not a cancelled batch. Safety is opt-in: only the 19 names in PARALLEL_SAFE_TOOLS (src/agent/tools.ts) are batched, and every name there is checked against the live toolbox. Pinned by test/tier2o.test.ts (overlap, ordering, failure isolation, the knob, the table shape)',
   { file: 'src/agent/loop.ts', pattern: /Promise\.all\(/, expect: 'present' }, 0);
-check('agent', 'Loop budget + idle watchdog', '172800s budget, 120s/300s idle, overflow recovery', 'PARTIAL',
-  'PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197)', { pattern: 'PROVIDER_TIMEOUT_MS', expect: 'present' }, 3);
+check('agent', 'Loop budget + idle watchdog', '172800s budget, 120s/300s idle, overflow recovery', 'WORKING',
+  'agent.turnBudgetSec (default 900, 0 = off) bounds a whole turn; agent.idleSec (default 120, 0 = off) resets on every model reply and every finished tool, and a watchdog interval aborts the turn mid-call when the wait itself is the problem. The stop is reported as an error with the reason and what it was waiting on ("no progress for 120s while waiting for anthropic to reply (iteration 2)"), the partial answer is kept, and the run is recorded as error=watchdog so termcrab runs / the panel can see it. Both keys are validated (1 day / 1 hour caps) and both are in docs. Pinned by test/tier2p.test.ts 27.4 (a hanging provider stops in ~1s with the reason, 0 disables both clocks)',
+  { file: 'src/agent/loop.ts', pattern: 'watchdogReason', expect: 'present' }, 0);
 check('agent', 'Repetition / loop detection', 'repeated-call guards', 'WORKING',
   'src/agent/loop.ts:249-264 repetition detector', { pattern: 'repetition', expect: 'present' }, 0);
 check('agent', 'Model failover chain', 'ordered chain + cooldowns + auth profiles', 'WORKING',
@@ -363,25 +364,30 @@ check('channels', 'Media send/receive', 'images, audio, documents', 'WORKING',
   { pattern: 'sendDocument', expect: 'present' }, 3);
 
 // ------------------------------------------------------ 9. providers/models
-check('providers', 'Model providers', '35+ provider plugins + OAuth', 'PARTIAL',
-  'OpenAI-compatible client with 7 host presets (src/providers/index.ts:10-18)', { pattern: 'OPENAI_COMPAT_BASES', expect: 'present' }, 8);
+check('providers', 'Model providers', 'OpenAI, Anthropic, Gemini, plus plugin providers', 'WORKING',
+  'Three native wire formats behind one Provider contract: OpenAI-compatible /chat/completions (7 host presets + any self-hosted server), Anthropic /v1/messages and Google Gemini generateContent — plus the offline mock brain. provider.type picks the dialect, both native adapters are pinned by tests against fake upstreams, and the failover chain (resolveProviderChain + cooldowns) works across all of them. Provider plugins are out of scope by the three-surface decision, which is why this row is capped here rather than linked to a plugin interface',
+  { file: 'src/providers/anthropic.ts', pattern: 'export function createAnthropic', expect: 'present' }, 0);
 check('providers', 'Offline brain (no network, no key)', 'none - a provider is required', 'BETTER',
   'src/providers/mock.ts: type:"mock" answers deterministically and still drives one real tool round-trip, so CI, the quick start and docs/LAUNCH.md offline fallback work with no network and no key',
   { paths: ['src/providers/mock.ts'], expect: 'present' }, 0);
-check('providers', 'Anthropic native', 'first-class adapters incl. prompt caching', 'ABSENT',
-  'no adapter; src/core/config.ts:205 coerces legacy provider types to openai-compatible',
-  { pattern: /from '\.\/anthropic/, expect: 'absent' }, 4);
-check('providers', 'Google Gemini native', 'first-class adapter', 'ABSENT',
-  'no adapter; same coercion path as Anthropic (src/core/config.ts:205)',
-  { pattern: /from '\.\/gemini/, expect: 'absent' }, 3);
-check('providers', 'Local model tier', 'Ollama + local runtimes + tiering', 'PARTIAL',
-  'ollama base preset + config.localProvider used only by dream (src/agent/dream.ts:145)', { pattern: 'localProvider', expect: 'present' }, 3);
-check('providers', 'Model catalog + pickers', 'catalog, capability table, picker UI', 'PARTIAL',
-  'liveCatalog/modelMenu/providerMenu in src/channels/picker.ts; probing via /api/probe', { pattern: 'liveCatalog', expect: 'present' }, 2);
-check('providers', 'Per-model capability negotiation', 'context windows, tool support flags', 'PARTIAL',
-  'src/providers/capabilities.ts heuristics by host/model name', { pattern: 'capabilit', expect: 'present' }, 3);
-check('providers', 'Auth profiles / credential store', 'many keys, rotation, SecretRef', 'ABSENT',
-  'single key per provider in config.json', { pattern: 'apiKeys|authProfile', expect: 'absent' }, 4);
+check('providers', 'Anthropic native', 'native Claude API support', 'WORKING',
+  'src/providers/anthropic.ts: POST {base}/v1/messages with x-api-key + anthropic-version, the system prompt as a top-level field, typed content blocks (text, image as base64 source, tool_use, tool_result in user turns, thinking/redacted_thinking echoed back verbatim), tools as input_schema, SSE streaming with text/thinking deltas, partial input_json reassembly, stop_reason and usage mapping. provider.type: "anthropic" survives config load (no more coercion to openai). Pinned by test/tier2p.test.ts 27.2 (a fake /v1/messages asserting the exact body and headers, and a streaming run)',
+  { file: 'src/providers/anthropic.ts', pattern: 'export function createAnthropic', expect: 'present' }, 0);
+check('providers', 'Google Gemini native', 'native Gemini API support', 'WORKING',
+  'src/providers/gemini.ts: POST {base}/models/<model>:generateContent (streamGenerateContent + alt=sse when streaming) with x-goog-api-key, contents/parts with user|model roles, systemInstruction, functionDeclarations, functionResponse parts merged into one user turn, inlineData images, synthesized stable tool-call ids (Gemini sends none) remembered by name for the tool result, usageMetadata mapping. Pinned by test/tier2p.test.ts 27.2 (exact URL, headers and body against a fake upstream)',
+  { file: 'src/providers/gemini.ts', pattern: 'export function createGemini', expect: 'present' }, 0);
+check('providers', 'Local model tier', 'run the small model locally, fall back with a reason', 'WORKING',
+  'config.localProvider (baseUrl + model) builds a real provider used for the dream pass and for `termcrab agent --tier local`; the gateway builds it too, so a panel run can ask for the local tier. When the tier is requested with nothing configured, the turn still runs on the cloud but writes a [local tier] system note naming config.localProvider and docs/LOCAL.md — no silent data burn. Pinned by test/tier2p.test.ts 27.3 (local answers locally, cloud answers without the tier, and the note exists with the fix named)',
+  { file: 'src/agent/loop.ts', pattern: "\[local tier\]", expect: 'present' }, 0);
+check('providers', 'Model catalog + pickers', 'live model list + selection in the UI', 'WORKING',
+  'src/providers/catalog.ts: listModels() asks the live endpoint (OpenAI-compatible /models, Anthropic /v1/models, Gemini /v1beta/models) and falls back to an offline catalog of 22 known models with a note saying which happened, so termcrab models is never empty; describeModel() gives context window, vision, tools, thinking and dated prices, and capabilityLine() renders it. The panel keeps its live probe picker (src/channels/picker.ts + /api/probe). Pinned by test/tier2p.test.ts 27.3 (offline fallback note, live listing against a fake /models, CLI shape)',
+  { file: 'src/providers/catalog.ts', pattern: 'export async function listModels', expect: 'present' }, 0);
+check('providers', 'Per-model capability negotiation', 'adapt requests to the model actually chosen', 'WORKING',
+  'Three places adapt to the chosen model rather than assuming: the request key for the output limit and the reasoning field (src/providers/capabilities.ts, pinned by earlier tests), whether an image may be sent at all (src/channels/vision.ts canSeeImages — name patterns first, then the catalog, unknown models are treated as blind), and what the user is told is possible (termcrab models prints context/vision/tools/thinking/price per model, and unknown ids say "capabilities unknown" rather than guessing). Not attempted: probing the endpoint for capabilities at runtime',
+  { file: 'src/providers/catalog.ts', pattern: 'export function describeModel', expect: 'present' }, 0);
+check('providers', 'Auth profiles / credential store', 'named keys, per-profile provider/base/model', 'WORKING',
+  'src/core/auth-profiles.ts: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url] [--model] stores the key in state/auth-profiles.json (mode 0600, every use appended to state/auth-audit.log), config.json only carries provider.authProfile: "<name>", and resolveAuth() fills the key at the one place a provider is built (src/agent/loop.ts). A missing profile or one written for another vendor is a clear error, never an empty key. Pinned by test/tier2p.test.ts 27.3 (file mode, key never printed, mismatch and missing cases)',
+  { file: 'src/core/auth-profiles.ts', pattern: 'export function resolveAuth', expect: 'present' }, 0);
 check('providers', 'MCP as tool source', 'MCP + ACP', 'WORKING',
   'src/providers/mcp.ts wired at server.ts:345', { pattern: 'mcpClients', expect: 'present' }, 0);
 

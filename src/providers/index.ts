@@ -1,6 +1,8 @@
 import { ProviderCfg } from '../core/config.js';
 import { createMock } from './mock.js';
 import { createOpenAi } from './openai.js';
+import { createAnthropic } from './anthropic.js';
+import { createGemini } from './gemini.js';
 import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider } from './types.js';
 import { isAbortError } from './types.js';
 
@@ -65,6 +67,34 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
   // The offline brain: no network, no key. Kept first so nothing below can
   // turn it into a request to an empty base URL.
   if (cfg.type === 'mock') return createMock(cfg.model);
+  // Native wire formats (27.2): same interface, their own request/response
+  // mapping. A key with no baseUrl gets that vendor's real endpoint.
+  if (cfg.type === 'anthropic') {
+    return createAnthropic(
+      {
+        apiKey: cfg.apiKey || '',
+        model: cfg.model,
+        ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
+        ...(cfg.maxTokens != null ? { maxTokens: cfg.maxTokens } : {}),
+        ...(cfg.temperature != null ? { temperature: cfg.temperature } : {}),
+        ...(cfg.stream != null ? { stream: cfg.stream } : {}),
+      },
+      fetchImpl,
+    );
+  }
+  if (cfg.type === 'gemini') {
+    return createGemini(
+      {
+        apiKey: cfg.apiKey || '',
+        model: cfg.model,
+        ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
+        ...(cfg.maxTokens != null ? { maxTokens: cfg.maxTokens } : {}),
+        ...(cfg.temperature != null ? { temperature: cfg.temperature } : {}),
+        ...(cfg.stream != null ? { stream: cfg.stream } : {}),
+      },
+      fetchImpl,
+    );
+  }
   const baseUrl = cfg.baseUrl || OPENAI_COMPAT_BASES.openai;
   return createOpenAi(
     {
@@ -88,7 +118,7 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
 export function providerSummary(cfg: ProviderCfg): string {
   if (cfg.type === 'mock') return `mock:${cfg.model || 'mock-1'} (offline demo)`;
   const base = cfg.baseUrl ? ` @ ${cfg.baseUrl}` : '';
-  return `openai:${cfg.model}${base}`;
+  return `${cfg.type}:${cfg.model}${base}`;
 }
 
 // ---------------------------------------------------------------------------

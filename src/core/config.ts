@@ -8,10 +8,16 @@ export interface ProviderCfg {
    * OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama /v1, vLLM, llama.cpp …).
    * 'mock'   — the offline brain: no network, no key, deterministic replies.
    */
-  type: 'openai' | 'mock';
+  type: 'openai' | 'mock' | 'anthropic' | 'gemini';
   /** Full base URL ending in /v1 (e.g. https://openrouter.ai/api/v1, http://127.0.0.1:11434/v1). Leave empty for OpenAI proper. */
   baseUrl?: string;
   apiKey?: string;
+  /**
+   * Name of a stored auth profile to take the key from (27.3). Keeping the
+   * key out of config.json means the file you copy around has no secret in it.
+   * `termcrab auth add <name> --provider <type> --key <key>`.
+   */
+  authProfile?: string;
   model: string;
   maxTokens?: number;
   temperature?: number;
@@ -120,6 +126,18 @@ export interface Config {
      * tool is never batched whatever this says. Default 4.
      */
     parallelTools?: number;
+    /**
+     * The longest one turn may run, in seconds (27.4). When it is reached the
+     * turn stops with a plain sentence rather than hanging a phone's battery
+     * away. Default 900 (15 minutes); 0 disables the cap.
+     */
+    turnBudgetSec?: number;
+    /**
+     * How long a turn may make no progress before it is stopped (27.4): the
+     * clock resets on every model reply and every finished tool. Default 120;
+     * 0 disables the watchdog.
+     */
+    idleSec?: number;
   };
   /**
    * Human-in-the-loop safety. `approvals` gates the named tools in the agent
@@ -267,7 +285,7 @@ export function defaults(): Config {
     providers: [],
     media: { imageModel: '', size: '1024x1024' },
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000, parallelTools: 4 },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000, parallelTools: 4, turnBudgetSec: 900, idleSec: 120 },
     fallbackProviders: [],
     mcpServers: [],
     hooks: [],
@@ -343,12 +361,14 @@ export function loadConfig(): Config {
   try {
     const raw = parsed as Partial<Config>;
     const merged = deepMerge(defaults(), raw);
-    // Coerce legacy provider types (anthropic / gemini / ollama) to the single
-    // supported wire format: OpenAI-compatible. Older configs with apiKey+baseUrl
-    // keep working. 'mock' is a real type again (offline demo, CI smoke test),
-    // so it is left alone.
+    // Wire formats we speak natively (27.2): openai-compatible, anthropic,
+    // gemini and the offline mock. Anything else in an old config (ollama, a
+    // typo) is treated as OpenAI-compatible, which is what such a config meant
+    // when it was written.
     const loadedType = (merged.provider as { type?: string }).type;
-    if (loadedType !== 'openai' && loadedType !== 'mock') merged.provider.type = 'openai';
+    if (loadedType !== 'openai' && loadedType !== 'mock' && loadedType !== 'anthropic' && loadedType !== 'gemini') {
+      merged.provider.type = 'openai';
+    }
     return merged;
   } catch {
     return defaults();
@@ -450,7 +470,7 @@ const KNOWN_TOP = new Set([
 ]);
 
 /** Provider types we accept: today's two, plus the legacy names loadConfig coerces. */
-const PROVIDER_TYPES = new Set(['openai', 'mock', 'anthropic', 'gemini', 'ollama']);
+const PROVIDER_TYPES = new Set(['openai', 'mock', 'anthropic', 'gemini']);
 
 export function validateConfig(raw: unknown): ConfigProblem[] {
   const problems: ConfigProblem[] = [];
@@ -538,6 +558,7 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     }
     str(provider, 'provider.', 'model');
     str(provider, 'provider.', 'apiKey');
+    str(provider, 'provider.', 'authProfile');
     str(provider, 'provider.', 'baseUrl');
     const base = provider.baseUrl;
     if (typeof base === 'string' && base && !/^https?:\/\//.test(base)) {
@@ -572,6 +593,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'allowCodeExec',
       'isolation',
       'parallelTools',
+      'turnBudgetSec',
+      'idleSec',
     ]),
   );
   if (agent) {
@@ -585,6 +608,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     numIn(agent, 'agent.', 'compactThreshold', 5, 10_000, true);
     numIn(agent, 'agent.', 'memoryBudget', 0, 1_000_000, true);
     numIn(agent, 'agent.', 'parallelTools', 1, 8);
+    numIn(agent, 'agent.', 'turnBudgetSec', 0, 86_400);
+    numIn(agent, 'agent.', 'idleSec', 0, 3_600);
     numIn(agent, 'agent.', 'execTimeoutSec', 1, 3600);
     bool(agent, 'agent.', 'execAllowDangerous');
     strArr(agent, 'agent.', 'execDenyPatterns');

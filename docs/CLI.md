@@ -58,6 +58,8 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab events --json` | `{count, events:[{name, what, hooks:[id]}], watchers:[{id, path, match}]}` — the internal events that can wake a hook, who listens, and which paths are watched |
 | `termcrab orders --json` | `{count, orders:[{id, text, createdAt}]}` — standing orders: injected into every turn ahead of memory, never over the safety rules |
 | `termcrab image "<prompt>" --json` | `{path, bytes, width, height, prompt, provider, model, placeholder}` — a real PNG, drawn locally under the mock provider (`placeholder: true`) or fetched from the provider's image endpoint |
+| `termcrab models --json` | `{live, note, provider, current, count, models:[{id, …capabilities}]}` — asks the endpoint first, falls back to the offline catalog and says which |
+| `termcrab auth list --json` | `{count, profiles:[{id, provider, baseUrl, model, hasKey}]}` — never the key itself; `add`/`remove` change the store |
 | `termcrab orders --json` | `{count, orders:[{id, text, createdAt}]}` — standing orders: injected into every turn, ahead of memory, never over the safety rules |
 | `termcrab sessions search <words> --json` | `{query, count, hits:[{sessionId, part, line, role, when, score, snippet}]}` — ranked across every transcript, archive included |
 | `termcrab sessions show <id> --json` | `{id, file, archive, entries, bytes, firstAt, lastAt, roles, digest, fence, policy, resetDue, resetReason, attachment:{files, facts, approvals, tools}}` |

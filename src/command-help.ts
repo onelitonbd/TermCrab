@@ -303,6 +303,22 @@ export const COMMANDS: CommandDoc[] = [
     json: '{path, bytes, width, height, prompt, provider, model, placeholder}',
   },
   {
+    cmd: 'models',
+    usage: 'models [--json]',
+    summary: 'what models this endpoint has, and what each one can do (vision, tools, thinking, context, price)',
+    flags: ['--json    live (from the endpoint) or catalog models with a capabilities line each'],
+    example: 'termcrab models',
+    json: '{live, note, provider, current, count, models:[{id, provider, contextWindow, vision, tools, thinking, priceInPerM, priceOutPerM, source, capabilities}]}',
+  },
+  {
+    cmd: 'auth',
+    usage: 'auth [list | add <name> --provider <openai|anthropic|gemini> --key <key> [--base-url <url>] [--model <id>] | remove <name>]',
+    summary: 'named API keys stored in state/auth-profiles.json (mode 0600) so config.json never holds a secret',
+    flags: ['list             profile names, providers and whether a key is set (never the key)', 'add              store or replace one key', 'remove <name>    forget it', '--json           the same list as data'],
+    example: 'termcrab auth add work --provider anthropic --key sk-ant-…  &&  termcrab config set provider.authProfile work',
+    json: '{count, profiles:[{id, provider, baseUrl, model, createdAt, updatedAt, hasKey}], message?}',
+  },
+  {
     cmd: 'orders',
     usage: 'orders [list|add <text>|remove <id>]',
     summary: 'standing orders — always-follow instructions injected into every turn',

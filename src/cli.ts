@@ -60,6 +60,8 @@ import { formatPresence, localPresence, presenceLine, type Presence } from './ga
 import { KNOWN_EVENTS, patternMatches } from './gateway/triggers.js';
 import { addIntent, listIntents, removeIntent } from './agent/intents.js';
 import { generateImage } from './media/image.js';
+import { capabilityLine, listModels } from './providers/catalog.js';
+import { listAuthProfiles, removeAuthProfile, setAuthProfile, type AuthProfile } from './core/auth-profiles.js';
 import { formatLogRecord, structuredLog } from './core/structured-log.js';
 import { listRuns } from './core/tracing.js';
 import { formatSessionHits, searchSessions } from './agent/session-search.js';
@@ -109,7 +111,9 @@ Everyday extras:
   termcrab presence [--json]        who can reach this agent right now (devices, channels, people)
   termcrab events [--json]          which internal events can wake a hook, and who listens
   termcrab orders [list|add|remove] standing orders — always-follow instructions injected every turn
+  termcrab auth [list|add|remove] named API keys, so config.json holds no secret
   termcrab image "<prompt>"       make an image (provider endpoint, or a local placeholder under mock)
+  termcrab models [--json]        which models the endpoint has, and what each can do
   termcrab logs [n] [--json]        the last n log records (logs/termcrab.jsonl; --path prints the file)
   termcrab pair [--name phone]      print a 5-minute code so a phone/tablet can pair (no shared password typing)
   termcrab devices [list|revoke]    the devices this gateway trusts (revoke one without touching the rest)
@@ -1334,6 +1338,141 @@ export async function main(argv: string[]): Promise<void> {
           process.exitCode = 1;
         }
       }
+      return;
+    }
+
+    case 'models': {
+      // 27.3: what models this endpoint really has, and what each can do.
+      // The endpoint is asked first; if it cannot be reached the offline
+      // catalog answers, and the note says which happened.
+      const cfg = loadConfig();
+      try {
+        const { models, live, note } = await listModels(cfg.provider);
+        if (machine) {
+          emitJson('models', {
+            live,
+            note,
+            provider: cfg.provider.type,
+            current: cfg.provider.model || null,
+            count: models.length,
+            models: models.map((m) => ({ ...m, capabilities: capabilityLine(m) })),
+          });
+          return;
+        }
+        console.log('');
+        console.log(`  🧠 models (${live ? 'from the endpoint' : 'offline catalog'}) — ${note}`);
+        console.log('');
+        for (const m of models) {
+          const here = m.id === cfg.provider.model ? ' ← current' : '';
+          console.log(`    ${m.id}${here}`);
+          console.log(`      ${capabilityLine(m)}`);
+        }
+        console.log('');
+        console.log('  switch: termcrab config set provider.model <id>');
+        console.log('');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (machine) failJson('models', message);
+        else {
+          console.error(`models failed: ${message}`);
+          process.exitCode = 1;
+        }
+      }
+      return;
+    }
+
+    case 'auth': {
+      // 27.3: named keys, so config.json never has to hold a secret.
+      const args = rest.filter((r) => !r.startsWith('--'));
+      const sub = (args[0] ?? 'list').toLowerCase();
+      const flagValue = (name: string): string | undefined => {
+        const i = rest.indexOf(name);
+        return i >= 0 ? rest[i + 1] : undefined;
+      };
+      const show = (profiles: AuthProfile[], message?: string): void => {
+        if (machine) {
+          emitJson('auth', { count: profiles.length, profiles, ...(message ? { message } : {}) });
+          return;
+        }
+        console.log('');
+        if (message) console.log(`  ${message}`);
+        if (!profiles.length) {
+          console.log('  🔑 no auth profiles — add one: termcrab auth add work --provider openai --key sk-…');
+          console.log('');
+          return;
+        }
+        console.log('  🔑 auth profiles (keys live in state/auth-profiles.json, mode 0600 — never in config.json)');
+        console.log('');
+        for (const p2 of profiles) {
+          console.log(`    ${p2.id.padEnd(14)} ${p2.provider}${p2.baseUrl ? ` @ ${p2.baseUrl}` : ''}${p2.model ? ` · ${p2.model}` : ''}`);
+        }
+        console.log('');
+        console.log('  use one: termcrab config set provider.authProfile work');
+        console.log('');
+      };
+      if (sub === 'add' || sub === 'set') {
+        const id = args[1] ?? '';
+        const provider = flagValue('--provider') ?? 'openai';
+        const key = flagValue('--key') ?? '';
+        if (!id || !key) {
+          if (machine) failJson('auth', 'missing name or key', 'usage: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url <url>] [--model <id>]');
+          else {
+            console.error('usage: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url <url>] [--model <id>]');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        if (provider !== 'openai' && provider !== 'anthropic' && provider !== 'gemini') {
+          if (machine) failJson('auth', `unknown provider ${provider}`, 'provider must be openai, anthropic or gemini');
+          else {
+            console.error(`unknown provider ${provider} — use openai, anthropic or gemini`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        try {
+          setAuthProfile({
+            id,
+            provider,
+            key,
+            ...(flagValue('--base-url') ? { baseUrl: flagValue('--base-url')! } : {}),
+            ...(flagValue('--model') ? { model: flagValue('--model')! } : {}),
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (machine) failJson('auth', message);
+          else {
+            console.error(`auth failed: ${message}`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        show(listAuthProfiles(), `saved profile ${id} (${provider}) — the key is stored, not printed`);
+        return;
+      }
+      if (sub === 'remove' || sub === 'rm' || sub === 'delete') {
+        const id = args[1] ?? '';
+        const ok = id ? removeAuthProfile(id) : false;
+        if (!ok) {
+          if (machine) failJson('auth', `no auth profile ${id || '(missing name)'}`, 'run: termcrab auth');
+          else {
+            console.error(`no auth profile ${id || '(missing name)'} — run: termcrab auth`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        show(listAuthProfiles(), `removed profile ${id}`);
+        return;
+      }
+      if (sub !== 'list') {
+        if (machine) failJson('auth', `unknown action ${sub}`, 'usage: termcrab auth [list|add <name> --provider <type> --key <key>|remove <name>]');
+        else {
+          console.error('usage: termcrab auth [list|add <name> --provider <type> --key <key>|remove <name>]');
+          process.exitCode = 1;
+        }
+        return;
+      }
+      show(listAuthProfiles());
       return;
     }
 

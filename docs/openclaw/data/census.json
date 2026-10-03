@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T18:01:26.802Z",
+ "measured": "2026-10-03T18:27:12.573Z",
  "tally": {
-  "WORKING": 77,
+  "WORKING": 85,
   "BETTER": 14,
-  "PARTIAL": 34,
+  "PARTIAL": 29,
   "BROKEN": 0,
-  "ABSENT": 7
+  "ABSENT": 4
  },
- "coverage": 81,
+ "coverage": 85,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 201,
+ "effortLeft": 171,
  "areas": [
   "agent",
   "automation",
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:312"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:330"
    }
   },
   {
@@ -220,7 +220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:598, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:672, src/core/approvals.ts:135"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:388, src/cli.ts:1048, src/command-help.ts:168"
+    "detail": "11 match(es): src/agent/loop.ts:410, src/cli.ts:1052, src/command-help.ts:168"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:27, src/cli.ts:248, src/gateway/protocol.ts:31"
+    "detail": "6 match(es): src/agent/loop.ts:28, src/cli.ts:252, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:238"
+    "detail": "6 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:30, src/cli.ts:242"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:152, src/gateway/server.ts:1469, src/mobile/doctor.ts:525"
+    "detail": "5 match(es): src/cli.ts:156, src/gateway/server.ts:1469, src/mobile/doctor.ts:525"
    }
   },
   {
@@ -452,26 +452,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:547"
+    "detail": "1 match(es): src/agent/loop.ts:621"
    }
   },
   {
    "area": "agent",
    "capability": "Loop budget + idle watchdog",
    "openclaw": "172800s budget, 120s/300s idle, overflow recovery",
-   "verdict": "PARTIAL",
-   "evidence": "PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197)",
+   "verdict": "WORKING",
+   "evidence": "agent.turnBudgetSec (default 900, 0 = off) bounds a whole turn; agent.idleSec (default 120, 0 = off) resets on every model reply and every finished tool, and a watchdog interval aborts the turn mid-call when the wait itself is the problem. The stop is reported as an error with the reason and what it was waiting on (\"no progress for 120s while waiting for anthropic to reply (iteration 2)\"), the partial answer is kept, and the run is recorded as error=watchdog so termcrab runs / the panel can see it. Both keys are validated (1 day / 1 hour caps) and both are in docs. Pinned by test/tier2p.test.ts 27.4 (a hanging provider stops in ~1s with the reason, 0 disables both clocks)",
    "probe": {
-    "pattern": "PROVIDER_TIMEOUT_MS",
+    "file": "src/agent/loop.ts",
+    "pattern": "watchdogReason",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:97"
+    "detail": "2 match(es): src/agent/loop.ts:501"
    }
   },
   {
@@ -490,7 +491,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:348"
+    "detail": "5 match(es): src/agent/loop.ts:368"
    }
   },
   {
@@ -509,7 +510,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/loop.ts:3, src/providers/index.ts:161"
+    "detail": "3 match(es): src/agent/loop.ts:3, src/providers/index.ts:191"
    }
   },
   {
@@ -528,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "93 match(es): src/agent/loop.ts:28, src/agent/sessions.ts:16, src/gateway/protocol.ts:34"
+    "detail": "135 match(es): src/agent/loop.ts:29, src/agent/sessions.ts:16, src/command-help.ts:308"
    }
   },
   {
@@ -547,7 +548,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:458, src/agent/sessions.ts:1183"
+    "detail": "2 match(es): src/agent/loop.ts:484, src/agent/sessions.ts:1183"
    }
   },
   {
@@ -566,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1148, src/gateway/server.ts:1505"
+    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1152, src/gateway/server.ts:1505"
    }
   },
   {
@@ -624,7 +625,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:48, src/gateway/protocol.ts:31"
+    "detail": "2 match(es): src/agent/loop.ts:49, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -643,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "522 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
+    "detail": "537 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
    }
   },
   {
@@ -779,7 +780,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:597, src/command-help.ts:111"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:601, src/command-help.ts:111"
    }
   },
   {
@@ -837,7 +838,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:304, src/agent/sessions.ts:837, src/cli.ts:2007"
+    "detail": "4 match(es): src/agent/loop.ts:324, src/agent/sessions.ts:837, src/cli.ts:2146"
    }
   },
   {
@@ -995,7 +996,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:394, src/cli.ts:1945"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:394, src/cli.ts:2084"
    }
   },
   {
@@ -1014,7 +1015,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:234"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:252"
    }
   },
   {
@@ -1033,7 +1034,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:60, src/agent/prompt.ts:19"
+    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:61, src/agent/prompt.ts:19"
    }
   },
   {
@@ -1186,7 +1187,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "63 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "64 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -1671,7 +1672,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:164"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:182"
    }
   },
   {
@@ -1734,20 +1735,21 @@
   {
    "area": "providers",
    "capability": "Model providers",
-   "openclaw": "35+ provider plugins + OAuth",
-   "verdict": "PARTIAL",
-   "evidence": "OpenAI-compatible client with 7 host presets (src/providers/index.ts:10-18)",
+   "openclaw": "OpenAI, Anthropic, Gemini, plus plugin providers",
+   "verdict": "WORKING",
+   "evidence": "Three native wire formats behind one Provider contract: OpenAI-compatible /chat/completions (7 host presets + any self-hosted server), Anthropic /v1/messages and Google Gemini generateContent — plus the offline mock brain. provider.type picks the dialect, both native adapters are pinned by tests against fake upstreams, and the failover chain (resolveProviderChain + cooldowns) works across all of them. Provider plugins are out of scope by the three-surface decision, which is why this row is capped here rather than linked to a plugin interface",
    "probe": {
-    "pattern": "OPENAI_COMPAT_BASES",
+    "file": "src/providers/anthropic.ts",
+    "pattern": "export function createAnthropic",
     "expect": "present"
    },
-   "effort": 8,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/providers/index.ts:10, src/providers/probe.ts:24"
+    "detail": "1 match(es): src/providers/anthropic.ts:139"
    }
   },
   {
@@ -1774,115 +1776,121 @@
   {
    "area": "providers",
    "capability": "Anthropic native",
-   "openclaw": "first-class adapters incl. prompt caching",
-   "verdict": "ABSENT",
-   "evidence": "no adapter; src/core/config.ts:205 coerces legacy provider types to openai-compatible",
+   "openclaw": "native Claude API support",
+   "verdict": "WORKING",
+   "evidence": "src/providers/anthropic.ts: POST {base}/v1/messages with x-api-key + anthropic-version, the system prompt as a top-level field, typed content blocks (text, image as base64 source, tool_use, tool_result in user turns, thinking/redacted_thinking echoed back verbatim), tools as input_schema, SSE streaming with text/thinking deltas, partial input_json reassembly, stop_reason and usage mapping. provider.type: \"anthropic\" survives config load (no more coercion to openai). Pinned by test/tier2p.test.ts 27.2 (a fake /v1/messages asserting the exact body and headers, and a streaming run)",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "file": "src/providers/anthropic.ts",
+    "pattern": "export function createAnthropic",
+    "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "later",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/providers/anthropic.ts:139"
    }
   },
   {
    "area": "providers",
    "capability": "Google Gemini native",
-   "openclaw": "first-class adapter",
-   "verdict": "ABSENT",
-   "evidence": "no adapter; same coercion path as Anthropic (src/core/config.ts:205)",
+   "openclaw": "native Gemini API support",
+   "verdict": "WORKING",
+   "evidence": "src/providers/gemini.ts: POST {base}/models/<model>:generateContent (streamGenerateContent + alt=sse when streaming) with x-goog-api-key, contents/parts with user|model roles, systemInstruction, functionDeclarations, functionResponse parts merged into one user turn, inlineData images, synthesized stable tool-call ids (Gemini sends none) remembered by name for the tool result, usageMetadata mapping. Pinned by test/tier2p.test.ts 27.2 (exact URL, headers and body against a fake upstream)",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "file": "src/providers/gemini.ts",
+    "pattern": "export function createGemini",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "later",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/providers/gemini.ts:123"
    }
   },
   {
    "area": "providers",
    "capability": "Local model tier",
-   "openclaw": "Ollama + local runtimes + tiering",
-   "verdict": "PARTIAL",
-   "evidence": "ollama base preset + config.localProvider used only by dream (src/agent/dream.ts:145)",
+   "openclaw": "run the small model locally, fall back with a reason",
+   "verdict": "WORKING",
+   "evidence": "config.localProvider (baseUrl + model) builds a real provider used for the dream pass and for `termcrab agent --tier local`; the gateway builds it too, so a panel run can ask for the local tier. When the tier is requested with nothing configured, the turn still runs on the cloud but writes a [local tier] system note naming config.localProvider and docs/LOCAL.md — no silent data burn. Pinned by test/tier2p.test.ts 27.3 (local answers locally, cloud answers without the tier, and the note exists with the fix named)",
    "probe": {
-    "pattern": "localProvider",
+    "file": "src/agent/loop.ts",
+    "pattern": "[local tier]",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:61, src/agent/status.ts:112"
+    "detail": "21361 match(es): src/agent/loop.ts:309"
    }
   },
   {
    "area": "providers",
    "capability": "Model catalog + pickers",
-   "openclaw": "catalog, capability table, picker UI",
-   "verdict": "PARTIAL",
-   "evidence": "liveCatalog/modelMenu/providerMenu in src/channels/picker.ts; probing via /api/probe",
+   "openclaw": "live model list + selection in the UI",
+   "verdict": "WORKING",
+   "evidence": "src/providers/catalog.ts: listModels() asks the live endpoint (OpenAI-compatible /models, Anthropic /v1/models, Gemini /v1beta/models) and falls back to an offline catalog of 22 known models with a note saying which happened, so termcrab models is never empty; describeModel() gives context window, vision, tools, thinking and dated prices, and capabilityLine() renders it. The panel keeps its live probe picker (src/channels/picker.ts + /api/probe). Pinned by test/tier2p.test.ts 27.3 (offline fallback note, live listing against a fake /models, CLI shape)",
    "probe": {
-    "pattern": "liveCatalog",
+    "file": "src/providers/catalog.ts",
+    "pattern": "export async function listModels",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:82"
+    "detail": "2 match(es): src/providers/catalog.ts:108"
    }
   },
   {
    "area": "providers",
    "capability": "Per-model capability negotiation",
-   "openclaw": "context windows, tool support flags",
-   "verdict": "PARTIAL",
-   "evidence": "src/providers/capabilities.ts heuristics by host/model name",
+   "openclaw": "adapt requests to the model actually chosen",
+   "verdict": "WORKING",
+   "evidence": "Three places adapt to the chosen model rather than assuming: the request key for the output limit and the reasoning field (src/providers/capabilities.ts, pinned by earlier tests), whether an image may be sent at all (src/channels/vision.ts canSeeImages — name patterns first, then the catalog, unknown models are treated as blind), and what the user is told is possible (termcrab models prints context/vision/tools/thinking/price per model, and unknown ids say \"capabilities unknown\" rather than guessing). Not attempted: probing the endpoint for capabilities at runtime",
    "probe": {
-    "pattern": "capabilit",
+    "file": "src/providers/catalog.ts",
+    "pattern": "export function describeModel",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/toolbox.ts:241, src/gateway/server.ts:44, src/providers/capabilities.ts:2"
+    "detail": "1 match(es): src/providers/catalog.ts:85"
    }
   },
   {
    "area": "providers",
    "capability": "Auth profiles / credential store",
-   "openclaw": "many keys, rotation, SecretRef",
-   "verdict": "ABSENT",
-   "evidence": "single key per provider in config.json",
+   "openclaw": "named keys, per-profile provider/base/model",
+   "verdict": "WORKING",
+   "evidence": "src/core/auth-profiles.ts: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url] [--model] stores the key in state/auth-profiles.json (mode 0600, every use appended to state/auth-audit.log), config.json only carries provider.authProfile: \"<name>\", and resolveAuth() fills the key at the one place a provider is built (src/agent/loop.ts). A missing profile or one written for another vendor is a clear error, never an empty key. Pinned by test/tier2p.test.ts 27.3 (file mode, key never printed, mismatch and missing cases)",
    "probe": {
-    "pattern": "apiKeys|authProfile",
-    "expect": "absent"
+    "file": "src/core/auth-profiles.ts",
+    "pattern": "export function resolveAuth",
+    "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "later",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/core/auth-profiles.ts:139"
    }
   },
   {
@@ -1901,7 +1909,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:66, src/agent/tools.ts:45, src/gateway/server.ts:401"
+    "detail": "8 match(es): src/agent/loop.ts:67, src/agent/tools.ts:45, src/gateway/server.ts:401"
    }
   },
   {
@@ -1920,7 +1928,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "99 match(es): src/agent/loop.ts:215, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "99 match(es): src/agent/loop.ts:216, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1939,7 +1947,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:199"
+    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:200"
    }
   },
   {
@@ -2113,7 +2121,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "80 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:235"
+    "detail": "82 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:239"
    }
   },
   {
@@ -2151,7 +2159,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "45 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "47 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2170,7 +2178,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:354, src/command-help.ts:430"
+    "detail": "2 match(es): src/cli.ts:358, src/command-help.ts:446"
    }
   },
   {
@@ -2208,7 +2216,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "65 match(es): src/agent/loop.ts:215, src/cli.ts:39, src/command-help.ts:224"
+    "detail": "65 match(es): src/agent/loop.ts:216, src/cli.ts:39, src/command-help.ts:224"
    }
   },
   {
@@ -2265,7 +2273,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:65, src/gateway/auth.ts:20, src/gateway/server.ts:299"
+    "detail": "5 match(es): src/core/config.ts:71, src/gateway/auth.ts:20, src/gateway/server.ts:299"
    }
   },
   {
@@ -2457,7 +2465,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "701 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "730 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2476,7 +2484,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "146 match(es): src/agent/goals.ts:13, src/agent/memory.ts:286, src/agent/progress.ts:11"
+    "detail": "150 match(es): src/agent/goals.ts:13, src/agent/memory.ts:286, src/agent/progress.ts:11"
    }
   },
   {
@@ -2571,7 +2579,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:358, src/gateway/server.ts:84"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:374, src/gateway/server.ts:84"
    }
   },
   {
@@ -2590,7 +2598,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "63 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "64 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -2867,7 +2875,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "76 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "78 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

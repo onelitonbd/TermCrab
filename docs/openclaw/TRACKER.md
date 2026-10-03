@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৮১%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৭টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৪টা আধা (PARTIAL), ৭টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৫৫ দিন, later ~৪৬ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৮৫%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৮৫টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৯টা আধা (PARTIAL), ৪টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৩৬ দিন, later ~৩৫ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 77 | wired and observable |
+| ✅ WORKING | 85 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 34 | exists, narrower than theirs |
+| 🟡 PARTIAL | 29 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 7 | nothing in the tree |
+| ⚪ ABSENT | 4 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 81%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 85%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,13 +86,13 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~155d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 14 | ~46d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~201d | in-scope only |
+| **parity** | 103 | ~136d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 14 | ~35d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 132 | ~171d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
-### agent — 93% (16 in-scope checks)
+### agent — 97% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -102,7 +102,7 @@ Out of scope, and why:
 | Queue modes steer/followup/collect/interrupt | 4 modes + debounce + cap | ✅ WORKING | all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6 | core | — |
 | Run identity + terminal wait | runId + agent.wait replay | ✅ WORKING | one id per run (the queue turn id IS the trace id, server.ts runner) + GET /api/runs/:id returns status/output/error/tokens; `termcrab run --wait <id>` exits 0 done / 1 failed / 124 timeout / 130 stopped. test/tier0.test.ts 10.2 | parity | — |
 | Parallel tool batches | launched together, results merged | ✅ WORKING | src/agent/loop.ts runs consecutive read-only calls from one model turn as a bounded batch (Promise.all, agent.parallelTools default 4, 1 = off); a mutating or approval-gated call flushes the batch and runs alone, so ordering is never guessed; transcript entries are written in the model order and tool:start/tool:end keep their per-call ids; one tool failing is that tool result, not a cancelled batch. Safety is opt-in: only the 19 names in PARALLEL_SAFE_TOOLS (src/agent/tools.ts) are batched, and every name there is checked against the live toolbox. Pinned by test/tier2o.test.ts (overlap, ordering, failure isolation, the knob, the table shape) | parity | — |
-| Loop budget + idle watchdog | 172800s budget, 120s/300s idle, overflow recovery | 🟡 PARTIAL | PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197) | parity | 3 |
+| Loop budget + idle watchdog | 172800s budget, 120s/300s idle, overflow recovery | ✅ WORKING | agent.turnBudgetSec (default 900, 0 = off) bounds a whole turn; agent.idleSec (default 120, 0 = off) resets on every model reply and every finished tool, and a watchdog interval aborts the turn mid-call when the wait itself is the problem. The stop is reported as an error with the reason and what it was waiting on ("no progress for 120s while waiting for anthropic to reply (iteration 2)"), the partial answer is kept, and the run is recorded as error=watchdog so termcrab runs / the panel can see it. Both keys are validated (1 day / 1 hour caps) and both are in docs. Pinned by test/tier2p.test.ts 27.4 (a hanging provider stops in ~1s with the reason, 0 disables both clocks) | parity | — |
 | Repetition / loop detection | repeated-call guards | ✅ WORKING | src/agent/loop.ts:249-264 repetition detector | parity | — |
 | Model failover chain | ordered chain + cooldowns + auth profiles | ✅ WORKING | resolveProviderChain + cooldowns (src/providers/index.ts) | parity | 1 |
 | Reasoning / thinking levels | 7 levels incl. minimal/ultra | ✅ WORKING | src/providers/capabilities.ts 6 levels + effort mapping | parity | 1 |
@@ -223,18 +223,18 @@ Out of scope, and why:
 | Provider plugin interface | 35+ model providers as packages | 🚫 OUT OF SCOPE | one OpenAI-compatible client with host presets (src/providers/index.ts:10) — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 | Plugin manifest + permissions | manifest, allowlists, install policy | 🚫 OUT OF SCOPE | nothing to install and no permission model — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### providers — 42% (9 in-scope checks)
+### providers — 100% (9 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Model providers | 35+ provider plugins + OAuth | 🟡 PARTIAL | OpenAI-compatible client with 7 host presets (src/providers/index.ts:10-18) | parity | 8 |
+| Model providers | OpenAI, Anthropic, Gemini, plus plugin providers | ✅ WORKING | Three native wire formats behind one Provider contract: OpenAI-compatible /chat/completions (7 host presets + any self-hosted server), Anthropic /v1/messages and Google Gemini generateContent — plus the offline mock brain. provider.type picks the dialect, both native adapters are pinned by tests against fake upstreams, and the failover chain (resolveProviderChain + cooldowns) works across all of them. Provider plugins are out of scope by the three-surface decision, which is why this row is capped here rather than linked to a plugin interface | parity | — |
 | Offline brain (no network, no key) | none - a provider is required | 🏅 BETTER | src/providers/mock.ts: type:"mock" answers deterministically and still drives one real tool round-trip, so CI, the quick start and docs/LAUNCH.md offline fallback work with no network and no key | parity | — |
-| Anthropic native | first-class adapters incl. prompt caching | ⚪ ABSENT | no adapter; src/core/config.ts:205 coerces legacy provider types to openai-compatible | later | 4 |
-| Google Gemini native | first-class adapter | ⚪ ABSENT | no adapter; same coercion path as Anthropic (src/core/config.ts:205) | later | 3 |
-| Local model tier | Ollama + local runtimes + tiering | 🟡 PARTIAL | ollama base preset + config.localProvider used only by dream (src/agent/dream.ts:145) | parity | 3 |
-| Model catalog + pickers | catalog, capability table, picker UI | 🟡 PARTIAL | liveCatalog/modelMenu/providerMenu in src/channels/picker.ts; probing via /api/probe | parity | 2 |
-| Per-model capability negotiation | context windows, tool support flags | 🟡 PARTIAL | src/providers/capabilities.ts heuristics by host/model name | parity | 3 |
-| Auth profiles / credential store | many keys, rotation, SecretRef | ⚪ ABSENT | single key per provider in config.json | later | 4 |
+| Anthropic native | native Claude API support | ✅ WORKING | src/providers/anthropic.ts: POST {base}/v1/messages with x-api-key + anthropic-version, the system prompt as a top-level field, typed content blocks (text, image as base64 source, tool_use, tool_result in user turns, thinking/redacted_thinking echoed back verbatim), tools as input_schema, SSE streaming with text/thinking deltas, partial input_json reassembly, stop_reason and usage mapping. provider.type: "anthropic" survives config load (no more coercion to openai). Pinned by test/tier2p.test.ts 27.2 (a fake /v1/messages asserting the exact body and headers, and a streaming run) | later | — |
+| Google Gemini native | native Gemini API support | ✅ WORKING | src/providers/gemini.ts: POST {base}/models/<model>:generateContent (streamGenerateContent + alt=sse when streaming) with x-goog-api-key, contents/parts with user|model roles, systemInstruction, functionDeclarations, functionResponse parts merged into one user turn, inlineData images, synthesized stable tool-call ids (Gemini sends none) remembered by name for the tool result, usageMetadata mapping. Pinned by test/tier2p.test.ts 27.2 (exact URL, headers and body against a fake upstream) | later | — |
+| Local model tier | run the small model locally, fall back with a reason | ✅ WORKING | config.localProvider (baseUrl + model) builds a real provider used for the dream pass and for `termcrab agent --tier local`; the gateway builds it too, so a panel run can ask for the local tier. When the tier is requested with nothing configured, the turn still runs on the cloud but writes a [local tier] system note naming config.localProvider and docs/LOCAL.md — no silent data burn. Pinned by test/tier2p.test.ts 27.3 (local answers locally, cloud answers without the tier, and the note exists with the fix named) | parity | — |
+| Model catalog + pickers | live model list + selection in the UI | ✅ WORKING | src/providers/catalog.ts: listModels() asks the live endpoint (OpenAI-compatible /models, Anthropic /v1/models, Gemini /v1beta/models) and falls back to an offline catalog of 22 known models with a note saying which happened, so termcrab models is never empty; describeModel() gives context window, vision, tools, thinking and dated prices, and capabilityLine() renders it. The panel keeps its live probe picker (src/channels/picker.ts + /api/probe). Pinned by test/tier2p.test.ts 27.3 (offline fallback note, live listing against a fake /models, CLI shape) | parity | — |
+| Per-model capability negotiation | adapt requests to the model actually chosen | ✅ WORKING | Three places adapt to the chosen model rather than assuming: the request key for the output limit and the reasoning field (src/providers/capabilities.ts, pinned by earlier tests), whether an image may be sent at all (src/channels/vision.ts canSeeImages — name patterns first, then the catalog, unknown models are treated as blind), and what the user is told is possible (termcrab models prints context/vision/tools/thinking/price per model, and unknown ids say "capabilities unknown" rather than guessing). Not attempted: probing the endpoint for capabilities at runtime | parity | — |
+| Auth profiles / credential store | named keys, per-profile provider/base/model | ✅ WORKING | src/core/auth-profiles.ts: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url] [--model] stores the key in state/auth-profiles.json (mode 0600, every use appended to state/auth-audit.log), config.json only carries provider.authProfile: "<name>", and resolveAuth() fills the key at the one place a provider is built (src/agent/loop.ts). A missing profile or one written for another vendor is a clear error, never an empty key. Pinned by test/tier2p.test.ts 27.3 (file mode, key never printed, mismatch and missing cases) | later | — |
 | MCP as tool source | MCP + ACP | ✅ WORKING | src/providers/mcp.ts wired at server.ts:345 | parity | — |
 
 ### security — 74% (8 in-scope checks)
