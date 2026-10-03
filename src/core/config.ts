@@ -66,6 +66,23 @@ export interface Config {
     /** Multi-agent isolation: shared (default) | isolated (separate memory/skills per agent). */
     isolation: 'shared' | 'isolated';
   };
+  /**
+   * Human-in-the-loop safety. `approvals` gates the named tools in the agent
+   * loop: a gated call stops before it executes and waits for a person to
+   * approve or deny it (panel card, SSE, or `termcrab approvals`).
+   * Off by default so nothing changes for existing installs.
+   */
+  security: {
+    approvals: {
+      enabled: boolean;
+      /** Tool names that must be approved before they run. */
+      tools: string[];
+      /** Seconds to wait for a decision before `onTimeout` applies. */
+      timeoutSec: number;
+      /** What happens when nobody answers: deny (safe default) or allow. */
+      onTimeout: 'deny' | 'allow';
+    };
+  };
   /** Fallback providers for failover chain (tried in order when primary fails). */
   fallbackProviders: ProviderCfg[];
   /** MCP servers (stdio JSON-RPC). Tools are exposed as mcp_<server>_<tool>. */
@@ -172,6 +189,14 @@ export function defaults(): Config {
     dream: { enabled: true, everyHours: 24 },
     memory: { embeddings: true },
     update: { checkOnStart: false },
+    security: {
+      approvals: {
+        enabled: false,
+        tools: ['exec', 'write_file', 'kill_process'],
+        timeoutSec: 120,
+        onTimeout: 'deny',
+      },
+    },
   };
 }
 

@@ -184,6 +184,30 @@
     max-width: 92%;
     overflow-wrap: break-word;
   }
+  /* Pending approval — a gated tool is stopped until you decide. */
+  .msg.approval {
+    align-self: stretch;
+    max-width: 100%;
+    text-align: left;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid #f0517d;
+    border-radius: 4px var(--r-lg) var(--r-lg) 4px;
+    padding: 12px 14px;
+  }
+  .msg.approval .apHead { font-weight: 650; font-size: 14px; color: var(--ink); }
+  .msg.approval .apArgs {
+    margin: 8px 0; padding: 8px 10px; background: var(--bg2, #f7f2fb); border-radius: 8px;
+    font-size: 12.5px; color: var(--mut); overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.approval .apRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .msg.approval .apBtn { border: 0; border-radius: 999px; padding: 7px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .msg.approval .apBtn.yes { background: var(--g); color: #fff; }
+  .msg.approval .apBtn.no { background: #f1e7f6; color: var(--ink); }
+  .msg.approval .apBtn:disabled { opacity: 0.55; cursor: default; }
+  .msg.approval .apSt { font-size: 12px; color: var(--mut); }
+  .msg.approval.ok { border-left-color: #2fae6b; }
+  .msg.approval.gone { border-left-color: #d9456f; opacity: 0.85; }
   .msg.welcome {
     align-self: stretch;
     max-width: 100%;
@@ -4298,6 +4322,13 @@
         });
       } catch { /* malformed event */ }
     });
+    es.addEventListener('approval', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const a = d.approval || d;
+        addApprovalCard(a);
+      } catch { /* malformed event */ }
+    });
     es.addEventListener('tasks', () => { refreshTaskCards(); });
     es.addEventListener('canvas:update', canvasChanged);
     es.addEventListener('canvas:remove', canvasChanged);
@@ -5132,6 +5163,12 @@
       { key: 'channels.telegram.allowedUserIds', label: 'Telegram allowed people', hint: 'comma-separated user ids - empty means nobody gets in', type: 'list', numeric: true },
       { key: 'channels.whatsapp.enabled', label: 'WhatsApp door', hint: 'needs the baileys package installed', type: 'toggle' },
       { key: 'channels.whatsapp.allowedJids', label: 'WhatsApp allowed chats', hint: 'comma-separated chat ids - empty means off', type: 'list' },
+    ]},
+    { id: 'safety', label: 'SAFETY', title: 'Dangerous tools ask first', d: 'Tools that touch files or processes stop and wait for your answer. The request appears as a card in the chat and the same id is answerable from the terminal with termcrab approvals. Off by default.', fields: [
+      { key: 'security.approvals.enabled', label: 'Ask before dangerous tools run', hint: 'the agent stops and waits for Approve / Deny instead of running it', type: 'toggle' },
+      { key: 'security.approvals.tools', label: 'Which tools ask', hint: 'comma-separated tool names — exec, write_file, kill_process; * means every tool', type: 'list' },
+      { key: 'security.approvals.timeoutSec', label: 'Wait this long', suffix: 'seconds', min: 5, max: 3600, type: 'number' },
+      { key: 'security.approvals.onTimeout', label: 'If nobody answers', hint: 'deny is the safe default', type: 'select', options: [['deny', 'Deny (safe)'], ['allow', 'Allow it']] },
     ]},
     { id: 'rhythm', label: 'DAILY RHYTHM', title: 'Sleep, learning & check-ins', d: 'How your crab spends the quiet hours.', fields: [
       { key: 'dream.enabled', label: 'Night learning (dreaming)', hint: 'turns recent chats into long-term memory while idle', type: 'toggle' },
@@ -6108,6 +6145,59 @@
   };
   $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
 
+  // ---- Pending approvals (a gated tool is stopped until you decide) ----
+  /** One card per approval id; the buttons answer the run that is blocked on it. */
+  function addApprovalCard(a) {
+    const log = $('log');
+    if (!log || !a || !a.id) return;
+    if (log.querySelector('[data-approval-id="' + a.id + '"]')) return;
+    const card = document.createElement('div');
+    card.className = 'msg approval';
+    card.dataset.approvalId = a.id;
+    const head = document.createElement('div');
+    head.className = 'apHead';
+    head.textContent = 'Approval needed — the agent wants to run ' + (a.tool || 'a tool');
+    const args = document.createElement('pre');
+    args.className = 'apArgs';
+    const shown = JSON.stringify(a.args || {}, null, 2);
+    args.textContent = shown.length > 600 ? shown.slice(0, 600) + '\u2026' : shown;
+    const row = document.createElement('div');
+    row.className = 'apRow';
+    const yes = document.createElement('button');
+    yes.type = 'button'; yes.className = 'apBtn yes'; yes.textContent = 'Approve';
+    const no = document.createElement('button');
+    no.type = 'button'; no.className = 'apBtn no'; no.textContent = 'Deny';
+    const st = document.createElement('span');
+    st.className = 'apSt';
+    st.textContent = a.sessionId ? 'waiting — ' + a.sessionId : 'waiting for you\u2026';
+    const decide = async (approve) => {
+      yes.disabled = no.disabled = true;
+      st.textContent = 'sending\u2026';
+      try {
+        await api('/api/approvals/' + encodeURIComponent(a.id) + '/' + (approve ? 'approve' : 'deny'), 'POST', { by: 'panel' });
+        st.textContent = approve ? 'approved — the tool is running' : 'denied — the agent was told';
+        card.classList.add(approve ? 'ok' : 'gone');
+      } catch (err) {
+        st.textContent = 'failed: ' + err.message;
+        yes.disabled = no.disabled = false;
+      }
+    };
+    yes.onclick = () => decide(true);
+    no.onclick = () => decide(false);
+    row.append(yes, no, st);
+    card.append(head, args, row);
+    log.appendChild(card);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  /** A refresh must not hide a gate that is still waiting — re-list pending ones. */
+  async function refreshApprovals() {
+    try {
+      const d = await api('/api/approvals');
+      for (const a of d.approvals || []) addApprovalCard(a);
+    } catch { /* panel older than this UI, or nothing pending */ }
+  }
+
   // ---- Modal (shared popup: add provider / add API key) ----
   let modalOnSave = null;
   function openModal(title, fields, onSave) {
@@ -6930,6 +7020,7 @@ async function bootstrap() {
       refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
       connectEvents();
+      refreshApprovals();
       loadSlashCommands();
       restoreDraft();
       updateStatusBand();

@@ -21,6 +21,7 @@ import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
 import { statusReport } from './agent/status.js';
+import { GatewayClient, GatewayNotRunningError } from './gateway/client.js';
 import { planOpenclaw, applyOpenclaw } from './migrate/openclaw.js';
 import { friendlyError } from './core/friendly.js';
 import { checkForUpdate, renderUpdate } from './core/update.js';
@@ -64,6 +65,9 @@ Everyday extras:
   termcrab update                    check if a newer TermCrab exists (and how to get it)
   termcrab doctor --share            copy-paste report for asking help (passwords stripped)
   termcrab boot [install|status]     start automatically when the phone boots
+  termcrab approvals [list]          dangerous tools waiting for your yes/no (panel card answers too)
+  termcrab approvals approve <id>    let that one tool run
+  termcrab approvals deny <id>       refuse it — the agent is told and moves on
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
   termcrab supervisor                start the gateway with auto-restart (always-on mode)
   termcrab onboard                   first-time setup wizard
@@ -685,6 +689,77 @@ export async function main(argv: string[]): Promise<void> {
       const results = await applyOpenclaw(plan, { force: Boolean(values.force) });
       console.log('   Applying:');
       for (const r of results) console.log(`     ✓ ${r}`);
+      return;
+    }
+
+    case 'approvals': {
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      const flags = rest.filter((r) => r.startsWith('--'));
+      const args = rest.filter((r) => !r.startsWith('--'));
+      const asJson = flags.includes('--json');
+      const sub = args[0] ?? 'list';
+      const target = args[1];
+      try {
+        if (sub === 'list' || sub === 'ls') {
+          const data = await client.json<{
+            approvals: { id: string; tool: string; args: Record<string, unknown>; createdAt: number; sessionId?: string }[];
+          }>('/api/approvals');
+          if (asJson) {
+            console.log(JSON.stringify(data, null, 2));
+            return;
+          }
+          if (!data.approvals.length) {
+            console.log('');
+            console.log('  ✅ Nothing waiting for approval.');
+            console.log('     (Which tools ask is in the panel under Settings → Safety.)');
+            console.log('');
+            return;
+          }
+          console.log('');
+          console.log(`  🛑 ${data.approvals.length} tool call(s) waiting for your decision:`);
+          for (const a of data.approvals) {
+            const arg = JSON.stringify(a.args ?? {});
+            const short = arg.length > 90 ? arg.slice(0, 89) + '…' : arg;
+            const age = Math.max(0, Math.round((Date.now() - a.createdAt) / 1000));
+            console.log(`     ${a.id}`);
+            console.log(`       tool  ${a.tool}  (${age}s ago${a.sessionId ? `, session ${a.sessionId}` : ''})`);
+            console.log(`       args  ${short}`);
+          }
+          console.log('');
+          console.log('     answer:  termcrab approvals approve <id>   ·   termcrab approvals deny <id>');
+          console.log('     or open the panel — the same request is waiting there as a card.');
+          console.log('');
+          return;
+        }
+        if (sub === 'approve' || sub === 'deny') {
+          if (!target) {
+            console.error('usage: termcrab approvals approve|deny <id>   (list the ids: termcrab approvals)');
+            process.exitCode = 1;
+            return;
+          }
+          const res = await client.json<{ decision?: string; error?: string }>(
+            `/api/approvals/${encodeURIComponent(target)}/${sub}`,
+            { method: 'POST', json: { by: 'cli' } },
+          );
+          if (asJson) {
+            console.log(JSON.stringify(res, null, 2));
+            return;
+          }
+          console.log(res.decision === 'approved' ? `✅ Approved ${target} — the tool will run now.` : `🚫 Denied ${target} — the agent was told.`);
+          return;
+        }
+        console.error('usage: termcrab approvals [list | approve <id> | deny <id>] [--json]');
+        process.exitCode = 1;
+      } catch (err) {
+        if (err instanceof GatewayNotRunningError) {
+          console.error(err.message);
+          console.error('Approvals live inside the running panel (that is where the blocked tool is waiting).');
+        } else {
+          console.error(`approvals: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        process.exitCode = 1;
+      }
       return;
     }
 

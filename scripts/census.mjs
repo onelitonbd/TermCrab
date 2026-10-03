@@ -117,9 +117,9 @@ check('gateway', 'Health / status endpoint', 'health + presence + doctor', 'WORK
 check('gateway', 'Inbound webhooks', 'authenticated agent hooks', 'WORKING',
   'POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts',
   { pattern: 'x-hook-token', expect: 'present' }, 0);
-check('gateway', 'Approval queue + endpoint', 'operator approvals, HITL gates', 'BROKEN',
-  'src/core/approvals.ts + GET /api/approvals at server.ts:972, but createApproval/waitForApproval have zero call sites',
-  { pattern: 'createApproval\\(', expect: 'only-definition' }, 5);
+check('gateway', 'Approval queue + endpoint', 'operator approvals, HITL gates', 'WORKING',
+  'src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5)',
+  { pattern: /needsApproval\(/, expect: 'present' }, 0);
 check('gateway', 'Canvas / A2UI widgets', 'agent-driven UI widgets', 'PARTIAL',
   'src/gateway/canvas.ts + /api/canvas', { pattern: 'canvas', expect: 'present' }, 0);
 check('gateway', 'Multi-agent routing', 'per-agent workspace, session, store', 'PARTIAL',
@@ -247,7 +247,8 @@ check('tools', 'Tool count', '~44 in-loop tools + plugin tools', 'PARTIAL',
 check('tools', 'Tool schema validation', 'TypeBox-validated arguments', 'PARTIAL',
   'lightweight hand-rolled argument parsing', { pattern: 'argStr', expect: 'present' }, 3);
 check('tools', 'Human-in-the-loop prompts', 'ask_user overlay + timers', 'PARTIAL',
-  'ask_user tool exists (toolbox.ts:894) with no terminal renderer', { pattern: 'ask_user', expect: 'present' }, 2);
+  'ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer',
+  { pattern: 'ask_user', expect: 'present' }, 2);
 
 // ----------------------------------------------------------------- 6. skills
 check('skills', 'SKILL.md loading', 'progressive disclosure + gating', 'WORKING',

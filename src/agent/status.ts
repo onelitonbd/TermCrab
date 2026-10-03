@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Config } from '../core/config.js';
+import { GatewayClient, GatewayNotRunningError } from '../gateway/client.js';
 import { memoryDir } from '../core/paths.js';
 import { MemoryStore } from './memory.js';
 import { listAgents } from './prompt.js';
@@ -40,20 +41,18 @@ function when(ts: number): string {
  * panel, a stopped panel and a refused request all read as "unknown".
  */
 async function liveQueueText(config: Config): Promise<string> {
-  const host = config.gateway.host === '0.0.0.0' || config.gateway.host === '::' ? '127.0.0.1' : config.gateway.host;
-  const url = `http://${host}:${config.gateway.port}/api/status`;
+  const client = new GatewayClient(config, 1200);
   try {
-    const headers: Record<string, string> = {};
-    if (config.gateway.token) headers.authorization = `Bearer ${config.gateway.token}`;
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(1200) });
-    if (!res.ok) return `unknown (panel answered HTTP ${res.status})`;
-    const data = (await res.json()) as { queue?: { waiting?: number; running?: number } };
+    const data = await client.json<{ queue?: { waiting?: number; running?: number } }>('/api/status');
     const q = data.queue;
     if (!q) return 'unknown (panel is older than this CLI)';
     if (!q.waiting && !q.running) return 'idle — nothing running, nothing waiting';
     return `${q.waiting ?? 0} waiting · ${q.running ?? 0} running`;
-  } catch {
-    return 'not running — start the panel (termcrab gateway) to see live queue state';
+  } catch (err) {
+    if (err instanceof GatewayNotRunningError) {
+      return 'not running — start the panel (termcrab gateway) to see live queue state';
+    }
+    return `unknown (${err instanceof Error ? err.message : String(err)})`;
   }
 }
 

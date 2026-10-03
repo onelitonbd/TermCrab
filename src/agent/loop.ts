@@ -5,6 +5,14 @@ import { ChatResult, Provider, ProviderMessage, ThinkingLevel } from '../provide
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { Entry, newRunId, SessionQueue, SessionStore } from './sessions.js';
+import {
+  approvalTimeoutMs,
+  ApprovalDecision,
+  createApproval,
+  needsApproval,
+  resolveApproval,
+  waitForApproval,
+} from '../core/approvals.js';
 import { buildTools, Tool, ToolEnv } from './tools.js';
 import { spawnTask as spawnBgTask } from './tasks.js';
 import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing.js';
@@ -108,6 +116,22 @@ async function chatWithTimeout(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * What the model reads when a gated tool is not approved. A refusal is a
+ * result, not an error: the loop keeps going and the agent can say what it
+ * would do instead.
+ */
+function refusalText(tool: string, decision: ApprovalDecision, timeoutSec: number): string {
+  const seconds = Number.isInteger(timeoutSec) ? `${timeoutSec}s` : `${timeoutSec.toFixed(1)}s`;
+  const why =
+    decision === 'timeout-denied'
+      ? `no answer within ${seconds} — denied by default`
+      : decision === 'denied'
+        ? 'the operator denied it'
+        : 'it could not be answered';
+  return `[refused] The user refused this ${tool} call (${why}). Do not retry it; explain what you would do instead.`;
 }
 
 /** One user turn: loops until the model stops asking for tools. Returns final text. */
@@ -276,7 +300,41 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           const span = addSpan(runId, `tool:${call.name}`, { args: call.args });
           try {
             if (!tool) throw new Error(`unknown tool: ${call.name}`);
-            output = await tool.execute(call.args);
+            if (needsApproval(ctx.config, call.name)) {
+              // Human-in-the-loop: stop *before* the tool runs and wait for a
+              // person. The panel shows the same approval over SSE; the CLI can
+              // answer it too. Nobody answering is a decision, not a hang.
+              const timeoutMs = approvalTimeoutMs(ctx.config);
+              const approval = createApproval({
+                tool: call.name,
+                args: call.args,
+                sessionId,
+                timeoutSec: timeoutMs / 1000,
+              });
+              emit({ type: 'approval', approval });
+              const decision = await waitForApproval(
+                approval.id,
+                timeoutMs,
+                ctx.config.security?.approvals?.onTimeout ?? 'deny',
+                abortCtrl.signal,
+              );
+              if (decision === 'aborted') {
+                resolveApproval(approval.id, false, 'aborted');
+                finalText = '[interrupted] The user cancelled this request.';
+                ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+                emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
+                if (span) endSpan(runId, span.id);
+                return finalText;
+              }
+              if (decision === 'approved' || decision === 'timeout-allowed') {
+                output = await tool.execute(call.args);
+              } else {
+                ok = false;
+                output = refusalText(call.name, decision, Math.round(timeoutMs / 1000));
+              }
+            } else {
+              output = await tool.execute(call.args);
+            }
           } catch (err) {
             ok = false;
             output = err instanceof Error ? err.message : String(err);

@@ -16,63 +16,48 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এইমাত্র শেষ (ব্যাচ ৫):** কিউ এখন সত্যি — একই সেশনে দুটো মেসেজ আর কখনো একসাথে চলে না; `followup` / `steer` / `collect` / `interrupt` চারটাই কাজ করে; কিউয়ের দৈর্ঘ্য সত্যি; প্যানেলের কম্পোজারে "১ waiting" দেখায়; `termcrab status`-এ লাইভ কিউ-অবস্থা আসে।
-- **সংখ্যায়:** ৪৩৭টা টেস্ট · ০ ফেল · ~১৮ সেকেন্ড; census **BROKEN ৭ → ৪** (কিউ-এর তিনটা পাল্টা সারি সব WORKING), drift ০, capability ৪৩% → ৪৬%।
-- **পরের কাজ (ব্যাচ ৬):** অ্যাপ্রুভাল গেট — বিপজ্জনক টুল নিজে নিজে চলবে না, প্যানেলে অনুমতি চাইবে। **~৫ দিন, ৫টা ধাপ।**
+- **এইমাত্র শেষ (ব্যাচ ৬):** অ্যাপ্রুভাল গেট — যে টুলগুলো বিপজ্জনক (`exec`, `write_file`, `kill_process`) সেগুলো আর নিজে নিজে চলে না; লুপটা থেমে মানুষের উত্তর চায়, প্যানেলে (SSE → Approve/Deny কার্ড) আর টার্মিনালে (`termcrab approvals list/approve/deny`) একই আইডি দিয়ে উত্তর দেওয়া যায়; না দিলে টাইমআউটে ডিফল্ট deny; ফিরিয়ে দিলে সেটা একটা টুল-রেজাল্ট, ক্র্যাশ নয়।
+- **সংখ্যায়:** ৪৪৪টা টেস্ট · ০ ফেল · ~১৯ সেকেন্ড; census **BROKEN ৪ → ৩**, drift ০, capability ৪৬%; core lane-এর বাকি কাজ ~১৮ দিন।
+- **পরের কাজ (ব্যাচ ৭):** স্মৃতি যা ভোলে না — আজকের লেখা ফ্যাক্ট কালকের প্রম্পটে ঢুকবে, আর compaction কিছু মুছবে না। **~৬ দিন।**
 - **কীভাবে নিজে যাচাই করবে:** `node scripts/status.mjs` (এক সেকেন্ড), `node scripts/status.mjs --tests` (স্যুট সহ), `node scripts/census.mjs`, আর প্যানেলের **Work** পেজ।
 
 ---
 
-## 2. Now — batch 5: a queue you can trust (this commit)
+## 2. Now — batch 6: an agent that asks before it acts (this commit)
 
-**Why:** `SessionQueue.enqueue()` only ever pushed; `dequeue()` had zero callers in `src/`; `markRunning()` left the turn in the waiting array so `queueLength` never dropped; and both gateway enqueue sites fired `void processQueuedTurn(...)` immediately — so two messages in one session genuinely ran in parallel. `queueMode` was read but had no effect, `collect`/`steer` were config values with no code path, and nothing capped a backlog. The queue is now the only way in, with one lane per session and a test for every promise.
+**Why:** `src/core/approvals.ts` could already create and resolve approvals, and `GET /api/approvals` existed — but `createApproval()` had **zero call sites**. A tool that can delete files, overwrite a file or kill a process ran on the model's say-so alone. The census row said exactly that (`BROKEN: the code exists but nothing reaches it`). Now the tool dispatch asks first, the request travels to whoever can answer it, and the answer decides whether the tool runs.
 
 | # | Step | Status | Evidence / acceptance test |
 |---|---|---|---|
-| 5.1 | A second message in the same session **waits** | ✔ done | `test/queue-serialize.test.ts` 5.1 + 5.7 (real HTTP): the second turn stays `queued`, transcripts never interleave |
-| 5.2 | A finished turn leaves the queue | ✔ done | 5.2: `queueLength` is 1 while one waits, 0 when the lane is idle (unit + HTTP) |
-| 5.3 | `followup` runs messages in order, one at a time | ✔ done | 5.3: three messages → FIFO order, never more than one run in flight |
-| 5.4 | `steer` reaches the running turn — no second turn | ✔ done | 5.4 + 5.4b: same turn id, one `run:start`, the steered text lands in the transcript the model answers |
-| 5.5 | `collect` merges a burst into one extra turn | ✔ done | 5.5: three rapid messages → exactly one extra run containing all three |
-| 5.6 | `interrupt` cancels the old turn; the new one runs | ✔ done | 5.6: old turn `interrupted` + aborted, the cancelled run never finishes, the new turn runs |
-| 5.7 | Panel + CLI show the true queue state | ✔ done | the poll reports `queueLength`; the composer shows "N waiting" and a second message queues instead of stopping the run; `termcrab status` asks the running panel (never guesses) |
-| 5.8 | Census rows leave BROKEN | ✔ done | `node scripts/census.mjs` → **BROKEN 7 → 4**, drift 0 (probes: `private async drain`, `MAX_QUEUED_TURNS`, `takeSteers`) |
+| 6.1 | A gated tool stops **before** it runs | ✔ done | `test/approvals.test.ts` 6.1: the tool body never executes while pending; one `approval` event; it runs only after a human answer |
+| 6.2 | Approval reaches the panel; the answer reaches the run | ✔ done | 6.2 + 6.2b: SSE `approval` frame with the pending record, and the panel card (`addApprovalCard`) POSTs `/api/approvals/:id/(approve\|deny)` |
+| 6.3 | A refusal is a tool result, not a crash | ✔ done | 6.3: `ok:false` tool result the model can read, no file written, no `error` event |
+| 6.4 | Answer without the panel (CLI) | ✔ done | 6.2 + 6.4: the **real** `termcrab approvals list/deny` binary over HTTP against a live gateway — same id, one decision, second answer refused |
+| 6.5 | Timeout + default policy, census row leaves BROKEN | ✔ done | 6.5 + 6.5b: 0.3s window → default deny with the reason naming the timeout; `onTimeout:'allow'` runs it and labels the decision; `node scripts/census.mjs` → **BROKEN 4 → 3**, drift 0 |
 
-**Two extras the tests forced:** a backlog is now capped (`MAX_QUEUED_TURNS = 32` → HTTP 429) so a runaway webhook cannot grow the process without bound; and `runTurn` no longer treats `steer` as `interrupt` — a `steer` event plus a transcript entry carry the message into the same run.
+**Known limits (declared, not hidden):** approvals live inside the running panel process, so `termcrab approvals` says "start the panel" when it is down — it never guesses. There is still no terminal/TUI renderer, so the *Human-in-the-loop* census row stays PARTIAL. Decided history is capped at 50; a pending approval is never trimmed away. The gate is off by default and covers `exec`, `write_file`, `kill_process` (configure with `security.approvals.enabled` / `.tools`).
 
-**Known limit (declared, not hidden):** the lane covers every queue surface — panel chat (`POST /api/chat`), webhooks, and anything that submits through `SessionQueue`. Channel handlers (Telegram/Discord/Slack/Signal/SMS/Matrix), the voice wake loop and cron still call `runTurn` directly, so two messages that land on the *same session id* from two different surfaces can still overlap. Moving them onto the lane belongs with batch 8 (transcript write fencing), where the writer claim is the real fix.
-
-**Next action:** batch 6 step 6.1 — the failing test that proves a dangerous tool blocks until a human answers.
+**Next action:** batch 7 step 7.1 — the failing test that proves a fact written now reaches the next prompt.
 
 ---
 
-## 3. Next — batch 6: an agent that asks before it acts (core lane, ~5 days, starts after this commit)
+## 3. Next — batch 7: memory that doesn't forget (core lane, ~6 days, starts after this commit)
 
-`src/core/approvals.ts` exists with `createApproval` / `waitForApproval`, and the panel already has `GET /api/approvals` — but nothing ever creates one. A tool that can delete files, push a branch or spend money runs on the model's say-so alone. OpenClaw gates this ("operator approvals, HITL gates"); the census row is BROKEN for exactly this reason. Tests first, as always.
+The two BROKEN rows that make the agent forget on purpose: `prompt.ts` reads the **head** of `USER.md` (3000 chars) while `remember()` **appends** — so a fact written today can never enter context; and `sessions.ts` rewrites the `.jsonl` in place at `:154,187`, so compaction deletes history instead of summarising it. OpenClaw's rule is *"the full conversation history stays on disk"*. Tests first, as always.
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 6.1 | A tool marked `requiresApproval` stops *before* it runs | ☐ todo | with no answer, the tool body never executes and the turn is pending, not finished |
-| 6.2 | Approval reaches the panel and the answer reaches the run | ☐ todo | POST answer → the waiting tool runs (approve) or gets a refusal (deny); SSE emits the card |
-| 6.3 | A refusal is a result, not a crash | ☐ todo | denying returns a tool result the model can read ("user refused"), the turn completes, nothing is written |
-| 6.4 | Answer without the panel (CLI + chat) | ☐ todo | `termcrab approvals` lists/answers a pending one; the same request id works from either surface |
-| 6.5 | Timeout + default policy, and the census row leaves BROKEN | ☐ todo | an unanswered approval expires (configurable, default deny) and says so; `census.mjs` → BROKEN 4 → 3, drift 0 |
-
-**After that** (order fixed, sizes are focused days — and [BEAT-PLAN.md](docs/openclaw/BEAT-PLAN.md) §3 is the authority):
-
-| Batch | What | Size | What proves it |
-|---|---|---|---|
-| 7 | **Memory that does not forget** — prompt reads recent facts; compaction summarises instead of deleting | ~6d | test: a fact saved today reaches the prompt; full lines stay on disk |
-| 8 | **Transcript fencing** — a writer claim so gateway + CLI cannot interleave one JSONL | ~3d | test: second writer refuses (or appends atomically) |
-| 9 | **Usage / token accounting** — real token counts, shown in the panel | ~3d | test: a run reports tokens; the panel shows a number |
-| 10 | **Tier 0 quick flips** (BEAT-PLAN §2): hot-reload validation, `run --wait`, panel stop, progress drafts, skill precedence, disk budget, release script | ~5.5d | each row's own test; census WORKING +7 |
-
----
+| 7.1 | A fact written now reaches the next prompt | ☐ todo | write a fact, run a turn, the prompt contains it (tail-aware, not head-only) |
+| 7.2 | Compaction summarises without deleting history | ☐ todo | every original line is still on disk after compaction; the digest is what shrinks |
+| 7.3 | The bootstrap injection is budgeted and measured | ☐ todo | the injected block names its byte/token budget; nothing is dropped silently |
+| 7.4 | Recalled facts carry provenance | ☐ todo | each injected fact cites the file/session it came from |
+| 7.5 | The two memory rows leave BROKEN | ☐ todo | `census.mjs` → BROKEN 3 → 1 (fencing is batch 8), drift 0 |
 
 ## 4. Done — batches, commits, and the proof
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 6 | `_this commit_` | **An approval gate that really stops the tool**: the loop consults `needsApproval()` before dispatch, emits the pending record over SSE, waits with a timeout + default policy, and the decision is answerable from the panel card or `termcrab approvals`; refusal is a tool result, abort is honoured | `test/approvals.test.ts` (7 cases: gate, refusal, timeout, `onTimeout:allow`, real CLI over HTTP, panel source) | census **BROKEN 4 → 3**, drift 0, core lane 23d → 18d |
 | 5 | `5fe6651` | **A queue you can trust**: one lane per session (second message waits, never interleaves); all four modes really work (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs); truthful `queueLength`; backlog capped (429); panel "N waiting" chip + a second message while busy; `termcrab status` reports live queue state from the panel | `test/queue-serialize.test.ts` (10 new cases: unit + loop + real HTTP with a slow upstream), `test/queue.test.ts`, full suite | **437 tests · 0 fail · 18.0 s**; census **BROKEN 7 → 4**, drift 0, capability 46% (was 43%) |
 | 1 | `f1c86b8`, `df69070` | install no longer silently builds (`prepare` removed, two visible steps); config-file watcher no longer leaks/keeps the process alive; suite bounded (60s/test) | `test/lifecycle.test.ts` (listener closed, no FSWatcher, port reusable); leak probe `36.2 ms` (was cancelled at `30,023 ms`) | `npm install` **4,537 ms → 500 ms**; full suite now finishes |
 | 4 | `8ccb8fd` | **Beat plan**: head-to-head vs OpenClaw from hours-scale beats to the structural moat, every claim cited to their page or to a census row, kill list included; the plan now drives the batch order | `test/beat-plan.test.ts` (tiers, ≥25 beats with effort+proof, census cross-check, file paths) | `docs/openclaw/BEAT-PLAN.md`; 5 new tests |

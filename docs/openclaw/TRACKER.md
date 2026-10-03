@@ -47,10 +47,10 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 27 | wired and observable |
+| ✅ WORKING | 28 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 60 | exists, narrower than theirs |
-| ⛔ BROKEN | 4 | **the code exists but nothing reaches it** |
+| ⛔ BROKEN | 3 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 45 | nothing in the tree |
 | | **150** | tracked capabilities |
 
@@ -58,10 +58,10 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~23d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~18d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~465d | |
+| **total** | 150 | ~460d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -134,7 +134,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent | parity | 3 |
 
-### gateway — 46% (16 checks)
+### gateway — 52% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -147,7 +147,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Config hot-reload | watch + validate + apply | 🟡 PARTIAL | fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346), pinned by test/api.test.ts "config file password change hot-applies"; the fresh file is not schema-validated before the merge | parity | 1 |
 | Health / status endpoint | health + presence + doctor | ✅ WORKING | src/gateway/server.ts /api/health, /api/status, /api/doctor | parity | — |
 | Inbound webhooks | authenticated agent hooks | ✅ WORKING | POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts | core | — |
-| Approval queue + endpoint | operator approvals, HITL gates | ⛔ BROKEN | src/core/approvals.ts + GET /api/approvals at server.ts:972, but createApproval/waitForApproval have zero call sites | core | 5 |
+| Approval queue + endpoint | operator approvals, HITL gates | ✅ WORKING | src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5) | core | — |
 | Canvas / A2UI widgets | agent-driven UI widgets | 🟡 PARTIAL | src/gateway/canvas.ts + /api/canvas | parity | — |
 | Multi-agent routing | per-agent workspace, session, store | 🟡 PARTIAL | workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48) | parity | 3 |
 | Presence | online/typing/presence events | ⚪ ABSENT | no presence module | later | 2 |
@@ -288,7 +288,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Document extraction | pdf/docx/pptx extraction | ⚪ ABSENT | no document tools | later | 3 |
 | Tool count | ~44 in-loop tools + plugin tools | 🟡 PARTIAL | 41 in toolbox.ts + 13 in tools.ts | parity | — |
 | Tool schema validation | TypeBox-validated arguments | 🟡 PARTIAL | lightweight hand-rolled argument parsing | parity | 3 |
-| Human-in-the-loop prompts | ask_user overlay + timers | 🟡 PARTIAL | ask_user tool exists (toolbox.ts:894) with no terminal renderer | parity | 2 |
+| Human-in-the-loop prompts | ask_user overlay + timers | 🟡 PARTIAL | ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer | parity | 2 |
 
 <!-- END MEASURED -->
 
@@ -298,20 +298,19 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 This is the single most important list in this repository. Each one is a feature you can see in the file tree, that the docs and the UI may both imply exists, and that no code path reaches.
 
-**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), plus the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run*. The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases: unit, loop, and real HTTP against a slow upstream) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
+**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run* — and now the **approval gate**: `needsApproval()` runs before tool dispatch, the request reaches the panel (SSE card) and the CLI (`termcrab approvals`), refusals are tool results, and the timeout policy is configurable — pinned by `test/approvals.test.ts` (7 cases, including the real CLI binary over HTTP). The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases: unit, loop, and real HTTP against a slow upstream) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
 
 | # | Capability | Evidence | What it costs you today |
 |---|---|---|---|
-| 1 | **Approval gate** (`createApproval`/`waitForApproval`) | `src/core/approvals.ts:14,36`; both have zero call sites | `exec` runs with no human in the loop; `GET /api/approvals` always returns `[]`. |
-| 2 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
-| 3 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
-| 4 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
-| 5 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
-| 6 | **Docs that match the code** *(census: PARTIAL)* | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
+| 1 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
+| 2 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
+| 3 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
+| 4 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
+| 5 | **Docs that match the code** *(census: PARTIAL)* | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
 
-*(The census carries 4 BROKEN rows. Four of the six here are those rows; token accounting and docs sit under their own verdicts and stay in this table because they are what makes you distrust the map.)*
+*(The census carries 3 BROKEN rows. Three of the five here are those rows; token accounting and docs sit under their own verdicts and stay in this table because they are what makes you distrust the map.)*
 
-Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 6 (approvals) → batch 7 (compaction + memory) → batch 8 (write fencing) → batch 9 (usage/tokens). The first three change the character of the product.
+Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 7 (compaction + memory) → batch 8 (write fencing) → batch 9 (usage/tokens). The first two change the character of the product.
 
 ---
 

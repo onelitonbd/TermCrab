@@ -75,7 +75,7 @@ import { getProgress } from '../agent/progress.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
-import { createApproval, listApprovals, resolveApproval, waitForApproval, cleanupOldApprovals } from '../core/approvals.js';
+import { Approval, listApprovals, resolveApproval } from '../core/approvals.js';
 import { checkToken, constantTimeEqual, extractAuth } from './auth.js';
 
 export interface GatewayHandle {
@@ -1034,16 +1034,29 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/approvals') {
-          cleanupOldApprovals();
-          json(res, 200, { approvals: listApprovals() });
+          // ?all=1 includes the decided history (used by tests and debugging).
+          const all = new URL(req.url!, 'http://x').searchParams.get('all') === '1';
+          json(res, 200, { approvals: listApprovals(all) });
           return;
         }
 
         const approvalMatch = pathname.match(/^\/api\/approvals\/([^/]+)\/(approve|deny)$/);
         if (approvalMatch && req.method === 'POST') {
           const id = decodeURIComponent(approvalMatch[1]!);
-          resolveApproval(id, approvalMatch[2] === 'approve');
-          json(res, 200, { ok: true });
+          const approve = approvalMatch[2] === 'approve';
+          // Who answered: the browser panel sends no body, the CLI sends `by`.
+          let by = 'panel';
+          try {
+            const body = (await readJsonBody(req)) as { by?: unknown } | null;
+            if (typeof body?.by === 'string' && body.by.trim()) by = body.by.trim().slice(0, 32);
+          } catch {
+            /* no body at all is the normal panel path */
+          }
+          const ok = resolveApproval(id, approve, by);
+          const decision = approve ? 'approved' : 'denied';
+          const payload = { ok, id, decision, by } as { ok: boolean; id: string; decision: string; by: string; error?: string };
+          if (!ok) payload.error = 'no such pending approval';
+          json(res, ok ? 200 : 404, payload);
           return;
         }
 

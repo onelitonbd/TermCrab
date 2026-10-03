@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T06:56:37.199Z",
+ "measured": "2026-10-03T07:09:27.408Z",
  "tally": {
-  "WORKING": 27,
+  "WORKING": 28,
   "BETTER": 14,
   "PARTIAL": 60,
-  "BROKEN": 4,
+  "BROKEN": 3,
   "ABSENT": 45
  },
  "coverage": 46,
- "effortLeft": 465,
+ "effortLeft": 460,
  "areas": [
   "agent",
   "automation",
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1541"
+    "detail": "1 match(es): src/gateway/server.ts:1554"
    }
   },
   {
@@ -185,17 +185,17 @@
    "area": "gateway",
    "capability": "Approval queue + endpoint",
    "openclaw": "operator approvals, HITL gates",
-   "verdict": "BROKEN",
-   "evidence": "src/core/approvals.ts + GET /api/approvals at server.ts:972, but createApproval/waitForApproval have zero call sites",
+   "verdict": "WORKING",
+   "evidence": "src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5)",
    "probe": {
-    "pattern": "createApproval\\(",
-    "expect": "only-definition"
+    "pattern": {},
+    "expect": "present"
    },
-   "effort": 5,
+   "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es)"
+    "detail": "2 match(es): src/agent/loop.ts:303, src/core/approvals.ts:135"
    }
   },
   {
@@ -229,7 +229,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "15 match(es): src/agent/prompt.ts:81, src/agent/status.ts:6, src/cli.ts:18"
+    "detail": "15 match(es): src/agent/prompt.ts:81, src/agent/status.ts:7, src/cli.ts:18"
    }
   },
   {
@@ -314,7 +314,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:14, src/cli.ts:92"
+    "detail": "5 match(es): src/agent/loop.ts:22, src/cli.ts:96"
    }
   },
   {
@@ -331,7 +331,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:16, src/cli.ts:82"
+    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:24, src/cli.ts:86"
    }
   },
   {
@@ -416,7 +416,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:55"
+    "detail": "2 match(es): src/agent/loop.ts:63"
    }
   },
   {
@@ -433,7 +433,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:191"
+    "detail": "1 match(es): src/agent/loop.ts:215"
    }
   },
   {
@@ -467,7 +467,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/loop.ts:15, src/agent/sessions.ts:15, src/gateway/server.ts:320"
+    "detail": "85 match(es): src/agent/loop.ts:23, src/agent/sessions.ts:15, src/gateway/server.ts:320"
    }
   },
   {
@@ -484,7 +484,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:209, src/agent/sessions.ts:441"
+    "detail": "2 match(es): src/agent/loop.ts:233, src/agent/sessions.ts:441"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:104, src/agent/sessions.ts:296, src/agent/tools.ts:143"
+    "detail": "9 match(es): src/agent/loop.ts:112, src/agent/sessions.ts:296, src/agent/tools.ts:143"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "322 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
+    "detail": "335 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -688,7 +688,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/heartbeat.ts:53, src/cli.ts:388"
+    "detail": "3 match(es): src/agent/heartbeat.ts:53, src/cli.ts:392"
    }
   },
   {
@@ -892,7 +892,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:7, src/agent/embed.ts:8, src/core/config.ts:142"
+    "detail": "18 match(es): src/agent/embed-setup.ts:7, src/agent/embed.ts:8, src/core/config.ts:159"
    }
   },
   {
@@ -909,7 +909,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "74 match(es): src/agent/dream.ts:16, src/agent/loop.ts:30, src/agent/prompt.ts:18"
+    "detail": "74 match(es): src/agent/dream.ts:16, src/agent/loop.ts:38, src/agent/prompt.ts:18"
    }
   },
   {
@@ -926,7 +926,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "36 match(es): src/agent/loop.ts:43, src/agent/prompt.ts:16, src/cli.ts:51"
+    "detail": "36 match(es): src/agent/loop.ts:51, src/agent/prompt.ts:16, src/cli.ts:52"
    }
   },
   {
@@ -994,7 +994,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/prompt.ts:27, src/agent/toolbox.ts:1414, src/agent/tools.ts:452"
+    "detail": "21 match(es): src/agent/prompt.ts:27, src/agent/toolbox.ts:1414, src/agent/tools.ts:452"
    }
   },
   {
@@ -1045,7 +1045,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:66"
+    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:65"
    }
   },
   {
@@ -1121,7 +1121,7 @@
    "capability": "Human-in-the-loop prompts",
    "openclaw": "ask_user overlay + timers",
    "verdict": "PARTIAL",
-   "evidence": "ask_user tool exists (toolbox.ts:894) with no terminal renderer",
+   "evidence": "ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer",
    "probe": {
     "pattern": "ask_user",
     "expect": "present"
@@ -1181,7 +1181,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:27, src/agent/prompt.ts:8, src/agent/tools.ts:10"
+    "detail": "6 match(es): src/agent/loop.ts:35, src/agent/prompt.ts:8, src/agent/tools.ts:10"
    }
   },
   {
@@ -1610,7 +1610,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "37 match(es): src/agent/dream.ts:145, src/agent/loop.ts:31, src/agent/status.ts:88"
+    "detail": "37 match(es): src/agent/dream.ts:145, src/agent/loop.ts:39, src/agent/status.ts:87"
    }
   },
   {
@@ -1678,7 +1678,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:36, src/agent/tools.ts:34, src/gateway/server.ts:352"
+    "detail": "8 match(es): src/agent/loop.ts:44, src/agent/tools.ts:34, src/gateway/server.ts:352"
    }
   },
   {
@@ -1695,7 +1695,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "69 match(es): src/agent/prompt.ts:18, src/agent/status.ts:8, src/agent/toolbox.ts:15"
+    "detail": "69 match(es): src/agent/prompt.ts:18, src/agent/status.ts:9, src/agent/toolbox.ts:15"
    }
   },
   {
@@ -1866,7 +1866,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "48 match(es): src/cli.ts:82, src/gateway/server.ts:1109, src/providers/capabilities.ts:148"
+    "detail": "49 match(es): src/cli.ts:86, src/gateway/server.ts:1122, src/providers/capabilities.ts:148"
    }
   },
   {
@@ -1883,7 +1883,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/cli.ts:39"
+    "detail": "3 match(es): src/cli.ts:40"
    }
   },
   {
@@ -1900,7 +1900,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/channels/signal.ts:28"
+    "detail": "3 match(es): src/channels/signal.ts:28, src/cli.ts:700"
    }
   },
   {
@@ -2105,7 +2105,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/status.ts:130, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
+    "detail": "20 match(es): src/agent/status.ts:129, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
    }
   },
   {
@@ -2173,7 +2173,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "396 match(es): src/agent/ask.ts:14, src/agent/dream.ts:27, src/agent/embed-setup.ts:18"
+    "detail": "401 match(es): src/agent/ask.ts:14, src/agent/dream.ts:27, src/agent/embed-setup.ts:18"
    }
   },
   {
@@ -2207,7 +2207,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/sessions.ts:111, src/cli.ts:57, src/gateway/server.ts:903"
+    "detail": "8 match(es): src/agent/sessions.ts:111, src/cli.ts:58, src/gateway/server.ts:903"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "17 match(es): src/cli.ts:12, src/gateway/server.ts:1892, src/mobile/boot.ts:26"
+    "detail": "17 match(es): src/cli.ts:12, src/gateway/server.ts:1905, src/mobile/boot.ts:26"
    }
   },
   {
@@ -2292,7 +2292,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:66"
+    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:65"
    }
   },
   {
@@ -2326,7 +2326,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/status.ts:130, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
+    "detail": "20 match(es): src/agent/status.ts:129, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
    }
   },
   {
@@ -2343,7 +2343,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "32 match(es): src/cli.ts:34, src/mobile/doctor.ts:457, src/mobile/whisper.ts:7"
+    "detail": "32 match(es): src/cli.ts:35, src/mobile/doctor.ts:457, src/mobile/whisper.ts:7"
    }
   },
   {
@@ -2360,7 +2360,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/cli.ts:34, src/mobile/doctor.ts:470, src/mobile/whisper.ts:101"
+    "detail": "8 match(es): src/cli.ts:35, src/mobile/doctor.ts:470, src/mobile/whisper.ts:101"
    }
   },
   {
@@ -2539,7 +2539,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "52 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/auth.test.ts:1"
+    "detail": "53 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/approvals.test.ts:15"
    }
   },
   {

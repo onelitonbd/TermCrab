@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.38.0 - 2026-10-03
+
+- **Dangerous tools now ask first.** `exec`, `write_file` and `kill_process` (configurable via `security.approvals`) no longer run on the model's word alone: the loop stops *before* dispatch, raises an approval, and continues only when an answer arrives. `src/core/approvals.ts` finally has call sites — the census row that said "the code exists but nothing reaches it" is gone (**BROKEN 4 → 3**).
+- **The question reaches both surfaces.** The panel receives an SSE `approval` frame and renders a card with the tool, its arguments and **Approve / Deny** buttons (POST `/api/approvals/:id/approve|deny`); a page refresh re-lists anything still pending so a gate can never hide behind a reload. The terminal answers the *same* request id: `termcrab approvals list` / `approve <id>` / `deny <id>` (`--json` for scripts) — it talks to the running panel with the same token every other command uses, and says "start the panel" when it is down instead of guessing.
+- **A refusal is a normal tool result, and a timeout is a decision.** Denying returns `ok:false` to the model ("the user refused this … do not retry it"), the turn completes, and nothing is executed or written. If nobody answers within `security.approvals.timeoutSec` (default 120 s) the default is deny, with the reason naming the timeout; `onTimeout: 'allow'` can allow it and still labels the decision. Every decision is recorded (`decidedBy: panel | cli | timeout | aborted`), and stopping a run answers any gate it was waiting on, so a stopped run never leaves an approval hanging.
+- Tests: **444 cases, 0 failures** (7 new in `test/approvals.test.ts`: gate-before-run, refusal-as-result, timeout default-deny, allow-on-timeout, the real CLI binary answered over HTTP against a live gateway, panel card wiring). Full run ~19 s. Census: **BROKEN 4 → 3**, drift 0, capability 46%, core-lane work left ~18 focused days.
+
 ## 0.37.0 - 2026-10-03
 
 - **The session queue is a queue now, not a list.** One lane per session: with two messages posted to the same session, the second **stays `queued`** until the first finishes, and the transcripts can no longer interleave. Before this, both gateway enqueue sites fired the run immediately, so two messages genuinely ran in parallel against one session; `dequeue()` had zero callers and `markRunning()` left the turn in the waiting array, so `queueLength` never dropped.
