@@ -63,7 +63,10 @@ test('exec tool blocked when allowExec=false', async () => {
   ctx.config.agent.allowExec = false;
   const tools = await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
   const exec = tools.find((t) => t.def.name === 'exec')!;
-  await assert.rejects(() => exec.execute({ command: 'echo hi' }), /disabled/);
+  // 22.1: a refusal is a sentence the model can read, not a rejected promise.
+  const out = await exec.execute({ command: 'echo hi' });
+  assert.match(out, /exec is disabled/);
+  assert.match(out, /allowExec/);
 });
 
 test('path guard blocks traversal outside roots', () => {

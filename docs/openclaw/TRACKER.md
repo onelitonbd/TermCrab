@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৬৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬৮টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪২টা আধা (PARTIAL), ২৬টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২০৩ দিন, later ~১৪২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৬৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৯টা আধা (PARTIAL), ২৬টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৯৬ দিন, later ~১৪২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 68 | wired and observable |
+| ✅ WORKING | 71 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 42 | exists, narrower than theirs |
+| 🟡 PARTIAL | 39 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 26 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 67%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 68%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~203d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 108 | ~196d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~142d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~345d | |
+| **total** | 150 | ~338d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -277,11 +277,11 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | macOS/Windows/Linux apps | native desktop apps | ⚪ ABSENT | Termux-first by design | later | — |
 | iOS / Android companion apps | paired nodes with camera/screen | ⚪ ABSENT | no native app; Termux:API is the bridge | later | — |
 
-### tools — 64% (12 checks)
+### tools — 78% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Shell execution | exec with policy + approvals | 🟡 PARTIAL | src/agent/tools.ts:256 exec behind agent.allowExec, no approval gate | parity | 2 |
+| Shell execution | exec with policy + approvals | ✅ WORKING | src/agent/exec-guard.ts is the guard around `exec`: a short catastrophe list (rm -rf /, mkfs, dd onto a device, fork bomb, chmod -R 777 /, reboot, curl|sh) refuses with one sentence and never spawns, owner patterns are added on top via agent.execDenyPatterns, a real timeout kills the process and reports [killed after Ns] with whatever it printed, output is capped and the cap is stated, and agent.execTimeoutSec sets the default. agent.allowExec still gates the whole tool (off by default) and the same tools can require a human yes/no through the approval queue (22.3). test/tier2k.test.ts 22.1 | parity | — |
 | File operations | root-bounded fs-safe tools | ✅ WORKING | read_file/write_file/list_dir with allowed roots (tools.ts:22,97), plus the inbox the agent can browse: inbox_list / inbox_read answer from the arrival index and the saved sidecar with the same readers the intake uses, and refuse a name that contains a path (17.1–17.4, src/channels/inbox.ts) | parity | — |
 | Web fetch + search | fetch, search providers, link understanding | ✅ WORKING | web_fetch (tools.ts) + web_search (toolbox.ts) | parity | — |
 | Browser automation | CDP + Playwright + OAuth flows | 🟡 PARTIAL | CDP browser tool requires system Chrome; off by default | parity | 6 |
@@ -291,8 +291,8 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Image / media generation | image, video, music generation | ⚪ ABSENT | no generation tools | later | 6 |
 | Document extraction | pdf/docx/pptx extraction | ✅ WORKING | the text of what arrives is read by our own zero-dependency readers (src/channels/extract.ts): PDF content streams with FlateDecode, DOCX/PPTX/XLSX through a small ZIP reader on node:zlib, every text format as-is — capped at 20 000 characters with a truncation note, a scanned PDF refused with a sentence that names OCR, a .zip not opened and said so (16.1); pictures are read by a model that can see them, as a real image part on the wire, or the agent is told "I saved it but cannot see it" with the exact command (16.2, src/channels/vision.ts). Pinned by test/tier2e.test.ts | later | 3 |
 | Tool count | ~44 in-loop tools + plugin tools | 🟡 PARTIAL | 41 in toolbox.ts + 13 in tools.ts | parity | — |
-| Tool schema validation | TypeBox-validated arguments | 🟡 PARTIAL | lightweight hand-rolled argument parsing | parity | 3 |
-| Human-in-the-loop prompts | ask_user overlay + timers | 🟡 PARTIAL | ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer | parity | 2 |
+| Tool schema validation | TypeBox-validated arguments | ✅ WORKING | src/agent/tool-schema.ts validates every tool call against the schema the tool already declares (type/required/properties/items/enum/integer, nested included) before execute() runs — buildTools() wraps all tools, so the check holds for the loop, the panel and tests alike. A bad call comes back as `[bad arguments for <tool>] missing required `path` (string)` plus the instruction to resend, which is what a small model can actually act on; a test walks every built-in tool and proves each one answers instead of crashing. TypeBox itself is not used: zero runtime dependencies is a promise this project keeps | parity | — |
+| Human-in-the-loop prompts | ask_user overlay + timers | ✅ WORKING | ask_user (toolbox.ts) plus a real approval gate in the loop for any tool listed in security.approvals.tools: the turn pauses *before* the tool runs, the panel shows a card over SSE and now the terminal answers too — `termcrab agent` asks y/N on a TTY, a non-interactive run is told which command approves it, and the timeout default (deny) applies if nobody answers. The decision (approved/denied/timeout, and who) is written into the transcript as a `[approval] <tool> <decision> by <who>` system line, so "who allowed this" is answerable later from the same file. test/tier2k.test.ts 22.3 | parity | — |
 
 <!-- END MEASURED -->
 

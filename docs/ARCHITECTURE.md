@@ -88,6 +88,7 @@ users' runtime.
 | `src/agent/dream.ts` | Dream pass: replays recent sessions and distils durable facts into memory |
 | `src/agent/embed-setup.ts` | Embedding-model setup for memory search: status, install, and the checks the doctor reports (`termcrab embeddings ...`) |
 | `src/agent/embed.ts` | Optional embedding search |
+| `src/agent/exec-guard.ts` | Running a shell command on someone's phone is the sharpest thing this agent does (22.1) |
 | `src/agent/goals.ts` | Goal tracking: open goals with progress, surfaced in the system prompt |
 | `src/agent/heartbeat.ts` | proactive tick: power check -> checklist -> run |
 | `src/agent/intents.ts` | Standing intents: durable directives injected into every system prompt |
@@ -103,6 +104,7 @@ users' runtime.
 | `src/agent/status.ts` | `termcrab status`: live state from the running gateway, with a disk-read fallback when the panel is down |
 | `src/agent/suggestions.ts` | Follow-up task cards suggested by the agent; the operator dismisses them |
 | `src/agent/tasks.ts` | Background subagent tasks: spawned turns tracked to completion |
+| `src/agent/tool-schema.ts` | Check a tool call's arguments before the tool runs (22.2) |
 | `src/agent/toolbox.ts` | extended tools: edit, patch, web_search, automations, sessions_*, subagents, phone tools (Termux:API) |
 | `src/agent/tools.ts` | tool registry + path guard + shell resolver + browser (CDP) + code_exec (vm sandbox) |
 | `src/bin/termcrab.ts` | entry: loads bionic guard FIRST, then CLI |
@@ -123,7 +125,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\|zsh\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |

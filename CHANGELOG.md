@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.53.0 - 2026-10-03
+
+- **The shell has a guard rail.** `exec` now refuses a short list of catastrophic commands (`rm -rf /`, `mkfs`, `dd` onto a device, a fork bomb, `chmod -R 777 /`, `reboot`, `curl | sh`) with one plain sentence and never spawns a process; the owner can add their own patterns (`agent.execDenyPatterns`) and only an explicit `agent.execAllowDangerous: true` goes past the list. A timeout kills the command (SIGKILL) and reports `[killed after Ns]` together with whatever it managed to print; output is capped and the cap is stated rather than implied. `agent.execTimeoutSec` sets the default, and `agent.allowExec` still gates the whole tool.
+- **A wrong argument is a sentence, not a stack trace.** Every tool's already-declared schema is now enforced at the boundary (`src/agent/tool-schema.ts`): required fields, types (`integer` included), nested objects, array items and enums. A bad call comes back as `[bad arguments for read_file] missing required \`path\` (string). Send the call again with the corrected arguments.` - something a small model can act on. A test walks every built-in tool and proves it answers instead of crashing; the wrapper is applied in `buildTools`, so the loop, the panel, the CLI and tests all get the same behaviour.
+- **A human can say yes from the terminal too.** When a gated tool pauses the turn, `termcrab agent` now asks `y/N` right there on a TTY; a piped or cron run is told exactly which command approves it rather than hanging silently, and the timeout default still applies. The decision - approved, denied, timed out, and who answered - is written into the transcript as a `[approval] <tool> <decision> by <who>` system line, so "who allowed this?" is answerable later from the same file.
+- Tests: **17 new cases** in `test/tier2k.test.ts`. Census: **WORKING 68 -> 71**, score **67% -> 68%** (tools lane 64% -> 78%), drift 0.
+
+
 ## 0.52.0 - 2026-10-03
 
 - **A transcript that survives losing the phone.** Every entry is written as one whole line and flushed to disk before the append returns, and a half-written tail left by a kill is cut before the next write. A line that still does not parse is *reported* (torn tail vs. unreadable line) instead of skipped silently, and `termcrab sessions verify [--repair]` walks every transcript and says what it found. Nothing was deleted to make this true: the archive still holds everything.

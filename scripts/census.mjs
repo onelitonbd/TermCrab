@@ -239,8 +239,9 @@ check('context', 'Bootstrap file set', 'AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP,
   { pattern: 'readUserBlock', expect: 'present' }, 2);
 
 // ------------------------------------------------------------------ 5. tools
-check('tools', 'Shell execution', 'exec with policy + approvals', 'PARTIAL',
-  'src/agent/tools.ts:256 exec behind agent.allowExec, no approval gate', { pattern: "name: 'exec'", expect: 'present' }, 2);
+check('tools', 'Shell execution', 'exec with policy + approvals', 'WORKING',
+  'src/agent/exec-guard.ts is the guard around `exec`: a short catastrophe list (rm -rf /, mkfs, dd onto a device, fork bomb, chmod -R 777 /, reboot, curl|sh) refuses with one sentence and never spawns, owner patterns are added on top via agent.execDenyPatterns, a real timeout kills the process and reports [killed after Ns] with whatever it printed, output is capped and the cap is stated, and agent.execTimeoutSec sets the default. agent.allowExec still gates the whole tool (off by default) and the same tools can require a human yes/no through the approval queue (22.3). test/tier2k.test.ts 22.1',
+  { file: 'src/agent/exec-guard.ts', pattern: 'export async function runCommand', expect: 'present' }, 0);
 check('tools', 'File operations', 'root-bounded fs-safe tools', 'WORKING',
   'read_file/write_file/list_dir with allowed roots (tools.ts:22,97), plus the inbox the agent can browse: inbox_list / inbox_read answer from the arrival index and the saved sidecar with the same readers the intake uses, and refuse a name that contains a path (17.1–17.4, src/channels/inbox.ts)', { pattern: 'inbox_read', expect: 'present' }, 0);
 check('tools', 'Web fetch + search', 'fetch, search providers, link understanding', 'WORKING',
@@ -261,11 +262,12 @@ check('tools', 'Document extraction', 'pdf/docx/pptx extraction', 'WORKING',
   { paths: ['src/channels/extract.ts', 'src/channels/vision.ts'], expect: 'present' }, 3);
 check('tools', 'Tool count', '~44 in-loop tools + plugin tools', 'PARTIAL',
   '41 in toolbox.ts + 13 in tools.ts', { pattern: "name: '", expect: 'present' }, 0);
-check('tools', 'Tool schema validation', 'TypeBox-validated arguments', 'PARTIAL',
-  'lightweight hand-rolled argument parsing', { pattern: 'argStr', expect: 'present' }, 3);
-check('tools', 'Human-in-the-loop prompts', 'ask_user overlay + timers', 'PARTIAL',
-  'ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer',
-  { pattern: 'ask_user', expect: 'present' }, 2);
+check('tools', 'Tool schema validation', 'TypeBox-validated arguments', 'WORKING',
+  'src/agent/tool-schema.ts validates every tool call against the schema the tool already declares (type/required/properties/items/enum/integer, nested included) before execute() runs — buildTools() wraps all tools, so the check holds for the loop, the panel and tests alike. A bad call comes back as `[bad arguments for <tool>] missing required `path` (string)` plus the instruction to resend, which is what a small model can actually act on; a test walks every built-in tool and proves each one answers instead of crashing. TypeBox itself is not used: zero runtime dependencies is a promise this project keeps',
+  { file: 'src/agent/tool-schema.ts', pattern: 'export function validateArgs', expect: 'present' }, 0);
+check('tools', 'Human-in-the-loop prompts', 'ask_user overlay + timers', 'WORKING',
+  'ask_user (toolbox.ts) plus a real approval gate in the loop for any tool listed in security.approvals.tools: the turn pauses *before* the tool runs, the panel shows a card over SSE and now the terminal answers too — `termcrab agent` asks y/N on a TTY, a non-interactive run is told which command approves it, and the timeout default (deny) applies if nobody answers. The decision (approved/denied/timeout, and who) is written into the transcript as a `[approval] <tool> <decision> by <who>` system line, so "who allowed this" is answerable later from the same file. test/tier2k.test.ts 22.3',
+  { file: 'src/core/approvals.ts', pattern: 'export function waitForApproval', expect: 'present' }, 0);
 
 // ----------------------------------------------------------------- 6. skills
 check('skills', 'SKILL.md loading', 'progressive disclosure + gating', 'WORKING',

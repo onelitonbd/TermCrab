@@ -66,6 +66,12 @@ export interface Config {
     allowExec: boolean;
     maxIterations: number;
     timezone: string;
+    /** Seconds a shell command may run before it is killed (default 30). */
+    execTimeoutSec?: number;
+    /** Extra regexes (on top of the built-in catastrophe list) that exec refuses. */
+    execDenyPatterns?: string[];
+    /** Escape hatch: run even a refused command. Off by default, on purpose. */
+    execAllowDangerous?: boolean;
     /** Compact session when entries exceed this threshold (default 60). */
     compactThreshold: number;
     /** Bytes of MEMORY.md injected into the system prompt (newest facts win). */
@@ -516,6 +522,9 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'contextEngine',
       'keepToolResults',
       'sessionReset',
+      'execTimeoutSec',
+      'execDenyPatterns',
+      'execAllowDangerous',
       'failover',
       'queueMode',
       'allowBrowser',
@@ -533,6 +542,9 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     numIn(agent, 'agent.', 'maxIterations', 1, 100, true);
     numIn(agent, 'agent.', 'compactThreshold', 5, 10_000, true);
     numIn(agent, 'agent.', 'memoryBudget', 0, 1_000_000, true);
+    numIn(agent, 'agent.', 'execTimeoutSec', 1, 3600);
+    bool(agent, 'agent.', 'execAllowDangerous');
+    strArr(agent, 'agent.', 'execDenyPatterns');
     oneOf(agent, 'agent.', 'queueMode', ['followup', 'steer', 'collect', 'interrupt']);
     const reset = agent.sessionReset;
     if (reset !== undefined && reset !== 'never' && reset !== 'daily' && !(typeof reset === 'string' && /^idle:\d{1,5}$/.test(reset))) {

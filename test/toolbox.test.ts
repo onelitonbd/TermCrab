@@ -459,5 +459,6 @@ test('progress_card: set/get/clear for the current session', async () => {
 test('exec still honors allowExec=false', async () => {
   const locked: ToolEnv = { ...env, config: { ...env.config, agent: { ...env.config.agent, allowExec: false } } };
   const execTool = (await buildTools(locked)).find((t) => t.def.name === 'exec')!;
-  await assert.rejects(() => execTool.execute({ command: 'echo hi' }), /disabled/);
+  const out = await execTool.execute({ command: 'echo hi' });
+  assert.match(out, /exec is disabled/, '22.1: refused with a sentence, never spawned');
 });

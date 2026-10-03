@@ -559,6 +559,13 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
                 if (span) endSpan(runId, span.id);
                 return finalText;
               }
+              // 22.3: the decision is part of the transcript, so "who allowed
+              // this, and when" is answerable later from the same file.
+              appendEntry({
+                role: 'system',
+                content: `[approval] ${call.name} ${decision}${approval.decidedBy ? ` by ${approval.decidedBy}` : ''}`,
+                ts: Date.now(),
+              });
               if (decision === 'approved' || decision === 'timeout-allowed') {
                 output = await tool.execute(call.args);
               } else {

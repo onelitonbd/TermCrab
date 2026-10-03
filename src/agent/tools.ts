@@ -10,6 +10,8 @@ import { MemoryStore } from './memory.js';
 import { SkillStore } from '../skills/loader.js';
 import { spawn } from 'node:child_process';
 import { extraTools } from './toolbox.js';
+import { guardToolExecute } from './tool-schema.js';
+import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, runCommand } from './exec-guard.js';
 import { ToolDef } from '../providers/types.js';
 import { createMcpClient, mcpToolsToDefs, McpClient, McpTool } from '../providers/mcp.js';
 
@@ -277,7 +279,9 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
     },
     async execute(args) {
       if (!env.config.agent.allowExec) {
-        throw new Error('exec is disabled (set agent.allowExec=true in config to enable)');
+        // 22.1: a refusal is a result the model can read, not a crash it can
+        // only see as "the tool failed".
+        return 'exec is disabled — the owner can turn it on with: termcrab config set agent.allowExec true';
       }
       const command = str(args, 'command');
       if (args.background === true) {
@@ -300,25 +304,19 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
         });
         return `[background] id=${id} pid=${rec.pid} — read output with the process tool`;
       }
-      const timeout = Math.min(typeof args.timeoutSec === 'number' ? args.timeoutSec * 1000 : 30_000, 120_000);
-      const shell = resolveShell();
-      try {
-        const { stdout, stderr } = await execFileAsync(shell, ['-c', command], {
-          timeout,
-          maxBuffer: 4 * 1024 * 1024,
-          cwd: process.cwd(),
-          env: process.env,
-        });
-        const parts: string[] = [];
-        if (stdout) parts.push(stdout);
-        if (stderr) parts.push(`[stderr]\n${stderr}`);
-        return clip(parts.join('\n') || '(no output)');
-      } catch (err) {
-        const e = err as { stdout?: string; stderr?: string; message?: string };
-        return clip(
-          `exit error: ${e.message ?? 'failed'}${e.stdout ? `\n[stdout]\n${e.stdout}` : ''}${e.stderr ? `\n[stderr]\n${e.stderr}` : ''}`,
-        );
-      }
+      // 22.1: the guard decides what is refusal-worthy (catastrophe, not
+      // policy), the timeout always kills and says how long it waited.
+      const defaultSec = env.config.agent.execTimeoutSec ?? DEFAULT_TIMEOUT_MS / 1000;
+      const askedSec = typeof args.timeoutSec === 'number' ? args.timeoutSec : defaultSec;
+      const result = await runCommand(command, resolveShell(), {
+        timeoutMs: Math.min(askedSec * 1000, MAX_TIMEOUT_MS),
+        maxOutputChars: MAX_OUTPUT,
+        cwd: process.cwd(),
+        extraDeny: env.config.agent.execDenyPatterns,
+        allowDangerous: env.config.agent.execAllowDangerous === true,
+      });
+      if (result.refused) log.warn(`exec refused a command: ${command.slice(0, 120)}`);
+      return clip(result.output);
     },
   });
 
@@ -600,7 +598,9 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
 
   tools.push(...extraTools(env));
 
-  return tools;
+  // 22.2: every tool's declared schema is enforced at the boundary, once, for
+  // every caller — a malformed argument comes back as a sentence, not a crash.
+  return tools.map((tool) => guardToolExecute(tool));
 }
 
 export function batteryHint(): string {

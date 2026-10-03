@@ -55,6 +55,9 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab sessions show <id> --json` | `{id, file, archive, entries, bytes, firstAt, lastAt, roles, digest, fence, policy, resetDue, resetReason, attachment:{files, facts, approvals, tools}}` |
 | `termcrab sessions verify --json` | `{sessions:[{id, entries, hot, archived, badLines, repairedBytes, bytes}], sessionsWithDamage, badLines, repaired, bytes, repairedNow}` |
 | `termcrab sessions reset <id> --json` | `{id, archivedTo, entries}` |
+| `termcrab config set agent.execTimeoutSec 30` | seconds a shell command may run before it is killed (default 30) |
+| `termcrab config set agent.execDenyPatterns '^curl '` | extra refusals on top of the built-in catastrophe list |
+| `termcrab config set agent.execAllowDangerous true` | escape hatch: run even a refused command (off by default) |
 | `termcrab memory compact <session> --json` | `{session, compacted, coveredTurns, by, model, note, file}` |
 | `termcrab approvals --json` | `{count, approvals:[{id, tool, args, sessionId, createdAt}]}` |
 | `termcrab approvals approve\|deny <id> --json` | `{id, decision, by, ok}` |

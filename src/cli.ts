@@ -182,8 +182,46 @@ function jsonRunResult(run: RunView): number {
   return 0;
 }
 
+/**
+ * When a tool asks for permission while the CLI is the only surface open, the
+ * terminal itself answers (22.3). Non-interactive runs (pipes, cron) get the
+ * one-line instruction instead of a hang; the timeout still applies.
+ */
+let approvingNow = false;
+async function handleApprovalHere(a: { id: string; tool: string; args: Record<string, unknown>; timeoutSec?: number }): Promise<void> {
+  if (approvingNow) return;
+  approvingNow = true;
+  try {
+    const args = JSON.stringify(a.args ?? {}).slice(0, 200);
+    process.stdout.write(`\n  🔐 ${a.tool} wants to run: ${args}\n`);
+    if (!process.stdin.isTTY) {
+      process.stdout.write(
+        `     waiting for another surface — approve it with: termcrab approvals approve ${a.id}\n` +
+          `     (after ${a.timeoutSec ?? 60}s the configured default applies)\n`,
+      );
+      return;
+    }
+    const readline = await import('node:readline/promises');
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = (await rl.question('     allow this? [y/N] ')).trim();
+      const yes = /^y(es)?$/i.test(answer);
+      const { resolveApproval } = await import('./core/approvals.js');
+      resolveApproval(a.id, yes, yes ? 'cli' : 'cli-deny');
+      process.stdout.write(yes ? '     ✓ approved — running it\n' : '     ✗ denied — the agent is told and moves on\n');
+    } finally {
+      rl.close();
+    }
+  } finally {
+    approvingNow = false;
+  }
+}
+
 function printEvents(ev: AgentEvent): void {
   switch (ev.type) {
+    case 'approval':
+      void handleApprovalHere(ev.approval);
+      break;
     case 'tool:start': {
       const args = Object.entries(ev.args)
         .map(([k, v]) => `${k}=${String(v).slice(0, 60)}`)

@@ -63,21 +63,30 @@ test('phone tools: notification is registered', async () => {
 test('phone tools: sms_send requires to and text', async () => {
   const tools = await buildTools(makeEnv());
   const sms = tools.find((t) => t.def.name === 'sms_send')!;
-  await assert.rejects(() => sms.execute({ text: 'hello' }), /missing required argument: to/);
-  await assert.rejects(() => sms.execute({ to: '+123' }), /missing required argument: text/);
+  // 22.2: the schema is checked at the boundary, so a bad call comes back as a
+  // sentence naming the field instead of a thrown error (and never sends).
+  const noTo = await sms.execute({ text: 'hello' });
+  assert.match(noTo, /\[bad arguments for sms_send\]/);
+  assert.match(noTo, /missing required `to`/);
+  const noText = await sms.execute({ to: '+123' });
+  assert.match(noText, /missing required `text`/);
 });
 
 test('phone tools: clipboard requires action', async () => {
   const tools = await buildTools(makeEnv());
   const clipboard = tools.find((t) => t.def.name === 'clipboard')!;
-  await assert.rejects(() => clipboard.execute({}), /missing required argument: action/);
+  const out = await clipboard.execute({});
+  assert.match(out, /\[bad arguments for clipboard\]/);
+  assert.match(out, /missing required `action`/);
 });
 
 test('phone tools: notification requires title and text', async () => {
   const tools = await buildTools(makeEnv());
   const notification = tools.find((t) => t.def.name === 'notification')!;
-  await assert.rejects(() => notification.execute({ text: 'hello' }), /missing required argument: title/);
-  await assert.rejects(() => notification.execute({ title: 'hi' }), /missing required argument: text/);
+  const noTitle = await notification.execute({ text: 'hello' });
+  assert.match(noTitle, /missing required `title`/);
+  const noText = await notification.execute({ title: 'hi' });
+  assert.match(noText, /missing required `text`/);
 });
 
 test('phone tools: all have descriptions', async () => {

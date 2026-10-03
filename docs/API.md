@@ -60,6 +60,16 @@ The code is printed by `termcrab pair`, lives 5 minutes and is single use.
 Wrong or expired codes answer `401` with a reason (`expired` / `unknown`), and
 the route is rate limited per IP, so a code cannot be brute-forced.
 
+### Approvals
+A gated tool (any name in `security.approvals.tools`) pauses the turn *before*
+it runs and emits an `approval` event over SSE (`{id, tool, args, sessionId,
+createdAt, timeoutSec}`). Answer it with `POST /api/approvals/:id/approve` (or `.../deny`) — the panel
+button and `termcrab approvals approve|deny <id>` both call it, and `termcrab
+agent` asks `y/N` right in the terminal when that is the surface in front of
+you (a non-interactive run is told which command to use instead). Nobody answering means the configured
+`security.approvals.onTimeout` default (deny), and the decision is written into
+the transcript as a `[approval] <tool> <decision> by <who>` line.
+
 ### `GET /api/devices`
 ```json
 { "ok": true, "v": 1, "count": 1, "devices": [ { "id": "9f3a1c02", "name": "pixel", "createdAt": "…", "lastSeenAt": "…", "seenCount": 12, "current": true } ] }
