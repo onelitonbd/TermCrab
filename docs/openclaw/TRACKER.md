@@ -15,6 +15,8 @@
 
 ---
 
+> **Where we win, and in what order:** [BEAT-PLAN.md](BEAT-PLAN.md) — the head-to-head against OpenClaw from hours-scale beats to the structural moat, with the kill list. This file measures the whole field; that file picks the fight.
+
 ## 1. The one-screen answer
 
 | | |

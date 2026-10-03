@@ -1,6 +1,6 @@
 # The mobile layer is the moat
 
-**Their pages:** 26 `/platforms` + 25 `/nodes` + 43 `/install` — and **not one of the 1,335 pages is an Android/Termux install path**. Everything a Termux user needs lives in community guides, Reddit threads and shims.
+**Their pages:** 26 `/platforms` + 25 `/nodes` + 43 `/install`. Be precise about what that means: they *do* ship an official Android app, but the doc says it plainly — *"Role: companion node app (Android does not host the Gateway). Gateway required: yes (run it on macOS, Linux, or Windows via WSL2)"* (`/platforms/android`). So Android is a **remote control**, and using it means running a gateway on a computer. **Not one of the 1,335 pages installs the agent itself on Android** — for that, users are on their own with community guides, Reddit threads, proot and shims (their Termux scripts SSH to a host: `/help/scripts.md`). The precise head-to-head lives in [BEAT-PLAN.md](../BEAT-PLAN.md).
 **Catalogue:** [`../sections/07-platforms.md`](../sections/07-platforms.md), [`../sections/02-install.md`](../sections/02-install.md).
 
 ---

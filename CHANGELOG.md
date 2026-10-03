@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.36.2 - 2026-10-03
+
+- **A competitive plan that starts where the advantage is real.** `docs/openclaw/BEAT-PLAN.md` is the head-to-head against OpenClaw, ordered smallest to biggest: Tier 0 (hours-scale wins, each flipping a tracked row), Tier 1 (the queue/memory/approval defects that would undermine any win), Tier 2 (the phone-native moat), Tier 3 (structural: zero deps, no registry, honest docs), and Tier 4 — the written kill list of things we will not build.
+- The plan is precise about the sharpest difference, from OpenClaw's own docs: their Android app is a *companion node* — "Android does not host the Gateway" — so using a phone means running a gateway on a computer. TermCrab's gateway is the phone.
+- Claims are checkable by design: `test/beat-plan.test.ts` requires ≥25 numbered beats, an effort and a proof per beat, and every "we are already better" claim to match a real census BETTER row. File references must exist (or be marked planned).
+- Tests: **427 cases, 0 failures** (6 new).
+
 ## 0.36.1 - 2026-10-03
 
 - **You can now see what is being built, from anywhere.** `WORKLOG.md` is the work tracker: the current batch with each step's status and the test that proves it, what is queued next with sizes, and every finished batch with its commit. `node scripts/status.mjs` prints the same thing in one screen (`--tests` also runs the suite), and the panel has a new **Work** page that renders it.

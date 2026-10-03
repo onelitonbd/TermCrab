@@ -25,50 +25,46 @@
 
 ---
 
-## 2. Now — batch 3: work tracking you can see (this commit)
+## 2. Now — batch 4: the answer to "how do we beat OpenClaw" (this commit)
 
-**Why:** "I am still confused because you don't have any tracking what you are doing." Fair. The capability map told you the *level*; nothing told you the *work* — what is in flight, what is proven, what is next. This file plus `scripts/status.mjs` plus the panel's **Work** page are that tracker, and they are self-policing: any commit that does not update this file is reported `STALE` by the script and **fails the suite**.
+**Why:** the level map answered *where we stand*; it did not answer *where we win and in what order we build*. That answer is now a document: [`docs/openclaw/BEAT-PLAN.md`](docs/openclaw/BEAT-PLAN.md) — head-to-head from the smallest beats (Tier 0: hours) through the phone-native moat (Tier 2) up to the structural bets (Tier 3), with the explicit kill list above it, and every OpenClaw claim cited to the page it came from (their own doc says the quiet part: *"Android does not host the Gateway"*).
 
 | # | Step | Status | Evidence / acceptance test |
 |---|---|---|---|
-| 3.1 | One file answers "now / next / done" and where the proof is | ✔ done | `WORKLOG.md` §2–§4; `test/worklog.test.ts` pins the structure |
-| 3.2 | A command anyone can run to check my claims | ✔ done | `node scripts/status.mjs` (+ `--tests`, `--json`); pinned by `test/worklog.test.ts` |
-| 3.3 | Freshness is automatic, not a habit | ✔ done | the script counts commits after the last commit that touched this file; non-zero = `STALE`, exit 1, suite fails |
-| 3.4 | The tracker is on the screen you test from | ✔ done | panel menu → **Work** (`/api/worklog`, token-gated, renders this markdown + freshness banner) |
-| 3.5 | Done work carries commit + test, always | ✔ done | §4 table: every batch has a commit hash, a named test, and measured numbers |
+| 4.1 | Head-to-head, smallest → biggest, with citations to their pages | ✔ done | `BEAT-PLAN.md` §2 (Tier 0–4); precision fix in `analysis/10-mobile-the-moat.md` |
+| 4.2 | Each beat carries an effort and a proof (test / script / measured number) | ✔ done | `test/beat-plan.test.ts`: ≥25 beats, every row has effort + proof |
+| 4.3 | "Already better" claims cannot be invented | ✔ done | same test: every `census: … 🏅` claim must match a real BETTER row |
+| 4.4 | The plan drives the work order, not a wishlist | ✔ done | Phase A starts with the queue (batch 5) because BROKEN rows undermine every moat claim |
+| 4.5 | Reachable from the map and the tracker | ✔ done | TRACKER §1 + WORKLOG link it; pinned by the test |
 
-**Next action:** start batch 4 (the queue) below — first a failing test, then the fix.
+**Next action:** batch 5 step 5.1 — the failing test that proves two messages in one session run one after another.
 
 ---
 
-## 3. Next — batch 4: a queue you can trust (core lane, ~10 days)
+## 3. Next — batch 5: a queue you can trust (core lane, ~10 days, starts after this commit)
 
-I found this while testing the live panel: `SessionQueue.enqueue()` adds turns, **nothing ever removes them**, and two messages for one session run at the same time. That is the "agentic system is not trustworthy" problem in one sentence — the modes are documented, the code exists, nothing reaches it.
-
-Status legend: `▶ doing` · `☐ todo` · `✔ done (evidence)`
+`SessionQueue.enqueue()` adds turns and **nothing ever removes them**; two messages for one session run at the same time. The modes are documented, the code exists, nothing reaches it — this is where "the agentic system is not trustworthy" starts. Tests come first: each step below adds a failing test, then the fix.
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 4.1 | A second message in the same session **waits** instead of running beside the first | ☐ todo | two turns posted together → second stays `queued`; transcripts never interleave |
-| 4.2 | `dequeue()` is actually called: a finished turn leaves the queue | ☐ todo | `queueLength === 0` after a turn completes |
-| 4.3 | `queueMode: followup` — while busy, messages queue and run in order | ☐ todo | 3 messages → outputs in order, one at a time |
-| 4.4 | `queueMode: steer` — a mid-run message reaches the running turn, no second turn | ☐ todo | message appears in the running transcript; run id unchanged |
-| 4.5 | `queueMode: collect` — rapid messages merge into the next turn | ☐ todo | 3 rapid messages → 1 extra turn containing all three |
-| 4.6 | `queueMode: interrupt` — a new message cancels the running turn and starts fresh | ☐ todo | old run `[interrupted]` + marked cancelled; new turn runs |
-| 4.7 | Panel + CLI show the true queue state (length, running turn, mode) | ☐ todo | `/api/chat/<sid>/<turn>` reports length 0 when idle; composer shows "1 waiting" |
-| 4.8 | Census rows leave BROKEN (session queue, queue modes, steering) | ☐ todo | `node scripts/census.mjs` → BROKEN 7 → 5, drift 0 |
+| 5.1 | A second message in the same session **waits** instead of running beside the first | ☐ todo | two turns posted together → second stays `queued`; transcripts never interleave |
+| 5.2 | `dequeue()` is actually called: a finished turn leaves the queue | ☐ todo | `queueLength === 0` after a turn completes |
+| 5.3 | `queueMode: followup` — while busy, messages queue and run in order | ☐ todo | 3 messages → outputs in order, one at a time |
+| 5.4 | `queueMode: steer` — a mid-run message reaches the running turn, no second turn | ☐ todo | message appears in the running transcript; run id unchanged |
+| 5.5 | `queueMode: collect` — rapid messages merge into the next turn | ☐ todo | 3 rapid messages → 1 extra turn containing all three |
+| 5.6 | `queueMode: interrupt` — a new message cancels the running turn and starts fresh | ☐ todo | old run `[interrupted]` + marked cancelled; new turn runs |
+| 5.7 | Panel + CLI show the true queue state (length, running turn, mode) | ☐ todo | `/api/chat/<sid>/<turn>` reports length 0 when idle; composer shows "1 waiting" |
+| 5.8 | Census rows leave BROKEN (session queue, queue modes, steering) | ☐ todo | `node scripts/census.mjs` → BROKEN 7 → 5, drift 0 |
 
-**After that** (order fixed, sizes are focused days, no calendar promises):
+**After that** (order fixed, sizes are focused days — and [BEAT-PLAN.md](docs/openclaw/BEAT-PLAN.md) §3 is the authority):
 
 | Batch | What | Size | What proves it |
 |---|---|---|---|
-| 5 | **Approvals gate** — dangerous tools block until a human approves them in the panel | ~5d | test: tool blocks until approved, refused when denied |
-| 6 | **Memory that does not forget** — prompt reads recent facts; compaction summarises instead of deleting | ~6d | test: a fact saved today reaches the prompt; full lines stay on disk |
-| 7 | **Transcript fencing** — a writer claim so gateway + CLI cannot interleave one JSONL | ~3d | test: second writer refuses (or appends atomically) |
-| 8 | **Usage / token accounting** — real token counts, shown in the panel | ~3d | test: a run reports tokens; the panel shows a number |
-| 9 | **Docs that match the code** — generate the file list in `docs/ARCHITECTURE.md` from the tree | ~2d | census row leaves BROKEN; probe expects the stale line to be *absent* |
-
-After batch 9 the core lane is empty. Parity work (TUI, plugin API, more channels) starts after that — see [docs/openclaw/ROADMAP.md](docs/openclaw/ROADMAP.md).
+| 6 | **Approvals gate** — dangerous tools block until a human approves them in the panel | ~5d | test: tool blocks until approved, refused when denied |
+| 7 | **Memory that does not forget** — prompt reads recent facts; compaction summarises instead of deleting | ~6d | test: a fact saved today reaches the prompt; full lines stay on disk |
+| 8 | **Transcript fencing** — a writer claim so gateway + CLI cannot interleave one JSONL | ~3d | test: second writer refuses (or appends atomically) |
+| 9 | **Usage / token accounting** — real token counts, shown in the panel | ~3d | test: a run reports tokens; the panel shows a number |
+| 10 | **Tier 0 quick flips** (BEAT-PLAN §2): hot-reload validation, `run --wait`, panel stop, progress drafts, skill precedence, disk budget, release script | ~5.5d | each row's own test; census WORKING +7 |
 
 ---
 
@@ -77,7 +73,8 @@ After batch 9 the core lane is empty. Parity work (TUI, plugin API, more channel
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
 | 1 | `f1c86b8`, `df69070` | install no longer silently builds (`prepare` removed, two visible steps); config-file watcher no longer leaks/keeps the process alive; suite bounded (60s/test) | `test/lifecycle.test.ts` (listener closed, no FSWatcher, port reusable); leak probe `36.2 ms` (was cancelled at `30,023 ms`) | `npm install` **4,537 ms → 500 ms**; full suite now finishes |
-| 3 | *(the commit that adds this file — `git log -1 -- WORKLOG.md`)* | **Work tracking**: `WORKLOG.md` + `scripts/status.mjs` + panel **Work** page; freshness is commit-count based, so a commit that skips the tracker fails the suite | `test/worklog.test.ts` (structure, git freshness, `/api/worklog` token-gated, panel view) | `node scripts/status.mjs` → FRESH; 8 new tests |
+| 4 | *(this commit)* | **Beat plan**: head-to-head vs OpenClaw from hours-scale beats to the structural moat, every claim cited to their page or to a census row, kill list included; the plan now drives the batch order | `test/beat-plan.test.ts` (tiers, ≥25 beats with effort+proof, census cross-check, file paths) | `docs/openclaw/BEAT-PLAN.md`; 5 new tests |
+| 3 | `dd37e60` | **Work tracking**: `WORKLOG.md` + `scripts/status.mjs` + panel **Work** page; freshness is commit-count based, so a commit that skips the tracker fails the suite | `test/worklog.test.ts` (structure, git freshness, `/api/worklog` token-gated, panel view) | `node scripts/status.mjs` → FRESH; 8 new tests |
 | 2 | `0ff408b` | panel token enforced on every `/api/*` route (+ password sheet); webhook tokens (`x-hook-token`) compared in constant time; offline brain restored (`--demo`, panel button, `config set provider.type mock`); guards/tests tell the truth; census + tracker corrected | `test/auth.test.ts` (10-route matrix, webhook matrix), `test/offline.test.ts` (CLI + reload + panel path), full suite, live panel smoke | **413 tests · 0 fail · 18.3 s**; census **149 probes, 0 drift, BROKEN 10 → 7**, capability 41% → 43% |
 
 ---
