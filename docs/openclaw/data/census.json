@@ -1,5 +1,5 @@
 {
- "measured": "2026-10-03T14:19:53.723Z",
+ "measured": "2026-10-03T14:36:40.094Z",
  "tally": {
   "WORKING": 54,
   "BETTER": 14,
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:913"
+    "detail": "1 match(es): src/gateway/server.ts:927"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:915"
+    "detail": "1 match(es): src/gateway/server.ts:929"
    }
   },
   {
@@ -76,7 +76,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:871"
+    "detail": "0 match(es): src/gateway/server.ts:885"
    }
   },
   {
@@ -93,7 +93,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:276"
+    "detail": "1 match(es): src/gateway/server.ts:277"
    }
   },
   {
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1754"
+    "detail": "1 match(es): src/gateway/server.ts:1768"
    }
   },
   {
@@ -178,7 +178,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:830"
+    "detail": "4 match(es): src/gateway/server.ts:844"
    }
   },
   {
@@ -212,7 +212,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:86"
+    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:87"
    }
   },
   {
@@ -263,7 +263,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:276"
+    "detail": "1 match(es): src/gateway/server.ts:277"
    }
   },
   {
@@ -467,7 +467,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): src/agent/loop.ts:26, src/agent/sessions.ts:16, src/gateway/server.ts:337"
+    "detail": "87 match(es): src/agent/loop.ts:26, src/agent/sessions.ts:16, src/gateway/server.ts:338"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1087, src/gateway/server.ts:1029"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1087, src/gateway/server.ts:1043"
    }
   },
   {
@@ -535,7 +535,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:834"
+    "detail": "1 match(es): src/agent/toolbox.ts:883"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "454 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
+    "detail": "457 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -620,7 +620,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:717"
+    "detail": "1 match(es): src/agent/toolbox.ts:766"
    }
   },
   {
@@ -671,7 +671,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:680"
+    "detail": "1 match(es): src/agent/toolbox.ts:729"
    }
   },
   {
@@ -951,16 +951,16 @@
    "capability": "File operations",
    "openclaw": "root-bounded fs-safe tools",
    "verdict": "WORKING",
-   "evidence": "read_file/write_file/list_dir with allowed roots (tools.ts:22,97)",
+   "evidence": "read_file/write_file/list_dir with allowed roots (tools.ts:22,97), plus the inbox the agent can browse: inbox_list / inbox_read answer from the arrival index and the saved sidecar with the same readers the intake uses, and refuse a name that contains a path (17.1–17.4, src/channels/inbox.ts)",
    "probe": {
-    "pattern": "path outside allowed roots",
+    "pattern": "inbox_read",
     "expect": "present"
    },
    "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/tools.ts:97"
+    "detail": "2 match(es): src/agent/toolbox.ts:634, src/channels/inbox.ts:13"
    }
   },
   {
@@ -977,7 +977,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:67"
+    "detail": "2 match(es): src/agent/toolbox.ts:68"
    }
   },
   {
@@ -994,7 +994,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:30, src/agent/toolbox.ts:1450, src/agent/tools.ts:452"
+    "detail": "21 match(es): src/agent/prompt.ts:30, src/agent/toolbox.ts:1499, src/agent/tools.ts:452"
    }
   },
   {
@@ -1099,7 +1099,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "78 match(es): src/agent/prompt.ts:140, src/agent/toolbox.ts:247, src/agent/tools.ts:127"
+    "detail": "80 match(es): src/agent/prompt.ts:140, src/agent/toolbox.ts:248, src/agent/tools.ts:127"
    }
   },
   {
@@ -1116,7 +1116,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "77 match(es): src/agent/toolbox.ts:52"
+    "detail": "78 match(es): src/agent/toolbox.ts:53"
    }
   },
   {
@@ -1133,7 +1133,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/ask.ts:3, src/agent/toolbox.ts:930"
+    "detail": "2 match(es): src/agent/ask.ts:3, src/agent/toolbox.ts:979"
    }
   },
   {
@@ -1167,7 +1167,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1080, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1129, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -1201,7 +1201,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1079"
+    "detail": "1 match(es): src/agent/toolbox.ts:1128"
    }
   },
   {
@@ -1339,7 +1339,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:501, src/mobile/doctor.ts:383"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:502, src/mobile/doctor.ts:383"
    }
   },
   {
@@ -1492,7 +1492,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:615"
+    "detail": "1 match(es): src/gateway/server.ts:617"
    }
   },
   {
@@ -1630,7 +1630,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:78"
+    "detail": "3 match(es): src/channels/picker.ts:213, src/gateway/server.ts:79"
    }
   },
   {
@@ -1647,7 +1647,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/toolbox.ts:238, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
+    "detail": "18 match(es): src/agent/toolbox.ts:239, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
    }
   },
   {
@@ -1681,7 +1681,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:64, src/agent/tools.ts:34, src/gateway/server.ts:369"
+    "detail": "8 match(es): src/agent/loop.ts:64, src/agent/tools.ts:34, src/gateway/server.ts:370"
    }
   },
   {
@@ -1766,7 +1766,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:951"
+    "detail": "1 match(es): src/agent/toolbox.ts:1000"
    }
   },
   {
@@ -1869,7 +1869,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "69 match(es): src/agent/status.ts:73, src/channels/extract.ts:61, src/cli.ts:177"
+    "detail": "69 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:177"
    }
   },
   {
@@ -2005,7 +2005,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:276"
+    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:277"
    }
   },
   {
@@ -2022,7 +2022,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:871"
+    "detail": "0 match(es): src/gateway/server.ts:885"
    }
   },
   {
@@ -2056,7 +2056,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:41"
+    "detail": "13 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:42"
    }
   },
   {
@@ -2073,7 +2073,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1080, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1129, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2176,7 +2176,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "538 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
+    "detail": "556 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
    }
   },
   {
@@ -2201,7 +2201,7 @@
    "capability": "Disk budget + pruning",
    "openclaw": "usage caps, retention",
    "verdict": "WORKING",
-   "evidence": "src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6",
+   "evidence": "src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4",
    "probe": {
     "pattern": "enforceDiskBudget",
     "expect": "present"
@@ -2210,7 +2210,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:18, src/core/disk.ts:118, src/gateway/server.ts:30"
+    "detail": "6 match(es): src/cli.ts:18, src/core/disk.ts:126, src/gateway/server.ts:30"
    }
   },
   {
@@ -2261,7 +2261,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:25, src/command-help.ts:70, src/gateway/server.ts:2143"
+    "detail": "19 match(es): src/cli.ts:25, src/command-help.ts:70, src/gateway/server.ts:2157"
    }
   },
   {
@@ -2278,7 +2278,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:27, src/command-help.ts:277, src/gateway/server.ts:80"
+    "detail": "6 match(es): src/cli.ts:27, src/command-help.ts:277, src/gateway/server.ts:81"
    }
   },
   {
@@ -2363,7 +2363,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "24 match(es): src/channels/intake.ts:21, src/channels/telegram.ts:43, src/cli.ts:49"
+    "detail": "25 match(es): src/channels/inbox.ts:124, src/channels/intake.ts:21, src/channels/telegram.ts:43"
    }
   },
   {
@@ -2543,7 +2543,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "65 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "66 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

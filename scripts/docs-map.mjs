@@ -138,11 +138,19 @@ function main() {
     const missing = onDisk.filter((f) => !listed.has(f));
     const extra = [...listed].filter((f) => !onDisk.includes(f));
     const undescribed = onDisk.filter((f) => !blockDescriptions(doc).has(f) && !annotatedDescriptions(doc)(f) && !leadingComment(f));
-    if (missing.length || extra.length || undescribed.length) {
+    // A row that still says "new — describe me" while the file *has* a header
+    // comment is drift too: the check used to pass here, because it looked at
+    // the source for a description instead of at the row. The doc is what a
+    // reader sees, so the placeholder has to count.
+    const placeholders = [...doc.slice(a, b).matchAll(/^\|\s*`([^`]+)`\s*\|\s*\*\(new — describe me\)\*\s*\|/gm)]
+      .map((m) => m[1])
+      .filter((f) => Boolean(leadingComment(f)) || Boolean(annotatedDescriptions(doc)(f)));
+    if (missing.length || extra.length || undescribed.length || placeholders.length) {
       const why = [];
       if (missing.length) why.push(`${missing.length} file(s) missing (${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ', …' : ''})`);
       if (extra.length) why.push(`${extra.length} listed but not on disk (${extra.slice(0, 3).join(', ')})`);
       if (undescribed.length) why.push(`${undescribed.length} with no description (${undescribed.slice(0, 3).join(', ')})`);
+      if (placeholders.length) why.push(`${placeholders.length} row(s) still say "describe me" although a description exists (${placeholders.slice(0, 3).join(', ')})`);
       console.error(`docs-map: docs/ARCHITECTURE.md drifted — ${why.join('; ')} — run: node scripts/docs-map.mjs --write`);
       process.exit(1);
     }

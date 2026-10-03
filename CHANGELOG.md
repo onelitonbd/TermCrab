@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.49.0 - 2026-10-03
+
+- **The agent can browse what was sent to it.** Two new tools — `inbox_list` (newest first: name, kind, size, age, whether the text was saved, and `GONE` when the disk budget trimmed it) and `inbox_read` (the text of one arrival) — plus `/inbox` and `/inbox <name>` in the chat. "The file I sent you yesterday" now works without a path.
+- **Read once, remembered.** Everything learned at arrival (document text, transcript, picture description) is written next to the file as `<name>.text.md`, and one row is added to `workspace/inbox/.inbox-index.json`. `inbox_read` answers from that note — **so the file never has to be parsed twice**, and the text still comes back after the file itself is gone. A re-arrival replaces its own row instead of stacking.
+- **A trimmed arrival explains itself.** The index is a few KB and is protected from the disk budget, while the arrivals themselves stay trimmable. After a sweep the list says `GONE — trimmed by the disk budget` and `inbox_read` says the file was trimmed — never a missing-path error. If the text note outlived the file, that is what answers, with the truth about the original attached.
+- **A chat cannot point outside the inbox.** Names are checked before anything is opened: separators, drive letters and `..` are refused, so a message can never read `../../config.json`.
+- **The docs and the code cannot drift apart.** A test derives the "can send files" column from `docs/CHANNELS.md`, compares it with every `registerDocumentSender(...)` call in the gateway, and probes the runtime registry — adding a channel without touching the docs now fails the suite.
+- **`docs-map --check` got stricter.** It used to pass when a generated row still said *"new — describe me"* while the file already had a header comment (it looked at the source, not at the row). It now names those rows as drift, because the doc is what a reader sees.
+- Tests: **623 cases, 0 failures** (3 skipped by design; 18 new in `test/tier2f.test.ts`). Census verdicts unchanged by design this batch — it hardened `File operations` and `Disk budget + pruning` rather than adding a capability — so the score stays **59%** (WORKING 54 · BETTER 14 · PARTIAL 46 · ABSENT 36 · **BROKEN 0**), drift 0.
+
+
 ## 0.48.0 - 2026-10-03
 
 - **A file that arrives is now read, not just stored.** The text inside an arriving PDF, DOCX, PPTX, XLSX or text file is pulled out by **our own readers** — no dependency added: PDF content streams are inflated (`FlateDecode`) and turned back into lines (`Tj`/`TJ`/`'`/`"`, with `Td`/`TD`/`T*`/`ET` breaking them), Office files are opened through a small ZIP reader on `node:zlib`. The text is capped at 20 000 characters **with a truncation note inside the text**, so a long document cannot silently change what the agent is answering.

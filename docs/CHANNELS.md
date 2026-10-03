@@ -75,6 +75,22 @@ agent the truth about the rest:
   area in `termcrab disk`, trimmed by the ordinary retention rule
   (`storage.keepDays`, default 30 days) — while everything you wrote into
   `workspace/` is never a trim candidate.
+- **The agent can look again (17.1–17.4).** Every arrival is written to an index
+  (`.inbox-index.json`, a few KB, protected from the budget) and the text learned
+  about it is saved next to the file as `<name>.text.md`. That gives the agent:
+
+  | what | how |
+  |---|---|
+  | `inbox_list` tool | what was sent, newest first: name, kind, size, age, whether its text was saved |
+  | `inbox_read` tool | the text of one arrival — from the saved note, or by reading the file again if there is none |
+  | `/inbox` command | the same list in the chat; `/inbox <name>` prints that file's text (trimmed to 3000 characters) |
+
+  Two promises hold this together. **The second read never parses the file
+  again** — the sidecar answers even after the file itself is gone. And **a
+  trimmed arrival explains itself**: the index keeps the row, the list marks it
+  `GONE — trimmed by the disk budget`, and `inbox_read` says the file was
+  trimmed instead of failing on a missing path. Names from a chat are never
+  paths: separators and `..` are refused before anything is opened.
 
 ## Config worth knowing
 

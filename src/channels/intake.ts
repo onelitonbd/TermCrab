@@ -20,6 +20,7 @@ import { extractText, isExtractable } from './extract.js';
 import { DEFAULT_MAX_CHARS, type ExtractResult } from './extract.js';
 import { transcribeFile } from '../mobile/whisper.js';
 import { describeImage } from './vision.js';
+import { recordArrival } from './inbox.js';
 
 /** What the intake needs to know about the file (bytes stay on disk). */
 export interface ArrivalInfo {
@@ -30,6 +31,12 @@ export interface ArrivalInfo {
 }
 
 export interface IntakeDeps {
+  /**
+   * Called once with everything learned about the arrival (document text,
+   * transcript, picture description). The gateway uses it to save a sidecar and
+   * an index row, so the same file is never parsed twice (17.2).
+   */
+  remember?: (learned: string) => void;
   extract?: (saved: SavedFile, maxChars: number) => ExtractResult;
   transcribe?: (file: string) => Promise<{ ok: boolean; text?: string; error?: string }>;
   describe?: (saved: SavedFile, mimeType: string) => Promise<{ ok: boolean; text?: string; reason?: string }>;
@@ -94,6 +101,7 @@ export async function intakePrompt(
     }
   }
 
+  if (extra.length && deps.remember) deps.remember(extra.join('\n'));
   return extra.length ? `${base}\n${extra.join('\n')}` : base;
 }
 
@@ -108,8 +116,21 @@ export function makeIntake(config: Config): (saved: SavedFile, info: ArrivalInfo
     transcribeVoice: tg?.transcribeVoice,
     describePhotos: tg?.describePhotos,
   };
-  return (saved, info) =>
-    intakePrompt(saved, info, flags, {
+  return async (saved, info) => {
+    let learned: string | undefined;
+    const prompt = await intakePrompt(saved, info, flags, {
       describe: (f, mime) => describeImage({ file: f.path, mimeType: mime, cfg: config.provider }),
+      remember: (text) => {
+        learned = text;
+      },
     });
+    // One row per arrival, and the sidecar that makes the second read free.
+    recordArrival({
+      name: path.basename(saved.path),
+      bytes: saved.bytes,
+      kind: info.kind,
+      text: learned,
+    });
+    return prompt;
+  };
 }

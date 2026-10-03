@@ -231,7 +231,7 @@ check('context', 'Bootstrap file set', 'AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP,
 check('tools', 'Shell execution', 'exec with policy + approvals', 'PARTIAL',
   'src/agent/tools.ts:256 exec behind agent.allowExec, no approval gate', { pattern: "name: 'exec'", expect: 'present' }, 2);
 check('tools', 'File operations', 'root-bounded fs-safe tools', 'WORKING',
-  'read_file/write_file/list_dir with allowed roots (tools.ts:22,97)', { pattern: 'path outside allowed roots', expect: 'present' }, 0);
+  'read_file/write_file/list_dir with allowed roots (tools.ts:22,97), plus the inbox the agent can browse: inbox_list / inbox_read answer from the arrival index and the saved sidecar with the same readers the intake uses, and refuse a name that contains a path (17.1–17.4, src/channels/inbox.ts)', { pattern: 'inbox_read', expect: 'present' }, 0);
 check('tools', 'Web fetch + search', 'fetch, search providers, link understanding', 'WORKING',
   'web_fetch (tools.ts) + web_search (toolbox.ts)', { pattern: 'web_search', expect: 'present' }, 0);
 check('tools', 'Browser automation', 'CDP + Playwright + OAuth flows', 'PARTIAL',
@@ -423,7 +423,7 @@ check('storage', 'Backup / restore', 'openclaw backup', 'PARTIAL',
 check('storage', 'Atomic updates + rollback', 'guarded upgrades, versioned state', 'PARTIAL',
   'src/core/updat{er,e}.ts check-only update path (never auto-applies)', { pattern: 'update', expect: 'present' }, 4);
 check('storage', 'Disk budget + pruning', 'usage caps, retention', 'WORKING',
-  'src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6',
+  'src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4',
   { pattern: 'enforceDiskBudget', expect: 'present' }, 0);
 
 // ------------------------------------------------------ 14. mobile/platform

@@ -106,6 +106,7 @@ users' runtime.
 | `src/channels/conversations.ts` | Registry of external conversations (telegram/whatsapp/...) the channels touch |
 | `src/channels/discord.ts` | Discord (optional, discord.js) |
 | `src/channels/extract.ts` | Read what arrived (16.1) — the text inside a document, with no dependency |
+| `src/channels/inbox.ts` | The inbox the agent can browse (17.1–17.4) |
 | `src/channels/intake.ts` | What the agent is told when a file arrives (16.1–16.3) |
 | `src/channels/markdown.ts` | Telegram markdown rendering (zero dependencies) |
 | `src/channels/matrix.ts` | Matrix (optional, matrix-js-sdk) |
@@ -118,7 +119,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\|zsh\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\|zsh\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |

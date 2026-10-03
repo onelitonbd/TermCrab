@@ -58,6 +58,7 @@ import { SkillStore } from '../skills/loader.js';
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
 import { makeIntake } from '../channels/intake.js';
+import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
 import { ChannelName } from '../channels/api.js';
@@ -606,6 +607,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         '  /usage      tokens and cost today',
         '  /sessions   your recent conversations',
         '  /memory     what I have remembered',
+        '  /inbox      files people sent you (and /inbox <name> to read one)',
         '  /agents     named personalities (@name <message>)',
         '  /providers  pick the model',
         '  /heartbeat  run a self-check now',
@@ -634,6 +636,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       const stats = memory.stats();
       const head = `🧠 ${block.facts}/${block.totalFacts} facts injected, ${stats.dailyFiles} daily log(s)`;
       return block.text.trim() ? `${head}\n\n${block.text.trim()}` : `${head}\n(nothing remembered yet — tell me something worth keeping)`;
+    }
+    if (text === '/inbox' || text.startsWith('/inbox ')) {
+      const name = text.slice('/inbox'.length).trim();
+      if (name) {
+        const read = readArrival(path.basename(name));
+        return read.ok
+          ? `📥 ${name}\n\n${read.text.length > 3000 ? `${read.text.slice(0, 3000)}\n… [truncated — ask for the rest by name]` : read.text}`
+          : `📥 ${read.reason}`;
+      }
+      const entries = listInbox({ limit: 8 });
+      const head = `📥 Inbox (${entries.length} shown)`;
+      return `${head}\n${formatInbox(entries)}`;
     }
     if (channel === 'telegram' && text === '/heartbeat') {
       const res = await runHeartbeatOnce(agent);

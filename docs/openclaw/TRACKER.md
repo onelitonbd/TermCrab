@@ -259,7 +259,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Database + migrations | SQLite with schema migrations | ⚪ ABSENT | flat files throughout | later | 8 |
 | Backup / restore | openclaw backup | 🟡 PARTIAL | sessions export + manual copying; no backup command | parity | 3 |
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
-| Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6 | parity | — |
+| Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4 | parity | — |
 
 ### surfaces — 58% (11 checks)
 
@@ -282,7 +282,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Shell execution | exec with policy + approvals | 🟡 PARTIAL | src/agent/tools.ts:256 exec behind agent.allowExec, no approval gate | parity | 2 |
-| File operations | root-bounded fs-safe tools | ✅ WORKING | read_file/write_file/list_dir with allowed roots (tools.ts:22,97) | parity | — |
+| File operations | root-bounded fs-safe tools | ✅ WORKING | read_file/write_file/list_dir with allowed roots (tools.ts:22,97), plus the inbox the agent can browse: inbox_list / inbox_read answer from the arrival index and the saved sidecar with the same readers the intake uses, and refuse a name that contains a path (17.1–17.4, src/channels/inbox.ts) | parity | — |
 | Web fetch + search | fetch, search providers, link understanding | ✅ WORKING | web_fetch (tools.ts) + web_search (toolbox.ts) | parity | — |
 | Browser automation | CDP + Playwright + OAuth flows | 🟡 PARTIAL | CDP browser tool requires system Chrome; off by default | parity | 6 |
 | Sandboxed code execution | QuickJS code-mode with host bindings | 🟡 PARTIAL | code_exec via Node vm (tools.ts:509+) | parity | 4 |

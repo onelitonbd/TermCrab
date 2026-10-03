@@ -17,6 +17,7 @@ import { parseCron, CronParseError, nextRun } from '../cron/parser.js';
 import { saveConfig } from '../core/config.js';
 import { parseFrontmatter } from '../core/frontmatter.js';
 import { channelsWithDocuments, sendDocumentTo } from '../channels/conversations.js';
+import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
 import { acceptIncoming } from '../channels/media.js';
 import {
   listIntents,
@@ -607,6 +608,54 @@ export function extraTools(env: ToolEnv): Tool[] {
       return 'sent';
     },
   });
+  tools.push({
+    def: {
+      name: 'inbox_list',
+      description:
+        'List what was sent to you through a chat (photos, documents, voice notes) — newest first, ' +
+        'with size, age and whether its text was saved. Use it when the user refers to something ' +
+        'they sent earlier instead of asking them for a path.',
+      schema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'how many arrivals to list (default 10)' },
+        },
+      },
+    },
+    async execute(args) {
+      const raw = args.limit;
+      const limit = typeof raw === 'number' && raw > 0 ? Math.min(50, Math.floor(raw)) : 10;
+      return formatInbox(listInbox({ limit }));
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'inbox_read',
+      description:
+        'Read the text of a file that was sent to you (a PDF/DOCX/photo/voice note in the inbox). ' +
+        'Returns the text saved when it arrived, or reads the file again if needed.',
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'file name from inbox_list, e.g. 2026-10-03T10-00-00-rent.pdf' },
+        },
+        required: ['name'],
+      },
+    },
+    async execute(args) {
+      const name = argStr(args, 'name');
+      const read = readArrival(name);
+      if (!read.ok) throw new Error(read.reason);
+      if (read.source === 'sidecar') {
+        return read.gone
+          ? `${read.text}\n\n(the file itself was trimmed by the disk budget — this is the text saved when it arrived)`
+          : read.text;
+      }
+      return `${read.text}\n\n(read from the file just now)`;
+    },
+  });
+
   tools.push({
     def: {
       name: 'send_file',

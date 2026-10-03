@@ -105,7 +105,15 @@ export interface TrimResult {
 }
 
 /** Never delete these, whatever the budget says. */
-const PROTECTED_NAMES = new Set(['config.json', 'MEMORY.md', 'SOUL.md']);
+const PROTECTED_NAMES = new Set([
+  'config.json',
+  'MEMORY.md',
+  'SOUL.md',
+  // The inbox index is a few KB and it is the only thing that lets the agent
+  // say "that file is gone" honestly after the retention rule trims an arrival
+  // (17.4). The arrivals themselves stay trimmable.
+  '.inbox-index.json',
+]);
 
 /**
  * Bring the state directory under `maxBytes`.
