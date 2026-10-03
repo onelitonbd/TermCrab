@@ -279,6 +279,22 @@ export const COMMANDS: CommandDoc[] = [
     json: 'show → {text, facts, totalFacts, bytes, budget, stats, files} · search → {query, count, hits{file,line,score,snippet,origin,when,source}} · user → {file, text} · compact → {session, compacted, coveredTurns, by, model, note, file}',
   },
   {
+    cmd: 'runs',
+    usage: 'runs [--json]',
+    summary: 'what is running right now, and whether any of it is stuck',
+    flags: ['--json   one document: count + runs[] with verdict, lastActivity, suggestion'],
+    example: 'termcrab runs',
+    json: '{count, live, runs:[{sessionId, turnId, runId, request, elapsedMs, verdict, lastActivity, idleMs, suggestion}]}',
+  },
+  {
+    cmd: 'logs',
+    usage: 'logs [n] [--json|--path]',
+    summary: 'the last n records from logs/termcrab.jsonl (rotation is built in)',
+    flags: ['<n>      how many records (default 30)', '--path   print just the file path', '--json   path, limits, usage and the records'],
+    example: 'termcrab logs 50',
+    json: '{path, limits:{maxBytes, maxFiles}, usage:{bytes, files}, count, records:[{ts, level, area, message, ...}]}',
+  },
+  {
     cmd: 'pair',
     usage: 'pair [--name <label>]',
     summary: 'print a short-lived code so a phone or tablet can get its own token',

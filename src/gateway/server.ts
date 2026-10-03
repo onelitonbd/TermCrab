@@ -96,6 +96,8 @@ import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
 import { Approval, listApprovals, resolveApproval } from '../core/approvals.js';
 import { authKey, authenticate, constantTimeEqual, extractAuth } from './auth.js';
 import { formatSessionHits, searchSessions } from '../agent/session-search.js';
+import { healthLine, runHealth } from '../agent/run-health.js';
+import { structuredLog } from '../core/structured-log.js';
 import { formatSessionView, policyLine, sessionView } from '../agent/session-view.js';
 import { CODE_TTL_MS, formatDevice, listDevices, pairCode, redeemCode, revokeDevice } from './devices.js';
 import { RateLimiter, limiterFromConfig, rateLimitHint } from './ratelimit.js';
@@ -327,6 +329,11 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const agentQueue = new SessionQueue();
+  // 23.3: rotation limits come from config when the owner set them.
+  structuredLog.configure({
+    maxBytes: config.logs?.maxMB ? config.logs.maxMB * 1024 * 1024 : undefined,
+    maxFiles: config.logs?.files,
+  });
   // Limiters live with the process: one for the HTTP surface, one for channel
   // messages, both re-keyed per device/session (20.3).
   const httpLimiter = limiterFromConfig(config);
@@ -619,7 +626,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       // fresh-looking chat that silently keeps an old thread is worse than one
       // that says it will start over.
       const policy = policyLine(sessions, `${channel}:${chatId}`, config.agent.sessionReset);
-      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}\n${policy}`;
+      const runs = healthLine(runHealth({ queue: agentQueue, traces: listRuns() }));
+      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}\n${runs}\n${policy}`;
     }
     // 15.4: the same facts the CLI reports with --json, available in the chat.
     if (text === '/help' || text === '/?') {
@@ -1244,7 +1252,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
-        /** Stop every running turn, or one session's (10.3). */
+        /**
+       * What is running, and is any of it stuck (23.1). The panel and
+       * `termcrab runs` read this; the verdicts and the suggestions are
+       * computed in src/agent/run-health.ts so both surfaces say the same
+       * sentence.
+       */
+      if (req.method === 'GET' && pathname === '/api/runs/health') {
+        const health = runHealth({ queue: agentQueue, traces: listRuns() });
+        json(res, 200, { ok: true, v: WIRE_VERSION, count: health.length, runs: health });
+        return;
+      }
+
+      /** Stop every running turn, or one session's (10.3). */
         if (req.method === 'POST' && pathname === '/api/stop') {
           const body = await readJsonBody(req);
           const only = typeof body?.sessionId === 'string' ? body.sessionId : '';

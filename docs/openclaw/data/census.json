@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T16:12:18.882Z",
+ "measured": "2026-10-03T16:18:57.427Z",
  "tally": {
-  "WORKING": 71,
+  "WORKING": 73,
   "BETTER": 14,
-  "PARTIAL": 39,
+  "PARTIAL": 38,
   "BROKEN": 0,
-  "ABSENT": 26
+  "ABSENT": 25
  },
- "coverage": 68,
- "effortLeft": 338,
+ "coverage": 69,
+ "effortLeft": 331,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1100"
+    "detail": "1 match(es): src/gateway/server.ts:1108"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1102"
+    "detail": "1 match(es): src/gateway/server.ts:1110"
    }
   },
   {
@@ -94,7 +94,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:292"
+    "detail": "1 match(es): src/gateway/server.ts:294"
    }
   },
   {
@@ -147,7 +147,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:280"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:285"
    }
   },
   {
@@ -164,7 +164,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:1973"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:1993"
    }
   },
   {
@@ -181,7 +181,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:922"
+    "detail": "4 match(es): src/gateway/server.ts:930"
    }
   },
   {
@@ -266,7 +266,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:292"
+    "detail": "1 match(es): src/gateway/server.ts:294"
    }
   },
   {
@@ -283,24 +283,25 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:382, src/cli.ts:1035, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:382, src/cli.ts:1040, src/command-help.ts:168"
    }
   },
   {
    "area": "gateway",
    "capability": "Stuck-run diagnostics",
    "openclaw": "stalled/stuck session notices, watchdogs",
-   "verdict": "ABSENT",
-   "evidence": "no session watchdog",
+   "verdict": "WORKING",
+   "evidence": "src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1",
    "probe": {
-    "pattern": "stalled|stuck",
-    "expect": "absent"
+    "file": "src/agent/run-health.ts",
+    "pattern": "export function runHealth",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "73 match(es)"
+    "detail": "1 match(es): src/agent/run-health.ts:72"
    }
   },
   {
@@ -317,7 +318,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:27, src/cli.ts:235, src/gateway/protocol.ts:31"
+    "detail": "6 match(es): src/agent/loop.ts:27, src/cli.ts:240, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -334,7 +335,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:225"
+    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:230"
    }
   },
   {
@@ -385,7 +386,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:139"
+    "detail": "4 match(es): src/cli.ts:144, src/gateway/server.ts:1261, src/mobile/doctor.ts:525"
    }
   },
   {
@@ -504,7 +505,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1135, src/gateway/server.ts:1248"
+    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1140, src/gateway/server.ts:1268"
    }
   },
   {
@@ -572,7 +573,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "499 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
+    "detail": "505 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
    }
   },
   {
@@ -694,7 +695,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:584, src/command-help.ts:111"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:589, src/command-help.ts:111"
    }
   },
   {
@@ -746,7 +747,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:298, src/agent/sessions.ts:837, src/cli.ts:1731"
+    "detail": "4 match(es): src/agent/loop.ts:298, src/agent/sessions.ts:837, src/cli.ts:1800"
    }
   },
   {
@@ -888,7 +889,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:372, src/cli.ts:1669"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:372, src/cli.ts:1738"
    }
   },
   {
@@ -905,7 +906,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:203"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:208"
    }
   },
   {
@@ -1355,7 +1356,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:521, src/mobile/doctor.ts:383"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:528, src/mobile/doctor.ts:385"
    }
   },
   {
@@ -1491,7 +1492,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:133"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:138"
    }
   },
   {
@@ -1508,7 +1509,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:641"
+    "detail": "1 match(es): src/gateway/server.ts:649"
    }
   },
   {
@@ -1697,7 +1698,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:66, src/agent/tools.ts:45, src/gateway/server.ts:389"
+    "detail": "8 match(es): src/agent/loop.ts:66, src/agent/tools.ts:45, src/gateway/server.ts:396"
    }
   },
   {
@@ -1885,7 +1886,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "73 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:222"
+    "detail": "75 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:227"
    }
   },
   {
@@ -1919,7 +1920,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "36 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "39 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -1936,7 +1937,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:341, src/command-help.ts:382"
+    "detail": "2 match(es): src/cli.ts:346, src/command-help.ts:382"
    }
   },
   {
@@ -2021,7 +2022,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:55, src/gateway/auth.ts:20, src/gateway/server.ts:292"
+    "detail": "5 match(es): src/core/config.ts:55, src/gateway/auth.ts:20, src/gateway/server.ts:294"
    }
   },
   {
@@ -2124,7 +2125,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "26 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
+    "detail": "30 match(es): src/agent/embed-setup.ts:3, src/agent/run-health.ts:97, src/agent/status.ts:191"
    }
   },
   {
@@ -2193,7 +2194,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "651 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "666 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2261,7 +2262,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/mobile/bionic.ts:39, src/mobile/doctor.ts:248"
+    "detail": "6 match(es): src/mobile/bionic.ts:39, src/mobile/doctor.ts:250"
    }
   },
   {
@@ -2278,7 +2279,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2362"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2382"
    }
   },
   {
@@ -2346,7 +2347,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "26 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
+    "detail": "30 match(es): src/agent/embed-setup.ts:3, src/agent/run-health.ts:97, src/agent/status.ts:191"
    }
   },
   {
@@ -2475,17 +2476,18 @@
    "area": "ops",
    "capability": "Logs + diagnostics",
    "openclaw": "seven-page doctor, log levels, OTel, Prometheus",
-   "verdict": "PARTIAL",
-   "evidence": "src/core/logger.ts + doctor; /api/logs; no metrics export",
+   "verdict": "WORKING",
+   "evidence": "every console line is mirrored into logs/termcrab.jsonl as one JSON object per line (ts, level, area, message) — `termcrab logs [n]` reads it, `--json` gives the records, `--path` the file, and `termcrab doctor`/`doctor --share` still work. Rotation is built in and stated: 2 MB x 3 files by default, `logs.maxMB` / `logs.files` to change it, and `termcrab disk` already counts the logs area as trimmable. OTel/Prometheus export is not attempted — a phone agent keeps its metrics in the log file and the doctor output",
    "probe": {
-    "pattern": "logger",
+    "file": "src/core/structured-log.ts",
+    "pattern": "export class StructuredLog",
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "23 match(es): src/agent/dream.ts:8, src/agent/embed-setup.ts:10, src/agent/embed.ts:3"
+    "detail": "1 match(es): src/core/structured-log.ts:38"
    }
   },
   {

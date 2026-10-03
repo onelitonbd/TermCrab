@@ -60,6 +60,12 @@ The code is printed by `termcrab pair`, lives 5 minutes and is single use.
 Wrong or expired codes answer `401` with a reason (`expired` / `unknown`), and
 the route is rate limited per IP, so a code cannot be brute-forced.
 
+### `GET /api/runs/health`
+```json
+{ "ok": true, "v": 1, "count": 1, "runs": [ { "sessionId": "web:main", "turnId": "…", "runId": "…", "verdict": "slow", "elapsedMs": 91000, "idleMs": 91000, "lastActivity": "in tool web_fetch for 2 minute(s)", "suggestion": "still inside tool web_fetch after 2 minute(s) — give it a minute, or stop it with: termcrab stop web:main" } ] }
+```
+Verdicts: `working` (mid-step), `slow` (>60s on one step), `stuck` (>5min with nothing new), `failing` (the provider errored), `queued` (messages waiting behind a running turn). `termcrab runs`, the `/status` chat line and the doctor's `running turns` check all read this one function.
+
 ### Approvals
 A gated tool (any name in `security.approvals.tools`) pauses the turn *before*
 it runs and emits an `approval` event over SSE (`{id, tool, args, sessionId,

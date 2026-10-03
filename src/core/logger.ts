@@ -1,4 +1,5 @@
 import { ANSI, paint } from './color.js';
+import { structuredLog } from './structured-log.js';
 
 const LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 export type LogLevel = (typeof LEVELS)[number];
@@ -34,6 +35,15 @@ function enabled(level: LogLevel): boolean {
   return LEVELS.indexOf(level) >= LEVELS.indexOf(current);
 }
 
+function areaOf(tag: string, body: string): string {
+  // The tag is `[termcrab]`, `[warn]`, …; the area is what the message is
+  // about, taken from a leading `word:` when there is one (23.2).
+  const fromTag = tag.replace(/^\[|\]$/g, '');
+  if (fromTag && fromTag !== 'termcrab' && fromTag !== 'debug' && fromTag !== 'warn' && fromTag !== 'error') return fromTag;
+  const m = /^([a-z][a-z0-9-]{1,20}):/.exec(body);
+  return m ? m[1]! : 'termcrab';
+}
+
 function line(level: LogLevel, tag: string, args: unknown[]): void {
   if (!enabled(level)) return;
   const ts = new Date().toISOString().slice(11, 19);
@@ -46,6 +56,9 @@ function line(level: LogLevel, tag: string, args: unknown[]): void {
   const out = `${prefix} ${body}`;
   if (stream === process.stderr) console.error(out);
   else console.log(out);
+  // Mirror into logs/termcrab.jsonl so tomorrow's question has an answer that
+  // does not depend on someone having watched the terminal (23.2).
+  structuredLog.write(level, areaOf(tag, body), body.slice(0, 2000));
 }
 
 export const log = {

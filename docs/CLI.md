@@ -51,6 +51,9 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab pair --json` | `{code, expiresAt, ttlMs, name, howTo}` |
 | `termcrab devices --json` | `{count, devices:[{id, name, createdAt, lastSeenAt, seenAgoMs, seenCount}], pendingCodes}` |
 | `termcrab devices revoke <id\|name> --json` | `{revoked:{id, name}}` |
+| `termcrab runs --json` | `{count, live, runs:[{sessionId, turnId, runId, request, elapsedMs, verdict, lastActivity, idleMs, suggestion}]}` — verdicts: working / slow / stuck / failing / queued |
+| `termcrab logs [n] --json` | `{path, limits:{maxBytes, maxFiles}, usage:{bytes, files}, count, records:[{ts, level, area, message, …}]}` |
+| `termcrab logs --path` | the log file path on its own |
 | `termcrab sessions search <words> --json` | `{query, count, hits:[{sessionId, part, line, role, when, score, snippet}]}` — ranked across every transcript, archive included |
 | `termcrab sessions show <id> --json` | `{id, file, archive, entries, bytes, firstAt, lastAt, roles, digest, fence, policy, resetDue, resetReason, attachment:{files, facts, approvals, tools}}` |
 | `termcrab sessions verify --json` | `{sessions:[{id, entries, hot, archived, badLines, repairedBytes, bytes}], sessionsWithDamage, badLines, repaired, bytes, repairedNow}` |

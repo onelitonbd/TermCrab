@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.54.0 - 2026-10-03
+
+- **"Why is it stuck?" has an answer now.** Every running turn gets a verdict - `working`, `slow` (>60s in one step), `stuck` (>5min with nothing new), `failing` (the provider errored) or `queued` (messages waiting behind one) - plus the last thing that actually happened ("in tool web_fetch for 2 minute(s)") and one sentence to act on (`termcrab stop web:main`, `termcrab doctor`, retry smaller). `termcrab runs` prints it, `GET /api/runs/health` serves it, the `/status` line in a chat carries it, and `termcrab doctor` gained a `running turns` check that stays quiet when nothing is wrong.
+- **A log worth reading tomorrow.** Every console line is mirrored into `logs/termcrab.jsonl` as one JSON object per line - timestamp, level, area and message, plus whatever ids the call site knows - so "what happened at 3pm?" no longer depends on someone having watched the terminal. `termcrab logs [n]` prints the newest records, `--json` gives the records and the limits, `--path` just the file. The default log level still controls how much gets written.
+- **Rotation that is stated, not implied.** The log rotates at 2 MB and keeps 3 files (`logs.maxMB` / `logs.files` to change it, validated and clamped), `termcrab disk` counts the log area as trimmable, and `TCRAB_LOG_FILE=off` disables file logging entirely for a tiny or read-only device. A logging failure never becomes the failure being logged: the writer never throws.
+- Tests: **15 new cases** in `test/tier2l.test.ts` (verdict thresholds and each verdict, provider failure, the queued lane, the real `SessionQueue` end to end, JSON-lines shape, the logger mirror including the area rule, tail order, the CLI reader, rotation limits, config validation, and the disk accounting). Census: **WORKING 71 -> 73**, score **68% -> 69%**, drift 0.
+
+
 ## 0.53.0 - 2026-10-03
 
 - **The shell has a guard rail.** `exec` now refuses a short list of catastrophic commands (`rm -rf /`, `mkfs`, `dd` onto a device, a fork bomb, `chmod -R 777 /`, `reboot`, `curl | sh`) with one plain sentence and never spawns a process; the owner can add their own patterns (`agent.execDenyPatterns`) and only an explicit `agent.execAllowDangerous: true` goes past the list. A timeout kills the command (SIGKILL) and reports `[killed after Ns]` together with whatever it managed to print; output is capped and the cap is stated rather than implied. `agent.execTimeoutSec` sets the default, and `agent.allowExec` still gates the whole tool.

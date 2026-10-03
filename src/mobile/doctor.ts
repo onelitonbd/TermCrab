@@ -4,6 +4,8 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { runHealth } from '../agent/run-health.js';
+import { listRuns } from '../core/tracing.js';
 import { loadConfig, Config } from '../core/config.js';
 import { home, configPath, pidPath, PACKAGE_ROOT } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
@@ -515,6 +517,35 @@ export async function runDoctor(): Promise<Check[]> {
           detail: 'no dictation tool (works on Termux only)',
           fix: 'pkg install termux-api  (+ the Termux:API app from F-Droid)',
         },
+  );
+
+  // Anything running right now that has stopped making progress (23.1). The
+  // doctor is consulted *because* something looks wrong, so this check may
+  // only see the queue of the process it is running in — when the gateway is
+  // the surface, the same data comes from GET /api/runs/health.
+  const health = runHealth({
+    queue: undefined,
+    traces: listRuns(),
+    stuckAfterMs: 60_000,
+  });
+  const worried = health.filter((h) => h.verdict === 'stuck' || h.verdict === 'failing');
+  checks.push(
+    health.length === 0
+      ? { id: 'runs', label: 'running turns', status: 'ok', detail: 'nothing is running — no run can be stuck' }
+      : worried.length === 0
+        ? {
+            id: 'runs',
+            label: 'running turns',
+            status: 'ok',
+            detail: `${health.length} running, all making progress`,
+          }
+        : {
+            id: 'runs',
+            label: 'running turns',
+            status: 'warn',
+            detail: worried.map((h) => `${h.sessionId}: ${h.verdict} — ${h.lastActivity}`).join('; '),
+            fix: worried[0]!.suggestion,
+          },
   );
 
   return checks;

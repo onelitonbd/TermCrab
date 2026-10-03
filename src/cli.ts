@@ -55,6 +55,9 @@ import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
 import { commandHelp, completionScript, renderCommandIndex } from './command-help.js';
 import { CODE_TTL_MS, formatDevice, listDevices, liveCodes, pairCode, revokeDevice } from './gateway/devices.js';
+import { formatRunHealth, runHealth } from './agent/run-health.js';
+import { formatLogRecord, structuredLog } from './core/structured-log.js';
+import { listRuns } from './core/tracing.js';
 import { formatSessionHits, searchSessions } from './agent/session-search.js';
 import { applyReset } from './agent/session-policy.js';
 import { formatSessionView, sessionView } from './agent/session-view.js';
@@ -98,6 +101,8 @@ Everyday extras:
   termcrab stop [session]           stop what the agent is doing right now (partial answer is kept)
   termcrab disk [--trim]            how much space the agent uses (--trim = enforce the budget now)
   termcrab context [session]        what the model is actually sent, section by section (--json)
+  termcrab runs [--json]            what is running right now, and whether it is stuck (with what to do)
+  termcrab logs [n] [--json]        the last n log records (logs/termcrab.jsonl; --path prints the file)
   termcrab pair [--name phone]      print a 5-minute code so a phone/tablet can pair (no shared password typing)
   termcrab devices [list|revoke]    the devices this gateway trusts (revoke one without touching the rest)
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
@@ -1157,6 +1162,70 @@ export async function main(argv: string[]): Promise<void> {
         }
         return;
       }
+    }
+
+    case 'runs': {
+      // The runs live in the panel process, so ask it. A local fallback keeps
+      // the command honest when the panel is not up: it says so, and reports
+      // what this process can see (usually nothing).
+      const client = new GatewayClient(loadConfig());
+      let health: ReturnType<typeof runHealth> = [];
+      let live = true;
+      try {
+        const res = await client.json<{ runs: ReturnType<typeof runHealth> }>('/api/runs/health');
+        health = res.runs ?? [];
+      } catch (err) {
+        live = false;
+        if (!machine && err instanceof GatewayNotRunningError) {
+          console.error('the panel is not running — showing this process instead (usually empty)');
+        }
+        health = runHealth({ traces: listRuns() });
+      }
+      if (machine) {
+        emitJson('runs', { count: health.length, live, runs: health });
+        return;
+      }
+      if (!health.length) {
+        console.log(live ? '✅ nothing is running right now.' : '✅ nothing is running in this process.');
+        return;
+      }
+      console.log('');
+      console.log(formatRunHealth(health));
+      console.log('');
+      return;
+    }
+
+    case 'logs': {
+      const nIdx = rest.findIndex((r) => /^\d+$/.test(r));
+      const n = nIdx >= 0 ? Number(rest[nIdx]) : 30;
+      if (rest.includes('--path')) {
+        if (machine) emitJson('logs', { path: structuredLog.path, limits: structuredLog.limits, usage: structuredLog.usage() });
+        else console.log(structuredLog.path);
+        return;
+      }
+      const records = structuredLog.tail(Number.isFinite(n) ? n : 30);
+      if (machine) {
+        emitJson('logs', {
+          path: structuredLog.path,
+          limits: structuredLog.limits,
+          usage: structuredLog.usage(),
+          count: records.length,
+          records,
+        });
+        return;
+      }
+      if (!records.length) {
+        console.log(`(no log records yet — they appear as soon as the agent does anything)`);
+        console.log(`  file: ${structuredLog.path}`);
+        return;
+      }
+      const { bytes, files } = structuredLog.usage();
+      console.log('');
+      console.log(`  🧾 last ${records.length} record(s) of ${structuredLog.path}`);
+      console.log(`     ${files} file(s), ${Math.max(1, Math.round(bytes / 1024))} KB · rotates at ${Math.round(structuredLog.limits.maxBytes / 1024)} KB keeping ${structuredLog.limits.maxFiles}`);
+      for (const r of records) console.log(`     ${formatLogRecord(r)}`);
+      console.log('');
+      return;
     }
 
     case 'pair': {

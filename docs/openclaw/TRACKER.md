@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৬৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৯টা আধা (PARTIAL), ২৬টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৯৬ দিন, later ~১৪২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৬৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৩টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৮টা আধা (PARTIAL), ২৫টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৯২ দিন, later ~১৩৯ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 71 | wired and observable |
+| ✅ WORKING | 73 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 39 | exists, narrower than theirs |
+| 🟡 PARTIAL | 38 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 26 | nothing in the tree |
+| ⚪ ABSENT | 25 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 68%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 69%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~196d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 28 | ~142d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~338d | |
+| **parity** | 108 | ~192d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 28 | ~139d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 150 | ~331d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -138,7 +138,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
 
-### gateway — 77% (16 checks)
+### gateway — 83% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -157,7 +157,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Presence | online/typing/presence events | ⚪ ABSENT | no presence module | later | 2 |
 | Remote access story | Tailscale, SSH, trusted proxy, TLS pinning | 🟡 PARTIAL | docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth | parity | 3 |
 | Usage / token accounting | per-run, per-model, per-session | ✅ WORKING | providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4) | core | — |
-| Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ⚪ ABSENT | no session watchdog | later | 3 |
+| Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ✅ WORKING | src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1 | later | — |
 
 ### mobile — 79% (10 checks)
 
@@ -174,7 +174,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 64% (12 checks)
+### ops — 69% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -182,7 +182,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Installer | curl install.sh + Docker + Nix + Fly | 🟡 PARTIAL | install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths | parity | 2 |
 | Container / server deploy | Docker, docker-compose, Fly, Nix, systemd | ⚪ ABSENT | Termux/Node host only | later | 3 |
 | Service install | openclaw gateway install (systemd/launchd) | 🟡 PARTIAL | Termux supervisor; docs/LOCAL.md covers a systemd path | parity | 3 |
-| Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | 🟡 PARTIAL | src/core/logger.ts + doctor; /api/logs; no metrics export | parity | 4 |
+| Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | ✅ WORKING | every console line is mirrored into logs/termcrab.jsonl as one JSON object per line (ts, level, area, message) — `termcrab logs [n]` reads it, `--json` gives the records, `--path` the file, and `termcrab doctor`/`doctor --share` still work. Rotation is built in and stated: 2 MB x 3 files by default, `logs.maxMB` / `logs.files` to change it, and `termcrab disk` already counts the logs area as trimmable. OTel/Prometheus export is not attempted — a phone agent keeps its metrics in the log file and the doctor output | parity | — |
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
 | Release discipline | CalVer, release notes, validation programme | ✅ WORKING | scripts/release.mjs writes package.json and the CHANGELOG section together and --check fails the suite when they drift (test/tier0.test.ts 10.7); --notes feeds `gh release create`, --tag refuses a dirty tree; package.json now carries the same version as the newest CHANGELOG entry | parity | — |
 | Work tracking (what is being built, right now) | n/a | ✅ WORKING | WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker | core | — |

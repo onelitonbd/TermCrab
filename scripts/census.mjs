@@ -133,8 +133,9 @@ check('gateway', 'Remote access story', 'Tailscale, SSH, trusted proxy, TLS pinn
 check('gateway', 'Usage / token accounting', 'per-run, per-model, per-session', 'WORKING',
   'providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4)',
   { pattern: /promptTokens|totalTokens|completionTokens/, expect: 'present' }, 0);
-check('gateway', 'Stuck-run diagnostics', 'stalled/stuck session notices, watchdogs', 'ABSENT',
-  'no session watchdog', { pattern: 'stalled|stuck', expect: 'absent' }, 3);
+check('gateway', 'Stuck-run diagnostics', 'stalled/stuck session notices, watchdogs', 'WORKING',
+  'src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1',
+  { file: 'src/agent/run-health.ts', pattern: 'export function runHealth', expect: 'present' }, 0);
 
 // -------------------------------------------------------------- 2. agent loop
 check('agent', 'Streaming assistant deltas', 'block streaming + coalescing', 'WORKING',
@@ -477,8 +478,9 @@ check('ops', 'Container / server deploy', 'Docker, docker-compose, Fly, Nix, sys
   'Termux/Node host only', { pattern: 'docker|Dockerfile', expect: 'absent' }, 3);
 check('ops', 'Service install', 'openclaw gateway install (systemd/launchd)', 'PARTIAL',
   'Termux supervisor; docs/LOCAL.md covers a systemd path', { pattern: 'systemd', expect: 'present' }, 3);
-check('ops', 'Logs + diagnostics', 'seven-page doctor, log levels, OTel, Prometheus', 'PARTIAL',
-  'src/core/logger.ts + doctor; /api/logs; no metrics export', { pattern: 'logger', expect: 'present' }, 4);
+check('ops', 'Logs + diagnostics', 'seven-page doctor, log levels, OTel, Prometheus', 'WORKING',
+  'every console line is mirrored into logs/termcrab.jsonl as one JSON object per line (ts, level, area, message) — `termcrab logs [n]` reads it, `--json` gives the records, `--path` the file, and `termcrab doctor`/`doctor --share` still work. Rotation is built in and stated: 2 MB x 3 files by default, `logs.maxMB` / `logs.files` to change it, and `termcrab disk` already counts the logs area as trimmable. OTel/Prometheus export is not attempted — a phone agent keeps its metrics in the log file and the doctor output',
+  { file: 'src/core/structured-log.ts', pattern: 'export class StructuredLog', expect: 'present' }, 0);
 check('ops', 'Telemetry stance', 'version check only, opt-out', 'BETTER',
   'no telemetry at all; update check is manual', { pattern: 'telemetry', expect: 'absent' }, 0);
 check('ops', 'Release discipline', 'CalVer, release notes, validation programme', 'WORKING',

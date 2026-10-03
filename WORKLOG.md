@@ -16,50 +16,51 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এইমাত্র শেষ (ব্যাচ ২২):** tools এখন **ভদ্রভাবে ব্যর্থ হয়** — shell-এর চারপাশে পাহারা, ভুল argument-এ স্পষ্ট বার্তা, আর approval টার্মিনাল থেকেও।
-  - **Shell guard:** `exec` এখন এক ঝাঁক বিপর্যয়কারী কমান্ড (`rm -rf /`, `mkfs`, ডিভাইসে `dd`, ফর্ক বোমা, `chmod -R 777 /`, `reboot`, `curl | sh`) **এক বাক্যে ফিরিয়ে দেয় — কিছুই চালায় না**; মালিক চাইলে নিজের pattern যোগ করতে পারেন (`agent.execDenyPatterns`), আর শুধু সচেতন `agent.execAllowDangerous: true` সেই তালিকা পেরোয়। টাইমআউট প্রসেসটাকে SIGKILL করে এবং `[killed after Ns]` + যা ছাপতে পেরেছিল তা জানায়; output-এ cap আছে আর cap টা বলা আছে। `agent.execTimeoutSec` ডিফল্ট ঠিক করে; `agent.allowExec` আগের মতোই পুরো টুলের গেট।
-  - **Argument যাচাই:** প্রতিটি টুলের ঘোষিত schema এখন boundary-তে যাচাই হয় (`src/agent/tool-schema.ts`): required ফিল্ড, type (integer সহ), nested object, array item, enum। ভুল call-এর উত্তরে দাঁড়ায় `[bad arguments for read_file] missing required `path` (string). Send the call again with the corrected arguments.` — ছোট মডেল এটা দিয়ে শুধরে নিতে পারে। একটা টেস্ট সব বিল্ট-ইন টুল চালিয়ে প্রমাণ করে কোনোটা ক্র্যাশ করে না।
-  - **Approval টার্মিনালে:** gate করা টুল turn থামালে `termcrab agent` এখন TTY-তে `y/N` জিজ্ঞেস করে; pipe/cron চালানো হলে হ্যাং না করে বলে দেয় কোন কমান্ডে approve করতে হবে; কেউ না বললে configured ডিফল্ট (deny)। সিদ্ধান্তটা (`[approval] <tool> <decision> by <who>`) transcript-এ লেখা হয় — "কে অনুমতি দিল" পরে একই ফাইল থেকে পড়া যায়।
-- **সংখ্যায়:** ৭২২টা টেস্ট · ০ ফেল · ৩ skipped · ~৪৮ সেকেন্ড; census **WORKING ৬৮ → ৭১**, ABSENT ২৬, **BROKEN ০**, drift ০, score **৬৭% → ৬৮%** (tools lane ৬৪% → ৭৮%)।
-- **পরের কাজ (ব্যাচ ২৩):** ops-এর দৃশ্যমানতা — stuck-run diagnostics (`termcrab doctor` / panel "কেন আটকে আছে"), structured log file (`logs/termcrab.jsonl`) আর log rotation। **~৪ দিন**।
+- **এইমাত্র শেষ (ব্যাচ ২৩):** ops এখন **চোখে দেখা যায়** — আটকে আছে কি না বোঝা যায়, আর লগ পড়ার মতো।
+  - **"কেন আটকে আছে?"**: প্রতিটি চালু turn একটা verdict পায় — `working`, `slow` (একই ধাপে ৬০ সেকেন্ডের বেশি), `stuck` (৫ মিনিট কিছুই নড়েনি), `failing` (provider এরর), `queued` (একটার পেছনে অপেক্ষমাণ)। সাথে শেষে কী ঘটেছিল ("in tool web_fetch for 2 minute(s)") আর **এক বাক্যে করণীয়** (`termcrab stop web:main`, `termcrab doctor`, ছোট করে আবার পাঠানো)। দেখা যায়: `termcrab runs`, `GET /api/runs/health`, চ্যাটের `/status` লাইন, আর `termcrab doctor`-এর নতুন `running turns` চেক (কিছু ভুল না থাকলে চুপ)।
+  - **লগ:** প্রতিটি console লাইন `logs/termcrab.jsonl`-এ JSON হিসেবে লেখা হয় (ts/level/area/message + যে id গুলো কল-সাইট জানে), তাই "৩টায় কী হয়েছিল" জানতে কেউ টার্মিনাল দেখছিল কি না তার উপর নির্ভর করতে হয় না। `termcrab logs [n]`, `--json`-এ records+limits, `--path`-এ শুধু ফাইল। লগ writer কখনো throw করে না — লগিং ব্যর্থতা নিজেই যেন ব্যর্থতা না হয়।
+  - **Rotation:** ২ MB-এ ঘোরে, ৩টা ফাইল রাখে (`logs.maxMB` / `logs.files`, validated+clamped), `termcrab disk` logs area-টা trimmable হিসেবে গোনে, আর `TCRAB_LOG_FILE=off` দিলে ফাইলে কিছুই লেখা হয় না।
+- **সংখ্যায়:** ৭৩৭টা টেস্ট · ০ ফেল · ১ skipped · ~৫০ সেকেন্ড; census **WORKING ৭১ → ৭৩**, ABSENT ২৫, **BROKEN ০**, drift ০, score **৬৮% → ৬৯%** — ৭০%-এর দোরগোড়ায়।
+- **পরের কাজ (ব্যাচ ২৪):** gateway-এর শেষ দুটো ABSENT — presence (কে অনলাইন / reachable) আর event triggers (হুক ছাড়া "কিছু ঘটলে তখন")। তারপর নতুন প্যানেল রিভিউ পেজ + আলোচনার রিপোর্ট (৭০% ছুঁলে)। **~৩ দিন।**
 
 
 ---
 
-## 2. Now — batch 22: tools that fail politely (this commit)
+## 2. Now — batch 23: ops you can see (this commit)
 
-Tools are where an agent hurts itself. This batch makes the three dangerous shapes — an unguarded shell, a malformed call, an action nobody approved — report themselves in sentences.
+When something looks wrong on a phone, "read the stack trace" is not an answer. This batch makes the agent explain its own state and keep a log worth reading.
 
 | # | Step | Status | Evidence |
 |---|---|---|---|
-| 22.1 | Shell execution with a guard | ✔ done | `src/agent/exec-guard.ts`: a short catastrophe list (rm -rf /, mkfs, dd onto a device, fork bomb, chmod -R 777 /, reboot, curl\|sh) refuses with one sentence and never spawns; owner patterns added via `agent.execDenyPatterns`; a real timeout kills (SIGKILL) and reports `[killed after Ns]` + partial output; output is capped and says so; `agent.execTimeoutSec` sets the default. `test/tier2k.test.ts` 22.1 |
-| 22.2 | Tool schema validation | ✔ done | `src/agent/tool-schema.ts` validates every call against the tool's own declared schema (type/required/properties/items/enum/integer, nested included) before `execute()`; `buildTools()` wraps every tool so the check holds for the loop, the panel and tests. A bad call answers `[bad arguments for <tool>] missing required \`path\` (string)` and tells the model to resend. `test/tier2k.test.ts` 22.2 |
-| 22.3 | Human-in-the-loop at the tool boundary | ✔ done | the loop pauses before a gated tool, emits the approval event, and now the terminal answers too: `termcrab agent` asks `y/N` on a TTY, a non-interactive run is told which command approves it, the timeout default (deny) still applies, and every decision is written into the transcript as `[approval] <tool> <decision> by <who>`. `test/tier2k.test.ts` 22.3 |
-| 22.4 | Docs + census | ✔ done | docs/API.md gained the approvals section (route + timeout + transcript line) and docs/CLI.md the three new config keys; census: **Shell execution** PARTIAL → WORKING, **Tool schema validation** PARTIAL → WORKING, **Human-in-the-loop prompts** PARTIAL → WORKING (each citing 22.x and naming what is *not* claimed: TypeBox, a TUI overlay). BEAT-PLAN phase **K** |
+| 23.1 | Stuck-run diagnostics | ✔ done | `src/agent/run-health.ts` turns the queue + the run trace into one verdict per running turn — working / slow (>60s on one step) / stuck (>5min with nothing new) / failing (provider error) / queued — each with the last real activity and one sentence to act on. Surfaces: `termcrab runs`, `GET /api/runs/health`, the `/status` line in a chat, and a `running turns` check in `termcrab doctor`. `test/tier2l.test.ts` 23.1 |
+| 23.2 | A structured log | ✔ done | `src/core/structured-log.ts` writes one JSON object per line into `logs/termcrab.jsonl` (ts, level, area, message + extra ids); every console line is mirrored there by `src/core/logger.ts` (a leading `word:` becomes the area). `termcrab logs [n]` reads it, `--json` returns records + limits + usage, `--path` the file. The writer never throws. `test/tier2l.test.ts` 23.2 |
+| 23.3 | Log rotation and size | ✔ done | rotation at 2 MB keeping 3 files by default, `logs.maxMB` / `logs.files` in config (validated, clamped), `TCRAB_LOG_FILE=off` disables file logging; `termcrab disk` already counts the `logs/` area as trimmable, and the test proves the accounting. `test/tier2l.test.ts` 23.3 |
+| 23.4 | Docs + census | ✔ done | docs/API.md gained `GET /api/runs/health` with the verdict table; docs/CLI.md the `runs` and `logs` rows; help/completion updated; census: **Stuck-run diagnostics** ABSENT → WORKING, **Logs + diagnostics** PARTIAL → WORKING (each citing 23.x and stating what is not attempted: OTel/Prometheus). BEAT-PLAN phase **L** |
 
-**Limits stated in the open:** the deny list is about catastrophe, not policy — it will not try to judge intent; `execAllowDangerous` is a real escape hatch by design; schema validation checks shapes, not semantics (it cannot know a path is sensible); the approval UI is the panel card, the CLI prompt and `termcrab approvals`, not a full-screen TUI.
+**Limits stated in the open:** the log is JSONL, not OTel/Prometheus; the verdict thresholds are fixed (60s / 5min) rather than configurable; a run that died with its process is only visible as a stale entry in the trace, which the verdict calls out rather than pretending to know more; `logs` only shows what has been written since the file logging existed (older sessions have no history).
 
-**Next action:** batch 23 step 23.1 — recon then build: ops you can see — stuck-run diagnostics (why is a run stuck, in one command), a structured log file with rotation, and health that says what to do next.
+**Next action:** batch 24 step 24.1 — recon then build: presence (who is online / reachable, in one place) and event triggers ("when X happens, do Y" without a webhook server), then the census/docs wrap.
 
 
 ---
 
-## 3. Next — batch 23: ops you can see (~4 days)
+## 3. Next — batch 24: the gateway's last two gaps (~3 days)
 
-When something looks wrong on a phone, "read the JavaScript stack trace" is not an answer. This batch makes the agent explain its own state and keep a log worth reading.
+After this batch the gateway area has no ABSENT row left, and the census should be at or past the 70% line the user set as the checkpoint.
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 23.1 | Stuck-run diagnostics | ☐ todo | `termcrab doctor` and the panel answer "why is a run stuck": which session, which tool, how long, whether the provider is answering, and one suggested action |
-| 23.2 | A structured log | ☐ todo | `logs/termcrab.jsonl` with one JSON object per line (level, area, message, ids), so a phone can grep it and a bug report can include it |
-| 23.3 | Log rotation and size | ☐ todo | logs rotate at a stated size with a stated number of files, and `termcrab disk` accounts for them |
-| 23.4 | Docs + census | ☐ todo | `Stuck-run diagnostics` and `Logs + diagnostics` move with their tests |
+| 24.1 | Presence | ☐ todo | `termcrab presence` / `GET /api/presence` answers who is reachable right now: channels connected, devices seen recently, panel attached — with a stale rule stated |
+| 24.2 | Event triggers | ☐ todo | `config.hooks` entries can fire on an internal event (a file arrives, a run fails, a device pairs) without an external caller, with the same queue and rate limits as webhooks |
+| 24.3 | Docs + census | ☐ todo | `Presence` and `Event triggers` move with their tests; the gateway lane's ABSENT count reaches zero |
+| 24.4 | The 70% checkpoint | ☐ todo | one page (panel + a short report) saying where the project stands against OpenClaw, what is left, and what to look at first — the discussion the user asked to have at ~70% |
 
 
 ## 4. Done — batches, commits, and the proof
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 23 | _this commit_ | **Ops you can see**: a verdict for every running turn (working/slow/stuck/failing/queued) with the last activity and one suggested action, in `termcrab runs`, `/api/runs/health`, the chat `/status` line and a doctor check; every console line mirrored into `logs/termcrab.jsonl` (ts/level/area/message) with `termcrab logs [n]`, validated+clamped rotation (2 MB × 3), `TCRAB_LOG_FILE=off`, and disk accounting for the log area | `test/tier2l.test.ts` 23.1–23.3 (15 subtests: each verdict and its threshold, provider failure, the queued lane, the real SessionQueue end to end, JSON-lines shape, the logger mirror + area rule, tail order, the CLI reader, rotation limits, config validation, disk accounting) | 737 tests · 0 fail · 1 skipped; census **WORKING 71 → 73**, score 68% → 69%, drift 0 |
 | 22 | `5b159f6` | **Tools that fail politely**: `exec` behind a guard (catastrophe list + owner patterns + escape hatch, real timeout that kills and reports, capped output); every tool argument validated against its declared schema at the boundary, answering with a sentence instead of a stack trace; approvals answerable from the terminal (`y/N`) with the decision recorded in the transcript | `test/tier2k.test.ts` 22.1–22.3 (17 subtests: refusal list and non-refusals, no-spawn on refusal, timeout semantics, output cap, exec through the real tool, schema shapes incl. nested/enum/integer, all built-in tools rejecting an empty call, config validation) | 722 tests · 0 fail · 1 skipped; census **WORKING 68 → 71**, score 67% → 68% (tools lane 64% → 78%), drift 0 |
 | 21 | `880dfb3` | **Sessions you can lose a phone mid-turn with**: durable appends (one whole line, fsync before return, torn tail healed before the next write, damage reported instead of skipped, `sessions verify [--repair]`); ranked search across every chat and its archive (CLI, chat and agent tool share one function, snippets mark the matched words); `agent.sessionReset = never/daily/idle:<minutes>` where a reset archives the thread rather than deleting it; `sessions show <id>` answering what a conversation touched, taught, used and is waiting on | `test/tier2j.test.ts` 21.1–21.4 (19 subtests: durability, torn-tail healing, middle-line reporting, ranked search incl. archive + tool down-weight, policy parsing/deciding/applying, the session view, and the same via the built binary) | 705 tests · 0 fail · 3 skipped; census **WORKING 65 → 68**, ABSENT 28 → 26, score 66% → 67%, drift 0 |
 | 20 | `fbccafd` | **Gateway trust**: devices pair with a 5-minute single-use code and carry their own revocable token (hash-only, owner-only file, last-seen stamps); every SSE frame is a versioned, sequenced `v: 1` envelope whose event families are declared in code and mirrored in docs/API.md with a source scan to stop drift; `POST /api/chat` honours `Idempotency-Key` and answers a replay with the same turn instead of a second one; a per-key token bucket (`gateway.rateLimit`) answers 429 with `retryAfterMs` and one sentence instead of queueing more turns | `test/tier2i.test.ts` 20.1–20.4 (21 subtests: code alphabet/expiry/single-use/revocation, hash-only storage, master-vs-device auth, frame wrapping + doc drift, body parsing with field names, idempotency window, limiter maths, and the whole flow over a real socket including SSE) | 686 tests · 0 fail · 3 skipped; census **WORKING 61 → 65**, ABSENT 31 → 28, score 63% → 66%, drift 0; core lane empty |

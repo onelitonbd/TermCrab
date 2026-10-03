@@ -1324,6 +1324,14 @@ export class SessionQueue {
   }
 
   /** How many messages are waiting for the session (the run in flight is not waiting). */
+  /** Sessions with messages waiting behind a running turn (23.1). */
+  listPending(): { sessionId: string; waiting: number }[] {
+    return [...this.queues.entries()]
+      .map(([sessionId, q]) => ({ sessionId, waiting: q.length }))
+      .filter((row) => row.waiting > 0)
+      .sort((a, b) => b.waiting - a.waiting);
+  }
+
   getQueueLength(sessionId: string): number {
     return this.queues.get(sessionId)?.length ?? 0;
   }

@@ -61,6 +61,11 @@ export interface Config {
      */
     rateLimit?: { perMinute: number; burst: number };
   };
+  /**
+   * `logs/termcrab.jsonl` (23.2/23.3): rotate at `maxMB` megabytes, keep
+   * `files` rotated copies. Omitted = 2 MB / 3 files.
+   */
+  logs?: { maxMB?: number; files?: number };
   agent: {
     name: string;
     allowExec: boolean;
@@ -395,6 +400,7 @@ export interface ConfigProblem {
 
 const KNOWN_TOP = new Set([
   'version',
+  'logs',
   'provider',
   'providers',
   'gateway',
@@ -467,6 +473,12 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     if (v === undefined) return;
     if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) err(`${prefix}${key}`, 'must be an array of strings');
   };
+
+  const logs = objAt(root, 'logs', new Set(['maxMB', 'files']));
+  if (logs) {
+    numIn(logs, 'logs.', 'maxMB', 1, 1000);
+    numIn(logs, 'logs.', 'files', 1, 50, true);
+  }
 
   const gateway = objAt(root, 'gateway', new Set(['host', 'port', 'token', 'rateLimit']));
   if (gateway) {
