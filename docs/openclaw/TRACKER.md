@@ -47,39 +47,39 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 24 | wired and observable |
+| ✅ WORKING | 27 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 60 | exists, narrower than theirs |
-| ⛔ BROKEN | 7 | **the code exists but nothing reaches it** |
+| ⛔ BROKEN | 4 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 45 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 44%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 46%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~40d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~23d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~482d | |
+| **total** | 150 | ~465d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
-### agent — 53% (16 checks)
+### agent — 70% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Streaming assistant deltas | block streaming + coalescing | ✅ WORKING | src/agent/loop.ts emits delta events; src/providers/openai.ts parses SSE | parity | — |
 | Tool calling round-trip | parallel + serialized batches | ✅ WORKING | src/agent/loop.ts:245 sequential tool execution | parity | — |
-| Per-session run serialization | session lanes + writer claims | ⛔ BROKEN | src/agent/sessions.ts:269 SessionQueue; dequeue() at :291 has no call site in src/ | core | 5 |
-| Queue modes steer/followup/collect/interrupt | 4 modes + debounce + cap | ⛔ BROKEN | config.agent.queueMode read at src/agent/loop.ts:124 but has no observable effect (server passes skipQueue) | core | 8 |
+| Per-session run serialization | session lanes + writer claims | ✅ WORKING | src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving (transcript write fencing is tracked separately) | core | — |
+| Queue modes steer/followup/collect/interrupt | 4 modes + debounce + cap | ✅ WORKING | all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6 | core | — |
 | Run identity + terminal wait | runId + agent.wait replay | 🟡 PARTIAL | newRunId() in loop.ts:114; no wait endpoint (only sessions/agents_wait tools) | parity | 2 |
 | Parallel tool batches | launched together, results merged | ⚪ ABSENT | loop.ts:245 is a sequential for-await | parity | 3 |
 | Loop budget + idle watchdog | 172800s budget, 120s/300s idle, overflow recovery | 🟡 PARTIAL | PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197) | parity | 3 |
 | Repetition / loop detection | repeated-call guards | ✅ WORKING | src/agent/loop.ts:249-264 repetition detector | parity | — |
 | Model failover chain | ordered chain + cooldowns + auth profiles | ✅ WORKING | resolveProviderChain + cooldowns (src/providers/index.ts) | parity | 1 |
 | Reasoning / thinking levels | 7 levels incl. minimal/ultra | ✅ WORKING | src/providers/capabilities.ts 6 levels + effort mapping | parity | 1 |
-| Steering into a live run | runtime-boundary steering | ⛔ BROKEN | 'steer' is a declared queue mode (src/core/config.ts:56, src/agent/sessions.ts:250) with no code path that applies it | core | 4 |
+| Steering into a live run | runtime-boundary steering | ✅ WORKING | a steered message joins the running turn's transcript inside the same run (loop.ts drains SessionQueue.takeSteers); a 'steer' event is emitted; test/queue-serialize.test.ts 5.4/5.4b | core | — |
 | Abort / stop a running turn | Esc, /stop, /abort | 🟡 PARTIAL | AbortSignal plumbed through providers; no user-facing abort route in the web panel | parity | 2 |
 | Lifecycle hooks | 14 typed hooks + HOOK.md | ⚪ ABSENT | no hook registry (no api.on / registerHook) | later | 12 |
 | Subagents | sessions_spawn, agents_wait, lanes, worktrees | 🟡 PARTIAL | sessions_spawn/agents_wait/sessions_yield in src/agent/toolbox.ts:798+ | parity | 6 |
@@ -182,7 +182,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
 | Release discipline | CalVer, release notes, validation programme | 🟡 PARTIAL | CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme | parity | 2 |
 | Work tracking (what is being built, right now) | n/a | ✅ WORKING | WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker | core | — |
-| Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
+| Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
 | Docs that match the code | generated docs map, tested examples | ⛔ BROKEN | docs/ARCHITECTURE.md lists files that do not exist (src/providers/gemini.ts, anthropic.ts, ollama.ts). This probe *expects* the stale line until the doc is fixed — when it reports DRIFT, the doc caught up | core | 2 |
@@ -294,28 +294,24 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 ---
 
-## 3. The 7 broken rows — code that exists and does nothing
+## 3. The broken rows — code that exists and does nothing
 
 This is the single most important list in this repository. Each one is a feature you can see in the file tree, that the docs and the UI may both imply exists, and that no code path reaches.
 
-| # | Capability | Evidence | What it costs you today |
-|---|---|---|---|
-**Fixed since the first measurement (2026-10-03):** *Request authentication* — every `/api/*` route now requires `checkToken(config, extractAuth(req))` and the panel asks for the password (`#pwGate`); *Inbound webhooks* — `/api/hooks/:id` requires the per-hook token via `x-hook-token` or `?token=`, compared in constant time. Both are pinned by `test/auth.test.ts`. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
+**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), plus the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run*. The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases: unit, loop, and real HTTP against a slow upstream) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
 
 | # | Capability | Evidence | What it costs you today |
 |---|---|---|---|
-| 1 | **Session queue** (`SessionQueue`) | `src/agent/sessions.ts:269`; `dequeue()` at `:291` has **no call site** | Every documented queue mode (`steer`/`followup`/`collect`/`interrupt`, `src/core/config.ts:56`) is inert. Two messages that arrive together run concurrently against one session. |
-| 2 | **Approval gate** (`createApproval`/`waitForApproval`) | `src/core/approvals.ts:14,36`; both have zero call sites | `exec` runs with no human in the loop; `GET /api/approvals` always returns `[]`. |
-| 3 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
-| 4 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
-| 5 | **Steering into a live run** | `'steer'` is a declared mode with no implementation | Users cannot redirect an agent mid-task; the mode string is a promise nothing keeps. |
-| 6 | **Token/cost accounting** | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
-| 7 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
-| 8 | **Docs that match the code** | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
+| 1 | **Approval gate** (`createApproval`/`waitForApproval`) | `src/core/approvals.ts:14,36`; both have zero call sites | `exec` runs with no human in the loop; `GET /api/approvals` always returns `[]`. |
+| 2 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
+| 3 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
+| 4 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
+| 5 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
+| 6 | **Docs that match the code** *(census: PARTIAL)* | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
 
-*(The census carries 7 BROKEN rows against 8 listed here: the docs row counts as PARTIAL for capability, the table keeps it because it is the one that makes you distrust the map.)*
+*(The census carries 4 BROKEN rows. Four of the six here are those rows; token accounting and docs sit under their own verdicts and stay in this table because they are what makes you distrust the map.)*
 
-Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2. The first three are one week of work between them, and they change the character of the product.
+Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 6 (approvals) → batch 7 (compaction + memory) → batch 8 (write fencing) → batch 9 (usage/tokens). The first three change the character of the product.
 
 ---
 

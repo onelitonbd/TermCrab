@@ -39,7 +39,7 @@ import { SlackChannel } from '../channels/slack.js';
 import { SignalChannel } from '../channels/signal.js';
 import { SmsChannel } from '../channels/sms.js';
 import { MatrixChannel } from '../channels/matrix.js';
-import { SessionQueue, SessionStore } from '../agent/sessions.js';
+import { QueueFullError, QueuedTurn, SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
@@ -308,6 +308,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         const live = config as unknown as Record<string, unknown>;
         for (const k of Object.keys(live)) delete live[k];
         Object.assign(live, fresh);
+        agentQueue.setMode(config.agent.queueMode || 'followup');
         log.info('config: hot-reloaded from disk');
         // Re-resolve provider if it changed
         if (fresh.provider) {
@@ -361,6 +362,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
   const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue, mcpClients };
 
+  // The queue runs turns, one at a time per session. Every surface that submits
+  // (web chat, webhooks, channels) gets the same lane, the same queue mode and
+  // the same abort path — the panel's "N waiting" is this queue's real length.
+  agentQueue.setMode(config.agent.queueMode || 'followup');
+  agentQueue.setRunner(async (turn, signal) => {
+    return await runTurn(agent, {
+      sessionId: turn.sessionId,
+      userMessage: turn.userMessage,
+      channel: turn.channel,
+      agent: turn.agent,
+      tier: turn.tier,
+      thinkingLevel: turn.thinkingLevel,
+      signal,
+      skipQueue: true,
+      onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+    });
+  });
+
   // ---- Optional channels (Discord, Slack, Signal, SMS, Matrix) ----
   const discord = config.channels.discord ? new DiscordChannel(config.channels.discord) : null;
   const slack = config.channels.slack ? new SlackChannel(config.channels.slack) : null;
@@ -372,39 +391,6 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   if (signal) signal.start().catch((e) => log.warn('signal:', e instanceof Error ? e.message : String(e)));
   if (sms) sms.start().catch((e) => log.warn('sms:', e instanceof Error ? e.message : String(e)));
   if (matrix) matrix.start().catch((e) => log.warn('matrix:', e instanceof Error ? e.message : String(e)));
-
-  /** Process a queued turn: run it and mark done/error in the queue. */
-  async function processQueuedTurn(
-    agentCtx: AgentCtx,
-    queue: SessionQueue,
-    turnId: string,
-    sessionId: string,
-  ): Promise<void> {
-    const turn = queue.getQueued(sessionId).find((t) => t.id === turnId)
-      ?? queue.getRunning(sessionId);
-    if (!turn || turn.id !== turnId) return;
-
-    const abortCtrl = new AbortController();
-    queue.markRunning(turnId, sessionId, abortCtrl);
-
-    try {
-      const output = await runTurn(agentCtx, {
-        sessionId: turn.sessionId,
-        userMessage: turn.userMessage,
-        channel: turn.channel,
-        agent: turn.agent,
-        tier: turn.tier,
-        thinkingLevel: turn.thinkingLevel,
-        signal: abortCtrl.signal,
-        skipQueue: true,
-        onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
-      });
-      queue.markDone(turnId, sessionId, output);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      queue.markError(turnId, sessionId, msg);
-    }
-  }
 
   // ---- Wake loop (voice or typed), visible to the panel over SSE ----
   const wake = new WakeService({
@@ -711,16 +697,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         const payload = raw ? JSON.parse(raw) : {};
         const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
-        // Enqueue a turn with the webhook payload
-        const turn = agentQueue.enqueue({
-          sessionId: `hook:${hookId}`,
-          userMessage: `[webhook:${hookId}] ${hook.prompt}\n\nPayload: ${payloadStr}`,
-          channel: 'webhook',
-        });
+        // Enqueue a turn with the webhook payload (queue modes and the
+        // per-session lane apply here exactly as they do for the panel).
+        let turn: QueuedTurn;
+        try {
+          turn = agentQueue.submit({
+            sessionId: `hook:${hookId}`,
+            userMessage: `[webhook:${hookId}] ${hook.prompt}\n\nPayload: ${payloadStr}`,
+            channel: 'webhook',
+          }).turn;
+        } catch (err) {
+          if (err instanceof QueueFullError) {
+            json(res, 429, { error: err.message });
+            return;
+          }
+          throw err;
+        }
 
-        void processQueuedTurn(agent, agentQueue, turn.id, `hook:${hookId}`);
-
-        json(res, 202, { ok: true, turnId: turn.id, hookId });
+        json(res, 202, { ok: true, turnId: turn.id, hookId, status: turn.status });
         return;
       }
 
@@ -805,22 +799,32 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           // stray value can never reach a provider request.
           const thinkingLevel = normalizeThinkingLevel(body.thinkingLevel);
 
-          // Enqueue the turn and return immediately with a turn id
-          const turn = agentQueue.enqueue({
-            sessionId,
-            userMessage: message,
-            channel: 'web',
-            agent: agentName,
-            thinkingLevel,
-          });
-
-          // Process the turn in the background
-          void processQueuedTurn(agent, agentQueue, turn.id, sessionId);
+          // Submit through the queue: it serializes turns per session, applies
+          // the configured queue mode (followup / steer / collect / interrupt)
+          // and refuses a runaway backlog instead of growing without bound.
+          let submitted: { turn: QueuedTurn; steered: boolean };
+          try {
+            submitted = agentQueue.submit({
+              sessionId,
+              userMessage: message,
+              channel: 'web',
+              agent: agentName,
+              thinkingLevel,
+            });
+          } catch (err) {
+            if (err instanceof QueueFullError) {
+              json(res, 429, { error: err.message });
+              return;
+            }
+            throw err;
+          }
 
           json(res, 202, {
-            turnId: turn.id,
+            turnId: submitted.turn.id,
             sessionId: agentName ? `${agentName}:${sessionId}` : sessionId,
-            status: 'queued',
+            // 'queued' means "accepted, poll the turn"; 'steering' means the
+            // message joined the running turn (same turnId).
+            status: submitted.steered ? 'steering' : 'queued',
           });
           return;
         }
@@ -1562,6 +1566,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             },
             memory: { ...memory.stats(), index: memory.indexStats(), facts: countMemoryFacts() },
             agents: listAgents(),
+            queue: agentQueue.stats(),
             configPath: configPath(),
             termux: isTermux(),
           });

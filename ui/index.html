@@ -640,6 +640,22 @@
   #composerProgress.hidden { opacity: 0; transform: translateY(-4px); pointer-events: none; }
   #composerProgress .progIcon { flex-shrink: 0; width: 16px; height: 16px; }
   #composerProgress .progText { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #composerProgress .progWait {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(122, 93, 140, 0.14);
+    color: var(--accent);
+  }
+  #composerProgress .progWait.hidden { display: none; }
+  .me .qBadge {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.7;
+  }
   #composerProgress .progSpinner {
     width: 14px; height: 14px;
     border: 2px solid var(--line-strong);
@@ -2803,6 +2819,7 @@
   <div id="composerProgress" class="hidden">
     <span class="progSpinner"></span>
     <span class="progText">Crabby is thinking…</span>
+    <span id="progWait" class="progWait hidden"></span>
   </div>
   <div id="composerBox">
     <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
@@ -4495,7 +4512,10 @@
 
   async function send() {
     const text = $('input').value.trim();
-    if (!text || state.busy) return;
+    if (!text) return;
+    // A message while the agent is working is not a mistake: the queue either
+    // steers it into the running turn or holds it until the lane is free.
+    if (state.busy) { await sendWhileBusy(text); return; }
     state.busy = true;
     document.body.classList.add('busy');
     setSendMode(true);
@@ -4545,6 +4565,7 @@
           if (state.abort && state.abort.signal.aborted) break;
           try {
             const t = await api(`/api/chat/${encodeURIComponent(sid)}/${encodeURIComponent(turnId)}`);
+            setQueueWait(t.queueLength || 0);
             if (t.status === 'done') {
               state.pollDone = true;
               state.liveRaw = t.output || '';
@@ -4608,11 +4629,76 @@
       state.liveRaw = '';
       state.abort = null;
       state.busy = false;
+      setQueueWait(0);
       document.body.classList.remove('busy');
       setSendMode(false);
       { const b = $('send'); if (b) b.disabled = false; }
       log.scrollTop = log.scrollHeight;
       refreshSessions();
+    }
+  }
+
+  /**
+   * Send a message while a turn is already running. The queue decides what that
+   * means (steer into the run, or wait behind it); this surfaces both, and the
+   * reply appears as its own bubble when the backend finishes that turn.
+   */
+  async function sendWhileBusy(text) {
+    $('input').value = '';
+    growInput();
+    syncSendBtn();
+    const bubble = addMsg('user', text);
+    const badge = document.createElement('span');
+    badge.className = 'qBadge';
+    badge.textContent = 'waiting…';
+    bubble.appendChild(badge);
+    const sid0 = currentSession();
+    try {
+      const res = await api('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          sessionId: sid0,
+          agent: $('agentSel').value || undefined,
+          thinkingLevel: state.thinkingLevel || 'none',
+        }),
+      });
+      const sid = res.sessionId || sid0;
+      if (res.status === 'steering') {
+        badge.textContent = 'steered into the running turn';
+        setQueueWait(0);
+        return;
+      }
+      const turnId = res.turnId;
+      if (!turnId) { badge.remove(); return; }
+      const deadline = Date.now() + 120000;
+      while (Date.now() < deadline) {
+        let t = null;
+        try { t = await api(`/api/chat/${encodeURIComponent(sid)}/${encodeURIComponent(turnId)}`); } catch { /* transient */ }
+        if (t) {
+          setQueueWait(t.queueLength || 0);
+          if (t.status === 'queued') badge.textContent = 'waiting…';
+          else if (t.status === 'running') badge.textContent = 'answering…';
+          if (t.status === 'done') {
+            badge.remove();
+            addMsg('bot', (t.output || '').trim() || 'Crabby got no text back from the model. Try again.');
+            return;
+          }
+          if (t.status === 'error') {
+            badge.remove();
+            const card = addMsg('bot', t.error || 'agent error');
+            card.classList.add('err');
+            return;
+          }
+          if (t.status === 'interrupted') { badge.textContent = 'stopped'; return; }
+        }
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      badge.textContent = 'timed out';
+    } catch (err) {
+      badge.remove();
+      showComposerError(err.message);
     }
   }
 
@@ -4705,7 +4791,7 @@
     }
   }
 
-  $('send').onclick = () => { if (state.busy) { if (state.abort) state.abort.abort(); } else send(); };
+  $('send').onclick = () => { const txt = $('input').value.trim(); if (txt) send(); else if (state.busy && state.abort) state.abort.abort(); };
   $('input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
@@ -4828,7 +4914,13 @@
     ta.style.height = '';
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
   };
-  $('input').addEventListener('input', () => { growInput(); syncSendBtn(); });
+  $('input').addEventListener('input', () => {
+    growInput();
+    syncSendBtn();
+    // While a turn runs: an empty box means the button is Stop, a draft means
+    // it is Send (the message queues behind / steers the running turn).
+    if (state.busy) setSendMode(!$('input').value.trim());
+  });
   growInput();
   syncSendBtn();
 
@@ -6589,6 +6681,23 @@
   function hideComposerProgress() {
     const p = $('composerProgress');
     if (p) p.classList.add('hidden');
+  }
+
+  /** Real queue state for the composer chip: "N waiting" (0 means idle). */
+  function setQueueWait(n) {
+    const pill = $('progWait');
+    if (!pill) return;
+    const count = Number(n) || 0;
+    if (count > 0) {
+      pill.textContent = count + ' waiting';
+      pill.classList.remove('hidden');
+      const p = $('composerProgress');
+      if (p) p.classList.remove('hidden');
+    } else {
+      pill.classList.add('hidden');
+      const p = $('composerProgress');
+      if (p && !state.busy) p.classList.add('hidden');
+    }
   }
   function showComposerError(msg) {
     const e = $('composerError');

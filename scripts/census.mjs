@@ -140,12 +140,12 @@ check('agent', 'Streaming assistant deltas', 'block streaming + coalescing', 'WO
   'src/agent/loop.ts emits delta events; src/providers/openai.ts parses SSE', { pattern: "'delta'", expect: 'present' }, 0);
 check('agent', 'Tool calling round-trip', 'parallel + serialized batches', 'WORKING',
   'src/agent/loop.ts:245 sequential tool execution', { pattern: 'tool:start', expect: 'present' }, 0);
-check('agent', 'Per-session run serialization', 'session lanes + writer claims', 'BROKEN',
-  'src/agent/sessions.ts:269 SessionQueue; dequeue() at :291 has no call site in src/',
-  { pattern: 'dequeue\\(', expect: 'only-definition' }, 5);
-check('agent', 'Queue modes steer/followup/collect/interrupt', '4 modes + debounce + cap', 'BROKEN',
-  'config.agent.queueMode read at src/agent/loop.ts:124 but has no observable effect (server passes skipQueue)',
-  { pattern: 'queueMode', expect: 'present-unused' }, 8);
+check('agent', 'Per-session run serialization', 'session lanes + writer claims', 'WORKING',
+  'src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving (transcript write fencing is tracked separately)',
+  { pattern: 'private async drain', expect: 'present' }, 0);
+check('agent', 'Queue modes steer/followup/collect/interrupt', '4 modes + debounce + cap', 'WORKING',
+  'all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6',
+  { pattern: 'MAX_QUEUED_TURNS', expect: 'present' }, 0);
 check('agent', 'Run identity + terminal wait', 'runId + agent.wait replay', 'PARTIAL',
   'newRunId() in loop.ts:114; no wait endpoint (only sessions/agents_wait tools)', { pattern: 'newRunId', expect: 'present' }, 2);
 check('agent', 'Parallel tool batches', 'launched together, results merged', 'ABSENT',
@@ -158,9 +158,9 @@ check('agent', 'Model failover chain', 'ordered chain + cooldowns + auth profile
   'resolveProviderChain + cooldowns (src/providers/index.ts)', { pattern: 'resolveProviderChain', expect: 'present' }, 1);
 check('agent', 'Reasoning / thinking levels', '7 levels incl. minimal/ultra', 'WORKING',
   'src/providers/capabilities.ts 6 levels + effort mapping', { pattern: 'thinking', expect: 'present' }, 1);
-check('agent', 'Steering into a live run', 'runtime-boundary steering', 'BROKEN',
-  "'steer' is a declared queue mode (src/core/config.ts:56, src/agent/sessions.ts:250) with no code path that applies it",
-  { pattern: /steerInto|applySteer|injectSteer/, expect: 'absent' }, 4);
+check('agent', 'Steering into a live run', 'runtime-boundary steering', 'WORKING',
+  "a steered message joins the running turn's transcript inside the same run (loop.ts drains SessionQueue.takeSteers); a 'steer' event is emitted; test/queue-serialize.test.ts 5.4/5.4b",
+  { pattern: 'takeSteers', expect: 'present' }, 0);
 check('agent', 'Abort / stop a running turn', 'Esc, /stop, /abort', 'PARTIAL',
   'AbortSignal plumbed through providers; no user-facing abort route in the web panel', { pattern: 'AbortController', expect: 'present' }, 2);
 check('agent', 'Lifecycle hooks', '14 typed hooks + HOOK.md', 'ABSENT',
@@ -454,7 +454,7 @@ check('ops', 'Work tracking (what is being built, right now)', 'n/a', 'WORKING',
   'WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker',
   { paths: ['WORKLOG.md', 'scripts/status.mjs'], expect: 'present' }, 0, 'core');
 check('ops', 'Tests', 'contract tests per channel, 16k-PR CI', 'PARTIAL',
-  '408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)',
+  '437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)',
   { pattern: /node:test/, scope: 'test', expect: 'present' }, 6);
 check('ops', 'CI matrix', 'lint + types + budgets + swiftlint + semgrep + knip', 'PARTIAL',
   'ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity',

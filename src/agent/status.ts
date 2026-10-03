@@ -35,6 +35,28 @@ function when(ts: number): string {
  * Plain-English one-screen overview — the non-coder's home base.
  * No keys, no jargon: what it is, what it's doing, what to run next.
  */
+/**
+ * Ask the running panel for its real queue state. Never guesses: an older
+ * panel, a stopped panel and a refused request all read as "unknown".
+ */
+async function liveQueueText(config: Config): Promise<string> {
+  const host = config.gateway.host === '0.0.0.0' || config.gateway.host === '::' ? '127.0.0.1' : config.gateway.host;
+  const url = `http://${host}:${config.gateway.port}/api/status`;
+  try {
+    const headers: Record<string, string> = {};
+    if (config.gateway.token) headers.authorization = `Bearer ${config.gateway.token}`;
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(1200) });
+    if (!res.ok) return `unknown (panel answered HTTP ${res.status})`;
+    const data = (await res.json()) as { queue?: { waiting?: number; running?: number } };
+    const q = data.queue;
+    if (!q) return 'unknown (panel is older than this CLI)';
+    if (!q.waiting && !q.running) return 'idle — nothing running, nothing waiting';
+    return `${q.waiting ?? 0} waiting · ${q.running ?? 0} running`;
+  } catch {
+    return 'not running — start the panel (termcrab gateway) to see live queue state';
+  }
+}
+
 export async function statusReport(config: Config): Promise<string> {
   const memory = new MemoryStore();
   const stats = memory.stats();
@@ -71,6 +93,11 @@ export async function statusReport(config: Config): Promise<string> {
     `http://${config.gateway.host}:${config.gateway.port} · ` +
     (config.gateway.token ? 'password set' : 'NO PASSWORD — set one in Settings');
 
+  // The queue lives inside the running panel, so the only truthful answer to
+  // "what is waiting right now" comes from the panel itself. If it is not
+  // running, say so instead of inventing a number.
+  const queueText = await liveQueueText(config);
+
   const channelText = [
     `Telegram: ${config.channels.telegram?.token ? 'on' : 'off'}`,
     `WhatsApp: ${config.channels.whatsapp?.enabled ? 'on' : 'off'}`,
@@ -85,6 +112,7 @@ export async function statusReport(config: Config): Promise<string> {
     ['Brain', providerLabel(config)],
     ['Local brain', localText],
     ['Web panel', panelText],
+    ['Queue', queueText],
     ['Chat apps', channelText],
     ['Memory', `${facts} remembered fact${facts === 1 ? '' : 's'} · ${sizeText(stats.memoryBytes)} · ${stats.dailyFiles} daily log${stats.dailyFiles === 1 ? '' : 's'}`],
     ['Self-checks', checks],

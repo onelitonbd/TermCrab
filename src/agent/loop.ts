@@ -16,6 +16,8 @@ export type AgentEvent =
   | { type: 'tool:start'; name: string; args: Record<string, unknown>; toolCallId?: string; sessionId?: string }
   | { type: 'tool:end'; name: string; ok: boolean; preview: string; result: string; toolCallId?: string; sessionId?: string }
   | { type: 'run:end'; runId: string; text: string; sessionId: string; iterations: number }
+  /** A message steered into the running turn (queue mode 'steer'). */
+  | { type: 'steer'; text: string; sessionId: string }
   | { type: 'approval'; approval: import('../core/approvals.js').Approval }
   | { type: 'error'; message: string };
 
@@ -118,23 +120,16 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
   const agentName = opts.agent ? sanitizeAgentName(opts.agent) ?? undefined : undefined;
   const sessionId = agentName ? `${agentName}:${opts.sessionId}` : opts.sessionId;
 
-  // Queue handling: if a queue is present and we're not skipping it,
-  // handle the turn according to queueMode.
+  // Queue modes (followup / steer / collect / interrupt) live in SessionQueue:
+  // callers submit through the queue, which owns the session's lane (see
+  // SessionQueue.submit). A direct runTurn() call while the session is busy
+  // runs in parallel, so channels should route through the queue; this note
+  // exists so that mistake shows up in the log instead of silently.
   if (ctx.queue && !opts.skipQueue) {
-    const mode = ctx.config.agent.queueMode || 'followup';
     const running = ctx.queue.getRunning(sessionId);
-
-    if (running && mode === 'interrupt') {
-      // Abort the current turn and run the new one
-      ctx.queue.interrupt(sessionId);
-      log.info(`session ${sessionId}: interrupted turn ${running.id}`);
-    } else if (running && mode === 'steer') {
-      // Abort current turn, but keep its partial output in context
-      ctx.queue.interrupt(sessionId);
-      log.info(`session ${sessionId}: steered turn ${running.id}`);
+    if (running) {
+      log.info(`session ${sessionId}: turn ${running.id} already running; this turn bypassed the queue`);
     }
-    // For 'followup' and 'collect', we just proceed — the queue
-    // ensures FIFO ordering via the gateway's enqueue mechanism.
   }
 
   ctx.sessions.append(sessionId, {
@@ -207,6 +202,17 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     else opts.signal.addEventListener('abort', () => abortCtrl.abort(), { once: true });
   }
   try {
+    // Steered messages land in the transcript and are picked up by the next
+    // provider call, inside this same run (same run id). Consumed exactly once.
+    const drainSteers = (): boolean => {
+      if (!ctx.queue) return false;
+      const steers = ctx.queue.takeSteers(sessionId);
+      for (const text of steers) {
+        ctx.sessions.append(sessionId, { role: 'user', content: text, ts: Date.now(), channel: opts.channel });
+        emit({ type: 'steer', text, sessionId });
+      }
+      return steers.length > 0;
+    };
     for (let i = 0; i < maxIter; i++) {
       if (abortCtrl.signal.aborted) {
         finalText = '[interrupted] The user cancelled this request.';
@@ -214,6 +220,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
         return finalText;
       }
+      drainSteers();
       const messages = toProviderMessages(ctx.sessions.read(sessionId), provider.name);
       let streamedChars = 0;
       const result = await chatWithTimeout(
@@ -288,6 +295,10 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         }
         continue;
       }
+
+      // A message steered in while the model was answering must be answered in
+      // this same run, not left for a "next turn" that never comes.
+      if (drainSteers()) continue;
 
       finalText = result.text ?? '';
       if (!finalText.trim()) {

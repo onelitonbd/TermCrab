@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.37.0 - 2026-10-03
+
+- **The session queue is a queue now, not a list.** One lane per session: with two messages posted to the same session, the second **stays `queued`** until the first finishes, and the transcripts can no longer interleave. Before this, both gateway enqueue sites fired the run immediately, so two messages genuinely ran in parallel against one session; `dequeue()` had zero callers and `markRunning()` left the turn in the waiting array, so `queueLength` never dropped.
+- **All four queue modes actually work.** `followup` runs messages in order, one at a time. `steer` puts a mid-run message into the **running** turn — same run id, appended to the transcript (a `steer` event reaches the panel), no second turn. `collect` merges a burst of waiting messages into a single extra turn (debounce, so three quick messages cost one model call, not three). `interrupt` cancels the running turn (marked `interrupted`, aborted) and the new one takes the lane. Previously `steer` was an alias for `interrupt` and `collect` did not exist.
+- **You can see the truth from both surfaces.** The turn-status endpoint reports the real waiting count; the panel's composer shows a **"N waiting"** chip and, while the agent is working, typing and sending a message queues it (with a per-message badge) instead of doing nothing — the button is Stop only when the box is empty. `termcrab status` asks the *running panel* for live queue state (`/api/status` now carries `queue: {sessions, running, waiting}`) and says "not running" rather than inventing a number.
+- **A runaway backlog is refused instead of absorbed.** `MAX_QUEUED_TURNS = 32` per session; the 33rd message gets HTTP **429** with a plain-English reason, so a broken webhook retrying twice a second cannot grow the process without bound.
+- Tests: **437 cases, 0 failures** (10 new: order/no-interleave, truthful `queueLength`, all four modes, a steered message inside one real `runTurn`, the cap, and a real HTTP test with a slow upstream proving the second POST waits). Full run ~18 s. Census: **BROKEN 7 → 4** (`session queue`, `queue modes`, `steering` leave the list; drift 0), capability 43% → **46%**, core-lane work left ~23 focused days.
+
 ## 0.36.2 - 2026-10-03
 
 - **A competitive plan that starts where the advantage is real.** `docs/openclaw/BEAT-PLAN.md` is the head-to-head against OpenClaw, ordered smallest to biggest: Tier 0 (hours-scale wins, each flipping a tracked row), Tier 1 (the queue/memory/approval defects that would undermine any win), Tier 2 (the phone-native moat), Tier 3 (structural: zero deps, no registry, honest docs), and Tier 4 — the written kill list of things we will not build.

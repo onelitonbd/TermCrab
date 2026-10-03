@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T06:35:38.229Z",
+ "measured": "2026-10-03T06:56:37.199Z",
  "tally": {
-  "WORKING": 24,
+  "WORKING": 27,
   "BETTER": 14,
   "PARTIAL": 60,
-  "BROKEN": 7,
+  "BROKEN": 4,
   "ABSENT": 45
  },
- "coverage": 44,
- "effortLeft": 482,
+ "coverage": 46,
+ "effortLeft": 465,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:773"
+    "detail": "1 match(es): src/gateway/server.ts:767"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:775"
+    "detail": "1 match(es): src/gateway/server.ts:769"
    }
   },
   {
@@ -76,7 +76,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:731"
+    "detail": "0 match(es): src/gateway/server.ts:725"
    }
   },
   {
@@ -144,7 +144,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/gateway/server.ts:342"
+    "detail": "3 match(es): src/gateway/server.ts:343"
    }
   },
   {
@@ -161,7 +161,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1537"
+    "detail": "1 match(es): src/gateway/server.ts:1541"
    }
   },
   {
@@ -178,7 +178,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:698"
+    "detail": "4 match(es): src/gateway/server.ts:684"
    }
   },
   {
@@ -297,7 +297,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es)"
+    "detail": "69 match(es)"
    }
   },
   {
@@ -338,34 +338,34 @@
    "area": "agent",
    "capability": "Per-session run serialization",
    "openclaw": "session lanes + writer claims",
-   "verdict": "BROKEN",
-   "evidence": "src/agent/sessions.ts:269 SessionQueue; dequeue() at :291 has no call site in src/",
+   "verdict": "WORKING",
+   "evidence": "src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving (transcript write fencing is tracked separately)",
    "probe": {
-    "pattern": "dequeue\\(",
-    "expect": "only-definition"
+    "pattern": "private async drain",
+    "expect": "present"
    },
-   "effort": 5,
+   "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es)"
+    "detail": "1 match(es): src/agent/sessions.ts:408"
    }
   },
   {
    "area": "agent",
    "capability": "Queue modes steer/followup/collect/interrupt",
    "openclaw": "4 modes + debounce + cap",
-   "verdict": "BROKEN",
-   "evidence": "config.agent.queueMode read at src/agent/loop.ts:124 but has no observable effect (server passes skipQueue)",
+   "verdict": "WORKING",
+   "evidence": "all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6",
    "probe": {
-    "pattern": "queueMode",
-    "expect": "present-unused"
+    "pattern": "MAX_QUEUED_TURNS",
+    "expect": "present"
    },
-   "effort": 8,
+   "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:122, src/core/config.ts:61"
+    "detail": "3 match(es): src/agent/sessions.ts:277"
    }
   },
   {
@@ -416,7 +416,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:53"
+    "detail": "2 match(es): src/agent/loop.ts:55"
    }
   },
   {
@@ -433,7 +433,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:196"
+    "detail": "1 match(es): src/agent/loop.ts:191"
    }
   },
   {
@@ -467,24 +467,24 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/loop.ts:15, src/agent/sessions.ts:15, src/gateway/server.ts:319"
+    "detail": "85 match(es): src/agent/loop.ts:15, src/agent/sessions.ts:15, src/gateway/server.ts:320"
    }
   },
   {
    "area": "agent",
    "capability": "Steering into a live run",
    "openclaw": "runtime-boundary steering",
-   "verdict": "BROKEN",
-   "evidence": "'steer' is a declared queue mode (src/core/config.ts:56, src/agent/sessions.ts:250) with no code path that applies it",
+   "verdict": "WORKING",
+   "evidence": "a steered message joins the running turn's transcript inside the same run (loop.ts drains SessionQueue.takeSteers); a 'steer' event is emitted; test/queue-serialize.test.ts 5.4/5.4b",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "pattern": "takeSteers",
+    "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "2 match(es): src/agent/loop.ts:209, src/agent/sessions.ts:441"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:102, src/agent/sessions.ts:273, src/agent/tools.ts:143"
+    "detail": "9 match(es): src/agent/loop.ts:104, src/agent/sessions.ts:296, src/agent/tools.ts:143"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "317 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
+    "detail": "322 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -909,7 +909,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "74 match(es): src/agent/dream.ts:16, src/agent/loop.ts:28, src/agent/prompt.ts:18"
+    "detail": "74 match(es): src/agent/dream.ts:16, src/agent/loop.ts:30, src/agent/prompt.ts:18"
    }
   },
   {
@@ -926,7 +926,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "36 match(es): src/agent/loop.ts:41, src/agent/prompt.ts:16, src/cli.ts:51"
+    "detail": "36 match(es): src/agent/loop.ts:43, src/agent/prompt.ts:16, src/cli.ts:51"
    }
   },
   {
@@ -1045,7 +1045,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:44"
+    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:66"
    }
   },
   {
@@ -1181,7 +1181,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:25, src/agent/prompt.ts:8, src/agent/tools.ts:10"
+    "detail": "6 match(es): src/agent/loop.ts:27, src/agent/prompt.ts:8, src/agent/tools.ts:10"
    }
   },
   {
@@ -1336,7 +1336,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:459, src/mobile/doctor.ts:354"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:445, src/mobile/doctor.ts:354"
    }
   },
   {
@@ -1489,7 +1489,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:504"
+    "detail": "1 match(es): src/gateway/server.ts:490"
    }
   },
   {
@@ -1610,7 +1610,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "37 match(es): src/agent/dream.ts:145, src/agent/loop.ts:29, src/agent/status.ts:66"
+    "detail": "37 match(es): src/agent/dream.ts:145, src/agent/loop.ts:31, src/agent/status.ts:88"
    }
   },
   {
@@ -1678,7 +1678,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:34, src/agent/tools.ts:34, src/gateway/server.ts:351"
+    "detail": "8 match(es): src/agent/loop.ts:36, src/agent/tools.ts:34, src/gateway/server.ts:352"
    }
   },
   {
@@ -1815,7 +1815,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2277"
+    "detail": "1 match(es): ui/index.html:2293"
    }
   },
   {
@@ -1866,7 +1866,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "48 match(es): src/cli.ts:82, src/gateway/server.ts:1105, src/providers/capabilities.ts:148"
+    "detail": "48 match(es): src/cli.ts:82, src/gateway/server.ts:1109, src/providers/capabilities.ts:148"
    }
   },
   {
@@ -2019,7 +2019,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:731"
+    "detail": "0 match(es): src/gateway/server.ts:725"
    }
   },
   {
@@ -2105,7 +2105,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/status.ts:102, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
+    "detail": "20 match(es): src/agent/status.ts:130, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
    }
   },
   {
@@ -2173,7 +2173,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "393 match(es): src/agent/ask.ts:14, src/agent/dream.ts:27, src/agent/embed-setup.ts:18"
+    "detail": "396 match(es): src/agent/ask.ts:14, src/agent/dream.ts:27, src/agent/embed-setup.ts:18"
    }
   },
   {
@@ -2207,7 +2207,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/sessions.ts:111, src/cli.ts:57, src/gateway/server.ts:899"
+    "detail": "8 match(es): src/agent/sessions.ts:111, src/cli.ts:57, src/gateway/server.ts:903"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "17 match(es): src/cli.ts:12, src/gateway/server.ts:1887, src/mobile/boot.ts:26"
+    "detail": "17 match(es): src/cli.ts:12, src/gateway/server.ts:1892, src/mobile/boot.ts:26"
    }
   },
   {
@@ -2292,7 +2292,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:44"
+    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:66"
    }
   },
   {
@@ -2326,7 +2326,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/status.ts:102, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
+    "detail": "20 match(es): src/agent/status.ts:130, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
    }
   },
   {
@@ -2529,7 +2529,7 @@
    "capability": "Tests",
    "openclaw": "contract tests per channel, 16k-PR CI",
    "verdict": "PARTIAL",
-   "evidence": "408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)",
+   "evidence": "437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)",
    "probe": {
     "pattern": {},
     "scope": "test",
@@ -2539,7 +2539,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "50 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/auth.test.ts:1"
+    "detail": "52 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/auth.test.ts:1"
    }
   },
   {

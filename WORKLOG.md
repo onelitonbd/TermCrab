@@ -16,51 +16,52 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এখন কী হচ্ছে:** কোনো কাজ চলছে না — ব্যাচ ২ শেষ, পরের ব্যাচ শুরু হয়নি (§2)।
-- **এইমাত্র শেষ (ব্যাচ ১ + ২):** ইনস্টল ৪.৫ সেকেন্ড → **০.৫ সেকেন্ড**, টেস্ট ১৫ মিনিটে শেষ হত না → **১৮ সেকেন্ডে ৪১৩টা**, প্যানেলের পাসওয়ার্ড সত্যিই কাজ করে, ওয়েবহুকে নিজের টোকেন, অফলাইন ব্রেইন ফিরেছে।
-- **পরের কাজ (ব্যাচ ৩):** কিউ সত্যি করা — একই সেশনে দুটো মেসেজ যেন সমান্তরালে না চলে, আর `followup/steer/collect/interrupt` সব কাজ করুক। **~১০ দিনের কাজ, ৫টা ধাপে।**
-- **কীভাবে নিজে যাচাই করবে:** `node scripts/status.mjs` (এক সেকেন্ড), `node scripts/status.mjs --tests` (স্যুট সহ), আর প্যানেলের **Work** পেজ (একই ফাইল দেখায়)।
-
-**নিয়ম (আমার নিজের জন্য, লিখিত):** প্রতিটা কাজের সেশন শেষ হবে এই ফাইল আপডেট করে — কোন ব্যাচ, কোন কমিট, কোন টেস্ট প্রমাণ। টেস্ট নেই = কাজ শেষ নয়।
+- **এইমাত্র শেষ (ব্যাচ ৫):** কিউ এখন সত্যি — একই সেশনে দুটো মেসেজ আর কখনো একসাথে চলে না; `followup` / `steer` / `collect` / `interrupt` চারটাই কাজ করে; কিউয়ের দৈর্ঘ্য সত্যি; প্যানেলের কম্পোজারে "১ waiting" দেখায়; `termcrab status`-এ লাইভ কিউ-অবস্থা আসে।
+- **সংখ্যায়:** ৪৩৭টা টেস্ট · ০ ফেল · ~১৮ সেকেন্ড; census **BROKEN ৭ → ৪** (কিউ-এর তিনটা পাল্টা সারি সব WORKING), drift ০, capability ৪৩% → ৪৬%।
+- **পরের কাজ (ব্যাচ ৬):** অ্যাপ্রুভাল গেট — বিপজ্জনক টুল নিজে নিজে চলবে না, প্যানেলে অনুমতি চাইবে। **~৫ দিন, ৫টা ধাপ।**
+- **কীভাবে নিজে যাচাই করবে:** `node scripts/status.mjs` (এক সেকেন্ড), `node scripts/status.mjs --tests` (স্যুট সহ), `node scripts/census.mjs`, আর প্যানেলের **Work** পেজ।
 
 ---
 
-## 2. Now — batch 4: the answer to "how do we beat OpenClaw" (this commit)
+## 2. Now — batch 5: a queue you can trust (this commit)
 
-**Why:** the level map answered *where we stand*; it did not answer *where we win and in what order we build*. That answer is now a document: [`docs/openclaw/BEAT-PLAN.md`](docs/openclaw/BEAT-PLAN.md) — head-to-head from the smallest beats (Tier 0: hours) through the phone-native moat (Tier 2) up to the structural bets (Tier 3), with the explicit kill list above it, and every OpenClaw claim cited to the page it came from (their own doc says the quiet part: *"Android does not host the Gateway"*).
+**Why:** `SessionQueue.enqueue()` only ever pushed; `dequeue()` had zero callers in `src/`; `markRunning()` left the turn in the waiting array so `queueLength` never dropped; and both gateway enqueue sites fired `void processQueuedTurn(...)` immediately — so two messages in one session genuinely ran in parallel. `queueMode` was read but had no effect, `collect`/`steer` were config values with no code path, and nothing capped a backlog. The queue is now the only way in, with one lane per session and a test for every promise.
 
 | # | Step | Status | Evidence / acceptance test |
 |---|---|---|---|
-| 4.1 | Head-to-head, smallest → biggest, with citations to their pages | ✔ done | `BEAT-PLAN.md` §2 (Tier 0–4); precision fix in `analysis/10-mobile-the-moat.md` |
-| 4.2 | Each beat carries an effort and a proof (test / script / measured number) | ✔ done | `test/beat-plan.test.ts`: ≥25 beats, every row has effort + proof |
-| 4.3 | "Already better" claims cannot be invented | ✔ done | same test: every `census: … 🏅` claim must match a real BETTER row |
-| 4.4 | The plan drives the work order, not a wishlist | ✔ done | Phase A starts with the queue (batch 5) because BROKEN rows undermine every moat claim |
-| 4.5 | Reachable from the map and the tracker | ✔ done | TRACKER §1 + WORKLOG link it; pinned by the test |
+| 5.1 | A second message in the same session **waits** | ✔ done | `test/queue-serialize.test.ts` 5.1 + 5.7 (real HTTP): the second turn stays `queued`, transcripts never interleave |
+| 5.2 | A finished turn leaves the queue | ✔ done | 5.2: `queueLength` is 1 while one waits, 0 when the lane is idle (unit + HTTP) |
+| 5.3 | `followup` runs messages in order, one at a time | ✔ done | 5.3: three messages → FIFO order, never more than one run in flight |
+| 5.4 | `steer` reaches the running turn — no second turn | ✔ done | 5.4 + 5.4b: same turn id, one `run:start`, the steered text lands in the transcript the model answers |
+| 5.5 | `collect` merges a burst into one extra turn | ✔ done | 5.5: three rapid messages → exactly one extra run containing all three |
+| 5.6 | `interrupt` cancels the old turn; the new one runs | ✔ done | 5.6: old turn `interrupted` + aborted, the cancelled run never finishes, the new turn runs |
+| 5.7 | Panel + CLI show the true queue state | ✔ done | the poll reports `queueLength`; the composer shows "N waiting" and a second message queues instead of stopping the run; `termcrab status` asks the running panel (never guesses) |
+| 5.8 | Census rows leave BROKEN | ✔ done | `node scripts/census.mjs` → **BROKEN 7 → 4**, drift 0 (probes: `private async drain`, `MAX_QUEUED_TURNS`, `takeSteers`) |
 
-**Next action:** batch 5 step 5.1 — the failing test that proves two messages in one session run one after another.
+**Two extras the tests forced:** a backlog is now capped (`MAX_QUEUED_TURNS = 32` → HTTP 429) so a runaway webhook cannot grow the process without bound; and `runTurn` no longer treats `steer` as `interrupt` — a `steer` event plus a transcript entry carry the message into the same run.
+
+**Known limit (declared, not hidden):** the lane covers every queue surface — panel chat (`POST /api/chat`), webhooks, and anything that submits through `SessionQueue`. Channel handlers (Telegram/Discord/Slack/Signal/SMS/Matrix), the voice wake loop and cron still call `runTurn` directly, so two messages that land on the *same session id* from two different surfaces can still overlap. Moving them onto the lane belongs with batch 8 (transcript write fencing), where the writer claim is the real fix.
+
+**Next action:** batch 6 step 6.1 — the failing test that proves a dangerous tool blocks until a human answers.
 
 ---
 
-## 3. Next — batch 5: a queue you can trust (core lane, ~10 days, starts after this commit)
+## 3. Next — batch 6: an agent that asks before it acts (core lane, ~5 days, starts after this commit)
 
-`SessionQueue.enqueue()` adds turns and **nothing ever removes them**; two messages for one session run at the same time. The modes are documented, the code exists, nothing reaches it — this is where "the agentic system is not trustworthy" starts. Tests come first: each step below adds a failing test, then the fix.
+`src/core/approvals.ts` exists with `createApproval` / `waitForApproval`, and the panel already has `GET /api/approvals` — but nothing ever creates one. A tool that can delete files, push a branch or spend money runs on the model's say-so alone. OpenClaw gates this ("operator approvals, HITL gates"); the census row is BROKEN for exactly this reason. Tests first, as always.
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 5.1 | A second message in the same session **waits** instead of running beside the first | ☐ todo | two turns posted together → second stays `queued`; transcripts never interleave |
-| 5.2 | `dequeue()` is actually called: a finished turn leaves the queue | ☐ todo | `queueLength === 0` after a turn completes |
-| 5.3 | `queueMode: followup` — while busy, messages queue and run in order | ☐ todo | 3 messages → outputs in order, one at a time |
-| 5.4 | `queueMode: steer` — a mid-run message reaches the running turn, no second turn | ☐ todo | message appears in the running transcript; run id unchanged |
-| 5.5 | `queueMode: collect` — rapid messages merge into the next turn | ☐ todo | 3 rapid messages → 1 extra turn containing all three |
-| 5.6 | `queueMode: interrupt` — a new message cancels the running turn and starts fresh | ☐ todo | old run `[interrupted]` + marked cancelled; new turn runs |
-| 5.7 | Panel + CLI show the true queue state (length, running turn, mode) | ☐ todo | `/api/chat/<sid>/<turn>` reports length 0 when idle; composer shows "1 waiting" |
-| 5.8 | Census rows leave BROKEN (session queue, queue modes, steering) | ☐ todo | `node scripts/census.mjs` → BROKEN 7 → 5, drift 0 |
+| 6.1 | A tool marked `requiresApproval` stops *before* it runs | ☐ todo | with no answer, the tool body never executes and the turn is pending, not finished |
+| 6.2 | Approval reaches the panel and the answer reaches the run | ☐ todo | POST answer → the waiting tool runs (approve) or gets a refusal (deny); SSE emits the card |
+| 6.3 | A refusal is a result, not a crash | ☐ todo | denying returns a tool result the model can read ("user refused"), the turn completes, nothing is written |
+| 6.4 | Answer without the panel (CLI + chat) | ☐ todo | `termcrab approvals` lists/answers a pending one; the same request id works from either surface |
+| 6.5 | Timeout + default policy, and the census row leaves BROKEN | ☐ todo | an unanswered approval expires (configurable, default deny) and says so; `census.mjs` → BROKEN 4 → 3, drift 0 |
 
 **After that** (order fixed, sizes are focused days — and [BEAT-PLAN.md](docs/openclaw/BEAT-PLAN.md) §3 is the authority):
 
 | Batch | What | Size | What proves it |
 |---|---|---|---|
-| 6 | **Approvals gate** — dangerous tools block until a human approves them in the panel | ~5d | test: tool blocks until approved, refused when denied |
 | 7 | **Memory that does not forget** — prompt reads recent facts; compaction summarises instead of deleting | ~6d | test: a fact saved today reaches the prompt; full lines stay on disk |
 | 8 | **Transcript fencing** — a writer claim so gateway + CLI cannot interleave one JSONL | ~3d | test: second writer refuses (or appends atomically) |
 | 9 | **Usage / token accounting** — real token counts, shown in the panel | ~3d | test: a run reports tokens; the panel shows a number |
@@ -72,8 +73,9 @@
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 5 | `291bcf1` | **A queue you can trust**: one lane per session (second message waits, never interleaves); all four modes really work (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs); truthful `queueLength`; backlog capped (429); panel "N waiting" chip + a second message while busy; `termcrab status` reports live queue state from the panel | `test/queue-serialize.test.ts` (10 new cases: unit + loop + real HTTP with a slow upstream), `test/queue.test.ts`, full suite | **437 tests · 0 fail · 18.0 s**; census **BROKEN 7 → 4**, drift 0, capability 46% (was 43%) |
 | 1 | `f1c86b8`, `df69070` | install no longer silently builds (`prepare` removed, two visible steps); config-file watcher no longer leaks/keeps the process alive; suite bounded (60s/test) | `test/lifecycle.test.ts` (listener closed, no FSWatcher, port reusable); leak probe `36.2 ms` (was cancelled at `30,023 ms`) | `npm install` **4,537 ms → 500 ms**; full suite now finishes |
-| 4 | *(this commit)* | **Beat plan**: head-to-head vs OpenClaw from hours-scale beats to the structural moat, every claim cited to their page or to a census row, kill list included; the plan now drives the batch order | `test/beat-plan.test.ts` (tiers, ≥25 beats with effort+proof, census cross-check, file paths) | `docs/openclaw/BEAT-PLAN.md`; 5 new tests |
+| 4 | `8ccb8fd` | **Beat plan**: head-to-head vs OpenClaw from hours-scale beats to the structural moat, every claim cited to their page or to a census row, kill list included; the plan now drives the batch order | `test/beat-plan.test.ts` (tiers, ≥25 beats with effort+proof, census cross-check, file paths) | `docs/openclaw/BEAT-PLAN.md`; 5 new tests |
 | 3 | `dd37e60` | **Work tracking**: `WORKLOG.md` + `scripts/status.mjs` + panel **Work** page; freshness is commit-count based, so a commit that skips the tracker fails the suite | `test/worklog.test.ts` (structure, git freshness, `/api/worklog` token-gated, panel view) | `node scripts/status.mjs` → FRESH; 8 new tests |
 | 2 | `0ff408b` | panel token enforced on every `/api/*` route (+ password sheet); webhook tokens (`x-hook-token`) compared in constant time; offline brain restored (`--demo`, panel button, `config set provider.type mock`); guards/tests tell the truth; census + tracker corrected | `test/auth.test.ts` (10-route matrix, webhook matrix), `test/offline.test.ts` (CLI + reload + panel path), full suite, live panel smoke | **413 tests · 0 fail · 18.3 s**; census **149 probes, 0 drift, BROKEN 10 → 7**, capability 41% → 43% |
 
