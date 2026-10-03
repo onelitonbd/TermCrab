@@ -83,9 +83,14 @@ Files arrive and are read once, when they arrive. The agent cannot look again, c
 
 ```bash
 node scripts/status.mjs          # is this file fresh? what is done, what is next, census drift
-node scripts/status.mjs --tests  # ...and run the full suite (≈18 s)
+node scripts/status.mjs --tests  # ...and run the full suite (≈38 s)
 node scripts/census.mjs          # the capability map vs OpenClaw, with per-row probes
+
+# batch 16: watch our own reader take the text out of a PDF (no dependency, no network)
+node --input-type=module -e "import {extractText} from './dist/src/channels/extract.js'; console.log(extractText('some.pdf'))"
+termcrab disk --json | jq '.data.before.byArea.inbox'   # the inbox as its own area
 ```
+
 
 - Every row in §4 names a **commit** and a **test file** — read the test, run it, watch it fail if the behaviour regresses.
 - Every capability claim in `docs/openclaw/TRACKER.md` carries a **probe** (a pattern that must match the source). If the code moves, the row reports `DRIFT` instead of quietly staying green.
