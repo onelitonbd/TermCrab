@@ -1,3 +1,7 @@
+/**
+ * Embedding-model setup for memory search: status, install, and the checks the
+ * doctor reports (`termcrab embeddings ...`).
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';

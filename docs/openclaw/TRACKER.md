@@ -47,21 +47,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 39 | wired and observable |
+| ✅ WORKING | 41 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 54 | exists, narrower than theirs |
+| 🟡 PARTIAL | 53 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 43 | nothing in the tree |
+| ⚪ ABSENT | 42 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 52%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 53%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~4d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~266d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~434d | |
+| **total** | 150 | ~430d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -116,12 +116,12 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Typing indicators | per-channel, on enqueue | ⚪ ABSENT | no typing action calls | parity | 1 |
 | Media send/receive | images, audio, documents | 🟡 PARTIAL | markdown/HTML rendering + chunking for outbound (src/channels/markdown.ts, test/markdown.test.ts); inbound is text-only | parity | 4 |
 
-### context — 37% (13 checks)
+### context — 45% (13 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Compaction that preserves history | summary + full history stays on disk | ✅ WORKING | compact() writes an extractive digest to memory/compacted/<session>.md and moves the overflow to <session>.archive.jsonl; read() merges archive + live so every original line survives, while the prompt gets the hot window (readHot) plus the last digest block (sessions.ts latestDigest -> prompt.ts). Pinned by test/memory-truth.test.ts 7.2/7.2b and test/compaction.test.ts | core | — |
-| LLM summarisation for compaction | separate compaction model | ⚪ ABSENT | the digest is extractive (key lines, 200-char slices), not a model-written summary - the history is now preserved, the summary quality is what is still missing | core | 3 |
+| LLM summarisation for compaction | separate compaction model | ✅ WORKING | SessionStore.compactWithModel() hands the turns leaving the hot window to a configured model (the local tier when present, else the model answering the turn) in bounded chunks; each block records who wrote it, how much it covers and any reason it could not (TCRAB_COMPACT=off, no model, model failure -> the extractive digest); the prompt blurb says "the earlier N turns are summarised above ... the full transcript is on disk". Pinned by test/compaction-llm.test.ts 11.1-11.4 | core | — |
 | Tool-result pruning | contextPruning cache-ttl, provider-side clear | ⚪ ABSENT | no pruning path | parity | 3 |
 | Pluggable context engine | ContextEngine info/ingest/assemble/compact | ⚪ ABSENT | prompt is assembled inline in src/agent/prompt.ts | later | 10 |
 | Context introspection (/context) | list|detail|map breakdown | ⚪ ABSENT | no /context command or route | parity | 3 |
@@ -170,7 +170,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 60% (12 checks)
+### ops — 64% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -185,7 +185,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
-| Docs that match the code | generated docs map, tested examples | 🟡 PARTIAL | docs/ARCHITECTURE.md used to list files that did not exist (gemini.ts, anthropic.ts, ollama.ts); the tree now names the real providers, and test/docs-map.test.ts fails if any .ts file named in ARCHITECTURE.md or API.md is missing from the repo. Not generated, so the row is PARTIAL, not WORKING | core | 1 |
+| Docs that match the code | generated docs map, tested examples | ✅ WORKING | the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist | core | — |
 
 ### plugins — 0% (4 checks)
 
@@ -304,7 +304,7 @@ The rule that built it: a row leaves this table only when a test proves it, not 
 |---|---|---|---|
 | — | *(nothing)* | — | Nothing in the tree is a feature that no code path reaches. It stays that way because every batch ends with `node scripts/census.mjs` (BROKEN must stay 0, drift must stay 0) and because a new claim has to arrive with its test. |
 
-**What is still missing is *absent*, not broken** — nobody pretends it exists. The core lane is down to **one capability and one honesty row**: a model-written compaction summary (`LLM summarisation for compaction`, ~3d) and the docs-map row (~1d — the tree is checked by `test/docs-map.test.ts`, but the map is still hand-written). Everything else in the core lane is WORKING: queue, approvals, memory, fencing, usage, and the seven Tier-0 flips of batch 10 (config validation, run wait, stop, drafts, skill precedence, disk budget, release discipline). The long tail is parity work (channels, plugins, provider breadth) and by design waits until the phone-first story is airtight.
+**What is still missing is *absent*, not broken** — nobody pretends it exists. With batch 11 the core lane is **empty**: the last two rows were a model-written compaction summary (`LLM summarisation for compaction`, now WORKING — `SessionStore.compactWithModel()` in `src/agent/sessions.ts`, pinned by `test/compaction-llm.test.ts` 11.1–11.4) and the docs honesty row (`Docs that match the code`, now WORKING — the file map is generated by `scripts/docs-map.mjs` and `--check` runs inside the suite). Everything the census calls core is WORKING with a test or a probe behind it: queue, approvals, memory, fencing, usage, compaction, docs, and the seven Tier-0 flips of batch 10 (config validation, run wait, stop, drafts, skill precedence, disk budget, release discipline). The long tail is parity work (channels, plugins, provider breadth) and by design waits until the phone-first story is airtight.
 
 ---
 

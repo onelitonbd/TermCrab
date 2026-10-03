@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T08:17:56.556Z",
+ "measured": "2026-10-03T08:40:33.641Z",
  "tally": {
-  "WORKING": 39,
+  "WORKING": 41,
   "BETTER": 14,
-  "PARTIAL": 54,
+  "PARTIAL": 53,
   "BROKEN": 0,
-  "ABSENT": 43
+  "ABSENT": 42
  },
- "coverage": 52,
- "effortLeft": 434,
+ "coverage": 53,
+ "effortLeft": 430,
  "areas": [
   "agent",
   "automation",
@@ -195,7 +195,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:510, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:519, src/core/approvals.ts:135"
    }
   },
   {
@@ -229,7 +229,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "15 match(es): src/agent/prompt.ts:84, src/agent/status.ts:7, src/cli.ts:30"
+    "detail": "15 match(es): src/agent/prompt.ts:84, src/agent/status.ts:11, src/cli.ts:30"
    }
   },
   {
@@ -280,7 +280,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/loop.ts:361, src/cli.ts:858, src/core/pricing.ts:61"
+    "detail": "7 match(es): src/agent/loop.ts:370, src/cli.ts:859, src/core/pricing.ts:61"
    }
   },
   {
@@ -314,7 +314,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:164"
+    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:165"
    }
   },
   {
@@ -331,7 +331,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:154"
+    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:155"
    }
   },
   {
@@ -348,7 +348,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/sessions.ts:747"
+    "detail": "1 match(es): src/agent/sessions.ts:1060"
    }
   },
   {
@@ -365,7 +365,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:615"
+    "detail": "3 match(es): src/agent/sessions.ts:928"
    }
   },
   {
@@ -382,7 +382,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:123"
+    "detail": "1 match(es): src/cli.ts:124"
    }
   },
   {
@@ -433,7 +433,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:321"
+    "detail": "1 match(es): src/agent/loop.ts:330"
    }
   },
   {
@@ -484,7 +484,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:431, src/agent/sessions.ts:780"
+    "detail": "2 match(es): src/agent/loop.ts:440, src/agent/sessions.ts:1093"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:877, src/cli.ts:949, src/gateway/server.ts:915"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:950, src/gateway/server.ts:915"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "407 match(es): src/agent/dream.ts:147, src/agent/embed-setup.ts:66, src/agent/heartbeat.ts:58"
+    "detail": "408 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -586,7 +586,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/memory.ts:135, src/agent/secrets.ts:40, src/agent/sessions.ts:470"
+    "detail": "9 match(es): src/agent/memory.ts:135, src/agent/secrets.ts:40, src/agent/sessions.ts:682"
    }
   },
   {
@@ -603,7 +603,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/sessions.ts:41"
+    "detail": "8 match(es): src/agent/sessions.ts:253"
    }
   },
   {
@@ -688,7 +688,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/heartbeat.ts:53, src/cli.ts:465, src/core/config.ts:372"
+    "detail": "5 match(es): src/agent/heartbeat.ts:53, src/cli.ts:466, src/core/config.ts:372"
    }
   },
   {
@@ -722,24 +722,24 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:252"
+    "detail": "3 match(es): src/agent/sessions.ts:464"
    }
   },
   {
    "area": "context",
    "capability": "LLM summarisation for compaction",
    "openclaw": "separate compaction model",
-   "verdict": "ABSENT",
-   "evidence": "the digest is extractive (key lines, 200-char slices), not a model-written summary - the history is now preserved, the summary quality is what is still missing",
+   "verdict": "WORKING",
+   "evidence": "SessionStore.compactWithModel() hands the turns leaving the hot window to a configured model (the local tier when present, else the model answering the turn) in bounded chunks; each block records who wrote it, how much it covers and any reason it could not (TCRAB_COMPACT=off, no model, model failure -> the extractive digest); the prompt blurb says \"the earlier N turns are summarised above ... the full transcript is on disk\". Pinned by test/compaction-llm.test.ts 11.1-11.4",
    "probe": {
-    "pattern": "compactionModel|compactWith",
-    "expect": "absent"
+    "pattern": "compactWithModel",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "4 match(es): src/agent/loop.ts:296, src/agent/sessions.ts:747, src/cli.ts:1263"
    }
   },
   {
@@ -807,7 +807,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/dream.ts:47, src/agent/memory.ts:16, src/agent/status.ts:16"
+    "detail": "22 match(es): src/agent/dream.ts:51, src/agent/memory.ts:16, src/agent/status.ts:20"
    }
   },
   {
@@ -824,7 +824,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1248"
+    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1276"
    }
   },
   {
@@ -892,7 +892,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:7, src/agent/embed.ts:8, src/core/config.ts:168"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:168"
    }
   },
   {
@@ -909,7 +909,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "76 match(es): src/agent/dream.ts:16, src/agent/loop.ts:58, src/agent/prompt.ts:19"
+    "detail": "77 match(es): src/agent/dream.ts:3, src/agent/loop.ts:58, src/agent/prompt.ts:19"
    }
   },
   {
@@ -1045,7 +1045,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:65"
+    "detail": "57 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
    }
   },
   {
@@ -1147,7 +1147,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/prompt.ts:180, src/agent/tools.ts:318"
+    "detail": "2 match(es): src/agent/prompt.ts:185, src/agent/tools.ts:318"
    }
   },
   {
@@ -1164,7 +1164,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1044, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:19"
+    "detail": "20 match(es): src/agent/toolbox.ts:1044, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -1610,7 +1610,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "38 match(es): src/agent/dream.ts:145, src/agent/loop.ts:59, src/agent/status.ts:87"
+    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:59, src/agent/status.ts:91"
    }
   },
   {
@@ -1695,7 +1695,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "71 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:42"
+    "detail": "72 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1712,7 +1712,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "73 match(es): src/agent/dream.ts:115, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
+    "detail": "73 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
    }
   },
   {
@@ -1866,7 +1866,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "54 match(es): src/cli.ts:154, src/gateway/server.ts:1206, src/providers/capabilities.ts:148"
+    "detail": "54 match(es): src/cli.ts:155, src/gateway/server.ts:1206, src/providers/capabilities.ts:148"
    }
   },
   {
@@ -1900,7 +1900,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/channels/signal.ts:28, src/cli.ts:84"
+    "detail": "11 match(es): src/channels/signal.ts:28, src/cli.ts:85"
    }
   },
   {
@@ -2053,7 +2053,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "12 match(es): src/agent/prompt.ts:185, src/agent/secrets.ts:16, src/agent/toolbox.ts:39"
+    "detail": "12 match(es): src/agent/prompt.ts:190, src/agent/secrets.ts:16, src/agent/toolbox.ts:39"
    }
   },
   {
@@ -2070,7 +2070,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1044, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:19"
+    "detail": "20 match(es): src/agent/toolbox.ts:1044, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2105,7 +2105,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/status.ts:129, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
+    "detail": "21 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
    }
   },
   {
@@ -2173,7 +2173,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "436 match(es): src/agent/ask.ts:14, src/agent/dream.ts:27, src/agent/embed-setup.ts:18"
+    "detail": "445 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "17 match(es): src/cli.ts:24, src/gateway/server.ts:2027, src/mobile/boot.ts:26"
+    "detail": "17 match(es): src/cli.ts:24, src/gateway/server.ts:2029, src/mobile/boot.ts:26"
    }
   },
   {
@@ -2292,7 +2292,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/agent/dream.ts:61, src/agent/heartbeat.ts:34, src/agent/status.ts:65"
+    "detail": "57 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
    }
   },
   {
@@ -2326,7 +2326,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/status.ts:129, src/agent/tools.ts:561, src/channels/whatsapp.ts:234"
+    "detail": "21 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
    }
   },
   {
@@ -2465,7 +2465,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/dream.ts:4, src/agent/embed-setup.ts:6, src/agent/embed.ts:3"
+    "detail": "22 match(es): src/agent/dream.ts:8, src/agent/embed-setup.ts:10, src/agent/embed.ts:3"
    }
   },
   {
@@ -2540,7 +2540,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "58 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/approvals.test.ts:15"
+    "detail": "59 match(es): test/agents.test.ts:1, test/api.test.ts:1, test/approvals.test.ts:15"
    }
   },
   {
@@ -2586,18 +2586,18 @@
    "area": "ops",
    "capability": "Docs that match the code",
    "openclaw": "generated docs map, tested examples",
-   "verdict": "PARTIAL",
-   "evidence": "docs/ARCHITECTURE.md used to list files that did not exist (gemini.ts, anthropic.ts, ollama.ts); the tree now names the real providers, and test/docs-map.test.ts fails if any .ts file named in ARCHITECTURE.md or API.md is missing from the repo. Not generated, so the row is PARTIAL, not WORKING",
+   "verdict": "WORKING",
+   "evidence": "the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist",
    "probe": {
     "file": "docs/ARCHITECTURE.md",
     "pattern": {},
-    "expect": "absent"
+    "expect": "present"
    },
-   "effort": 1,
+   "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): docs/ARCHITECTURE.md:82"
    }
   }
  ]

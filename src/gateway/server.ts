@@ -51,7 +51,7 @@ import { SlackChannel } from '../channels/slack.js';
 import { SignalChannel } from '../channels/signal.js';
 import { SmsChannel } from '../channels/sms.js';
 import { MatrixChannel } from '../channels/matrix.js';
-import { QueueFullError, QueuedTurn, SessionQueue, SessionStore } from '../agent/sessions.js';
+import { lastDigestSummary, QueueFullError, QueuedTurn, SessionQueue, SessionStore } from '../agent/sessions.js';
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
@@ -1690,6 +1690,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             agents: listAgents(),
             queue: agentQueue.stats(),
             disk: { ...diskUsage(), budgetBytes: diskBudgetBytes(config), keepDays: diskKeepDays(config) },
+            // The newest compaction summary anywhere in this home.
+            digest: lastDigestSummary(),
             configPath: configPath(),
             termux: isTermux(),
           });

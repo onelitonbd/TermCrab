@@ -67,6 +67,7 @@ Everyday extras:
   termcrab say <text>                speak text aloud
   termcrab wake                      voice mode: say the keyword, then say your command
   termcrab memory [show|search ...]  look inside memory
+  termcrab memory compact <session>  summarise an old chat with the model (the full transcript stays on disk)
   termcrab skills [list|import|new]  add extra abilities (skill folders, git repos)
   termcrab sessions [ls|export|purge|rename]  manage chats: save one as text, clean old ones
   termcrab agents new <name> --template brief|teacher|researcher   starter personality
@@ -1243,6 +1244,33 @@ export async function main(argv: string[]): Promise<void> {
         const hits = await memory.search(q);
         if (!hits.length) console.log('no matches');
         else for (const h of hits) console.log(`[${h.file}] ${h.line}`);
+        return;
+      }
+      if (sub === 'compact') {
+        const id = queryParts[0];
+        if (!id) {
+          console.error('usage: termcrab memory compact <session>   (list sessions: termcrab sessions ls)');
+          process.exitCode = 1;
+          return;
+        }
+        const ctx = await makeAgentCtx();
+        let provider;
+        try {
+          provider = resolveProvider(ctx.config.provider);
+        } catch {
+          provider = undefined;
+        }
+        const res = await ctx.sessions.compactWithModel(id, ctx.config.agent.compactThreshold || 60, {
+          provider: ctx.localProvider ?? provider,
+        });
+        if (!res.digest) {
+          console.log(`nothing to compact in ${id} (the hot window is already small enough)`);
+          return;
+        }
+        const engine = res.model ? `model ${res.model}` : res.by;
+        console.log(`🗜️  ${id}: ${res.covered} turn(s) summarised by ${engine} → ${res.digestFile}`);
+        if (res.note) console.log(`   note: ${res.note}`);
+        console.log('   the full transcript stays on disk; the model now sees the summary, not those turns.');
         return;
       }
       const shown = memory.readForPrompt(8000);

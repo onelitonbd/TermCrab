@@ -27,6 +27,218 @@ const KEEP = 80;
 /** Overflow moves here instead of being deleted (full history stays on disk). */
 const ARCHIVE_SUFFIX = '.archive.jsonl';
 
+/** Who wrote a digest block. */
+export type DigestEngine = 'extractive' | 'model';
+
+/**
+ * The instruction the summariser model gets. Deliberately narrow: a summary that
+ * invents structure is worse than the extractive digest it replaces, and this is
+ * the whole prompt the model sees (the conversation follows as the user message).
+ */
+const SUMMARY_SYSTEM = [
+  'You are compacting a long conversation so a small on-device agent can keep working.',
+  'Summarise the messages below: what the user wanted, decisions made, facts, names, numbers,',
+  'open questions, and anything they asked to remember.',
+  'Be concise and factual. Plain text only: no preamble, no headings, under 200 words.',
+].join(' ');
+
+export interface CompactOpts {
+  /** The model to write the summary. Without one the extractive digest is used. */
+  provider?: import('../providers/types.js').Provider;
+  /** Characters of conversation per model call (default 4000). */
+  chunkChars?: number;
+  /** Never make more than this many model calls (default 4). */
+  maxChunks?: number;
+  timeoutMs?: number;
+}
+
+export interface CompactResult {
+  /** '' when there was nothing to compact. */
+  digest: string;
+  by: DigestEngine;
+  model?: string;
+  /** Entries this digest stands in for (they moved out of the hot window). */
+  covered: number;
+  /** Model calls made. */
+  chunks: number;
+  /** Why it is extractive, or what was capped — surfaced, never hidden. */
+  note?: string;
+  digestFile: string;
+}
+
+export interface DigestBlock {
+  at: string;
+  by: DigestEngine | '';
+  model?: string;
+  covered: number;
+  note?: string;
+  body: string;
+}
+
+export interface DigestView {
+  /** The text to inject into the prompt (capped). */
+  text: string;
+  by: DigestEngine | '';
+  model?: string;
+  /** Blocks included in `text` / blocks on disk. */
+  blocks: number;
+  totalBlocks: number;
+  /** Entries covered by the included blocks / by every block. */
+  coveredTurns: number;
+  totalCoveredTurns: number;
+}
+
+export interface DigestSummary {
+  session: string;
+  at: string;
+  by: DigestEngine | '';
+  model?: string;
+  /** Turns the newest block stands in for. */
+  coveredTurns: number;
+  note?: string;
+  /** Digest blocks on disk for that session. */
+  blocks: number;
+  file: string;
+}
+
+/** One transcript line rendered the way a person (or a summariser) reads it. */
+function renderEntry(line: string): string | null {
+  try {
+    const entry = JSON.parse(line) as { role?: string; content?: string; name?: string; result?: string };
+    if (entry.role === 'user' && entry.content) return `User: ${entry.content.slice(0, 400)}`;
+    if (entry.role === 'assistant' && entry.content) return `Assistant: ${entry.content.slice(0, 400)}`;
+    if (entry.role === 'tool' && entry.name) return `Tool(${entry.name}): ${String(entry.result ?? '').slice(0, 200)}`;
+    if (entry.role === 'system' && entry.content) return `System: ${entry.content.slice(0, 200)}`;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Split rendered lines into chunks of at most `chunkChars` characters. */
+function chunkLines(lines: string[], chunkChars: number): string[][] {
+  const groups: string[][] = [];
+  let current: string[] = [];
+  let size = 0;
+  for (const line of lines) {
+    if (current.length && size + line.length + 1 > chunkChars) {
+      groups.push(current);
+      current = [];
+      size = 0;
+    }
+    current.push(line);
+    size += line.length + 1;
+  }
+  if (current.length) groups.push(current);
+  return groups;
+}
+
+/** Parse a `memory/compacted/<session>.md` file into its blocks (oldest first). */
+export function parseDigestFile(text: string): DigestBlock[] {
+  const out: DigestBlock[] = [];
+  const parts = text.split(/(?:^|\n)## Compacted /).filter((part) => part.trim());
+  for (const part of parts) {
+    const nl = part.indexOf('\n');
+    const header = (nl >= 0 ? part.slice(0, nl) : part).trim();
+    const body = (nl >= 0 ? part.slice(nl + 1) : '').trim();
+    const m = /^(.+?)(?: \((\d+) turns, by (extractive|model)(?: ([^)—)]+?))?(?: — ([^)]*))?\))?$/.exec(header);
+    if (!m) continue;
+    out.push({
+      at: m[1]!.trim(),
+      by: (m[3] as DigestEngine | undefined) ?? '',
+      model: m[4]?.trim(),
+      covered: m[2] ? Number(m[2]) : 0,
+      note: m[5]?.trim(),
+      body,
+    });
+  }
+  return out;
+}
+
+/**
+ * The digest as the prompt should see it: the newest blocks that fit `maxChars`,
+ * plus what they cover — so the model knows it is reading a summary of N turns
+ * rather than those turns, and that the originals are still on disk.
+ */
+export function readDigest(sessionId: string, maxChars = 1200): DigestView {
+  const file = digestFileFor(sessionId);
+  let blocks: DigestBlock[] = [];
+  try {
+    blocks = parseDigestFile(fs.readFileSync(file, 'utf8'));
+  } catch {
+    blocks = [];
+  }
+  const chosen: DigestBlock[] = [];
+  let size = 0;
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const block = blocks[i]!;
+    const add = (chosen.length ? 2 : 0) + block.body.length;
+    if (chosen.length && size + add > maxChars) break;
+    chosen.unshift(block);
+    size += add;
+  }
+  const newest = chosen[chosen.length - 1];
+  let text = chosen.map((b) => b.body).join('\n\n');
+  if (text.length > maxChars) text = text.slice(text.length - maxChars);
+  return {
+    text,
+    by: newest?.by ?? '',
+    model: newest?.model,
+    blocks: chosen.length,
+    totalBlocks: blocks.length,
+    coveredTurns: chosen.reduce((n, b) => n + b.covered, 0),
+    totalCoveredTurns: blocks.reduce((n, b) => n + b.covered, 0),
+  };
+}
+
+/** The newest digest anywhere in this home (for `/api/status`). */
+export function lastDigestSummary(): DigestSummary | null {
+  const dir = path.join(home(), 'memory', 'compacted');
+  let best: { file: string; mtime: number } | null = null;
+  try {
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith('.md')) continue;
+      const full = path.join(dir, name);
+      let mtime = 0;
+      try {
+        mtime = fs.statSync(full).mtimeMs;
+      } catch {
+        continue;
+      }
+      if (!best || mtime > best.mtime) best = { file: full, mtime };
+    }
+  } catch {
+    return null;
+  }
+  if (!best) return null;
+  const blocks = parseDigestFile(safeRead(best.file));
+  const newest = blocks[blocks.length - 1];
+  if (!newest) return null;
+  return {
+    session: path.basename(best.file, '.md'),
+    at: newest.at,
+    by: newest.by,
+    model: newest.model,
+    coveredTurns: newest.covered,
+    note: newest.note,
+    blocks: blocks.length,
+    file: best.file,
+  };
+}
+
+function safeRead(file: string): string {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+/** One file per session, newest block last: memory/compacted/<session>.md */
+function digestFileFor(sessionId: string): string {
+  return path.join(home(), 'memory', 'compacted', `${sanitizeSessionId(sessionId)}.md`);
+}
+
 export function sanitizeSessionId(id: string): string {
   const clean = id.replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, 64);
   return clean || 'default';
@@ -479,30 +691,131 @@ export class SessionStore {
    * disk (read() sees archive + live), the digest is what the model reads.
    * Returns the summary text (or empty string if no compaction was needed).
    */
-  compact(sessionId: string, maxEntries = 60): string {
-    const f = this.file(sessionId);
-    if (!fs.existsSync(f)) return '';
-    const lines = fs.readFileSync(f, 'utf8').split('\n').filter((l) => l.trim());
-    if (lines.length <= maxEntries + 10) return '';
+  /** Where this session's digest blocks live (one file per session, newest last). */
+  private digestFile(sessionId: string): string {
+    return digestFileFor(sessionId);
+  }
 
-    const overflowCount = lines.length - maxEntries;
-    const overflow = lines.slice(0, overflowCount);
+  /**
+   * The lines that should leave the hot window and are not already covered by a
+   * digest: everything older than the newest `maxEntries` entries of the whole
+   * transcript (archive + hot file), minus what earlier digests stand in for.
+   * So compaction is incremental and never summarises the same turn twice.
+   */
+  private readOverflow(sessionId: string, maxEntries: number): string[] | null {
+    const lines: string[] = [];
+    for (const f of [this.archiveFile(sessionId), this.file(sessionId)]) {
+      if (!fs.existsSync(f)) continue;
+      for (const line of fs.readFileSync(f, 'utf8').split('\n')) if (line.trim()) lines.push(line);
+    }
+    if (!lines.length) return null;
+    let already = 0;
+    try {
+      for (const block of parseDigestFile(fs.readFileSync(this.digestFile(sessionId), 'utf8'))) already += block.covered;
+    } catch {
+      already = 0; // no digest yet
+    }
+    const overflow = lines.slice(already, Math.max(already, lines.length - maxEntries));
+    if (overflow.length <= 10) return null;
+    return overflow;
+  }
 
-    // Build a simple digest of the overflow (no LLM needed — just extract key lines).
-    const digest = this.buildDigest(overflow, sessionId);
-
-    // Write digest to memory/compacted/<sessionId>.md
-    const compactedDir = path.join(home(), 'memory', 'compacted');
-    fs.mkdirSync(compactedDir, { recursive: true });
-    const digestFile = path.join(compactedDir, `${sanitizeSessionId(sessionId)}.md`);
+  /** Write the digest block and move the overflow out of the hot window. */
+  private commitCompact(
+    sessionId: string,
+    covered: number,
+    maxEntries: number,
+    body: string,
+    meta: { by: DigestEngine; model?: string; note?: string },
+  ): void {
+    const digestFile = this.digestFile(sessionId);
+    fs.mkdirSync(path.dirname(digestFile), { recursive: true });
     const timestamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
-    const digestEntry = `\n\n## Compacted ${timestamp}\n${digest}\n`;
-    fs.appendFileSync(digestFile, digestEntry, 'utf8');
-
-    // Shrink the *hot* window; the lines live on in the archive file.
+    const engine = `by ${meta.by}${meta.model ? ` ${meta.model}` : ''}`;
+    const note = meta.note ? ` — ${meta.note}` : '';
+    fs.appendFileSync(
+      digestFile,
+      `\n\n## Compacted ${timestamp} (${covered} turns, ${engine}${note})\n${body}\n`,
+      'utf8',
+    );
+    // Nothing is deleted: the lines move to the archive and stay readable.
     this.archiveOverflow(sessionId, maxEntries);
+  }
 
-    return digest;
+  /**
+   * The extractive digest only — for callers that cannot await a model. The agent
+   * loop uses compactWithModel(), so a configured model does the writing.
+   */
+  compact(sessionId: string, maxEntries = 60): string {
+    const overflow = this.readOverflow(sessionId, maxEntries);
+    if (!overflow) return '';
+    const body = this.buildDigest(overflow, sessionId);
+    this.commitCompact(sessionId, overflow.length, maxEntries, body, { by: 'extractive' });
+    return body;
+  }
+
+  /**
+   * Compact with the best engine available. A configured model summarises the
+   * turns leaving the hot window in bounded chunks; the deterministic extractive
+   * digest is the documented fallback when there is no model or the model fails.
+   * Either way the block records who wrote it and why, and the transcript is only
+   * moved — never deleted.
+   */
+  async compactWithModel(sessionId: string, maxEntries = 60, opts: CompactOpts = {}): Promise<CompactResult> {
+    const digestFile = this.digestFile(sessionId);
+    const overflow = this.readOverflow(sessionId, maxEntries);
+    if (!overflow) {
+      return { digest: '', by: 'extractive', covered: 0, chunks: 0, digestFile, note: 'nothing to compact' };
+    }
+    const rendered = overflow.map(renderEntry).filter((l): l is string => l !== null);
+
+    let by: DigestEngine = 'extractive';
+    let model: string | undefined;
+    let note: string | undefined;
+    let chunks = 0;
+    let body = '';
+
+    if (process.env.TCRAB_COMPACT === 'off') {
+      // A kill switch for a phone on a metered connection: never call out.
+      note = 'TCRAB_COMPACT=off';
+    } else if (opts.provider && rendered.length) {
+      const chunkChars = Math.max(400, opts.chunkChars ?? 4000);
+      const maxChunks = Math.max(1, opts.maxChunks ?? 4);
+      const groups = chunkLines(rendered, chunkChars);
+      try {
+        const parts: string[] = [];
+        for (const group of groups.slice(0, maxChunks)) {
+          const res = await opts.provider.chat(
+            { system: SUMMARY_SYSTEM, messages: [{ role: 'user', content: group.join('\n') }], tools: [] },
+            { signal: AbortSignal.timeout(Math.max(1000, opts.timeoutMs ?? 45_000)) },
+          );
+          const text = (res.text ?? '').trim();
+          if (!text) throw new Error('the summariser returned no text');
+          parts.push(text);
+          chunks++;
+        }
+        by = 'model';
+        model = opts.provider.model;
+        body = parts.join('\n');
+        const skipped = groups.slice(maxChunks).reduce((n, group) => n + group.length, 0);
+        if (skipped > 0) {
+          note = `only the first ${maxChunks} of ${groups.length} chunks were summarised`;
+          body += `\n\n(${skipped} older turn(s) are not summarised here — the full transcript is on disk.)`;
+        }
+      } catch (err) {
+        // The extractive digest is not a degraded fallback: it is the guarantee.
+        by = 'extractive';
+        model = undefined;
+        chunks = 0;
+        note = `model failed: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    } else {
+      note = 'no model configured';
+    }
+
+    if (!body.trim()) body = this.buildDigest(overflow, sessionId);
+    this.commitCompact(sessionId, overflow.length, maxEntries, body, { by, model, note });
+    return { digest: body, by, model, covered: overflow.length, chunks, note, digestFile };
   }
 
   /**

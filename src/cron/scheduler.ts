@@ -1,3 +1,6 @@
+/**
+ * Cron scheduler: ticks once a minute and runs due jobs through the session lane.
+ */
 import { log } from '../core/logger.js';
 import { bus, BusEvent } from '../gateway/events.js';
 import { AgentCtx, runQueuedTurn } from '../agent/loop.js';

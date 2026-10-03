@@ -5,7 +5,7 @@ import { Config } from '../core/config.js';
 import { workspaceDir } from '../core/paths.js';
 import { isLikelyAndroid } from '../mobile/bionic.js';
 import { MemoryStore } from './memory.js';
-import { latestDigest } from './sessions.js';
+import { readDigest } from './sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { listIntents } from './intents.js';
 import { listGoals } from './goals.js';
@@ -144,10 +144,15 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   // Newest facts first (see MemoryStore.readForPrompt) — the old head-only read
   // meant a fact written today could never reach the prompt.
   const memory = ctx.memory.readForPrompt(ctx.config.agent.memoryBudget ?? 3000).text;
-  const digest = ctx.sessionId ? latestDigest(ctx.sessionId, 1200) : '';
-  const digestBlurb = digest
-    ? `\n# Earlier in this conversation (compacted)\n${digest}\n`
-    : '';
+  const digest = ctx.sessionId ? readDigest(ctx.sessionId, 1200) : null;
+  // Never let the model mistake a summary for the turns themselves: the blurb
+  // says who wrote it, how much it covers, and where the originals are.
+  const engine = digest?.by ? `Written by ${digest.by}${digest.model ? ` ${digest.model}` : ''}.\n` : '';
+  const digestBlurb =
+    digest?.text
+      ? `\n# Earlier in this conversation (compacted)\n${engine}${digest.text}\n\n` +
+        `(the earlier ${digest.totalCoveredTurns} turns are summarised above — showing ${digest.blocks} of ${digest.totalBlocks} block(s); the full transcript is on disk)\n`
+      : '';
   const skills = ctx.skills.promptIndex();
   const { name, soul } = readSoul(ctx.agentName);
   const displayName = ctx.agentName ? name : ctx.config.agent.name || name;

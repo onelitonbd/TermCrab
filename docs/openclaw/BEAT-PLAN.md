@@ -57,8 +57,9 @@
 | T1.3 | স্মৃতি যা ভোলে না (batch 7) | Memory bootstrap · Compaction | ~6d | test: আজকের লেখা fact কালকের প্রম্পটে; compaction কিছু মুছে না |
 | T1.4 | Transcript fencing (batch 8) | Transcript write fencing | ~3d | test: দুই writer → দ্বিতীয়টা আটকায় |
 | T1.5 | Usage/token হিসাব (batch 9 ✔ 2026-10-03) | Token accounting | ~3d | test: রান টোকেন সংখ্যা রিপোর্ট করে, প্যানেলে দেখায় — `test/usage.test.ts`, প্রতি টার্নে ফুটার, `termcrab usage` |
+| T1.6 | মডেল-লেখা compaction + generated docs map (batch 11 ✔ 2026-10-03) | LLM summarisation for compaction · Docs that match the code | ~4d | test: মডেল digest লিখল না extractor — `test/compaction-llm.test.ts` 11.1–11.4; ডক ট্রি ডিস্ক থেকে জেনারেট — `scripts/docs-map.mjs --check` suite-এর ভিতরে (census core lane now ~0d) |
 
-**সাব-টোটাল: ~২৭ দিন → core lane খালি, BROKEN ≤ ১।**
+**সাব-টোটাল: ~৩১ দিন → core lane খালি (batch 11-এ শেষ, ২০২৬-১০-০৩), BROKEN ০, drift ০।**
 
 ### Tier 2 — ফোন-নেটিভ জয় (১৪টা BETTER এখানেই; এটাই মোত)
 
@@ -105,7 +106,7 @@
 | Phase | কত দিন | কী | কোন সারি বদলায় |
 |---|---|---|---|
 | **A** | ~২ সপ্তাহ | batch 5 (কিউ) ✔ — BROKEN **7→4**, drift 0 (২০২৬-১০-০৩) + Tier 0-র ৭টা ছোট ফ্লিপ | BROKEN ≤4 · WORKING +7 |
-| **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals · 7 ✔ স্মৃতি · 8 ✔ write fencing · 9 ✔ usage · **10 ✔ Tier-0 sweep (৭/৭)** — সব ২০২৬-১০-০৩ | **BROKEN 0**, core lane ~৪ দিন বাকি (model-written compaction ~৩ দিন + docs সারি ~১ দিন — batch 11) |
+| **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals · 7 ✔ স্মৃতি · 8 ✔ write fencing · 9 ✔ usage · 10 ✔ Tier-0 sweep (৭/৭) · **11 ✔ মডেল-লেখা compaction + generated docs map** — সব ২০২৬-১০-০৩ | **BROKEN 0, drift 0, core lane ~০ দিন** (census: WORKING 41, score 53%) |
 | **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোত-দাবির টেস্ট + মাপা সংখ্যা (T3.1–T3.4) | BETTER 14 → ~22, দাবিগুলো প্রমাণিত |
 | **D** | ~৩ সপ্তাহ | Tier 0-র বাকি + যেসব PARTIAL ফ্লিপ করা সস্তা (চ্যানেল: Discord/Slack/Signal/SMS/Matrix ~২দিন করে) | BETTER ~25, PARTIAL কমতে থাকে |
 

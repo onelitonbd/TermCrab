@@ -272,16 +272,6 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
   const providerName = providerLabel(ctx.config);
   startRun(runId, sessionId, providerName, ctx.config.provider.model);
 
-  // Compact session if it grew past the threshold (keeps context lean on mobile)
-  const threshold = ctx.config.agent.compactThreshold || 60;
-  const sessionSize = ctx.sessions.list().find((s) => s.id === sessionId)?.messages ?? 0;
-  if (sessionSize > threshold + 10) {
-    const digest = ctx.sessions.compact(sessionId, threshold);
-    if (digest) {
-      log.info(`session ${sessionId} compacted (${sessionSize} -> ${threshold} entries)`);
-    }
-  }
-
   // Resolve provider: local tier > failover chain > single provider
   let provider: Provider;
   if (opts.tier === 'local' && ctx.localProvider) {
@@ -294,6 +284,25 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     provider = resolveProvider(ctx.config.provider, ctx.fetchImpl);
   }
   const meterProvider = { name: provider.name, model: provider.model };
+
+  // Compact if the session grew past the threshold (keeps context lean on a
+  // phone). The turns leaving the hot window are summarised — by the local model
+  // when one is configured, else by the model answering this turn, else by the
+  // extractive digest — and the full transcript stays on disk. The newest
+  // messages (including this turn's) always stay in the hot window.
+  const threshold = ctx.config.agent.compactThreshold || 60;
+  const sessionSize = ctx.sessions.list().find((s) => s.id === sessionId)?.messages ?? 0;
+  if (sessionSize > threshold + 10) {
+    const compact = await ctx.sessions.compactWithModel(sessionId, threshold, {
+      provider: ctx.localProvider ?? provider,
+    });
+    if (compact.digest) {
+      log.info(
+        `session ${sessionId} compacted (${sessionSize} -> ${threshold} entries) by ${compact.by}` +
+          `${compact.model ? ` ${compact.model}` : ''}${compact.note ? ` (${compact.note})` : ''}`,
+      );
+    }
+  }
   const toolEnv: ToolEnv = {
     config: ctx.config,
     memory: ctx.memory,

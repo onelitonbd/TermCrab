@@ -1,3 +1,7 @@
+/**
+ * `termcrab status`: live state from the running gateway, with a disk-read
+ * fallback when the panel is down.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { Config } from '../core/config.js';

@@ -1,3 +1,6 @@
+/**
+ * Import an existing OpenClaw install (config, memory, sessions) into ~/.termcrab.
+ */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

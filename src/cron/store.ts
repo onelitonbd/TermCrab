@@ -1,3 +1,6 @@
+/**
+ * Cron job store (crons.json): load/save/add/remove + next-run bookkeeping.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
