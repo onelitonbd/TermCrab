@@ -427,6 +427,9 @@ check('mobile', 'Native GUI / foreground service', 'desktop apps + node apps', '
   'no companion app; a persistent notification is the closest', { pattern: 'foreground service', expect: 'absent' }, 20);
 
 // ------------------------------------------------------------ 15. ops / docs
+check('ops', 'Install is download-only (no silent build)', 'n/a', 'WORKING',
+  'package.json has no `prepare`/`postinstall`; the TypeScript compile is an explicit, visible `npm run build` (measured: 0.5s install, 3.0s build vs 4.5s combined)',
+  { file: 'package.json', pattern: /"(prepare|postinstall)"/, expect: 'absent' }, 0, 'core');
 check('ops', 'Installer', 'curl install.sh + Docker + Nix + Fly', 'PARTIAL',
   'install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths',
   { paths: ['install.sh'], expect: 'present' }, 2);

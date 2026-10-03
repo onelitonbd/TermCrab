@@ -90,8 +90,15 @@ fi
 
 # --- build ------------------------------------------------------------
 cd "$DEST"
-say "installing dev dependencies + build..."
+# Two explicit steps on purpose. `npm install` used to run the TypeScript
+# compile through a "prepare" lifecycle script, which made it look like the
+# install had hung: it downloads three small dev packages in under a second,
+# then prints nothing while tsc runs (minutes on a phone).
+say "step 1 of 2: installing TypeScript (3 small dev packages, no runtime deps)..."
 npm install --no-fund --no-audit
+say "step 2 of 2: compiling TypeScript - this is the slow part on a phone"
+say "(1-3 minutes; it prints nothing until it is done, that is normal)..."
+npm run build
 
 # --- shim -------------------------------------------------------------
 write_shim() {

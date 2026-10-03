@@ -47,7 +47,8 @@ pkg install nodejs-lts git -y
 
 git clone https://github.com/onelitonbd/claw.git
 cd claw
-npm install          # installs TypeScript + builds
+npm install          # 3 dev packages, no runtime deps: under a second
+npm run build        # compiles TypeScript - 1-3 minutes on a phone, silent while it runs
 npm test             # (optional) run the test suite
 
 node dist/src/bin/termcrab.js onboard     # interactive wizard
@@ -63,7 +64,8 @@ curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw
 ### Anywhere (macOS / Linux / CI)
 
 ```bash
-npm install && npm run build
+npm install          # fast: three dev packages, no runtime dependencies
+npm run build        # compiles TypeScript (~5s on a laptop)
 node dist/src/bin/termcrab.js onboard --non-interactive --provider mock --name Crabby
 node dist/src/bin/termcrab.js agent "hello!"        # works fully offline (mock provider)
 ```

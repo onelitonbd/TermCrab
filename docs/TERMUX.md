@@ -15,7 +15,8 @@ pkg update && pkg upgrade -y
 pkg install nodejs-lts git -y     # Node >= 20.10 required (22 LTS fine)
 git clone https://github.com/onelitonbd/claw.git
 cd claw
-npm install
+npm install          # fast
+npm run build        # the slow step on a phone: 1-3 min, silent while it runs
 node dist/src/bin/termcrab.js onboard
 ```
 

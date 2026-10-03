@@ -337,8 +337,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }, 500); // debounce: wait for file writes to settle
     configReloadTimer.unref();
   };
+  // Captured (not fire-and-forget) so stop() can close it. A discarded
+  // fs.watch keeps the event loop alive forever: `termcrab gateway` in a test
+  // never exits, and every start/stop cycle leaks one watcher in production.
+  let cfgFileWatcher: fs.FSWatcher | undefined;
   if (fs.existsSync(configFile)) {
-    fs.watch(configFile, () => scheduleConfigReload());
+    cfgFileWatcher = fs.watch(configFile, () => scheduleConfigReload());
+    cfgFileWatcher.unref();
   }
 
   // ---- MCP servers (stdio JSON-RPC) ----
@@ -1868,6 +1873,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
       }, 120);
     });
+    cfgWatcher.unref(); // never keep the process alive on its own
   } catch {
     /* config file does not exist yet — nothing to watch */
   }
@@ -1919,6 +1925,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     port,
     agent,
     stop: async () => {
+      if (cfgFileWatcher) cfgFileWatcher.close();
       if (cfgWatcher) cfgWatcher.close();
       if (cfgWatchTimer) clearTimeout(cfgWatchTimer);
       stopHeartbeat();

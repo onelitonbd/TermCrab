@@ -38,7 +38,8 @@ undo that restores "nobody saw it".
 
 ```bash
 npm install          # dev deps only (TypeScript) — zero runtime deps by design
-npm run build        # compile to dist/
+npm run build        # compile src/ to dist/ (~3s)
+npm run build:test   # compile src/ + test/ when you need the test suite
 npm test             # full suite (node --test)
 ```
 
@@ -48,6 +49,10 @@ House rules:
   (embeddings, whisper, WhatsApp) load their packages dynamically and degrade
   with a friendly message when missing.
 - Every behavior change ships with a test in `test/`.
+- **Never add a `prepare` or `postinstall` script.** Lifecycle scripts make
+  `npm install` run silently for minutes on a phone, which reads as a hang.
+  Packaging builds go in `prepack`; the user runs `npm run build` explicitly.
+  `scripts/census.mjs` fails on this, so it cannot come back by accident.
 - User-facing strings are sentences a non-coder understands; errors always
   include a next step.
 - Never print secrets (mask as `sk•••12` style).
