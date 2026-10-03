@@ -74,12 +74,13 @@ Both scripts take their inputs from the working tree, so a run after any code ch
 | Words of OpenClaw documentation reviewed | 2.49 M |
 | Fenced code blocks catalogued | 5,249 |
 | TermCrab capabilities tracked by census | **150** (15 areas) |
-| TermCrab capability score | **70%** (44% when this study was written) |
+| TermCrab capability score | **72%** of in-scope work (44% when this study was written) |
 | … of which **broken** (code exists, nothing calls it) | **0** |
 | … where TermCrab is ahead of OpenClaw | 14 |
+| … deliberately **out of scope** (measured, not counted, reason per row) | **10** — six extra channel adapters, the never-to-be-written 25+ channels, the channel-plugin interface, and the native desktop/mobile apps (user decision: telegram + web + terminal only) |
 | Effort left in the core lane | **~0 days** (was ~40) |
-| Effort left in the parity lane | ~240 days |
-| Effort left in the later lane (deliberately deferred) | ~164 days |
+| Effort left in the parity lane | ~164 days |
+| Effort left in the later lane (deliberately deferred) | ~124 days |
 
 ## The three rules that keep this honest
 

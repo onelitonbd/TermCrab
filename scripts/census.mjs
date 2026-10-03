@@ -91,8 +91,30 @@ function countMatches(needle, files = SRC_FILES) {
 //           used to compute the honest distance-to-parity in ROADMAP.md.
 
 const C = [];
-const check = (area, capability, openclaw, verdict, evidence, probe = null, effort = 0, lane = 'parity') =>
-  C.push({ area, capability, openclaw, verdict, evidence, probe, effort, lane });
+/**
+ * `lane` is still a string for the old call sites, but an options object is
+ * accepted too: `{ lane, scope: 'out', why }`. A row marked `scope: 'out'` is
+ * still measured and still shown — it just stops counting towards the score,
+ * because the project has decided not to build it. The decision has to be
+ * visible, with its reason, or the score would look like a lie to anyone
+ * reading the table (2026-10-03: the user chose three surfaces — telegram, web,
+ * terminal — so five extra channels and the native apps are out).
+ */
+const check = (area, capability, openclaw, verdict, evidence, probe = null, effort = 0, lane = 'parity') => {
+  const opts = typeof lane === 'object' && lane !== null ? lane : { lane };
+  C.push({
+    area,
+    capability,
+    openclaw,
+    verdict,
+    evidence,
+    probe,
+    effort,
+    lane: opts.lane ?? 'parity',
+    scope: opts.scope ?? 'in',
+    why: opts.why ?? '',
+  });
+};
 
 // ---------------------------------------------------------------- 1. gateway
 check('gateway', 'HTTP API + event stream', 'typed WS protocol on :18789', 'WORKING',
@@ -291,7 +313,7 @@ check('skills', 'OpenClaw compatibility', 'n/a', 'BETTER',
 check('plugins', 'Plugin API + lifecycle', '164 extensions, typed SDK, hot reload', 'ABSENT',
   'packages/plugin-sdk/index.ts is a stub; no loader', { pattern: 'registerPlugin|loadPlugin', expect: 'absent' }, 15);
 check('plugins', 'Channel plugin interface', 'external channel packages', 'ABSENT',
-  'channels are compiled in (src/gateway/server.ts:37-48)', { pattern: 'channelPlugin', expect: 'absent' }, 8);
+  'channels are compiled in (src/gateway/server.ts:37-48)', { pattern: 'channelPlugin', expect: 'absent' }, 8, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('plugins', 'Provider plugin interface', '35+ model providers as packages', 'ABSENT',
   'one OpenAI-compatible client with host presets (src/providers/index.ts:10)', { pattern: 'providerPlugin', expect: 'absent' }, 6);
 check('plugins', 'Plugin manifest + permissions', 'manifest, allowlists, install policy', 'ABSENT',
@@ -301,24 +323,24 @@ check('plugins', 'Plugin manifest + permissions', 'manifest, allowlists, install
 check('channels', 'Telegram', 'grammY bot + groups + topics', 'WORKING',
   'src/channels/telegram.ts long-poll, allowlist, chunking, outbox', { pattern: /getUpdates|sendMessage/, expect: 'present' }, 1);
 check('channels', 'WhatsApp', 'Baileys QR pairing', 'PARTIAL',
-  'src/channels/whatsapp.ts optional Baileys (npm install baileys)', { pattern: /baileys/i, expect: 'present' }, 3);
+  'src/channels/whatsapp.ts optional Baileys (npm install baileys)', { pattern: /baileys/i, expect: 'present' }, 3, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Discord', 'official plugin', 'WORKING',
   'src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5',
-  { pattern: 'DiscordChannel', expect: 'present' }, 0);
+  { pattern: 'DiscordChannel', expect: 'present' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Slack', 'official plugin', 'WORKING',
   'src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5',
-  { pattern: 'SlackChannel', expect: 'present' }, 0);
+  { pattern: 'SlackChannel', expect: 'present' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Signal', 'signal-cli bridge', 'WORKING',
   'src/channels/signal.ts parses signal-cli --json envelopes line by line, routes to the agent, sends with signal-cli send and queues failures; both spawn and send are injectable. test/adapters.test.ts 13.5',
-  { pattern: 'SignalChannel', expect: 'present' }, 0);
+  { pattern: 'SignalChannel', expect: 'present' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'SMS / MMS', 'Twilio plugin', 'WORKING',
   'src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope',
-  { pattern: 'SmsChannel', expect: 'present' }, 0);
+  { pattern: 'SmsChannel', expect: 'present' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Matrix', 'official plugin', 'WORKING',
   'src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5',
-  { pattern: 'MatrixChannel', expect: 'present' }, 0);
+  { pattern: 'MatrixChannel', expect: 'present' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'iMessage / Teams / Google Chat / LINE / Feishu / IRC…', '25+ further channels', 'ABSENT',
-  'no further adapters', { pattern: 'imessage|msteams|googlechat', expect: 'absent' }, 25);
+  'no further adapters', { pattern: 'imessage|msteams|googlechat', expect: 'absent' }, 25, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Channel routing rules', 'per-room routing, access groups, broadcast groups', 'ABSENT',
   'what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix)',
   { pattern: /broadcastGroup|accessGroup|roomRouting/, expect: 'absent' }, 6);
@@ -403,9 +425,9 @@ check('surfaces', 'Terminal voice loop', 'Talk Mode, wake words', 'BETTER',
   'termcrab wake: keyword → STT → command → TTS (src/mobile/wake.ts) — no desktop equivalent in Termux',
   { pattern: 'wake', expect: 'present' }, 1);
 check('surfaces', 'macOS/Windows/Linux apps', 'native desktop apps', 'ABSENT',
-  'Termux-first by design', { pattern: 'electron|tauri', expect: 'absent' }, 0);
+  'Termux-first by design', { pattern: 'electron|tauri', expect: 'absent' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('surfaces', 'iOS / Android companion apps', 'paired nodes with camera/screen', 'ABSENT',
-  'no native app; Termux:API is the bridge', { pattern: 'android/app|ios/', expect: 'absent' }, 0);
+  'no native app; Termux:API is the bridge', { pattern: 'android/app|ios/', expect: 'absent' }, 0, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 
 // ------------------------------------------------------------- 12. security
 check('security', 'Loopback-first bind', 'loopback + trusted proxy modes', 'WORKING',
@@ -578,16 +600,21 @@ const rows = C.filter((c) => !onlyArea || c.area === onlyArea).map((c) => ({
 }));
 
 const ORDER = ['WORKING', 'BETTER', 'PARTIAL', 'BROKEN', 'ABSENT'];
-const tally = Object.fromEntries(ORDER.map((v) => [v, rows.filter((r) => r.verdict === v).length]));
+// What counts: only what we intend to build. Out-of-scope rows are still
+// measured, still shown, and still drift-checked — but they cannot drag (or
+// lift) a score for work nobody is doing.
+const inScope = rows.filter((r) => r.scope !== 'out');
+const outOfScope = rows.filter((r) => r.scope === 'out');
+const tally = Object.fromEntries(ORDER.map((v) => [v, inScope.filter((r) => r.verdict === v).length]));
 const areas = [...new Set(rows.map((r) => r.area))].sort();
 const drift = rows.filter((r) => r.probeResult.state === 'DRIFT');
 
 const WEIGHT = { WORKING: 1, BETTER: 1, PARTIAL: 0.45, BROKEN: 0.1, ABSENT: 0 };
-const score = rows.reduce((a, r) => a + WEIGHT[r.verdict], 0);
-const coverage = rows.length ? Math.round((score / rows.length) * 100) : 0;
-const effortLeft = rows.reduce((a, r) => a + r.effort, 0);
-const laneEffort = (lane) => rows.filter((r) => r.lane === lane).reduce((a, r) => a + r.effort, 0);
-const laneCount = (lane) => rows.filter((r) => r.lane === lane).length;
+const score = inScope.reduce((a, r) => a + WEIGHT[r.verdict], 0);
+const coverage = inScope.length ? Math.round((score / inScope.length) * 100) : 0;
+const effortLeft = inScope.reduce((a, r) => a + r.effort, 0);
+const laneEffort = (lane) => inScope.filter((r) => r.lane === lane).reduce((a, r) => a + r.effort, 0);
+const laneCount = (lane) => inScope.filter((r) => r.lane === lane).length;
 
 function tableFor(list) {
   const lines = [];
@@ -595,8 +622,10 @@ function tableFor(list) {
   lines.push('|---|---|---|---|---|---:|');
   const icon = { WORKING: '✅', BETTER: '🏅', PARTIAL: '🟡', BROKEN: '⛔', ABSENT: '⚪' };
   for (const r of list) {
+    const cell = r.scope === 'out' ? '🚫 OUT OF SCOPE' : `${icon[r.verdict]} ${r.verdict}`;
+    const why = r.scope === 'out' ? ` — **${r.why}**` : '';
     lines.push(
-      `| ${r.capability} | ${r.openclaw} | ${icon[r.verdict]} ${r.verdict} | ${r.evidence} | ${r.lane} | ${r.effort || '—'} |`,
+      `| ${r.capability} | ${r.openclaw} | ${cell} | ${r.evidence}${why} | ${r.lane} | ${r.scope === 'out' ? '—' : r.effort || '—'} |`,
     );
   }
   return lines.join('\n');
@@ -621,6 +650,9 @@ function summaryBnBlock() {
     `- **core lane: ~${bn(laneEffort('core'))} দিন বাকি** (${bn(laneCount('core'))}টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~${bn(laneEffort('parity'))} দিন, later ~${bn(laneEffort('later'))} দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।`,
   );
   lines.push(
+    `- **যা বানাচ্ছি না, তার হিসাব আলাদা:** ${bn(outOfScope.length)}টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।`,
+  );
+  lines.push(
     `- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** \`node scripts/census.mjs\` — ${bn(rows.length)}টা probe, drift ${bn(drift.length)}; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।`,
   );
   return lines.join('\n');
@@ -640,18 +672,25 @@ function measuredBlock() {
   lines.push(`| 🟡 PARTIAL | ${tally.PARTIAL} | exists, narrower than theirs |`);
   lines.push(`| ⛔ BROKEN | ${tally.BROKEN} | **the code exists but nothing reaches it** |`);
   lines.push(`| ⚪ ABSENT | ${tally.ABSENT} | nothing in the tree |`);
-  lines.push(`| | **${rows.length}** | tracked capabilities |`);
+  lines.push(`| 🚫 OUT OF SCOPE | ${outOfScope.length} | deliberately not planned — measured, not counted |`);
+  lines.push(`| | **${inScope.length}** | in-scope capabilities (${rows.length} measured in total) |`);
   lines.push('');
   lines.push(
-    `**Capability score ${coverage}%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).`,
+    `**Capability score ${coverage}%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.`,
   );
+  if (outOfScope.length) {
+    lines.push('');
+    lines.push('Out of scope, and why:');
+    lines.push('');
+    for (const r of outOfScope) lines.push(`- **${r.area} / ${r.capability}** — ${r.why}`);
+  }
   lines.push('');
   lines.push('| Lane | Checks | Effort left | What it is |');
   lines.push('|---|---:|---:|---|');
   lines.push(`| **core** | ${laneCount('core')} | ~${laneEffort('core')}d | must exist for TermCrab to be a credible agent at all |`);
   lines.push(`| **parity** | ${laneCount('parity')} | ~${laneEffort('parity')}d | needed to compete on the axes the phone-first bet depends on |`);
   lines.push(`| **later** | ${laneCount('later')} | ~${laneEffort('later')}d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |`);
-  lines.push(`| **total** | ${rows.length} | ~${effortLeft}d | |`);
+  lines.push(`| **total** | ${inScope.length} | ~${effortLeft}d | in-scope only |`);
   lines.push('');
   if (drift.length) {
     lines.push(`> ⚠️ **${drift.length} probe(s) drifting** — the code moved under a recorded judgement:`);
@@ -664,8 +703,10 @@ function measuredBlock() {
   }
   for (const a of areas) {
     const list = rows.filter((r) => r.area === a);
-    const sc = list.reduce((x, r) => x + WEIGHT[r.verdict], 0);
-    lines.push(`### ${a} — ${Math.round((sc / list.length) * 100)}% (${list.length} checks)`);
+    const mine = list.filter((r) => r.scope !== 'out');
+    const sc = mine.reduce((x, r) => x + WEIGHT[r.verdict], 0);
+    const outNote = list.length - mine.length ? `, ${list.length - mine.length} out of scope` : '';
+    lines.push(`### ${a} — ${mine.length ? Math.round((sc / mine.length) * 100) : 0}% (${mine.length} in-scope checks${outNote})`);
     lines.push('');
     lines.push(tableFor(list));
     lines.push('');
@@ -674,7 +715,13 @@ function measuredBlock() {
 }
 
 if (wantJson) {
-  console.log(JSON.stringify({ tally, coverage, effortLeft, areas, rows, drift: drift.length }, null, 1));
+  console.log(
+    JSON.stringify(
+      { tally, coverage, effortLeft, areas, rows, drift: drift.length, outOfScope: outOfScope.length, inScope: inScope.length },
+      null,
+      1,
+    ),
+  );
 } else {
   console.log('TermCrab capability census — %d checks, %d areas', rows.length, areas.length);
   console.log('');
@@ -684,6 +731,7 @@ if (wantJson) {
   console.log(`    core lane      : ~${laneEffort('core')}d across ${laneCount('core')} checks`);
   console.log(`    parity lane    : ~${laneEffort('parity')}d across ${laneCount('parity')} checks`);
   console.log(`    later lane     : ~${laneEffort('later')}d across ${laneCount('later')} checks (deliberately deferred)`);
+  console.log(`  out of scope     : ${outOfScope.length} (measured, excluded from the score)`);
   console.log(`  probe drift      : ${drift.length}`);
   if (drift.length) {
     console.log('');
@@ -691,11 +739,11 @@ if (wantJson) {
   }
   console.log('');
   for (const a of areas) {
-    const list = rows.filter((r) => r.area === a);
+    const list = rows.filter((r) => r.area === a && r.scope !== 'out');
     const s = list.reduce((x, r) => x + WEIGHT[r.verdict], 0);
     const bar = '█'.repeat(Math.round((s / list.length) * 20)).padEnd(20, '·');
     const left = list.reduce((x, r) => x + r.effort, 0);
-    console.log(`  ${a.padEnd(12)} ${bar} ${String(Math.round((s / list.length) * 100)).padStart(3)}%  (${list.length} checks, ~${left}d left)`);
+    console.log(`  ${a.padEnd(12)} ${bar} ${String(Math.round((s / list.length) * 100)).padStart(3)}%  (${list.length} in-scope checks, ~${left}d left)`);
   }
 }
 
@@ -709,6 +757,8 @@ if (wantWrite) {
         measured: new Date().toISOString(),
         tally,
         coverage,
+        inScope: inScope.length,
+        outOfScope: outOfScope.length,
         effortLeft,
         areas,
         drift: drift.map((d) => ({ area: d.area, capability: d.capability, detail: d.probeResult.detail })),

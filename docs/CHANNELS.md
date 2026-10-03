@@ -1,8 +1,28 @@
 # Channels — what each one can actually do
 
+**Scope (user decision, 2026-10-03): exactly three surfaces are supported — Telegram, the web panel and the terminal (CLI/REPL).** The census marks the other adapters *out of scope*: they stay in the tree, tested and working if you configure them, but no further work goes into them and they are not part of the score. That decision has a section of its own below.
+
 Seven adapters ship in the box. Exactly one of them is load-bearing on a phone:
 **Telegram**. The rest are honest, tested, and *bring your own client* — none of
 their SDKs is bundled, because a phone install must stay dependency-free.
+
+## The three supported surfaces
+
+- **Telegram** — the phone-in-your-pocket surface: text, files in and out, voice notes, groups when addressed, `/status /usage /sessions /memory /help`. Documented in this file.
+- **Web panel** — the control UI the gateway serves (`ui/index.html`): chat, sessions, memory, the work tracker, live status (including presence), approvals. Documented in `docs/API.md` and by itself.
+- **Terminal** — `termcrab` in a terminal: one-shot commands, `--json` for scripts, `termcrab agent` REPL, approvals answerable with `y/N`. Documented in `docs/CLI.md`.
+
+Everything the agent does is reachable from all three; the census keeps a check
+for each of them so a missing surface shows up as a row, not as a surprise.
+
+## Out of scope (kept, not built on)
+
+WhatsApp, Discord, Slack, Signal, SMS and Matrix are **not supported paths**. The
+code stays because removing working, tested adapters would cost real capability
+for no gain; they are off unless configured, none of their SDKs is bundled, and
+`scripts/census.mjs` excludes them (and the native apps, and the channel-plugin
+interface) from the capability score with the reason written next to each row.
+
 
 ## The table
 

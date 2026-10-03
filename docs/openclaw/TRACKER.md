@@ -10,8 +10,9 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৭০%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৪টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৯টা আধা (PARTIAL), ২৩টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~৩ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৯২ দিন, later ~১৩২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৭২%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬৯টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৮টা আধা (PARTIAL), ১৯টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~৩ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৬৪ দিন, later ~১২৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১০টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,25 +52,39 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 74 | wired and observable |
+| ✅ WORKING | 69 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 39 | exists, narrower than theirs |
+| 🟡 PARTIAL | 38 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 23 | nothing in the tree |
-| | **150** | tracked capabilities |
+| ⚪ ABSENT | 19 | nothing in the tree |
+| 🚫 OUT OF SCOPE | 10 | deliberately not planned — measured, not counted |
+| | **140** | in-scope capabilities (150 measured in total) |
 
-**Capability score 70%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 72%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+
+Out of scope, and why:
+
+- **plugins / Channel plugin interface** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / WhatsApp** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / Discord** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / Slack** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / Signal** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / SMS / MMS** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / Matrix** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **channels / iMessage / Teams / Google Chat / LINE / Feishu / IRC…** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **surfaces / macOS/Windows/Linux apps** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
+- **surfaces / iOS / Android companion apps** — user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~3d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 109 | ~192d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 26 | ~132d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~327d | |
+| **parity** | 102 | ~164d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 23 | ~124d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 140 | ~291d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
-### agent — 81% (16 checks)
+### agent — 81% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -90,7 +105,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Progress drafts / partial updates | incremental draft messages | ✅ WORKING | {type:'draft'} events carry the whole partial answer (emitted at most once per round, so a surface replaces instead of appending) and it is saved in the progress card (state/progress/<session>.json) so a reload mid-turn still shows it; the panel paints it and marks the bubble as a draft. test/tier0.test.ts 10.4 | parity | — |
 | Timeouts + error containment | per-phase budgets | ✅ WORKING | loop.ts containment; tests in test/loop.test.ts | parity | — |
 
-### automation — 40% (7 checks)
+### automation — 40% (7 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -102,25 +117,25 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Scheduled delivery to channels | deliver cron output to a chat | 🟡 PARTIAL | cron runs a prompt in a session; delivery routing is manual | parity | 2 |
 | Gmail / IMAP watchers | PubSub + IMAP integrations | ⚪ ABSENT | no mail integration | later | 5 |
 
-### channels — 76% (13 checks)
+### channels — 74% (6 in-scope checks, 7 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Telegram | grammY bot + groups + topics | ✅ WORKING | src/channels/telegram.ts long-poll, allowlist, chunking, outbox | parity | 1 |
-| WhatsApp | Baileys QR pairing | 🟡 PARTIAL | src/channels/whatsapp.ts optional Baileys (npm install baileys) | parity | 3 |
-| Discord | official plugin | ✅ WORKING | src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
-| Slack | official plugin | ✅ WORKING | src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
-| Signal | signal-cli bridge | ✅ WORKING | src/channels/signal.ts parses signal-cli --json envelopes line by line, routes to the agent, sends with signal-cli send and queues failures; both spawn and send are injectable. test/adapters.test.ts 13.5 | parity | — |
-| SMS / MMS | Twilio plugin | ✅ WORKING | src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope | parity | — |
-| Matrix | official plugin | ✅ WORKING | src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5 | parity | — |
-| iMessage / Teams / Google Chat / LINE / Feishu / IRC… | 25+ further channels | ⚪ ABSENT | no further adapters | parity | 25 |
+| WhatsApp | Baileys QR pairing | 🚫 OUT OF SCOPE | src/channels/whatsapp.ts optional Baileys (npm install baileys) — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | parity | — |
+| Discord | official plugin | 🚫 OUT OF SCOPE | src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
+| Slack | official plugin | 🚫 OUT OF SCOPE | src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
+| Signal | signal-cli bridge | 🚫 OUT OF SCOPE | src/channels/signal.ts parses signal-cli --json envelopes line by line, routes to the agent, sends with signal-cli send and queues failures; both spawn and send are injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
+| SMS / MMS | Twilio plugin | 🚫 OUT OF SCOPE | src/channels/sms.ts turns a Twilio webhook body into an agent turn and answers through the Twilio REST API (basic auth, form body), allowlist included; fetch is injectable. test/adapters.test.ts 13.5 — inbound pictures/MMS are still out of scope — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
+| Matrix | official plugin | 🚫 OUT OF SCOPE | src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
+| iMessage / Teams / Google Chat / LINE / Feishu / IRC… | 25+ further channels | 🚫 OUT OF SCOPE | no further adapters — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | Channel routing rules | per-room routing, access groups, broadcast groups | ⚪ ABSENT | what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix) | parity | 6 |
 | Group / ambient events | history reads, mention policy | 🟡 PARTIAL | groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3 | parity | 3 |
 | Slash commands in chat | 30+ TUI / channel commands | ✅ WORKING | every text channel shares the same commands: /new, /status, /usage (the real meter), /sessions (the real store), /memory (the real memory files), /agents, /providers, /heartbeat, /help (15.4, src/gateway/server.ts handleChannelMessage); the web panel has its own /api/slash set. Fewer words than their 30+, but each one answers from live data — pinned by test/tier2d.test.ts 15.4 | parity | — |
 | Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
 | Media send/receive | images, audio, documents | ✅ WORKING | inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2 | parity | 3 |
 
-### context — 92% (13 checks)
+### context — 92% (13 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -138,7 +153,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
 
-### gateway — 90% (16 checks)
+### gateway — 90% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -159,7 +174,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Usage / token accounting | per-run, per-model, per-session | ✅ WORKING | providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4) | core | — |
 | Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ✅ WORKING | src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1 | later | — |
 
-### mobile — 79% (10 checks)
+### mobile — 79% (10 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -174,7 +189,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 69% (12 checks)
+### ops — 69% (12 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -191,16 +206,16 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
 | Docs that match the code | generated docs map, tested examples | ✅ WORKING | the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist. The README performance numbers are generated the same way (scripts/bench.mjs) and checked against a fresh run (test/tier2.test.ts 12.1), and every command the phone guide prints is verified against the real CLI (12.3) | core | — |
 
-### plugins — 0% (4 checks)
+### plugins — 0% (3 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Plugin API + lifecycle | 164 extensions, typed SDK, hot reload | ⚪ ABSENT | packages/plugin-sdk/index.ts is a stub; no loader | later | 15 |
-| Channel plugin interface | external channel packages | ⚪ ABSENT | channels are compiled in (src/gateway/server.ts:37-48) | later | 8 |
+| Channel plugin interface | external channel packages | 🚫 OUT OF SCOPE | channels are compiled in (src/gateway/server.ts:37-48) — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | Provider plugin interface | 35+ model providers as packages | ⚪ ABSENT | one OpenAI-compatible client with host presets (src/providers/index.ts:10) | later | 6 |
 | Plugin manifest + permissions | manifest, allowlists, install policy | ⚪ ABSENT | nothing to install and no permission model | later | 6 |
 
-### providers — 42% (9 checks)
+### providers — 42% (9 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -214,7 +229,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Auth profiles / credential store | many keys, rotation, SecretRef | ⚪ ABSENT | single key per provider in config.json | later | 4 |
 | MCP as tool source | MCP + ACP | ✅ WORKING | src/providers/mcp.ts wired at server.ts:345 | parity | — |
 
-### security — 74% (8 checks)
+### security — 74% (8 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -227,7 +242,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Security audits / doctor | openclaw security audit, policy CLI | 🟡 PARTIAL | src/mobile/doctor.ts checks Termux-specific hazards, not policy | parity | 3 |
 | Rate limiting / loop protection | bot-loop protection, caps | ✅ WORKING | src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4 | later | — |
 
-### sessions — 74% (8 checks)
+### sessions — 74% (8 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -240,7 +255,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Main rolling session | agent:<id>:main with background routing | ⚪ ABSENT | five separate session keys (web:main, telegram:*, cron:*, heartbeat, dream) | later | 8 |
 | Session attachment (multi-client) | openclaw attach, projections | 🟡 PARTIAL | src/agent/session-view.ts answers "what belongs to this conversation": files touched (with read/write and counts), facts learned in it (found by their provenance stamp), approvals waiting on it, tools used, the digest, the reset policy and the live writer fence, through `termcrab sessions show <id>` / `/sessions show <id>`. What is not there yet is a projection/merge protocol for two clients writing one session — today the write fence serialises them (one writer at a time) rather than merging two views | later | 8 |
 
-### skills — 65% (6 checks)
+### skills — 65% (6 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -251,7 +266,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Skill registry / distribution | ClawHub + signed manifests | ⚪ ABSENT | no registry by design; termcrab import openclaw is the only path | later | — |
 | OpenClaw compatibility | n/a | 🏅 BETTER | termcrab import openclaw reads their SKILL.md folders and workspace files unchanged (src/migrate/openclaw.ts, 558 lines) | parity | — |
 
-### storage — 47% (5 checks)
+### storage — 47% (5 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -261,7 +276,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
 | Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4 | parity | — |
 
-### surfaces — 58% (11 checks)
+### surfaces — 71% (9 in-scope checks, 2 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -274,10 +289,10 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Shell completion | openclaw completion bash|zsh|fish | ✅ WORKING | termcrab completion bash|zsh|fish prints a script generated from the same command table — every command name appears in all three, and an unknown shell exits 1 with the usage line. test/tier2b.test.ts 13.4 | parity | — |
 | Colour / TTY discipline | NO_COLOR, TTY-only ANSI, OSC links | ✅ WORKING | src/core/color.ts: NO_COLOR (non-empty) beats FORCE_COLOR, TCRAB_COLOR=always|never is the explicit override, otherwise colour only on a TTY — pipes, log files and chat bridges stay plain. The logger, the CLI error paths and the bin go through it; test/tier2b.test.ts 13.2 runs the real binary both ways. (OSC 8 hyperlinks: not used.) | parity | — |
 | Terminal voice loop | Talk Mode, wake words | 🏅 BETTER | termcrab wake: keyword → STT → command → TTS (src/mobile/wake.ts) — no desktop equivalent in Termux | parity | 1 |
-| macOS/Windows/Linux apps | native desktop apps | ⚪ ABSENT | Termux-first by design | later | — |
-| iOS / Android companion apps | paired nodes with camera/screen | ⚪ ABSENT | no native app; Termux:API is the bridge | later | — |
+| macOS/Windows/Linux apps | native desktop apps | 🚫 OUT OF SCOPE | Termux-first by design — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
+| iOS / Android companion apps | paired nodes with camera/screen | 🚫 OUT OF SCOPE | no native app; Termux:API is the bridge — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 
-### tools — 78% (12 checks)
+### tools — 78% (12 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|

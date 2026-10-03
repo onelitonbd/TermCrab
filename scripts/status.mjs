@@ -58,15 +58,20 @@ function censusSummary() {
   const rows = raw.rows || raw.checks || raw;
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) return null;
-  const count = (v) => list.filter((r) => r.verdict === v).length;
+  // Scope matters here too (batch 25): the tracker must quote the same number
+  // the census scores — in-scope checks only, with the excluded count beside it.
+  const inScope = list.filter((r) => r.scope !== 'out');
+  const count = (v) => inScope.filter((r) => r.verdict === v).length;
   return {
-    checks: list.length,
+    checks: inScope.length,
+    measured: list.length,
+    outOfScope: list.length - inScope.length,
     working: count('WORKING'),
     better: count('BETTER'),
     partial: count('PARTIAL'),
     broken: count('BROKEN'),
     absent: count('ABSENT'),
-    score: typeof raw.score === 'number' ? raw.score : null,
+    score: typeof raw.coverage === 'number' ? raw.coverage : null,
   };
 }
 
@@ -122,7 +127,10 @@ if (asJson) {
   }
   if (census) {
     line('  Level (census, vs OpenClaw)');
-    line(`    checks ${census.checks} · working ${census.working} · better ${census.better} · partial ${census.partial} · BROKEN ${census.broken} · absent ${census.absent}`);
+    line(
+      `    ${census.score ?? '?'}% of ${census.checks} in-scope checks · working ${census.working} · better ${census.better} · partial ${census.partial} · BROKEN ${census.broken} · absent ${census.absent}`,
+    );
+    if (census.outOfScope) line(`    ${census.outOfScope} deliberately out of scope (measured, not scored — reason per row)`);
     line('');
   }
   if (tests) {

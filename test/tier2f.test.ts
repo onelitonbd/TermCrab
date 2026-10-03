@@ -162,6 +162,13 @@ test('17.3 who can carry files is machine-checked, and the docs cannot drift', a
     // "who can send a file" is the call that registers it.
     const gateway = fs.readFileSync('src/gateway/server.ts', 'utf8');
     const senders = new Set([...gateway.matchAll(/registerDocumentSender\(\s*'([a-z]+)'/g)].map((m) => m[1]!));
+    // Only the channel table counts. The doc also carries other tables (the
+    // supported surfaces, for one), and a row saying "| **Telegram** | … |"
+    // there is not a claim about file sending (batch 25 made that explicit).
+    const channelTable = doc
+      .split(/\n\n+/)
+      .find((block) => block.includes('| Channel |') && block.includes('Files out'));
+    assert.ok(channelTable, 'docs/CHANNELS.md still has the channel table with a Files out column');
     // Rows look like: | **Telegram** | ✅ full | … | ✅ `send_file` … |
     const rowRe = /^\|\s*\**([A-Za-z ()+]+?)\**\s*\|(.*)\|\s*$/gm;
     const idOf = (label: string): string => {
@@ -176,7 +183,7 @@ test('17.3 who can carry files is machine-checked, and the docs cannot drift', a
       return '';
     };
     let checked = 0;
-    for (const m of doc.matchAll(rowRe)) {
+    for (const m of channelTable.matchAll(rowRe)) {
       const id = idOf(m[1]!);
       if (!id) continue;
       checked++;
