@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Run TermCrab straight from a checkout — no global install needed.
+#
+#   ./termcrab --version
+#   ./termcrab onboard
+#   ./termcrab gateway
+#
+# `npm install` alone does not produce a `termcrab` command: it fetches the
+# three dev packages, and `dist/` (which holds the real CLI) only appears after
+# `npm run build`. This launcher closes that gap — it compiles once on first
+# run, says so out loud, and then gets out of the way. For a bare `termcrab`
+# anywhere, run `npm link` once (that installs a symlink into your npm prefix).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENTRY="$ROOT/dist/src/bin/termcrab.js"
+
+if [ ! -f "$ENTRY" ]; then
+  echo "termcrab: no build found — compiling now (1-3 minutes on a phone, silent while tsc runs)" >&2
+  if [ ! -d "$ROOT/node_modules" ]; then
+    echo "termcrab: installing dev packages first (3 small packages, no runtime deps)" >&2
+    (cd "$ROOT" && npm install --no-fund --no-audit) >&2
+  fi
+  (cd "$ROOT" && npm run build) >&2
+fi
+
+exec node "$ENTRY" "$@"

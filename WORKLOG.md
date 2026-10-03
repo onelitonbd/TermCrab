@@ -40,6 +40,8 @@ The loop got its first real concurrency, and it is deliberately narrow: only too
 | 27.4 | Loop budget + idle watchdog | ☐ todo | a turn with no progress stops with a reason, the budget is visible in `termcrab runs`, both configurable |
 | 27.5 | Docs + census | ☐ todo | each moved row cites its test; score reported against 81% |
 
+**Fixed in passing (same report):** a fresh checkout could not run `termcrab` at all — `npm install` does not build (`dist/` is not tracked) and nothing puts the root package's `bin` on PATH. The checkout now ships `./termcrab`, a launcher that compiles once on first run (and says it is doing so, because tsc is silent on a phone), the quick starts in `README.md` / `docs/TERMUX.md` show it plus `npm link`, `npm run build` prints the hint, and `test/launcher.test.ts` pins the lot.
+
 **Fixed in passing:** `package-lock.json` had drifted from `package.json` (0.52.0 while the release was 0.58.0 — every version bump touched one file and not the other, and a fresh `npm ci` would have quoted an old version). The lock now rides along: `node scripts/release.mjs <bump>` writes both, and `--check` refuses to pass when they disagree (pinned by the release test in `test/tier0.test.ts`). Reported by the user, who saw an old version after copying the branch — the branch itself was the other half of that story (`main` is not this branch).
 
 **Limits stated in the open:** batching is read-only-only by design; results are still sequential in the transcript even when the work was not; and a batch is per model turn (the queue and approvals are untouched).

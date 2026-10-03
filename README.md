@@ -69,11 +69,17 @@ npm install          # 3 dev packages, no runtime deps: under a second
 npm run build        # compiles TypeScript - 1-3 minutes on a phone, silent while it runs
 npm test             # (optional) run the test suite
 
-node dist/src/bin/termcrab.js onboard     # interactive wizard
-node dist/src/bin/termcrab.js gateway     # start your agent
+./termcrab onboard   # interactive wizard (first run builds automatically if you skipped the step above)
+./termcrab gateway   # start your agent
 ```
 
-Or with the one-command installer (re-run the same command later to upgrade):
+> **"termcrab: command not found" after `npm install`?** That is expected: `npm install` only fetches the dev packages — the CLI lives in `dist/`, which appears after `npm run build`, and nothing puts `termcrab` on your PATH. Two ways to fix it:
+> ```bash
+> ./termcrab --version    # run it from the checkout (builds on first run)
+> npm link                # or: get a bare `termcrab` command everywhere (writes one symlink into your npm prefix)
+> ```
+
+Or with the one-command installer (re-run the same command later to upgrade; `TCRAB_BRANCH=<branch|tag>` picks a specific ref):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw/install.sh | bash
@@ -84,8 +90,8 @@ curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw
 ```bash
 npm install          # fast: three dev packages, no runtime dependencies
 npm run build        # compiles TypeScript (~5s on a laptop)
-node dist/src/bin/termcrab.js onboard --non-interactive --provider mock --name Crabby
-node dist/src/bin/termcrab.js agent "hello!"        # works fully offline (mock provider)
+./termcrab onboard --non-interactive --provider mock --name Crabby
+./termcrab agent "hello!"        # works fully offline (mock provider)
 ```
 
 Then open the control UI at `http://127.0.0.1:7788/`. First time? The **setup wizard** (3

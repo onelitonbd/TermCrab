@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.58.1 - 2026-10-03
+
+- **A fresh checkout can run `termcrab` now.** Reported from a real phone: copy the branch, `npm install`, type `termcrab` — and get "No command termcrab found". Both halves of that were true: `npm install` only fetches the three dev packages (the CLI is compiled into `dist/`, which does not exist yet and is not tracked), and nothing links the root package's `bin` onto your PATH. There is now a committed launcher, `./termcrab`, that compiles once on first run (saying so, because tsc is silent on a phone), then runs the real CLI; and the quick starts in `README.md` and `docs/TERMUX.md` show both it and `npm link` (one symlink into your npm prefix for a bare `termcrab`). `npm run build` ends with the same hint, `install.sh`'s usage example no longer names a stale version, and a test pins all of it.
+- The lock file's version can no longer drift: `scripts/release.mjs --check` compares `package-lock.json` with `package.json` and fails with the exact fix, and a bump writes both (this was found for real — the lock still said 0.52.0 at release 0.58.0).
+
 ## 0.58.0 - 2026-10-03
 
 - **Tools from one turn now run together — when that is safe.** Until now a model that asked for three tools in one turn got them one after another: three 120 ms reads took 360 ms. Consecutive read-only calls now run as one bounded batch (`Promise.all`, `agent.parallelTools`, default 4 — set it to 1 to turn batching off entirely), and results are written to the transcript in the order the model asked for them, not the order they finished. `tool:start`/`tool:end` keep their per-call ids and spans, so the panel and `termcrab runs` see each tool normally.

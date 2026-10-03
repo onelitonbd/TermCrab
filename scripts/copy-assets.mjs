@@ -24,4 +24,5 @@ if (fs.existsSync(fixturesSrc)) {
   }
 }
 
-console.log('build ok:', bin);
+console.log('build ok:', bin)
+console.log('hint: run ./termcrab (launcher) or `npm link` for a bare command');

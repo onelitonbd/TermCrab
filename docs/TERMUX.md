@@ -17,17 +17,23 @@ git clone https://github.com/onelitonbd/claw.git
 cd claw
 npm install          # fast
 npm run build        # the slow step on a phone: 1-3 min, silent while it runs
-node dist/src/bin/termcrab.js onboard
+./termcrab onboard    # the launcher: builds on first run if you skipped the step above
 ```
 
-Make the CLI short:
+Get the bare `termcrab` command (after `npm install` alone there is none — that is
+the "No command `termcrab` found" you may have seen):
+
+```bash
+npm link             # one symlink into $PREFIX/bin, which is already on PATH
+termcrab --version   # → termcrab 0.58.0
+```
+
+If `npm link` is not available, either run `./termcrab` from the checkout, or drop a
+two-line shim yourself:
 
 ```bash
 mkdir -p ~/.local/bin
-cat > ~/.local/bin/termcrab <<'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-exec node "$HOME/claw/dist/src/bin/termcrab.js" "$@"
-EOF
+printf '#!/usr/bin/env bash\nexec node "$HOME/claw/dist/src/bin/termcrab.js" "$@"\n' > ~/.local/bin/termcrab
 chmod +x ~/.local/bin/termcrab
 echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc
 ```

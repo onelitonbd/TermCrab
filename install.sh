@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # TermCrab installer - works on Termux and any Linux/macOS with Node >= 20.10.
 # Usage: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/main/install.sh | bash
-# Pin a version: TCRAB_BRANCH=v0.34.0 curl -fsSL <url> | bash
+# Pin a ref: TCRAB_BRANCH=<branch|tag>  (default: main)
 set -euo pipefail
 
 REPO="${TCRAB_REPO:-https://github.com/onelitonbd/claw.git}"
