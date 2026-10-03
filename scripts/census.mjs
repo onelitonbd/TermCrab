@@ -99,8 +99,9 @@ check('gateway', 'HTTP API + event stream', 'typed WS protocol on :18789', 'WORK
   'src/gateway/server.ts:251 startGateway, 77 route handlers', { pattern: "pathname === '/api/event", expect: 'present' }, 0);
 check('gateway', 'SSE live event feed', 'WS push + replay', 'WORKING',
   'src/gateway/server.ts:713 GET /api/events (text/event-stream)', { pattern: 'text/event-stream', expect: 'present' }, 0);
-check('gateway', 'Request authentication', 'token + device pairing + nonces', 'BROKEN',
-  'src/gateway/auth.ts:16 checkToken defined; no import of it anywhere in src/', { pattern: 'checkToken', expect: 'defined-not-called' }, 2);
+check('gateway', 'Request authentication', 'token + device pairing + nonces', 'PARTIAL',
+  'src/gateway/server.ts:731 every /api/* route requires checkToken(config, extractAuth(req)); 401 + www-authenticate; ui/index.html asks for the password (#pwGate). No device pairing/nonces yet (separate row)',
+  { pattern: 'checkToken(config, extractAuth(req))', expect: 'present' }, 0);
 check('gateway', 'Bind-time safety guard', 'loopback-first defaults', 'WORKING',
   'src/gateway/server.ts:257 refuses non-loopback without token', { pattern: 'non-loopback', expect: 'present' }, 0);
 check('gateway', 'Pairing / device identity', 'device challenge + approval + store', 'ABSENT',
@@ -108,13 +109,14 @@ check('gateway', 'Pairing / device identity', 'device challenge + approval + sto
   { pattern: /devicePair|pairingStore|approveDevice/, expect: 'absent' }, 4);
 check('gateway', 'Typed wire protocol + idempotency', 'TypeBox schemas, req/res/event frames', 'ABSENT',
   'plain HTTP JSON, no schema layer', { pattern: 'TypeBox|typebox', expect: 'absent' }, 6);
-check('gateway', 'Config hot-reload', 'watch + validate + apply', 'ABSENT',
-  'config is read at boot (src/core/config.ts)', { pattern: 'watchFile|fs.watch', expect: 'absent' }, 3);
+check('gateway', 'Config hot-reload', 'watch + validate + apply', 'PARTIAL',
+  'fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346), pinned by test/api.test.ts "config file password change hot-applies"; the fresh file is not schema-validated before the merge',
+  { pattern: 'fs.watch', expect: 'present' }, 1);
 check('gateway', 'Health / status endpoint', 'health + presence + doctor', 'WORKING',
   'src/gateway/server.ts /api/health, /api/status, /api/doctor', { pattern: "/api/doctor", expect: 'present' }, 0);
-check('gateway', 'Inbound webhooks', 'authenticated agent hooks', 'BROKEN',
-  'POST /api/hooks/:id exists (src/gateway/server.ts:683) but token validation is commented out — "login system removed — hooks are open" (:691)',
-  { pattern: /api\/hooks/, expect: 'present' }, 1);
+check('gateway', 'Inbound webhooks', 'authenticated agent hooks', 'WORKING',
+  'POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts',
+  { pattern: 'x-hook-token', expect: 'present' }, 0);
 check('gateway', 'Approval queue + endpoint', 'operator approvals, HITL gates', 'BROKEN',
   'src/core/approvals.ts + GET /api/approvals at server.ts:972, but createApproval/waitForApproval have zero call sites',
   { pattern: 'createApproval\\(', expect: 'only-definition' }, 5);
@@ -308,6 +310,9 @@ check('channels', 'Media send/receive', 'images, audio, documents', 'PARTIAL',
 // ------------------------------------------------------ 9. providers/models
 check('providers', 'Model providers', '35+ provider plugins + OAuth', 'PARTIAL',
   'OpenAI-compatible client with 7 host presets (src/providers/index.ts:10-18)', { pattern: 'OPENAI_COMPAT_BASES', expect: 'present' }, 8);
+check('providers', 'Offline brain (no network, no key)', 'none - a provider is required', 'BETTER',
+  'src/providers/mock.ts: type:"mock" answers deterministically and still drives one real tool round-trip, so CI, the quick start and docs/LAUNCH.md offline fallback work with no network and no key',
+  { paths: ['src/providers/mock.ts'], expect: 'present' }, 0);
 check('providers', 'Anthropic native', 'first-class adapters incl. prompt caching', 'ABSENT',
   'no adapter; src/core/config.ts:205 coerces legacy provider types to openai-compatible',
   { pattern: /from '\.\/anthropic/, expect: 'absent' }, 4);
@@ -373,8 +378,9 @@ check('surfaces', 'iOS / Android companion apps', 'paired nodes with camera/scre
 // ------------------------------------------------------------- 12. security
 check('security', 'Loopback-first bind', 'loopback + trusted proxy modes', 'WORKING',
   'src/gateway/server.ts:257', { pattern: 'loopback', expect: 'present' }, 0);
-check('security', 'Token enforcement', 'token + pairing required', 'BROKEN',
-  'auth module unused; every /api/* route is open to any local process', { pattern: 'checkToken', expect: 'defined-not-called' }, 2);
+check('security', 'Token enforcement', 'token + pairing required', 'WORKING',
+  'one guard in front of every /api/* route (src/gateway/server.ts:731); empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401',
+  { pattern: 'checkToken(config, extractAuth(req))', expect: 'present' }, 0);
 check('security', 'Sandboxing', 'sandbox modes, workspace roots, install policy', 'ABSENT',
   'exec is allow/deny only; the single "sandbox" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run',
   { pattern: /sandboxRoot|sandboxMode|containerize/, expect: 'absent' }, 8);
@@ -445,7 +451,7 @@ check('ops', 'Release discipline', 'CalVer, release notes, validation programme'
   'CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme',
   { paths: ['CHANGELOG.md'], expect: 'present' }, 2);
 check('ops', 'Tests', 'contract tests per channel, 16k-PR CI', 'PARTIAL',
-  '330 cases in 46 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries',
+  '408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)',
   { pattern: /node:test/, scope: 'test', expect: 'present' }, 6);
 check('ops', 'CI matrix', 'lint + types + budgets + swiftlint + semgrep + knip', 'PARTIAL',
   'ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity',

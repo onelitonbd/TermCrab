@@ -1,4 +1,5 @@
 import { ProviderCfg } from '../core/config.js';
+import { createMock } from './mock.js';
 import { createOpenAi } from './openai.js';
 import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider } from './types.js';
 import { isAbortError } from './types.js';
@@ -61,6 +62,9 @@ export function providerNameFor(baseUrl: string): string {
  * wire format. Set cfg.baseUrl to point at any compatible server.
  */
 export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch): Provider {
+  // The offline brain: no network, no key. Kept first so nothing below can
+  // turn it into a request to an empty base URL.
+  if (cfg.type === 'mock') return createMock(cfg.model);
   const baseUrl = cfg.baseUrl || OPENAI_COMPAT_BASES.openai;
   return createOpenAi(
     {
@@ -82,6 +86,7 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
 }
 
 export function providerSummary(cfg: ProviderCfg): string {
+  if (cfg.type === 'mock') return `mock:${cfg.model || 'mock-1'} (offline demo)`;
   const base = cfg.baseUrl ? ` @ ${cfg.baseUrl}` : '';
   return `openai:${cfg.model}${base}`;
 }
@@ -94,7 +99,7 @@ const cooldowns = new Map<string, number>();
 const COOLDOWN_MS = 60_000;
 
 function providerKey(cfg: ProviderCfg): string {
-  return `openai:${cfg.baseUrl || ''}:${cfg.model}`;
+  return `${cfg.type}:${cfg.baseUrl || ''}:${cfg.model}`;
 }
 
 function isInCooldown(cfg: ProviderCfg): boolean {

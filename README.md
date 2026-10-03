@@ -182,9 +182,15 @@ On Android, cron + heartbeat respect your battery: jobs pause below
 
 | `provider.type` | Endpoint | Notes |
 |---|---|---|
-| `anthropic` | api.anthropic.com | Claude models (`--api-key`, `--model`) |
 | `openai` | api.openai.com or any OpenAI-compatible `--base-url` | OpenRouter, Groq, DeepSeek, Ollama (`http://127.0.0.1:11434/v1`) |
 | `mock` | offline | Deterministic demo — **no API key needed** to try everything |
+
+`mock` is the offline brain: it answers locally, runs one real tool round-trip and never
+opens a socket. Try it without touching your config: `termcrab agent "hello" --demo`, or
+switch for good from the panel (Providers → *Run offline demo*) or with
+`termcrab config set provider.type mock`. Legacy names (`anthropic`, `gemini`, `ollama`)
+are accepted as aliases for the OpenAI-compatible wire format; there is no Anthropic-native
+adapter, so point `provider.baseUrl` at a gateway that speaks OpenAI.
 
 ```bash
 termcrab onboard --non-interactive --provider anthropic --model claude-sonnet-4-5 --api-key sk-ant-...

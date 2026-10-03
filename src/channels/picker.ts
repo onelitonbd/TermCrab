@@ -34,7 +34,14 @@ export function matchActiveEntry(cfg: Config): ProviderEntry | null {
   return cfg.providers.find((p) => p.baseUrl === activeBase) ?? null;
 }
 
+const OFFLINE_HINT = 'Offline demo runs on `mock-1` - no network, no API key. Pick a real endpoint with `/provider` when you are back online.';
+
+function isOffline(cfg: Config): boolean {
+  return cfg.provider.type === 'mock';
+}
+
 function usingLine(cfg: Config): string {
+  if (isOffline(cfg)) return 'Using: **Offline demo** (`mock-1`, no network needed)';
   if (isUnconfigured(cfg)) return 'No provider configured yet - add one in the web panel, or run `termcrab onboard`.';
   const base = activeBaseUrl(cfg.provider);
   const entry = matchActiveEntry(cfg);
@@ -44,6 +51,10 @@ function usingLine(cfg: Config): string {
 
 export function providerMenu(cfg: Config): string {
   const lines: string[] = ['**Provider endpoint**', '', usingLine(cfg), ''];
+  if (isOffline(cfg)) {
+    lines.push(OFFLINE_HINT, '');
+    if (!cfg.providers.length) return lines.join('\n');
+  }
   if (!cfg.providers.length) {
     lines.push('No endpoints saved yet - add one in the web panel, then run `/provider` again.');
     return lines.join('\n');
@@ -113,6 +124,10 @@ function modelChoices(cfg: Config, fetched: string[] | null): { choices: string[
 
 export function modelMenu(cfg: Config, fetched: string[] | null): string {
   const lines: string[] = ['**Model**', ''];
+  if (isOffline(cfg)) {
+    lines.push(OFFLINE_HINT);
+    return lines.join('\n');
+  }
   if (isUnconfigured(cfg)) {
     lines.push('No provider configured yet - add one with `/provider` or in the web panel to pick a model.');
     return lines.join('\n');
@@ -143,6 +158,9 @@ export function modelMenu(cfg: Config, fetched: string[] | null): string {
 }
 
 export function modelSelect(cfg: Config, arg: string, fetched: string[] | null): string {
+  if (isOffline(cfg)) {
+    return `The offline brain always answers as \`${cfg.provider.model || 'mock-1'}\`.\n\n${OFFLINE_HINT}`;
+  }
   if (isUnconfigured(cfg)) {
     return 'No provider configured - run `/provider` first.';
   }

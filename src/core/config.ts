@@ -3,8 +3,12 @@ import fs from 'node:fs';
 import { configPath, ensureLayout, home } from './paths.js';
 
 export interface ProviderCfg {
-  /** OpenAI-compatible Chat Completions API (OpenAI, OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama /v1, vLLM, llama.cpp, …). */
-  type: 'openai';
+  /**
+   * 'openai' — any OpenAI-compatible Chat Completions endpoint (OpenAI,
+   * OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama /v1, vLLM, llama.cpp …).
+   * 'mock'   — the offline brain: no network, no key, deterministic replies.
+   */
+  type: 'openai' | 'mock';
   /** Full base URL ending in /v1 (e.g. https://openrouter.ai/api/v1, http://127.0.0.1:11434/v1). Leave empty for OpenAI proper. */
   baseUrl?: string;
   apiKey?: string;
@@ -202,11 +206,12 @@ export function loadConfig(): Config {
   try {
     const raw = JSON.parse(rawText) as Partial<Config>;
     const merged = deepMerge(defaults(), raw);
-    // Coerce legacy provider types (anthropic / gemini / ollama / mock) to the
-    // single supported kind: openai-compatible. Older configs with apiKey+baseUrl
-    // will keep working; "mock" configs (offline demo) fall back to an empty
-    // provider which the UI flags as setup-needed.
-    merged.provider.type = 'openai';
+    // Coerce legacy provider types (anthropic / gemini / ollama) to the single
+    // supported wire format: OpenAI-compatible. Older configs with apiKey+baseUrl
+    // keep working. 'mock' is a real type again (offline demo, CI smoke test),
+    // so it is left alone.
+    const loadedType = (merged.provider as { type?: string }).type;
+    if (loadedType !== 'openai' && loadedType !== 'mock') merged.provider.type = 'openai';
     return merged;
   } catch {
     return defaults();

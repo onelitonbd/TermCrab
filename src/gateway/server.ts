@@ -76,6 +76,7 @@ import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
 import { createApproval, listApprovals, resolveApproval, waitForApproval, cleanupOldApprovals } from '../core/approvals.js';
+import { checkToken, constantTimeEqual, extractAuth } from './auth.js';
 
 export interface GatewayHandle {
   server: http.Server;
@@ -693,8 +694,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           json(res, 404, { error: 'hook not found' });
           return;
         }
-        // Validate hook token (login system removed — hooks are open)
-        // TODO: re-enable hook token validation when auth is restored
+        // Each hook carries its own secret; a webhook that anyone can POST to
+        // is a remote agent trigger. Send it as `x-hook-token: <token>` or
+        // `?token=<token>`.
+        const hookToken =
+          (typeof req.headers['x-hook-token'] === 'string' ? req.headers['x-hook-token'] : null) ||
+          new URL(req.url || '/', 'http://localhost').searchParams.get('token');
+        if (!hook.token || !hookToken || !constantTimeEqual(hookToken, hook.token)) {
+          json(res, 401, {
+            error: 'This webhook needs its own token: send x-hook-token: <token> (or ?token=<token>).',
+          });
+          return;
+        }
         // Read the webhook payload
         const raw = await readBody(req);
         const payload = raw ? JSON.parse(raw) : {};
@@ -713,8 +724,17 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
-      // Everything else under /api is open (login system removed for now).
+      // Everything else under /api requires the panel token — but only when one
+      // is configured. An empty token (the default) means loopback-only, which
+      // the bind guard at the top of this function enforces.
       if (pathname.startsWith('/api/')) {
+        if (!checkToken(config, extractAuth(req))) {
+          res.setHeader('www-authenticate', 'Bearer realm="TermCrab"');
+          json(res, 401, {
+            error: 'Panel password needed. Send Authorization: Bearer <gateway.token>, or open the panel and paste it.',
+          });
+          return;
+        }
         if (req.method === 'GET' && pathname === '/api/events') {
           res.writeHead(200, {
             'content-type': 'text/event-stream',

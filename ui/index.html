@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#000000" />
+<meta name="theme-color" content="#fdfbff" />
 <title>TermCrab</title>
 <style>
   :root {
@@ -2345,6 +2345,7 @@
     <p class="pageNote" id="provNote">OpenAI-compatible services only (OpenAI, OpenRouter, Groq, DeepSeek, Ollama and friends). Keys stay on this device — nothing connects until you press Use on a key.</p>
     <div class="pBar" style="margin-bottom:10px">
       <button id="provDetect" class="ghost">Auto-detect keys</button>
+      <button id="provOffline" class="ghost" title="no key, no network">Run offline demo</button>
       <span id="provDetectNote" class="pNote"></span>
     </div>
     <div id="provList" class="listCol"><div class="nx">loading…</div></div>
@@ -3149,6 +3150,40 @@
     } else ok();
   });
 
+  // ---- panel password gate -------------------------------------------------
+  // Shown when the gateway answers 401: a token is configured and this browser
+  // does not have it. One field, one button, remembered in localStorage.
+  let askingPassword = false;
+  function askPassword() {
+    if (askingPassword || !document.body) return;
+    askingPassword = true;
+    const wrap = document.createElement('div');
+    wrap.id = 'pwGate';
+    wrap.setAttribute('style', 'position:fixed;inset:0;background:rgba(42,29,51,.55);display:flex;align-items:center;justify-content:center;padding:24px;z-index:9999');
+    wrap.innerHTML =
+      '<div style="background:#fff;border-radius:16px;padding:20px;max-width:380px;width:100%;box-shadow:0 24px 50px -24px rgba(180,80,120,.45)">' +
+      '<div style="font-weight:600;font-size:16px;margin-bottom:6px">Panel password needed</div>' +
+      '<div style="font-size:13px;color:#8a6f9b;line-height:1.45;margin-bottom:12px">' +
+      'This panel is protected. Paste the password printed by:<br><code>termcrab config get gateway.token</code>' +
+      '</div>' +
+      '<input id="pwGateInput" type="password" autocomplete="current-password" placeholder="panel password" ' +
+      'style="width:100%;padding:11px;border-radius:10px;border:1px solid rgba(122,93,140,.3);font-size:14px">' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px">' +
+      '<button id="pwGateSave" style="padding:9px 16px;border-radius:10px;border:0;background:linear-gradient(135deg,#f0517d,#ff9156);color:#fff;font-weight:600;font-size:14px">Unlock</button>' +
+      '</div></div>';
+    document.body.appendChild(wrap);
+    const input = document.getElementById('pwGateInput');
+    const save = () => {
+      const v = (input.value || '').trim();
+      if (!v) return;
+      localStorage.setItem('tc_token', v);
+      location.reload();
+    };
+    document.getElementById('pwGateSave').onclick = save;
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    input.focus();
+  }
+
   async function api(path, opts = {}, body) {
     if (typeof opts === 'string') {
       // Shorthand: api(path, 'POST', {…}) — JSON body, correct method.
@@ -3161,6 +3196,11 @@
     }
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
     const res = await fetch(path, Object.assign({}, opts, { headers }));
+    if (res.status === 401) {
+      // The gateway has a panel password and we do not (or it is stale).
+      askPassword();
+      throw new Error('panel password needed');
+    }
     if (!res.ok) {
       let msg = 'HTTP ' + res.status;
       try { msg = (await res.json()).error || msg; } catch {}
@@ -3553,8 +3593,8 @@
   });
 
   async function refreshModelBtn() {
-    // No token gate here: the panel runs open by default, and the model chip +
-    // thinking picker must still show what is in use.
+    // Runs on load: if the gateway wants a panel password this 401s and the
+    // gate above asks for it; without a token the panel is open on loopback.
     try {
       const d = await api('/api/config');
       const m = (d.config && d.config.provider && d.config.provider.model) || '';
@@ -6190,6 +6230,19 @@
     } catch (e) {
       $('provDetectNote').textContent = 'detect failed: ' + e.message;
     } finally { $('provDetect').disabled = false; }
+  };
+
+  // No key? The offline brain is always there. Switching is one write, and the
+  // panel reloads into it so every view reflects the new brain.
+  $('provOffline').onclick = async () => {
+    $('provOffline').disabled = true;
+    try {
+      await api('/api/config', 'POST', { key: 'provider.type', value: 'mock' });
+      location.reload();
+    } catch (e) {
+      $('provDetectNote').textContent = 'could not switch: ' + e.message;
+      $('provOffline').disabled = false;
+    }
   };
 
   $('provAdd').onclick = () => openModal('Add provider', [

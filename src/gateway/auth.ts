@@ -52,6 +52,12 @@ export function authHint(
   return 'Wrong password - run: termcrab config get gateway.token and paste the whole line.';
 }
 
+/** Constant-time equality for tokens we compare directly (webhook secrets). */
+export function constantTimeEqual(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  return crypto.timingSafeEqual(sha(a), sha(b));
+}
+
 export function extractAuth(req: { headers: Record<string, string | string[] | undefined>; url?: string }): string | null {
   const header = req.headers['authorization'];
   if (typeof header === 'string' && header) return header;

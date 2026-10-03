@@ -7,6 +7,7 @@ import { loadConfig, saveConfig, cfgGet, cfgSet, describeConfigLocation, generat
 import { ensureLayout, home, workspaceDir, memoryDir, configPath } from './core/paths.js';
 import { log, setLogLevel } from './core/logger.js';
 import { onboard, OnboardFlags } from './onboard.js';
+import { createMock } from './providers/mock.js';
 import { startGateway, version } from './gateway/server.js';
 import { runSupervisor } from './mobile/supervisor.js';
 import { runDoctor, renderChecks, verifyTelegram, execExists, buildShareReport, probeGatewayToken, probePanelHealth } from './mobile/doctor.js';
@@ -67,6 +68,7 @@ Everyday extras:
   termcrab supervisor                start the gateway with auto-restart (always-on mode)
   termcrab onboard                   first-time setup wizard
       options: --provider p --model m --api-key k --base-url u --telegram-token t
+               --demo                offline brain (mock): no network, no key
                --allow-user ids --name n --no-exec --non-interactive
   termcrab version | help
 
@@ -163,6 +165,7 @@ export async function main(argv: string[]): Promise<void> {
         args: rest,
         options: {
           'non-interactive': { type: 'boolean', default: false },
+          demo: { type: 'boolean', default: false },
           provider: { type: 'string' },
           model: { type: 'string' },
           'api-key': { type: 'string' },
@@ -176,7 +179,7 @@ export async function main(argv: string[]): Promise<void> {
       });
       const flags: OnboardFlags = {
         nonInteractive: Boolean(values['non-interactive']),
-        provider: values.provider,
+        provider: values.demo ? 'mock' : values.provider,
         model: values.model,
         apiKey: values['api-key'],
         baseUrl: values['base-url'],
@@ -294,10 +297,16 @@ export async function main(argv: string[]): Promise<void> {
           session: { type: 'string', default: 'cli:main' },
           as: { type: 'string' },
           tier: { type: 'string' },
+          demo: { type: 'boolean', default: false },
         },
         allowPositionals: true,
       });
       const ctx = await makeAgentCtx();
+      if (values.demo) {
+        // One offline turn: never writes config.json, never opens a socket.
+        ctx.provider = createMock(ctx.config.provider.model);
+        console.error('(offline demo: answering with the built-in mock brain - no network, no key)');
+      }
       const tier: 'local' | 'cloud' | undefined = values.tier === 'local' ? 'local' : undefined;
       const sessionId = values.session || 'cli:main';
       let currentAgent = values.as ? sanitizeAgentName(values.as) ?? undefined : undefined;

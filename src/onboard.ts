@@ -65,10 +65,18 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
   const cfg: Config = existing;
   if (!cfg.gateway.token) cfg.gateway.token = generateToken();
 
-  // TermCrab only supports OpenAI-compatible Chat Completions.
-  cfg.provider.type = 'openai';
+  // 'mock' = the offline brain (no network, no key); every other alias means
+  // the OpenAI-compatible wire format.
+  const providerType = normalizeProvider(flags.provider ?? '');
+  cfg.provider.type = providerType;
+  const offline = providerType === 'mock';
+  if (offline) {
+    cfg.provider.apiKey = '';
+    cfg.provider.baseUrl = undefined;
+    cfg.provider.model = flags.model || cfg.provider.model || 'mock-1';
+  }
 
-  if (flags.nonInteractive) {
+  if (flags.nonInteractive || offline) {
     if (flags.model) cfg.provider.model = flags.model;
     if (flags.apiKey) cfg.provider.apiKey = flags.apiKey;
     if (flags.baseUrl) cfg.provider.baseUrl = flags.baseUrl;
@@ -84,7 +92,11 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
     }
     saveConfig(cfg);
     seedWorkspace(cfg.agent.name);
-    console.log(`✅ onboarded (non-interactive) -> ${path.join(home(), 'config.json')}`);
+    console.log(
+      offline
+        ? `✅ onboarded (offline brain: mock) -> ${path.join(home(), 'config.json')}`
+        : `✅ onboarded (non-interactive) -> ${path.join(home(), 'config.json')}`,
+    );
     printNextSteps(cfg);
     return;
   }
@@ -148,12 +160,14 @@ export async function onboard(flags: OnboardFlags): Promise<void> {
 }
 
 /**
- * Accept any historical provider-name alias and return 'openai'. TermCrab now
- * speaks only the OpenAI Chat Completions wire format; legacy names (anthropic,
- * gemini, ollama, mock) are kept only so old CLI flags / env vars keep working.
+ * Map a provider name to a real provider type. TermCrab speaks the OpenAI Chat
+ * Completions wire format, so every legacy alias (anthropic, gemini, ollama …)
+ * lands on 'openai'. The offline brain is the one exception: 'mock' (also
+ * 'demo' / 'offline') really is a different provider — no network, no key.
  */
 export function normalizeProvider(raw: string): Config['provider']['type'] {
-  // Always openai-compatible regardless of which alias the user typed.
+  const v = raw.trim().toLowerCase();
+  if (v === 'mock' || v === 'demo' || v === 'offline') return 'mock';
   return 'openai';
 }
 

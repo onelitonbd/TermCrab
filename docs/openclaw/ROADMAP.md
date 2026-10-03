@@ -19,13 +19,13 @@ Measurable form — the five conditions, all of which are either ✅ or reachabl
 
 | # | Condition | Where it stands | Cost |
 |---|---|---|---|
-| 1 | **Nothing broken.** No capability in the tree that no code calls. | 10 broken rows | 43d (core lane) |
-| 2 | **Safe to expose.** Auth enforced, webhooks signed, approvals gating dangerous tools. | auth missing, webhooks open, approvals dead | 8d (inside core) |
+| 1 | **Nothing broken.** No capability in the tree that no code calls. | 7 broken rows | 40d (core lane) |
+| 2 | **Safe to expose.** Auth enforced, webhooks signed, approvals gating dangerous tools. | auth + webhook tokens enforced (2026-10-03); approvals still dead | 5d (inside core) |
 | 3 | **It doesn't forget.** Memory that returns recent facts; compaction that summarises instead of deleting. | both broken today | 6d (inside core) |
 | 4 | **It can be driven from the terminal.** A real TUI with streaming, abort and pickers. | absent | 15d |
 | 5 | **It can grow without core edits.** A minimal plugin API for tools and channels. | absent | 15d |
 
-Conditions 1–5 are ~100 days of work. That is the plan. Everything after that is either the moat (§3) or the kill list (§4).
+Conditions 1–5 are ~95 days of work. That is the plan. Everything after that is either the moat (§3) or the kill list (§4).
 
 ---
 
@@ -33,16 +33,16 @@ Conditions 1–5 are ~100 days of work. That is the plan. Everything after that 
 
 | Lane | Checks | Effort | What it means |
 |---|---:|---:|---|
-| **core** | 12 | **~43d** | finish what is already half-built; every item is a defect, not a feature |
-| **parity** | 107 | ~282d | be genuinely competitive on the axes a phone-first agent needs |
+| **core** | 13 | **~40d** | finish what is already half-built; every item is a defect, not a feature |
+| **parity** | 108 | ~278d | be genuinely competitive on the axes a phone-first agent needs |
 | **later** | 28 | ~164d | deferred on purpose — a native companion app alone is 20d, the plugin registry/25 channels are an ecosystem you are deliberately not cloning |
-| total | 147 | ~489d | the cost of matching them 1:1, which is the wrong goal |
+| total | 149 | ~482d | the cost of matching them 1:1, which is the wrong goal |
 
 **Realistic calendar.** Core lane at a focused 3 days/week: **~14 weeks**. Core + parity at the same pace: **~2 years**. Core + parity full-time: **~7–8 months**. Anyone promising you faster is not counting the tests.
 
 ---
 
-## 2. Phase 0 — the core lane (~43 days): finish what is already written
+## 2. Phase 0 — the core lane (~40 days): finish what is already written
 
 Each item below is a defect: the code exists and nothing reaches it. Each has a **done test** — an observable behaviour, not a checkbox.
 
@@ -95,7 +95,7 @@ Each item below is a defect: the code exists and nothing reaches it. Each has a 
 |---|---|---|---:|---|
 | 15 | Telegram command surface: `/help /new /model /status /agents /as /stop` (+ `/queue`) | `src/gateway/server.ts:498-515` | 4 | Every command is listed by `/help` and behaves as documented |
 
-**Phase 0 exit criteria (all measurable):** census shows `BROKEN ≤ 1`, `core` lane effort = 0, and the four done-tests in §2.1/§2.3 pass. Estimated: **43 days ≈ 14 weeks part-time.** After this, TermCrab is a small, honest, trustworthy agent — and the "loopholes everywhere" feeling you described is gone, because the loopholes have names.
+**Phase 0 exit criteria (all measurable):** census shows `BROKEN ≤ 1`, `core` lane effort = 0, and the four done-tests in §2.1/§2.3 pass. Estimated: **40 days ≈ 13 weeks part-time.** After this, TermCrab is a small, honest, trustworthy agent — and the "loopholes everywhere" feeling you described is gone, because the loopholes have names.
 
 ---
 

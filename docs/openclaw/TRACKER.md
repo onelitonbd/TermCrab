@@ -1,6 +1,6 @@
 # TermCrab — where it actually is
 
-**Measured:** 2026-10-03 · **against:** commit `56455cd` · **measured by:** `scripts/census.mjs` (147 probes over `src/`, `test/`, `ui/`, `package.json`)
+**Measured:** 2026-10-03 · **against:** commit `56455cd` · **measured by:** `scripts/census.mjs` (149 probes over `src/`, `test/`, `ui/`, `package.json`)
 **Compared with:** the whole of [docs.openclaw.ai](https://docs.openclaw.ai) — 1,335 documented pages, catalogued page-by-page in [`sections/`](sections/) and summarised in [`00-SITE-MAP.md`](00-SITE-MAP.md).
 
 ---
@@ -8,9 +8,9 @@
 ## সারসংক্ষেপ (বাংলায়)
 
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
-- **এখনকার স্কোর: ৪১%।** ১৪৭টা ক্যাপাবিলিটির মধ্যে ২০টা পুরো কাজ করে, ১৩টায় তুমি OpenClaw-এর চেয়ে এগিয়ে (মোবাইল লেয়ার), ৫৮টা আধা, **১০টা ভাঙা**, ৪৬টা নেই।
-- **সবচেয়ে জরুরি কথা:** ১০টা জায়গায় কোড লেখা আছে কিন্তু **কিছুই সেটা ব্যবহার করে না** — কিউ, auth, approvals, compaction। এগুলো ঠিক করা মানে নতুন ফিচার নয়, **আগের কাজ শেষ করা**। এটার জন্য লেগবে **~৪৩ দিন**।
-- **পূর্ণ প্রতিযোগিতার জন্য বাকি: ~৩২৫ দিন (core + parity)।** আর OpenClaw-কে হুবহু ম্যাচ করতে চাইলে ~৪৯০ দিন — একা মানুষের পক্ষে যেটা প্রায় দুই বছর আর সেটা কোনো কাজে আসবে না।
+- **এখনকার স্কোর: ৪৩%।** ১৪৯টা ক্যাপাবিলিটির মধ্যে ২৩টা পুরো কাজ করে, ১৪টায় তুমি OpenClaw-এর চেয়ে এগিয়ে (মোবাইল লেয়ার), ৬০টা আধা, **৭টা ভাঙা**, ৪৫টা নেই।
+- **সবচেয়ে জরুরি কথা:** ৭টা জায়গায় কোড লেখা আছে কিন্তু **কিছুই সেটা ব্যবহার করে না** — কিউ, approvals, compaction, মেমোরি বুটস্ট্র্যাপ। এগুলো ঠিক করা মানে নতুন ফিচার নয়, **আগের কাজ শেষ করা**। এটার জন্য লেগবে **~৪০ দিন**।
+- **পূর্ণ প্রতিযোগিতার জন্য বাকি: ~৩২০ দিন (core + parity)।** আর OpenClaw-কে হুবহু ম্যাচ করতে চাইলে ~৪৮০ দিন — একা মানুষের পক্ষে যেটা প্রায় দুই বছর আর সেটা কোনো কাজে আসবে না।
 - **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি ২৮টা জিনিস consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
 
 ---
@@ -19,19 +19,19 @@
 
 | | |
 |---|---:|
-| Tracked capabilities | **147** (15 areas) |
-| ✅ Working | 20 |
-| 🏅 Better than OpenClaw | 13 |
-| 🟡 Partial | 58 |
-| ⛔ **Broken (code exists, nothing calls it)** | **10** |
-| ⚪ Absent | 46 |
-| **Capability score** | **41%** |
-| Effort — **core lane** (fix what's broken) | **~43 days** |
-| Effort — **parity lane** (be genuinely competitive) | ~282 days |
+| Tracked capabilities | **149** (15 areas) |
+| ✅ Working | 23 |
+| 🏅 Better than OpenClaw | 14 |
+| 🟡 Partial | 60 |
+| ⛔ **Broken (code exists, nothing calls it)** | **7** |
+| ⚪ Absent | 45 |
+| **Capability score** | **43%** |
+| Effort — **core lane** (fix what's broken) | **~40 days** |
+| Effort — **parity lane** (be genuinely competitive) | ~278 days |
 | Effort — **later lane** (deliberately not building) | ~164 days |
 | OpenClaw pages reviewed | 1,335 |
 
-**Read it like this.** "41%" is not a grade for the project, it is a distance to *their* feature list — and their feature list is built for desktops and servers, written by ~2,000 people. The number that should scare you is **10 broken**: capabilities that exist in the file tree, look complete in `docs/ARCHITECTURE.md`, and do nothing at runtime. Those are the ones that make you feel like you are further along than you are.
+**Read it like this.** "43%" is not a grade for the project, it is a distance to *their* feature list — and their feature list is built for desktops and servers, written by ~2,000 people. The number that should scare you is **7 broken**: capabilities that exist in the file tree, look complete in `docs/ARCHITECTURE.md`, and do nothing at runtime. Those are the ones that make you feel like you are further along than you are.
 
 ---
 
@@ -45,21 +45,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 20 | wired and observable |
-| 🏅 BETTER | 13 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 58 | exists, narrower than theirs |
-| ⛔ BROKEN | 10 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 46 | nothing in the tree |
-| | **147** | tracked capabilities |
+| ✅ WORKING | 23 | wired and observable |
+| 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
+| 🟡 PARTIAL | 60 | exists, narrower than theirs |
+| ⛔ BROKEN | 7 | **the code exists but nothing reaches it** |
+| ⚪ ABSENT | 45 | nothing in the tree |
+| | **149** | tracked capabilities |
 
-**Capability score 41%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 43%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 12 | ~43d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 107 | ~282d | needed to compete on the axes the phone-first bet depends on |
+| **core** | 13 | ~40d | must exist for TermCrab to be a credible agent at all |
+| **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 147 | ~489d | |
+| **total** | 149 | ~482d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -132,19 +132,19 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent | parity | 3 |
 
-### gateway — 35% (16 checks)
+### gateway — 46% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | HTTP API + event stream | typed WS protocol on :18789 | ✅ WORKING | src/gateway/server.ts:251 startGateway, 77 route handlers | parity | — |
 | SSE live event feed | WS push + replay | ✅ WORKING | src/gateway/server.ts:713 GET /api/events (text/event-stream) | parity | — |
-| Request authentication | token + device pairing + nonces | ⛔ BROKEN | src/gateway/auth.ts:16 checkToken defined; no import of it anywhere in src/ | core | 2 |
+| Request authentication | token + device pairing + nonces | 🟡 PARTIAL | src/gateway/server.ts:731 every /api/* route requires checkToken(config, extractAuth(req)); 401 + www-authenticate; ui/index.html asks for the password (#pwGate). No device pairing/nonces yet (separate row) | core | — |
 | Bind-time safety guard | loopback-first defaults | ✅ WORKING | src/gateway/server.ts:257 refuses non-loopback without token | parity | — |
 | Pairing / device identity | device challenge + approval + store | ⚪ ABSENT | no device pairing in src/ (the only "pairing" is WhatsApp QR login in src/channels/whatsapp.ts:14) | later | 4 |
 | Typed wire protocol + idempotency | TypeBox schemas, req/res/event frames | ⚪ ABSENT | plain HTTP JSON, no schema layer | later | 6 |
-| Config hot-reload | watch + validate + apply | ⚪ ABSENT | config is read at boot (src/core/config.ts) | parity | 3 |
+| Config hot-reload | watch + validate + apply | 🟡 PARTIAL | fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346), pinned by test/api.test.ts "config file password change hot-applies"; the fresh file is not schema-validated before the merge | parity | 1 |
 | Health / status endpoint | health + presence + doctor | ✅ WORKING | src/gateway/server.ts /api/health, /api/status, /api/doctor | parity | — |
-| Inbound webhooks | authenticated agent hooks | ⛔ BROKEN | POST /api/hooks/:id exists (src/gateway/server.ts:683) but token validation is commented out — "login system removed — hooks are open" (:691) | core | 1 |
+| Inbound webhooks | authenticated agent hooks | ✅ WORKING | POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts | core | — |
 | Approval queue + endpoint | operator approvals, HITL gates | ⛔ BROKEN | src/core/approvals.ts + GET /api/approvals at server.ts:972, but createApproval/waitForApproval have zero call sites | core | 5 |
 | Canvas / A2UI widgets | agent-driven UI widgets | 🟡 PARTIAL | src/gateway/canvas.ts + /api/canvas | parity | — |
 | Multi-agent routing | per-agent workspace, session, store | 🟡 PARTIAL | workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48) | parity | 3 |
@@ -168,17 +168,18 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 43% (10 checks)
+### ops — 48% (11 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
+| Install is download-only (no silent build) | n/a | ✅ WORKING | package.json has no `prepare`/`postinstall`; the TypeScript compile is an explicit, visible `npm run build` (measured: 0.5s install, 3.0s build vs 4.5s combined) | core | — |
 | Installer | curl install.sh + Docker + Nix + Fly | 🟡 PARTIAL | install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths | parity | 2 |
 | Container / server deploy | Docker, docker-compose, Fly, Nix, systemd | ⚪ ABSENT | Termux/Node host only | later | 3 |
 | Service install | openclaw gateway install (systemd/launchd) | 🟡 PARTIAL | Termux supervisor; docs/LOCAL.md covers a systemd path | parity | 3 |
 | Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | 🟡 PARTIAL | src/core/logger.ts + doctor; /api/logs; no metrics export | parity | 4 |
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
 | Release discipline | CalVer, release notes, validation programme | 🟡 PARTIAL | CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme | parity | 2 |
-| Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 330 cases in 46 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries | parity | 6 |
+| Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 408 cases in 47 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
 | Docs that match the code | generated docs map, tested examples | ⛔ BROKEN | docs/ARCHITECTURE.md lists files that do not exist (src/providers/gemini.ts, anthropic.ts, ollama.ts). This probe *expects* the stale line until the doc is fixed — when it reports DRIFT, the doc caught up | core | 2 |
@@ -192,11 +193,12 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Provider plugin interface | 35+ model providers as packages | ⚪ ABSENT | one OpenAI-compatible client with host presets (src/providers/index.ts:10) | later | 6 |
 | Plugin manifest + permissions | manifest, allowlists, install policy | ⚪ ABSENT | nothing to install and no permission model | later | 6 |
 
-### providers — 35% (8 checks)
+### providers — 42% (9 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Model providers | 35+ provider plugins + OAuth | 🟡 PARTIAL | OpenAI-compatible client with 7 host presets (src/providers/index.ts:10-18) | parity | 8 |
+| Offline brain (no network, no key) | none - a provider is required | 🏅 BETTER | src/providers/mock.ts: type:"mock" answers deterministically and still drives one real tool round-trip, so CI, the quick start and docs/LAUNCH.md offline fallback work with no network and no key | parity | — |
 | Anthropic native | first-class adapters incl. prompt caching | ⚪ ABSENT | no adapter; src/core/config.ts:205 coerces legacy provider types to openai-compatible | later | 4 |
 | Google Gemini native | first-class adapter | ⚪ ABSENT | no adapter; same coercion path as Anthropic (src/core/config.ts:205) | later | 3 |
 | Local model tier | Ollama + local runtimes + tiering | 🟡 PARTIAL | ollama base preset + config.localProvider used only by dream (src/agent/dream.ts:145) | parity | 3 |
@@ -205,12 +207,12 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Auth profiles / credential store | many keys, rotation, SecretRef | ⚪ ABSENT | single key per provider in config.json | later | 4 |
 | MCP as tool source | MCP + ACP | ✅ WORKING | src/providers/mcp.ts wired at server.ts:345 | parity | — |
 
-### security — 50% (8 checks)
+### security — 61% (8 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Loopback-first bind | loopback + trusted proxy modes | ✅ WORKING | src/gateway/server.ts:257 | parity | — |
-| Token enforcement | token + pairing required | ⛔ BROKEN | auth module unused; every /api/* route is open to any local process | parity | 2 |
+| Token enforcement | token + pairing required | ✅ WORKING | one guard in front of every /api/* route (src/gateway/server.ts:731); empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401 | parity | — |
 | Sandboxing | sandbox modes, workspace roots, install policy | ⚪ ABSENT | exec is allow/deny only; the single "sandbox" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run | later | 8 |
 | Secrets management | vault, SecretRef, 1Password, audit | 🟡 PARTIAL | src/agent/secrets.ts + config.json plaintext | parity | 4 |
 | Skill supply chain | signed manifests after ClawHavoc | 🏅 BETTER | no registry exists to poison; skills are local files | parity | — |
@@ -289,24 +291,28 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 ---
 
-## 3. The 10 broken rows — code that exists and does nothing
+## 3. The 7 broken rows — code that exists and does nothing
 
 This is the single most important list in this repository. Each one is a feature you can see in the file tree, that the docs and the UI may both imply exists, and that no code path reaches.
 
 | # | Capability | Evidence | What it costs you today |
 |---|---|---|---|
-| 1 | **Session queue** (`SessionQueue`) | `src/agent/sessions.ts:269`; `dequeue()` at `:291` has **no call site** | Every documented queue mode (`steer`/`followup`/`collect`/`interrupt`, `src/core/config.ts:56`) is inert. Two messages that arrive together run concurrently against one session. |
-| 2 | **Request authentication** (`checkToken`) | `src/gateway/auth.ts:16`; imported nowhere | `src/gateway/server.ts` says it out loud: *"Everything else under `/api` is open (login system removed for now)"*. Any process on the phone can drive your agent, read memory, run tools. |
-| 3 | **Inbound webhooks** | Route at `server.ts:683`, token check commented out at `:691` | `/api/hooks/:id` accepts unauthenticated POSTs and queues an agent turn. |
-| 4 | **Approval gate** (`createApproval`/`waitForApproval`) | `src/core/approvals.ts:14,36`; both have zero call sites | `exec` runs with no human in the loop; `GET /api/approvals` always returns `[]`. |
-| 5 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
-| 6 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
-| 7 | **Steering into a live run** | `'steer'` is a declared mode with no implementation | Users cannot redirect an agent mid-task; the mode string is a promise nothing keeps. |
-| 8 | **Token/cost accounting** | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
-| 9 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
-| 10 | **Docs that match the code** | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
+**Fixed since the first measurement (2026-10-03):** *Request authentication* — every `/api/*` route now requires `checkToken(config, extractAuth(req))` and the panel asks for the password (`#pwGate`); *Inbound webhooks* — `/api/hooks/:id` requires the per-hook token via `x-hook-token` or `?token=`, compared in constant time. Both are pinned by `test/auth.test.ts`. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
 
-Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2. The first four are one week of work between them, and they change the character of the product.
+| # | Capability | Evidence | What it costs you today |
+|---|---|---|---|
+| 1 | **Session queue** (`SessionQueue`) | `src/agent/sessions.ts:269`; `dequeue()` at `:291` has **no call site** | Every documented queue mode (`steer`/`followup`/`collect`/`interrupt`, `src/core/config.ts:56`) is inert. Two messages that arrive together run concurrently against one session. |
+| 2 | **Approval gate** (`createApproval`/`waitForApproval`) | `src/core/approvals.ts:14,36`; both have zero call sites | `exec` runs with no human in the loop; `GET /api/approvals` always returns `[]`. |
+| 3 | **Compaction that preserves history** | `src/agent/sessions.ts:154,187` rewrite the `.jsonl` in place | OpenClaw's rule is *"the full conversation history stays on disk"*; here the old lines are gone, and `buildDigest` truncates each entry to 200 chars. |
+| 4 | **Memory bootstrap injection** | `src/agent/prompt.ts` reads `readHead(3000)` | `remember()` **appends**, the prompt reads the **head** — so a fact written today can never enter context. The agent forgets on purpose. |
+| 5 | **Steering into a live run** | `'steer'` is a declared mode with no implementation | Users cannot redirect an agent mid-task; the mode string is a promise nothing keeps. |
+| 6 | **Token/cost accounting** | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
+| 7 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
+| 8 | **Docs that match the code** | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
+
+*(The census carries 7 BROKEN rows against 8 listed here: the docs row counts as PARTIAL for capability, the table keeps it because it is the one that makes you distrust the map.)*
+
+Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2. The first three are one week of work between them, and they change the character of the product.
 
 ---
 
@@ -380,7 +386,7 @@ Score is the census score for that area. "Their pages" is how many pages docs.op
 **The move:** keep it that way. Every future feature should be judged first on what it costs on a phone.
 
 ### ops — 43% · their pages: 43 install + 20 CI + 38 help
-**Real:** a re-runnable installer, Termux-native install, zero-dep build, 330 tests, a CI matrix, a 47KB changelog across 21 tags.
+**Real:** a re-runnable installer, Termux-native install, zero-dep build, 413 tests, a CI matrix, a 47KB changelog across 21 tags.
 **Fake:** `docs/ARCHITECTURE.md` (#10). Aspirational docs are worse than missing docs: they cost you the ability to trust your own map.
 **The move:** generate the architecture doc from the tree (or delete the file list from it). Then the docs can never lie again — the same trick this repository's new `census.mjs` uses.
 
@@ -388,10 +394,10 @@ Score is the census score for that area. "Their pages" is how many pages docs.op
 
 ## 5. Why the totals look like that
 
-- **You are comparing a 2-month, 1-person, 15k-line project against a 390k-star, 2,000-contributor, 421MB-of-TypeScript foundation project.** A 41% score against *that* list is not a bad score; it is an unreasonable denominator. The number that matters is: **how many of your 147 capabilities are broken (10) and how many of the remaining 47 absent ones are actually needed to win on a phone (about 20).**
-- **Where the effort isn't:** 164 of the 489 remaining days sit in the `later` lane, and roughly a third of that is a native companion app (20 days alone) and a plugin registry you deliberately do not want.
-- **Where the effort is:** 43 days of core work fixes the ten broken rows. That is the difference between "an agent that sometimes forgets and can be driven by anything on the LAN" and "an agent you can trust with a real task".
-- **The parity line that is actually reachable:** ~325 days (core + parity) with disciplined work. Part-time, that is about a year. Full-time, about 7–8 months. Everything past that is cloning their ecosystem, which is neither possible alone nor useful.
+- **You are comparing a 2-month, 1-person, 15k-line project against a 390k-star, 2,000-contributor, 421MB-of-TypeScript foundation project.** A 41% score against *that* list is not a bad score; it is an unreasonable denominator. The number that matters is: **how many of your 149 capabilities are broken (7) and how many of the remaining 45 absent ones are actually needed to win on a phone (about 20).**
+- **Where the effort isn't:** 164 of the 482 remaining days sit in the `later` lane, and roughly a third of that is a native companion app (20 days alone) and a plugin registry you deliberately do not want.
+- **Where the effort is:** ~40 days of core work fixes the seven broken rows. That is the difference between "an agent that sometimes forgets and can be driven by anything on the LAN" and "an agent you can trust with a real task".
+- **The parity line that is actually reachable:** ~320 days (core + parity) with disciplined work. Part-time, that is about a year. Full-time, about 7–8 months. Everything past that is cloning their ecosystem, which is neither possible alone nor useful.
 
 ---
 
@@ -403,6 +409,6 @@ The protocol, in order:
 
 1. **Never edit this file's measured block by hand.** `node scripts/census.mjs --write` regenerates it.
 2. **After every code change**, run `node scripts/census.mjs`. If it prints `DRIFT`, the code moved out from under a judgement — open this file, re-read that row, and change the verdict. Drift is not an error; it is the reminder.
-3. **A new capability is not done until it has a probe.** If you can't write a grep/pattern that proves it is wired, it is not wired. That single rule would have caught all ten broken rows.
+3. **A new capability is not done until it has a probe.** If you can't write a grep/pattern that proves it is wired, it is not wired. That single rule would have caught all ten broken rows of the first measurement (three are already fixed).
 4. **Refresh the OpenClaw side monthly:** `git -C .cache/openclaw pull && node scripts/openclaw-docs-report.mjs --docs .cache/openclaw/docs`. The catalogue diff tells you what they shipped while you worked.
 5. **Update the ROADMAP when a lane moves.** The 43/282/164 split is the closest thing this project has to a project plan; keep it current, not decorative.

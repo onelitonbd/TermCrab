@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.36.0 - 2026-10-03
+
+- **The panel password finally does something.** Every `/api/*` route now requires the token when one is configured (`401` + `www-authenticate: Bearer realm="TermCrab"`). The panel notices the 401 and asks for the password in a sheet, stores it on that device and reloads; with **no** password set the loopback-only default is unchanged, so nothing about a local, open panel breaks. `doctor` tells you which of the two you are running.
+- **Webhooks got their own key.** `POST /api/hooks/:id` no longer accepts anonymous callers: send `x-hook-token: <hook.token>` (or `?token=`) or get a `401` that names both options. Tokens are compared in constant time, and an unknown hook id is still a `404` so you can tell the two apart.
+- **The offline brain is back, and it is a first-class setup again.** Type `mock` answers deterministically with no network and no key and still drives one real tool round-trip, so the quick start, `docs/LAUNCH.md` and the CI smoke test work on a plane. Three ways in: `termcrab onboard --demo`, `termcrab agent "hello" --demo` (one run — this one never writes `config.json`), or the panel's new **Run offline demo** button on the Providers page. `termcrab config set provider.type mock` also sticks now; previously `loadConfig` coerced it back to `openai` and the documented offline path was silently broken.
+- The README provider table no longer promises an Anthropic-native adapter that does not exist: legacy names (`anthropic`, `gemini`, `ollama`) are aliases for the OpenAI-compatible wire format, and `mock` is the offline one.
+- Panel polish: the mobile browser chrome colour (`theme-color`) now matches the pastel canvas instead of painting a black bar above a light app, and the provider picker consistently says *endpoint* everywhere.
+- Config hot-reload is documented as what it is (watch + debounce + merge + provider re-resolve, pinned by a test); the watcher no longer keeps a headless process alive.
+- Tests: **413 cases, 0 failures, full run ~18 s** (before this round the suite could not finish in 15 minutes). Census: 149 probes, 0 drift, **7 broken rows** (was 10), capability 43%.
+
 ## 0.34.0 - 2026-10-02
 
 - The thinking level picker actually opens now. It was rendered as a plain block at the bottom of the page (its sheet styles were never wired up), so tapping the Think button looked like nothing happened - or pushed the composer around. It is a normal rounded sheet like every other popup, with a dark backdrop; tap outside, press Escape, or pick a level to close it, and focus returns to the button.
