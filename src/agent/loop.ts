@@ -311,7 +311,16 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         emit({ type: 'error', message: finalText });
       }
       if (finalText && !streamedChars) emit({ type: 'delta', text: finalText });
-      ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+      ctx.sessions.append(sessionId, {
+        role: 'assistant',
+        content: finalText,
+        ts: Date.now(),
+        // Persist the reasoning trace with the reply. Tool-call turns already
+        // saved `thinking`; this one didn't, so the drawer the user actually
+        // reads was wiped on the next refresh even though the tools survived.
+        thinking: result.thinking,
+        thinkingBlocks: result.thinkingBlocks,
+      });
       endRun(runId);
       emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i + 1 });
       return finalText;

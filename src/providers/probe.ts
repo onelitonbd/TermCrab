@@ -19,41 +19,87 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { stateDir, ensureLayout } from '../core/paths.js';
+import { stateDir, ensureLayout, home } from '../core/paths.js';
 import { log } from '../core/logger.js';
-import { OPENAI_COMPAT_BASES } from './index.js';
+import { OPENAI_COMPAT_BASES, providerNameFor } from './index.js';
 import { FetchLike } from './types.js';
-import { ThinkingLevel, THINKING_LEVELS, ModelThinkingCapability } from './capabilities.js';
+import {
+  getModelCapabilities,
+  usesMaxCompletionTokens,
+  thinkingLevelToTokens,
+  ThinkingLevel,
+  THINKING_LEVELS,
+  ModelThinkingCapability,
+} from './capabilities.js';
 
 const CAPS_FILE = 'model-caps.json';
 const PROBE_TIMEOUT_MS = 8000;
 const PROBE_USER_MSG = 'ping'; // tiny, low-cost
+/** Verified answers older than this are re-probed rather than trusted. */
+const PROBE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Error bodies that mean "this reasoning parameter is wrong for this model". */
+const BLAMES_REASONING =
+  /reasoning_effort|reasoning effort|unsupported parameter|unknown field|unrecognized|invalid.*reasoning|cannot specify both/i;
+
+/**
+ * How a server wants the thinking budget expressed.
+ *
+ * Servers disagree on this, and getting it wrong is a hard 400:
+ *  - 'effort'  — `reasoning_effort: 'low'|'medium'|'high'` (OpenAI, Kilo, most
+ *               OpenRouter-style gateways)
+ *  - 'budget'  — `reasoning: { max_tokens: N }` (DeepSeek, vLLM, llama.cpp)
+ *
+ * Some (Kilo among them) accept either one alone but 400 when both are sent
+ * ("Cannot specify both 'effort' and 'max_tokens' in reasoning parameter"), so
+ * this is a choice, not a combination.
+ */
+export type ReasoningMechanism = 'effort' | 'budget';
 
 interface ProbeResult {
   /** ISO time the probe was last run. */
   probedAt: string;
-  /** Server accepted reasoning_effort for at least one level. */
+  /** Server accepted a reasoning control for at least one level. */
   supportsThinking: boolean;
   /** Subset of levels the server accepted, ordered low→high. */
   supportedLevels: ThinkingLevel[];
   /** Highest level accepted (for default choice). */
   defaultLevel: ThinkingLevel;
+  /** Which request shape the server accepted. */
+  mechanism?: ReasoningMechanism;
   /** Optional: server's exact error string when rejecting (helpful for debugging). */
   rejectReason?: string;
 }
 
 type CapCache = Record<string, ProbeResult>;
 
+let capsPathCache: { home: string; file: string } | null = null;
+
 function cachePath(): string {
+  const h = home();
+  // Keyed on home so a TCRAB_HOME change (tests, `termcrab --home`) still works.
+  if (capsPathCache && capsPathCache.home === h) return capsPathCache.file;
   ensureLayout();
-  return path.join(stateDir(), CAPS_FILE);
+  capsPathCache = { home: h, file: path.join(stateDir(), CAPS_FILE) };
+  return capsPathCache.file;
 }
+
+/**
+ * In-memory mirror of the cache file, keyed on mtime. getCachedCaps() runs on
+ * every single chat request (openai.ts applyThinking) and on every /api/config
+ * poll, so re-reading + re-parsing the JSON each time is pure overhead.
+ */
+let memCache: { home: string; mtimeMs: number; data: CapCache } | null = null;
 
 function loadCache(): CapCache {
   try {
-    const raw = fs.readFileSync(cachePath(), 'utf8');
-    const parsed = JSON.parse(raw) as CapCache;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    const file = cachePath();
+    const { mtimeMs } = fs.statSync(file);
+    if (memCache && memCache.home === home() && memCache.mtimeMs === mtimeMs) return memCache.data;
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as CapCache;
+    const data = parsed && typeof parsed === 'object' ? parsed : {};
+    memCache = { home: home(), mtimeMs, data };
+    return data;
   } catch {
     return {};
   }
@@ -62,7 +108,14 @@ function loadCache(): CapCache {
 function saveCache(cache: CapCache): void {
   try {
     ensureLayout();
-    fs.writeFileSync(cachePath(), JSON.stringify(cache, null, 2) + '\n');
+    const file = cachePath();
+    // Write-then-rename: a concurrent reader sees either the whole old file or
+    // the whole new one. A plain writeFileSync can be observed half-written,
+    // which fails JSON.parse and silently drops every cached capability.
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(cache, null, 2) + '\n');
+    fs.renameSync(tmp, file);
+    memCache = { home: home(), mtimeMs: fs.statSync(file).mtimeMs, data: cache };
   } catch (e) {
     log.warn('model caps: failed to save cache:', e instanceof Error ? e.message : String(e));
   }
@@ -77,10 +130,19 @@ export function modelCapsKey(baseUrl: string, model: string, apiKey = ''): strin
   return `${normalizedBase}|${model}|${fp}`;
 }
 
-/** Look up cached result (no network). */
+function isExpired(entry: ProbeResult | undefined | null): boolean {
+  if (!entry) return true;
+  const at = Date.parse(entry.probedAt || '');
+  if (Number.isNaN(at)) return true; // heuristic-shaped entry, never authoritative
+  return Date.now() - at > PROBE_TTL_MS;
+}
+
+/** Look up cached result (no network). Stale entries are treated as absent. */
 export function getCachedCaps(baseUrl: string, model: string, apiKey = ''): ProbeResult | null {
   const cache = loadCache();
-  return cache[modelCapsKey(baseUrl, model, apiKey)] ?? null;
+  const hit = cache[modelCapsKey(baseUrl, model, apiKey)];
+  if (!hit || isExpired(hit)) return null;
+  return hit;
 }
 
 function joinUrl(base: string): string {
@@ -109,11 +171,17 @@ interface ProbeOpts {
  * candidate level and record which ones the server accepts. Returns the
  * capability record and writes it to the on-disk cache.
  *
- * A request is "accepted" when the server returns 200 OR a non-400 error (rate
- * limits, billing, etc.). A 400 whose body mentions reasoning/reasoning_effort/
- * unsupported parameter/unknown field counts as rejection; any other 400
- * (auth, billing, content policy) counts as "accepted" because we didn't get
- * told the parameter was bad.
+ * A request is "accepted" when the server returns 200 OR a non-400 error that
+ * still reached parameter validation (rate limits, billing). A 400 whose body
+ * mentions reasoning/reasoning_effort/unsupported parameter/unknown field counts
+ * as rejection.
+ *
+ * 401/403/404 are NOT accepted: the request never got as far as validating
+ * parameters, so they say nothing about reasoning support. Recording them as
+ * "accepted" would mark a plain model like gpt-4o as reasoning-capable, and
+ * applyThinking() trusts this cache above the heuristic — the next real turn
+ * would then send reasoning_effort to a model that 400s on it. When a probe
+ * hits those we return the heuristic result and cache nothing.
  */
 export async function probeModel(opts: ProbeOpts): Promise<ProbeResult> {
   const { baseUrl, apiKey = '', model, fetchImpl = fetch, force = false } = opts;
@@ -135,30 +203,76 @@ export async function probeModel(opts: ProbeOpts): Promise<ProbeResult> {
 
   const accepted = new Set<Exclude<ThinkingLevel, 'none' | 'xhigh' | 'max'>>();
   let rejectReason: string | undefined;
+  let inconclusive = false;
+  let mechanism: ReasoningMechanism | undefined;
+
+  /** One probe request with the given mechanism's request shape. */
+  const probeOnce = (level: ThinkingLevel, via: ReasoningMechanism, signal: AbortSignal) =>
+    fetchImpl(joinUrl(baseUrl), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${apiKey || 'not-needed'}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: PROBE_USER_MSG }],
+        // Reasoning models hard-reject `max_tokens`, and the resulting
+        // "Unsupported parameter" body would be misread as "this level
+        // doesn't work" — a false negative for every o3/o4/gpt-5 probe.
+        [usesMaxCompletionTokens(model) ? 'max_completion_tokens' : 'max_tokens']: 1,
+        // Exactly one reasoning control per request: servers like Kilo answer
+        // "Cannot specify both 'effort' and 'max_tokens'" if we send both.
+        ...(via === 'effort'
+          ? { reasoning_effort: level }
+          : { reasoning: { max_tokens: thinkingLevelToTokens(level) ?? 1024 } }),
+      }),
+      signal,
+    });
 
   try {
     // Run levels sequentially so a 401/403 on low short-circuits the rest.
     for (const level of levels) {
-      if (ctrl.signal.aborted) break;
-      let res: Response;
+      if (ctrl.signal.aborted) {
+        inconclusive = true; // timed out / caller cancelled before an answer
+        break;
+      }
+      let res: Response | undefined;
+      let bodyText = '';
       try {
-        res = await fetchImpl(joinUrl(baseUrl), {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: `Bearer ${apiKey || 'not-needed'}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: PROBE_USER_MSG }],
-            max_tokens: 1,
-            reasoning_effort: level,
-          }),
-          signal: ctrl.signal,
-        });
+        // Try the shapes we haven't ruled out yet, in preference order.
+        const candidates: ReasoningMechanism[] = mechanism ? [mechanism] : ['effort', 'budget'];
+        for (const via of candidates) {
+          const attempt = await probeOnce(level, via, ctrl.signal).catch((e: unknown) => {
+            inconclusive = true;
+            log.info(`probe ${model}@${baseUrl} network error:`, e instanceof Error ? e.message : String(e));
+            return undefined;
+          });
+          if (!attempt) break; // network failure — stop entirely
+          res = attempt;
+
+          if (attempt.ok) {
+            mechanism = via;
+            break;
+          }
+
+          // Drain/read the body once; it can't be read again.
+          bodyText = (await attempt.text().catch(() => '')).slice(0, 500);
+          const blames = BLAMES_REASONING.test(bodyText);
+          if (!blames) {
+            // Not about the reasoning param — keep this shape and let the
+            // status-code classification below decide what it means.
+            mechanism = via;
+            break;
+          }
+          // This shape is rejected; try the next candidate for this level.
+          if (via === 'effort') rejectReason = bodyText.slice(0, 200);
+        }
+        if (!res) break;
       } catch (e) {
-        // Network error — can't determine support. Skip further levels; leave
-        // cached-as-unknown (return heuristic-based result).
+        // Network error — the server never answered, so we know nothing. Skip
+        // the remaining levels and do not cache a guess (see the 401 branch).
+        inconclusive = true;
         log.info(`probe ${model}@${baseUrl} network error:`, e instanceof Error ? e.message : String(e));
         break;
       }
@@ -172,30 +286,32 @@ export async function probeModel(opts: ProbeOpts): Promise<ProbeResult> {
         continue;
       }
 
-      // Error response — check the body to see if it blamed reasoning_effort.
-      let bodyText = '';
-      try { bodyText = (await res.text()).slice(0, 500); } catch { /* ignore */ }
-
       // If the server explicitly says reasoning_effort is bad, this level
       // isn't supported. If any other level was already accepted, the server
       // is granular (rare). If NONE were accepted, we mark unsupported.
-      const blamesParam =
-        /reasoning_effort|reasoning effort|unsupported parameter|unknown field|unrecognized|invalid.*reasoning/i.test(bodyText);
-
-      if (blamesParam) {
+      if (BLAMES_REASONING.test(bodyText)) {
         rejectReason = bodyText.slice(0, 200);
         continue; // try the next (lower) level in case server supports only some
       }
 
-      // Non-400-level error (401, 403, 404, 429, 5xx) OR 400 that doesn't
-      // name reasoning_effort (billing, content policy, etc.) — treat as
-      // "accepted the parameter" so we don't mis-label a model unsupported
-      // because the user ran out of credits.
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        // The request failed before parameter validation. We learned nothing,
+        // and caching a guess here is what makes plain models start 400ing.
+        inconclusive = true;
+        log.warn(
+          `probe ${model}@${baseUrl} HTTP ${res.status} — capability unknown, ` +
+            `not caching (check the api key / model name)`,
+        );
+        break;
+      }
+      // 429 / 5xx, i.e. an error raised after the parameter was accepted —
+      // treat as "accepted" so a rate limit doesn't mislabel the model.
       if (res.status !== 400) {
         accepted.add(level);
         continue;
       }
       // Generic 400 with no mention of reasoning_effort: don't know; skip.
+      inconclusive = true;
       break;
     }
   } finally {
@@ -222,8 +338,23 @@ export async function probeModel(opts: ProbeOpts): Promise<ProbeResult> {
     supportsThinking,
     supportedLevels: supported,
     defaultLevel,
+    mechanism,
     rejectReason,
   };
+
+  // Nothing conclusive was learned (401/403/404, network error, timeout). Do
+  // not persist it: a wrong "supports thinking" record outranks the heuristic
+  // in applyThinking() and would start sending reasoning_effort to plain
+  // models. Hand back the heuristic instead and let a later probe retry.
+  if (inconclusive) {
+    const heuristic = getModelCapabilities(model, providerNameFor(baseUrl));
+    return {
+      probedAt: result.probedAt,
+      supportsThinking: heuristic.supportsThinking,
+      supportedLevels: heuristic.supportedLevels,
+      defaultLevel: heuristic.defaultLevel,
+    };
+  }
 
   const cache = loadCache();
   cache[key] = result;

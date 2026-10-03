@@ -36,6 +36,53 @@ export function normalizeThinkingLevel(value: unknown): ThinkingLevel | undefine
 const ALL: ThinkingLevel[] = [...THINKING_LEVELS];
 
 /**
+ * OpenAI's own reasoning models (o1 / o3 / o4 / gpt-5 / codex).
+ *
+ * Deliberately anchored so plain gpt-4o / gpt-4.1 / gpt-4o-mini never match.
+ */
+export function isOpenAiReasoningModel(modelId: string): boolean {
+  const m = (modelId || '').toLowerCase().trim();
+  return (
+    /(^|[/:])o[134](-|$|\.)/.test(m) ||
+    /(^|[/:])o1$|(^|[/:])o3$|(^|[/:])o4$/.test(m) ||
+    /(^|[/:])gpt-5(-|$|\.)/.test(m) ||
+    m.includes('codex')
+  );
+}
+
+/**
+ * Which request key carries the output-token limit.
+ *
+ * OpenAI's reasoning models reject `max_tokens` on Chat Completions with
+ *   400 Unsupported parameter: 'max_tokens' is not supported with this model.
+ * and require `max_completion_tokens` (which also counts reasoning tokens).
+ * Every other model takes `max_tokens` and rejects `max_completion_tokens`,
+ * so this is keyed off the model id and is host-independent.
+ */
+export function usesMaxCompletionTokens(modelId: string): boolean {
+  return isOpenAiReasoningModel(modelId);
+}
+
+/** True only for OpenAI's own API, where the wire format is fixed. */
+export function isOpenAiOfficialHost(baseUrl: string): boolean {
+  const raw = (baseUrl || '').trim();
+  // Exact hostname match, so a lookalike host (api.openai.com.evil.test) is
+  // never mistaken for OpenAI — that would silently strip reasoning params
+  // from a self-hosted server.
+  try {
+    const host = new URL(raw).hostname.toLowerCase();
+    // An empty hostname means the URL parsed as something opaque (e.g. the
+    // scheme-less "api.openai.com/v1" reads as protocol "api.openai.com:"),
+    // so fall through to the regex below.
+    if (host) return host === 'openai.com' || host === 'api.openai.com';
+  } catch {
+    /* not parseable — fall through */
+  }
+  // Scheme-less spelling such as "api.openai.com/v1".
+  return /^(?:https?:\/\/)?(api\.)?openai\.com(?:[/:]|$)/i.test(raw);
+}
+
+/**
  * Check if a model ID / provider supports model reasoning / thinking.
  */
 export function getModelCapabilities(modelId: string, providerName?: string): ModelThinkingCapability {
@@ -49,13 +96,7 @@ export function getModelCapabilities(modelId: string, providerName?: string): Mo
   });
 
   // OpenAI reasoning models: o1 / o3 / o4 / gpt-5 families.
-  // (Deliberately anchored: plain 4o / gpt-4 must NOT match and get a 400.)
-  if (
-    /(^|[/:])o[134](-|$|\.)/.test(m) ||
-    /(^|[/:])o1$|(^|[/:])o3$|(^|[/:])o4$/.test(m) ||
-    /(^|[/:])gpt-5(-|$|\.)/.test(m) ||
-    m.includes('codex')
-  ) {
+  if (isOpenAiReasoningModel(m)) {
     return yes();
   }
 

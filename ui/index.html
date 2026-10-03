@@ -87,12 +87,14 @@
     pointer-events: none;
   }
   .bar .ib { pointer-events: auto; }
+  /* --line, not --edge: these sit over the now-white feed, and a #fff border on
+     a near-white fill leaves the button with no edge at all. */
   .ib {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: var(--glass);
-    border: 1px solid var(--edge);
+    background: #fff;
+    border: 1px solid var(--line);
     color: var(--ic);
     box-shadow: 0 8px 20px -12px var(--sh);
   }
@@ -112,17 +114,28 @@
   }
   #view-chat:not([hidden]) { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 
-  /* ---- chat feed (fixed, masked bottom, scrolls behind composer) ---- */
+  /* ---- chat view: the app's white page ---- */
+  /* #log is only 720px wide (it carries .wrap), so on its own the page gradient
+     showed either side of the message column and in a band under the composer.
+     The view paints white full-bleed instead, and the composer floats on it.
+     --edge is #fff, which on a white page is no border at all, so it is repointed
+     at --line for this view only — every other view keeps the white edge it was
+     designed against its gradient. */
+  body[data-view="chat"] {
+    background: #fff;
+    --edge: var(--line);
+  }
+
+  /* ---- chat feed (fixed, full height, scrolls behind the floating composer) ---- */
   #log {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: var(--fb, 42px);
+    background: #fff;
     overflow-y: auto;
     padding: 72px 14px var(--pb, 130px);
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
     scroll-behavior: smooth;
   }
   .wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
@@ -131,17 +144,21 @@
   /* ---- messages ---- */
   .ai { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
   .ai .c { min-width: 0; flex: 1; }
-  .who { font-size: 12.5px; font-weight: 600; color: var(--mut); margin: 0 0 4px 4px; }
+  .who { font-size: 12.5px; font-weight: 600; color: var(--mut); margin: 0 0 6px; }
+  /* AI replies are plain full-width text, not a card — `.me` (the user's own
+     message) is the only bubble in the feed. This element stays because it is
+     also the markdown typography scope (.t p, .t h1-h6, .t a, .t table below);
+     only the card chrome is dropped, so the reply runs the full column. */
   .t {
-    background: var(--glass);
-    border: 1px solid var(--edge);
-    border-radius: 6px 22px 22px 22px;
-    padding: 12px 16px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
     font-size: 15.5px;
-    line-height: 1.55;
-    box-shadow: 0 14px 30px -22px var(--sh);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
+    line-height: 1.6;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     overflow-wrap: break-word;
     animation: settle 0.18s ease-out;
   }
@@ -170,15 +187,14 @@
   .msg.welcome {
     align-self: stretch;
     max-width: 100%;
-    background: var(--glass);
-    border: 1px solid var(--edge);
+    background: #fff;
+    /* --line, not --edge: --edge is #fff, which on a white feed is no border. */
+    border: 1px solid var(--line);
     border-left: 3px solid #f0517d;
     border-radius: 4px var(--r-lg) var(--r-lg) 4px;
     text-align: left;
     color: var(--ink);
     font-size: 14px;
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
   }
   .err { color: #d9456f !important; }
 
@@ -583,7 +599,10 @@
     color: var(--text);
   }
 
-  /* ---- composer dock (fixed, transparent; only the card is interactive) ---- */
+  /* ---- composer dock (fixed; only the card is interactive) ---- */
+  /* Transparent on purpose. The dock spans the full viewport width, so any fill
+     here reads as a bar behind the composer. Left clear, the card inside it is
+     the only thing drawn and it floats on the view's white. */
   #composer {
     display: none;
     flex-direction: column;
@@ -598,16 +617,21 @@
   }
   body[data-view="chat"] #composer { display: flex; }
   /* progress + goal display above composer */
+  /* Runs above the composer as its own floating chip, matched to the card's
+     width and radius. It used to fuse onto the card (square bottom edge, no
+     bottom border, 4px gap) which only made sense when the dock behind it was a
+     filled bar — with a floating composer that reads as a detached fragment. */
   #composerProgress {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 6px 14px;
-    margin-bottom: 4px;
-    border-radius: 14px 14px 0 0;
-    background: var(--glass);
-    border: 1px solid var(--edge);
-    border-bottom: 0;
+    max-width: 720px;
+    margin: 0 auto 8px;
+    border-radius: 14px;
+    background: #f6f3fa;
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(122, 93, 140, 0.1);
     font-size: 12.5px;
     color: var(--muted);
     min-height: 34px;
@@ -631,23 +655,31 @@
     max-width: 720px;
     width: 100%;
     margin: 0 auto;
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    border: 1px solid var(--edge);
-    border-radius: 30px;
+    /* Off-white, not pure white: the page behind it is #fff, and this is what
+       keeps the composer readable as its own section while still floating on it.
+       The border is --line rather than --edge (which is #fff, i.e. invisible on
+       a light fill). The two-layer shadow is what sells "floating" — a tight
+       contact shadow for the edge, then the soft wide one for lift. */
+    background: #f6f3fa;
+    border: 1px solid var(--line);
+    border-radius: 14px;
     padding: 14px 14px 12px;
-    box-shadow: 0 24px 50px -24px var(--sh);
+    /* Resting height of the one-line draft. JS reads this (it clears the
+       inline height rather than hardcoding a second copy) so the two can't drift. */
+    --composer-h: 34px;
+    box-shadow: 0 1px 2px rgba(122, 93, 140, 0.1), 0 18px 40px -22px var(--sh);
     display: flex;
     flex-direction: column;
     transition: box-shadow 0.2s ease;
   }
+  /* No gradient ring here any more — the composer is plain white, so the plain
+     1px border above is the whole stroke. */
   #composerBox:focus-within { box-shadow: 0 24px 50px -24px var(--sh), 0 0 0 3px rgba(240, 81, 125, .22); }
   #composer textarea {
     width: 100%;
     flex: 1;
     resize: none;
-    height: 28px;
+    height: var(--composer-h);
     max-height: 140px;
     padding: 2px 6px;
     border: 0;
@@ -663,6 +695,65 @@
   #composer textarea:focus { border: 0; box-shadow: none; }
   .composerRow { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
   .composerSp { flex: 1; }
+  /* Compact controls. `.iconBtn` is a shared base (Providers, page heads, …), so
+     this is scoped to the composer. Targets are the buttons' own ids rather than
+     `.iconBtn`, because an ID-scoped width would silently beat the `width: auto`
+     that .modelBtn/.thinkingBtn rely on to size to their label and would clip
+     the text. min-height is reset too — it wins over `height` and would
+     otherwise pin these at the base 40px. */
+  #composer { --composerBtn: 38px; }
+  /* Every composer control is sized from that one value. This is what actually
+     delivers "all buttons the same size" — four separate numbers drift apart the
+     next time one of them gets nudged. Targets are the buttons' own ids rather
+     than `.iconBtn` because an ID-scoped width would silently beat the
+     `width: auto` that .modelBtn/.thinkingBtn rely on to size to their label.
+     `min-height` is reset too — it wins over `height` and would otherwise pin
+     these at the base 40px. */
+  #attachBtn, #send, #modelBtn, #thinkingBtn {
+    width: var(--composerBtn);
+    height: var(--composerBtn);
+    min-height: var(--composerBtn);
+    flex: 0 0 auto;
+  }
+  /* Model / thinking are icon-only buttons — the model name and the level text
+     are hidden so they read as round buttons like attach/send instead of long
+     capsules. The click handlers are bound to the buttons themselves
+     (`$('modelBtn').onclick`, `$('thinkingBtn').onclick`), so hiding their
+     contents does not affect opening the pickers. */
+  #modelBtn, #thinkingBtn {
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    background: var(--soft);
+  }
+  #modelBtn:hover, #thinkingBtn:hover { background: var(--hov); }
+  /* Two separate buttons, not one segmented control. The `.seg` tray painted
+     its own `--soft` background, identical to the circles sitting inside it, so
+     each button visually dissolved into the tray — that contrast loss is what
+     read as "much smaller than attach", more than the size did. Transparent
+     tray plus a real gap between the circles. */
+  #composer .seg {
+    background: none;
+    padding: 0;
+    gap: 6px;
+    border-radius: 0;
+    flex-shrink: 0;
+  }
+  /* Drop the inner white pill; the circle's own background is the button now. */
+  #composer .modOn {
+    height: auto;
+    padding: 0;
+    gap: 0;
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  #composer #modelBtnLabel, #composer #thinkingBtnLabel, #composer .thinkPre { display: none; }
+  /* Trailing chevron — the circle is too small to carry icon + chevron legibly.
+     The dropdown is still discoverable via the cursor, title and aria-label.
+     Targeted by class, not `svg:last-child`, so dropping the label span from the
+     markup can never turn the leading glyph into a match and hide it. */
+  #composer .modOn svg.chev { display: none; }
   /* icon buttons (soft circle) */
   .iconBtn {
     width: 40px;
@@ -2694,7 +2785,7 @@
 
 <div id="composer">
   <div id="statusBand" style="display:none;align-items:center;gap:8px;padding:6px 14px;margin-bottom:4px;border-radius:12px;background:rgba(255,145,86,.14);border:1px solid rgba(255,145,86,.4);font-size:12.5px;color:#f07a3a"></div>
-  <div id="slashMenu" class="hidden" style="position:fixed;bottom:80px;left:10px;right:10px;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);border:1px solid #fff;border-radius:24px;padding:8px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 20px 44px -22px var(--sh);pointer-events:auto"></div>
+  <div id="slashMenu" class="hidden" style="position:fixed;bottom:80px;left:10px;right:10px;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:24px;padding:8px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 20px 44px -22px var(--sh);pointer-events:auto"></div>
   <div id="composerProgress" class="hidden">
     <span class="progSpinner"></span>
     <span class="progText">Crabby is thinking…</span>
@@ -2703,27 +2794,27 @@
     <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
     <div class="composerRow">
       <button id="attachBtn" class="iconBtn" type="button" title="Attach a text file" aria-label="Attach a file">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></svg>
       </button>
       <div class="seg">
-        <button id="modelBtn" class="iconBtn modelBtn" type="button" title="Choose a model" aria-label="Choose a model">
+        <button id="modelBtn" class="iconBtn modelBtn" type="button" title="Choose a model" aria-label="Choose a model" aria-haspopup="dialog" aria-expanded="false">
           <span class="modOn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/></svg>
             <span id="modelBtnLabel">model</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
         <button id="thinkingBtn" class="iconBtn thinkingBtn" type="button" title="Thinking level: Auto" aria-label="Thinking level: Auto" aria-haspopup="dialog" aria-expanded="false">
           <span class="modOn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>
             <span class="thinkPre">Think:&nbsp;</span><span id="thinkingBtnLabel">Auto</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
       </div>
       <span class="composerSp"></span>
       <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       </button>
     </div>
   </div>
@@ -3008,6 +3099,30 @@
     syncHero();
     log.scrollTop = log.scrollHeight;
     return div;
+  }
+
+  /** Pin the feed to the true bottom of the latest reply.
+      A single `scrollTop = scrollHeight` right after appending is not enough:
+      scrollHeight grows after the fact (images decode, fonts swap, the reasoning
+      drawer expands), so one assignment lands short. That is exactly how a
+      refresh used to stop on the user's message — the reply is injected into
+      `.textBody` *after* addMsg() has already scrolled, and nothing scrolls
+      again. Re-pin on the next frame, and once more per image as it loads. */
+  function scrollLogToEnd() {
+    if (!log) return;
+    log.scrollTop = log.scrollHeight;
+    requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
+    for (const img of log.querySelectorAll('img')) {
+      if (img.dataset.scrollPin) continue;
+      img.dataset.scrollPin = '1';
+      const jump = () => { log.scrollTop = log.scrollHeight; };
+      if (img.complete) jump();
+      else {
+        img.addEventListener('load', jump, { once: true });
+        // already-decoded images can still be settling; one more frame is cheap
+        if (img.decode) img.decode().then(jump, () => {});
+      }
+    }
   }
 
   // remove a half-rendered assistant turn, including its .ai wrapper
@@ -3424,8 +3539,17 @@
     // tap the dark backdrop to dismiss, like every other sheet
     $('thinkingPick').addEventListener('click', (e) => { if (e.target === $('thinkingPick')) closeThinkingPick(); });
   }
+  if ($('modelPick')) {
+    // The model sheet had a Close button and nothing else, so tapping outside
+    // left it stuck open over the chat. Same backdrop dismiss as thinkingPick.
+    $('modelPick').addEventListener('click', (e) => { if (e.target === $('modelPick')) closeModelPick(); });
+  }
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && $('thinkingPick') && !$('thinkingPick').classList.contains('hidden')) closeThinkingPick();
+    if (e.key !== 'Escape') return;
+    // Both sheets, or whichever is open. Backdrops are stacked, so close the
+    // thinking sheet first — it is the later sibling in the DOM.
+    if ($('thinkingPick') && !$('thinkingPick').classList.contains('hidden')) { closeThinkingPick(); return; }
+    if ($('modelPick') && !$('modelPick').classList.contains('hidden')) closeModelPick();
   });
 
   async function refreshModelBtn() {
@@ -3470,7 +3594,7 @@
           row.disabled = true;
           try {
             await api('/api/models/use', 'POST', { providerId: id, model: m });
-            $('modelPick').classList.add('hidden');
+            closeModelPick();
             await refreshModelBtn();
             refreshLiveStatus();
           } catch (e) {
@@ -3486,9 +3610,22 @@
     }
   }
 
+  /** Hide the model sheet and hand focus back, mirroring closeThinkingPick. */
+  function closeModelPick() {
+    const box = $('modelPick');
+    if (!box || box.classList.contains('hidden')) return;
+    box.classList.add('hidden');
+    const btn = $('modelBtn');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      btn.focus();
+    }
+  }
+
   async function openModelPick() {
     $('mpErr').textContent = '';
     $('modelPick').classList.remove('hidden');
+    $('modelBtn').setAttribute('aria-expanded', 'true');
     $('mpList').innerHTML = '<div class="nx">loading…</div>';
     $('mpProv').innerHTML = '';
     try {
@@ -3513,7 +3650,7 @@
   }
 
   $('modelBtn').onclick = openModelPick;
-  $('mpCancel').onclick = () => $('modelPick').classList.add('hidden');
+  $('mpCancel').onclick = closeModelPick;
   $('mpProv').onchange = () => { $('mpErr').textContent = ''; loadMpModels(); };
 
   document.querySelectorAll('[data-ask]').forEach((b) => {
@@ -3892,6 +4029,55 @@
     if (details) toolSummary(details);
   }
 
+  // Build a reasoning drawer. Shared by the live stream and by history replay so
+  // the two cannot drift apart.
+  //   done    — the turn finished (badge drops its pink "active" state)
+  //   elapsed — seconds to show, or null when unknown (history has no timer)
+  function buildThinkDrawer(text, opts) {
+    const done = !!(opts && opts.done);
+    const drawer = document.createElement('details');
+    drawer.className = 'think-drawer';
+    drawer.open = true;
+    const sum = document.createElement('summary');
+    const badge = document.createElement('span');
+    badge.className = done ? 'think-badge' : 'think-badge active';
+    badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>';
+    const title = document.createElement('span');
+    title.className = 'think-title';
+    title.textContent = done
+      ? (opts.elapsed ? 'Thought for ' + opts.elapsed + 's' : 'Reasoning')
+      : 'Thinking…';
+    const timer = document.createElement('span');
+    timer.className = 'think-timer';
+    timer.textContent = done ? '' : '0.0s';
+    const cv = document.createElement('svg');
+    cv.setAttribute('class', 'cv');
+    cv.setAttribute('width', '14');
+    cv.setAttribute('height', '14');
+    cv.setAttribute('viewBox', '0 0 24 24');
+    cv.setAttribute('fill', 'none');
+    cv.setAttribute('stroke', 'currentColor');
+    cv.setAttribute('stroke-width', '2');
+    cv.setAttribute('stroke-linecap', 'round');
+    cv.setAttribute('stroke-linejoin', 'round');
+    cv.innerHTML = '<path d="m6 9 6 6 6-6"/>';
+    sum.append(badge, title, timer, cv);
+    const body = document.createElement('div');
+    body.className = 'think-body';
+    body.textContent = text || '';
+    drawer.append(sum, body);
+    return drawer;
+  }
+
+  /** Seat a drawer above the message's tool steps / text body, matching live order. */
+  function attachThinkDrawer(host, drawer) {
+    const steps = host.querySelector('details.steps');
+    const tb = host.querySelector('.textBody');
+    if (steps) host.insertBefore(drawer, steps);
+    else if (tb) host.insertBefore(drawer, tb);
+    else host.appendChild(drawer);
+  }
+
   function addThinkingDelta(text) {
     if (!text) return;
     if (!state.live || !log.contains(state.live)) {
@@ -3899,46 +4085,8 @@
     }
     let thinkDrawer = state.live.querySelector('details.think-drawer');
     if (!thinkDrawer) {
-      const thinkOld = state.live.querySelector('.think');
-      if (thinkOld) thinkOld.remove();
-      thinkDrawer = document.createElement('details');
-      thinkDrawer.className = 'think-drawer';
-      thinkDrawer.open = true;
-      const sum = document.createElement('summary');
-      const badge = document.createElement('span');
-      badge.className = 'think-badge active';
-      badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>';
-      const title = document.createElement('span');
-      title.className = 'think-title';
-      title.textContent = 'Thinking…';
-      const timer = document.createElement('span');
-      timer.className = 'think-timer';
-      timer.textContent = '0.0s';
-      const cv = document.createElement('svg');
-      cv.setAttribute('class', 'cv');
-      cv.setAttribute('width', '14');
-      cv.setAttribute('height', '14');
-      cv.setAttribute('viewBox', '0 0 24 24');
-      cv.setAttribute('fill', 'none');
-      cv.setAttribute('stroke', 'currentColor');
-      cv.setAttribute('stroke-width', '2');
-      cv.setAttribute('stroke-linecap', 'round');
-      cv.setAttribute('stroke-linejoin', 'round');
-      cv.innerHTML = '<path d="m6 9 6 6 6-6"/>';
-      sum.append(badge, title, timer, cv);
-      const body = document.createElement('div');
-      body.className = 'think-body';
-      thinkDrawer.append(sum, body);
-
-      const steps = state.live.querySelector('details.steps');
-      const tb = state.live.querySelector('.textBody');
-      if (steps) {
-        state.live.insertBefore(thinkDrawer, steps);
-      } else if (tb) {
-        state.live.insertBefore(thinkDrawer, tb);
-      } else {
-        state.live.appendChild(thinkDrawer);
-      }
+      thinkDrawer = buildThinkDrawer('', { done: false });
+      attachThinkDrawer(state.live, thinkDrawer);
       state.thinkStartTime = Date.now();
       if (state.thinkInterval) clearInterval(state.thinkInterval);
       state.thinkInterval = setInterval(() => {
@@ -4470,6 +4618,11 @@
           if (!state.live || !log.contains(state.live)) {
             state.live = addMsg('bot', '');
           }
+          // Replay the saved reasoning trace. Added before the tool lines and
+          // text body so it lands in the same slot the live stream put it in.
+          if (m.thinking) {
+            attachThinkDrawer(state.live, buildThinkDrawer(m.thinking, { done: true, elapsed: null }));
+          }
           if (Array.isArray(m.toolCalls) && m.toolCalls.length > 0) {
             for (const c of m.toolCalls) {
               addToolLine(c.name, c.args || {}, results.get(c.id) || '', c.id);
@@ -4488,10 +4641,14 @@
       }
       state.live = null;
       closeToolGroup();
+      // The last scroll happened inside addMsg() for the *user* turn; the reply
+      // above was injected after it. Pin to the end once the replay is done.
+      scrollLogToEnd();
     } catch (e) {
       addMsg('sys', 'failed to load session: ' + e.message);
     } finally {
       syncHero();
+      scrollLogToEnd();
     }
   }
 
@@ -4599,7 +4756,9 @@
     const r = document.documentElement.style;
     r.setProperty('--fb', fb + 'px');
     r.setProperty('--pb', (dock.offsetHeight - fb + 10) + 'px');
-    if (log) log.scrollTop = log.scrollHeight;
+    // The composer's height is part of the feed's padding, so resizing it moves
+    // the bottom out from under the reader. Re-pin.
+    scrollLogToEnd();
   };
   if (dock && typeof ResizeObserver !== 'undefined') new ResizeObserver(fitDock).observe(dock);
   fitDock();
@@ -4610,7 +4769,10 @@
   const growInput = () => {
     const ta = $('input');
     if (!ta) return;
-    ta.style.height = '28px';
+    // Drop the inline height first so the CSS base (--composer-h) applies again.
+    // scrollHeight is never less than the element height, so a one-line draft
+    // still gets the full base height back instead of shrinking.
+    ta.style.height = '';
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
   };
   $('input').addEventListener('input', () => { growInput(); syncSendBtn(); });
@@ -6439,7 +6601,7 @@
     if (name === 'debug') { refreshDebug(); if ($('debugAuto')?.checked) { clearInterval(debugTimer); debugTimer = setInterval(refreshDebug, 3000); } } else { clearInterval(debugTimer); debugTimer = null; }
     if (name === 'providers') showProvidersRoot();
     if (name === 'models') showModelsRoot();
-    if (name === 'chat') { log.scrollTop = log.scrollHeight; refreshTaskCards(); refreshProgressCard(); }
+    if (name === 'chat') { scrollLogToEnd(); refreshTaskCards(); refreshProgressCard(); }
     pushRoute(pathForView(name));
   }
   document.querySelectorAll('.nav [data-goto]').forEach((b) => {

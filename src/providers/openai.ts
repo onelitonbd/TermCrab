@@ -10,8 +10,15 @@ import {
   isAbortError,
 } from './types.js';
 import { sseData } from './sse.js';
-import { getModelCapabilities, thinkingLevelToEffort, thinkingLevelToTokens, ThinkingLevel } from './capabilities.js';
-import { getModelCaps, getCachedCaps } from './probe.js';
+import {
+  getModelCapabilities,
+  thinkingLevelToEffort,
+  thinkingLevelToTokens,
+  isOpenAiOfficialHost,
+  usesMaxCompletionTokens,
+  ThinkingLevel,
+} from './capabilities.js';
+import { getCachedCaps, ReasoningMechanism } from './probe.js';
 
 interface OpenAiCfg {
   baseUrl: string;
@@ -26,6 +33,8 @@ interface OpenAiCfg {
    *  fallbacks) silently ignore unknown JSON fields but may host reasoning
    *  models we can't detect by name. */
   isCustomHost?: boolean;
+  /** Label used only for heuristic detection (e.g. 'deepseek'). */
+  providerName?: string;
 }
 
 function joinUrl(base: string, path: string): string {
@@ -115,6 +124,16 @@ function clampLevel(requested: ThinkingLevel, supported: readonly ThinkingLevel[
 export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Provider {
 
   /**
+   * Request key that carries the output-token limit. OpenAI's reasoning models
+   * (o1/o3/o4/gpt-5/codex) hard-reject `max_tokens` with
+   *   400 Unsupported parameter: 'max_tokens' is not supported with this model.
+   * and require `max_completion_tokens`; every other model is the reverse.
+   */
+  function tokenLimitKey(): 'max_tokens' | 'max_completion_tokens' {
+    return usesMaxCompletionTokens(cfg.model) ? 'max_completion_tokens' : 'max_tokens';
+  }
+
+  /**
    * Attach reasoning options when the user picked a thinking level.
    *
    * Decision matrix (most trusted → least trusted):
@@ -131,16 +150,22 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
    *     models, which breaks the entire reply.
    *
    * When we DO send reasoning_effort we also clamp the requested level to the
-   * highest one the server actually accepts (per cache/heuristic) and attach a
-   * reasoning.max_tokens budget hint (DeepSeek / vLLM / o3/o4 style).
+   * highest one the server actually accepts (per cache/heuristic).
+   *
+   * Token budget is host-shaped, and getting this wrong is a hard 400:
+   *  - Official OpenAI: Chat Completions has NO `reasoning` object at all
+   *    ("Unrecognized request argument supplied: reasoning"), so the budget
+   *    is left to reasoning_effort and we never touch the token limit.
+   *  - DeepSeek / vLLM / llama.cpp: accept `reasoning: { max_tokens }`, and
+   *    the budget is part of the output allowance so max_tokens is raised.
    */
   function applyThinking(body: Record<string, unknown>, req: ChatRequest): void {
     const level = req.thinkingLevel;
     if (!level || level === 'none') return;
 
-    const heuristicCaps = getModelCapabilities(cfg.model, 'openai');
+    const heuristicCaps = getModelCapabilities(cfg.model, cfg.providerName ?? 'openai');
     const cached = getCachedCaps(cfg.baseUrl, cfg.model, cfg.apiKey);
-    const isOpenAiOfficial = /^https?:\/\/api\.openai\.com\b/.test(cfg.baseUrl);
+    const isOpenAiOfficial = isOpenAiOfficialHost(cfg.baseUrl);
     const forceOnCustom = cfg.isCustomHost && !isOpenAiOfficial;
 
     // If we have a *verified* answer (probe.js tested this server), use it as
@@ -161,16 +186,44 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     const effective = clampLevel(level, supportedLevels);
     if (effective === 'none') return;
 
-    const effort = thinkingLevelToEffort(effective);
-    if (effort) body.reasoning_effort = effort;
+    // ---- Choose ONE mechanism, never both ----
+    //
+    // Servers disagree on how a thinking budget is expressed, and several
+    // accept either shape alone but 400 when both are present:
+    //   "Cannot specify both 'effort' and 'max_tokens' in reasoning parameter"
+    // (Kilo / OpenRouter-style gateways). So this is a choice:
+    //   - 'effort' → reasoning_effort: low|medium|high   (OpenAI, Kilo)
+    //   - 'budget' → reasoning: { max_tokens: N }        (DeepSeek, vLLM)
+    //
+    // Preference order: a verified probe result wins; official OpenAI only ever
+    // supports 'effort'; otherwise 'effort' first since it's the OpenAI spec
+    // shape and the most widely accepted.
+    const probedMechanism = cached?.mechanism;
+    // Without a verified answer: official OpenAI only speaks 'effort'; on any
+    // other host prefer 'effort' too (it's the OpenAI-spec shape and the most
+    // widely accepted), and fall back to 'budget' only for hosts we know host
+    // token-budget models. The probe settles it definitively.
+    const mechanism: ReasoningMechanism = probedMechanism ?? (isOpenAiOfficial ? 'effort' : 'effort');
 
     const tokBudget = thinkingLevelToTokens(effective);
-    if (tokBudget) {
+
+    if (mechanism === 'budget') {
+      if (!tokBudget) return;
+      // Official OpenAI has no `reasoning` object at all
+      // ("Unrecognized request argument supplied: reasoning").
+      if (isOpenAiOfficial) return;
       body.reasoning = { max_tokens: tokBudget };
-      if (!body.max_tokens || (typeof body.max_tokens === 'number' && body.max_tokens < tokBudget + 256)) {
-        body.max_tokens = Math.max((cfg.maxTokens ?? 4096), tokBudget + 2048);
+      // The budget is part of the output allowance, so raise the limit.
+      const limitKey = tokenLimitKey();
+      const current = body[limitKey];
+      if (typeof current !== 'number' || current < tokBudget + 256) {
+        body[limitKey] = Math.max(cfg.maxTokens ?? 4096, tokBudget + 2048);
       }
+      return;
     }
+
+    const effort = thinkingLevelToEffort(effective);
+    if (effort) body.reasoning_effort = effort;
   }
 
   function finalize(
@@ -206,7 +259,7 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     const body: Record<string, unknown> = {
       model: cfg.model,
       messages: buildMessages(req),
-      max_tokens: req.maxTokens ?? cfg.maxTokens,
+      [tokenLimitKey()]: req.maxTokens ?? cfg.maxTokens,
       temperature: req.temperature ?? cfg.temperature,
     };
     applyThinking(body, req);
@@ -229,6 +282,8 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
           content?: string | null;
           reasoning_content?: string;
           thinking?: string;
+          /** Used by OpenRouter-style gateways (Kilo among them). Same trace. */
+          reasoning?: string;
           tool_calls?: { id: string; function: { name: string; arguments: string } }[];
         };
         finish_reason?: string;
@@ -238,19 +293,29 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
     const msg = choice?.message;
     let text = msg?.content ?? '';
     if (Array.isArray(text)) text = JSON.stringify(text);
-    const thinkingText = msg?.reasoning_content || msg?.thinking || '';
+    // All three spellings, same as the streaming branch below. Reading only two
+    // silently dropped the whole trace on this path — which is also the retry
+    // path when streaming fails mid-turn, and the path used whenever the caller
+    // passes no onDelta.
+    const thinkingText = msg?.reasoning_content || msg?.thinking || msg?.reasoning || '';
     const toolsOut = new Map<number, ToolAcc>();
     for (const tc of msg?.tool_calls ?? []) {
       toolsOut.set(toolsOut.size, { id: tc.id, name: tc.function.name, args: tc.function.arguments || '{}' });
     }
-    return finalize(text || '', toolsOut, choice?.finish_reason ?? '', thinkingText);
+    const result = finalize(text || '', toolsOut, choice?.finish_reason ?? '', thinkingText);
+    // A caller that passed onDelta may be rendering incrementally (this is also
+    // the retry path when streaming fails). Flush what we got as one chunk so
+    // the UI actually shows the reply instead of waiting on nothing.
+    if (opts?.onThinkingDelta && result.thinking) opts.onThinkingDelta(result.thinking);
+    if (opts?.onDelta && result.text) opts.onDelta(result.text);
+    return result;
   }
 
   async function stream(req: ChatRequest, opts: ChatOpts): Promise<ChatResult> {
     const body: Record<string, unknown> = {
       model: cfg.model,
       messages: buildMessages(req),
-      max_tokens: req.maxTokens ?? cfg.maxTokens,
+      [tokenLimitKey()]: req.maxTokens ?? cfg.maxTokens,
       temperature: req.temperature ?? cfg.temperature,
       stream: true,
     };
@@ -334,12 +399,17 @@ export function createOpenAi(cfg: OpenAiCfg, fetchImpl: FetchLike = fetch): Prov
             opts.onDelta?.(chunk);
           },
           onThinkingDelta: (chunk) => {
+            // Reasoning counts as "already streamed": retrying non-streaming
+            // after reasoning was shown would duplicate the thinking trace.
+            emitted++;
             opts.onThinkingDelta?.(chunk);
           },
         };
         try {
           return await stream(req, counting);
         } catch (err) {
+          // Only retry when nothing at all reached the user, otherwise the
+          // partial reply is repeated and the turn reads as duplicated.
           if (isAbortError(err) || emitted > 0) throw err;
           return basic(req, opts);
         }

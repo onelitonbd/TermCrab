@@ -16,6 +16,43 @@ export const OPENAI_COMPAT_BASES = {
   ollama: 'http://127.0.0.1:11434/v1',
 } as const;
 
+/** Strip trailing slashes so URL spellings can be compared. */
+function normalizeBase(u: string): string {
+  return (u || '').trim().replace(/\/+$/, '');
+}
+
+function originOf(u: string): string {
+  try {
+    return new URL(u).origin.toLowerCase();
+  } catch {
+    return u.toLowerCase();
+  }
+}
+
+/**
+ * Is this one of the endpoints we know the exact behaviour of?
+ *
+ * Compared by origin rather than literal string so the common spelling
+ * variants (no /v1 suffix, trailing slash, different casing) all resolve to
+ * the same known host. Getting this wrong marks a well-known host as "custom",
+ * which makes applyThinking() force reasoning_effort onto models it shouldn't.
+ */
+export function isWellKnownBase(baseUrl: string): boolean {
+  const b = normalizeBase(baseUrl) || OPENAI_COMPAT_BASES.openai;
+  const known = Object.values(OPENAI_COMPAT_BASES).map(normalizeBase);
+  if (known.some((k) => k === b)) return true;
+  return known.some((k) => originOf(k) === originOf(b));
+}
+
+/** Short label for a base URL, used for heuristic capability detection. */
+export function providerNameFor(baseUrl: string): string {
+  const origin = originOf(normalizeBase(baseUrl) || OPENAI_COMPAT_BASES.openai);
+  for (const [name, base] of Object.entries(OPENAI_COMPAT_BASES)) {
+    if (originOf(normalizeBase(base)) === origin) return name;
+  }
+  return 'openai-compatible';
+}
+
 /**
  * TermCrab only supports OpenAI-compatible Chat Completions APIs.
  * That covers OpenAI, OpenRouter, Groq, DeepSeek, xAI, Mistral, Ollama (/v1),
@@ -37,7 +74,8 @@ export function resolveProvider(cfg: ProviderCfg, fetchImpl: FetchLike = fetch):
       // that to decide how strict to be about thinking/reasoning parameters
       // (unknown hosts often proxy reasoning models too and ignore unknown
       // params silently).
-      isCustomHost: !Object.values(OPENAI_COMPAT_BASES).includes(baseUrl as (typeof OPENAI_COMPAT_BASES)[keyof typeof OPENAI_COMPAT_BASES]),
+      isCustomHost: !isWellKnownBase(baseUrl),
+      providerName: providerNameFor(baseUrl),
     },
     fetchImpl,
   );
