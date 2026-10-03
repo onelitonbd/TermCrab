@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.52.0 - 2026-10-03
+
+- **A transcript that survives losing the phone.** Every entry is written as one whole line and flushed to disk before the append returns, and a half-written tail left by a kill is cut before the next write. A line that still does not parse is *reported* (torn tail vs. unreadable line) instead of skipped silently, and `termcrab sessions verify [--repair]` walks every transcript and says what it found. Nothing was deleted to make this true: the archive still holds everything.
+- **Find the conversation, not just the string.** `termcrab sessions search <words>` ranks every line of every chat - and of its archive - with term weights, an all-terms bonus, an exact-phrase boost and a 30-day recency half-life. Each hit says which session, which side of the conversation, when, and which file/line, with a snippet that marks the matched words. The same function powers `/sessions search` in a chat and the agent's `sessions_search` tool, so "where did we talk about the plumber" has one answer everywhere.
+- **Starting over is a policy, not a habit.** `agent.sessionReset = never` (default) | `daily` | `idle:<minutes>`: when the policy says so, the next turn sees a clean context while the old thread moves to `<session>.archive.jsonl` - still on disk, still searchable. `/status` and `termcrab sessions show <id>` state the policy and why a reset is or is not due, and `termcrab sessions reset <id>` does it on demand.
+- **What belongs to a chat.** `termcrab sessions show <id>` (and `/sessions show <id>`) answers: how big it is and when it started, the roles, the digest, whether a turn is writing right now (the fence holder), which files it read or wrote, which facts it taught the agent (found by their provenance stamps), which approvals are attached, and which tools it used.
+- Tests: **19 new cases** in `test/tier2j.test.ts` (durability, torn-tail healing, damage reporting, ranked search incl. archive and tool down-weighting, reset policies and their application, the session view, and the same behaviour through the real binary). Census: **WORKING 65 -> 68 · ABSENT 28 -> 26**, score **66% -> 67%**, drift 0.
+
+
 ## 0.51.0 - 2026-10-03
 
 - **Devices pair, and can be taken back.** `termcrab pair` prints a 6-character code (no `0`/`O`/`1`/`I`, because it is read off a screen and typed on a phone) that lives five minutes and works once. `POST /api/pair` exchanges it for that device's own token - shown once, stored only as a sha256 hash in an owner-only file. `termcrab devices` lists every device with when it was paired, when it was last seen and from where, and marks which one is asking; `termcrab devices revoke <id|name>` kills exactly that token while the master password and every other device keep working. No more typing the owner's long password into a phone, and no more changing it for everyone to lock out one device.

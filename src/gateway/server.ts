@@ -95,6 +95,8 @@ import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
 import { Approval, listApprovals, resolveApproval } from '../core/approvals.js';
 import { authKey, authenticate, constantTimeEqual, extractAuth } from './auth.js';
+import { formatSessionHits, searchSessions } from '../agent/session-search.js';
+import { formatSessionView, policyLine, sessionView } from '../agent/session-view.js';
 import { CODE_TTL_MS, formatDevice, listDevices, pairCode, redeemCode, revokeDevice } from './devices.js';
 import { RateLimiter, limiterFromConfig, rateLimitHint } from './ratelimit.js';
 import {
@@ -613,7 +615,11 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         : 'No named agents yet. Create workspace/agents/<name>/SOUL.md';
     }
     if (text === '/status') {
-      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}`;
+      // 21.3: the reset policy is part of "is everything running", because a
+      // fresh-looking chat that silently keeps an old thread is worse than one
+      // that says it will start over.
+      const policy = policyLine(sessions, `${channel}:${chatId}`, config.agent.sessionReset);
+      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}\n${policy}`;
     }
     // 15.4: the same facts the CLI reports with --json, available in the chat.
     if (text === '/help' || text === '/?') {
@@ -622,7 +628,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         '  /new        start a fresh conversation',
         '  /status     is everything running',
         '  /usage      tokens and cost today',
-        '  /sessions   your recent conversations',
+        '  /sessions   your recent conversations (/sessions search <words>, /sessions show <id>)',
         '  /memory     what I have remembered (search: /memory search <words>)',
         '  /context    what the model is actually sent (sizes per section)',
         '  /inbox      files people sent you (and /inbox <name> to read one)',
@@ -641,12 +647,25 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           : '';
       return `📊 Today (${day.day}) — ${day.turns} turn(s), ${day.calls} model call(s)\n     tokens ${formatTokens(day.totalTokens)} (in ${formatTokens(day.promptTokens)} · out ${formatTokens(day.completionTokens)})${cost}`;
     }
-    if (text === '/sessions') {
+    if (text === '/sessions' || text.startsWith('/sessions ')) {
+      const arg = text.slice('/sessions'.length).trim();
+      if (arg.startsWith('search ')) {
+        const q = arg.slice('search '.length).trim();
+        if (!q) return '💬 Usage: /sessions search <words>';
+        const hits = searchSessions(q, { limit: 6 }, sessions);
+        return hits.length ? `💬 Chats mentioning “${q}”:\n${formatSessionHits(q, hits)}` : `💬 No conversation mentions “${q}”.`;
+      }
+      if (arg.startsWith('show ')) {
+        const id = arg.slice('show '.length).trim();
+        if (!id) return '💬 Usage: /sessions show <id>';
+        return formatSessionView(sessionView(id, { store: sessions, memory, resetPolicy: config.agent.sessionReset }));
+      }
       const list = sessions.list().slice(0, 8);
       if (!list.length) return 'No conversations yet.';
       return (
         '💬 Recent conversations:\n' +
-        list.map((c) => `  ${c.id} — ${c.messages} lines, ${Math.max(1, Math.round(c.bytes / 1024))} KB`).join('\n')
+        list.map((c) => `  ${c.id} — ${c.messages} lines, ${Math.max(1, Math.round(c.bytes / 1024))} KB`).join('\n') +
+        '\n(/sessions search <words> finds one, /sessions show <id> says what is in it)'
       );
     }
     if (text === '/memory' || text.startsWith('/memory ')) {

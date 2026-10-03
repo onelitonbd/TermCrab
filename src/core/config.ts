@@ -71,6 +71,11 @@ export interface Config {
     /** Bytes of MEMORY.md injected into the system prompt (newest facts win). */
     memoryBudget: number;
     /**
+     * When a session's working context starts over (21.3): `never` (default),
+     * `daily`, or `idle:<minutes>`. The transcript is archived, never deleted.
+     */
+    sessionReset?: string;
+    /**
      * Which context engine builds the prompt: `default` (everything) or
      * `compact` (half the memory budget, fewer verbatim tool results, no roster
      * or goals) for long chats on a small phone (19.3).
@@ -457,7 +462,7 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) err(`${prefix}${key}`, 'must be an array of strings');
   };
 
-  const gateway = objAt(root, 'gateway', new Set(['host', 'port', 'token']));
+  const gateway = objAt(root, 'gateway', new Set(['host', 'port', 'token', 'rateLimit']));
   if (gateway) {
     str(gateway, 'gateway.', 'host');
     str(gateway, 'gateway.', 'token');
@@ -510,6 +515,7 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'memoryBudget',
       'contextEngine',
       'keepToolResults',
+      'sessionReset',
       'failover',
       'queueMode',
       'allowBrowser',
@@ -528,6 +534,10 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     numIn(agent, 'agent.', 'compactThreshold', 5, 10_000, true);
     numIn(agent, 'agent.', 'memoryBudget', 0, 1_000_000, true);
     oneOf(agent, 'agent.', 'queueMode', ['followup', 'steer', 'collect', 'interrupt']);
+    const reset = agent.sessionReset;
+    if (reset !== undefined && reset !== 'never' && reset !== 'daily' && !(typeof reset === 'string' && /^idle:\d{1,5}$/.test(reset))) {
+      err('agent.sessionReset', `must be never, daily or idle:<minutes>, got ${JSON.stringify(reset)}`);
+    }
     oneOf(agent, 'agent.', 'isolation', ['shared', 'isolated']);
   }
 

@@ -51,6 +51,10 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab pair --json` | `{code, expiresAt, ttlMs, name, howTo}` |
 | `termcrab devices --json` | `{count, devices:[{id, name, createdAt, lastSeenAt, seenAgoMs, seenCount}], pendingCodes}` |
 | `termcrab devices revoke <id\|name> --json` | `{revoked:{id, name}}` |
+| `termcrab sessions search <words> --json` | `{query, count, hits:[{sessionId, part, line, role, when, score, snippet}]}` — ranked across every transcript, archive included |
+| `termcrab sessions show <id> --json` | `{id, file, archive, entries, bytes, firstAt, lastAt, roles, digest, fence, policy, resetDue, resetReason, attachment:{files, facts, approvals, tools}}` |
+| `termcrab sessions verify --json` | `{sessions:[{id, entries, hot, archived, badLines, repairedBytes, bytes}], sessionsWithDamage, badLines, repaired, bytes, repairedNow}` |
+| `termcrab sessions reset <id> --json` | `{id, archivedTo, entries}` |
 | `termcrab memory compact <session> --json` | `{session, compacted, coveredTurns, by, model, note, file}` |
 | `termcrab approvals --json` | `{count, approvals:[{id, tool, args, sessionId, createdAt}]}` |
 | `termcrab approvals approve\|deny <id> --json` | `{id, decision, by, ok}` |

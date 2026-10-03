@@ -344,6 +344,32 @@ export class MemoryStore {
   }
 
   /** Every file memory searches, newest first for the recency signal. */
+  /**
+   * Facts learned during one session, found by the provenance stamp
+   * `(src: … session: <id> …)` that every `remember` writes (21.4). This is
+   * how `termcrab sessions show <id>` can say what a conversation taught the
+   * agent, without a second index to keep in sync.
+   */
+  factsFromSession(sessionId: string): MemoryFact[] {
+    const needle = `session: ${sessionId}`;
+    const out: MemoryFact[] = [];
+    for (const file of this.searchFiles()) {
+      let text = '';
+      try {
+        text = fs.readFileSync(file.path, 'utf8');
+      } catch {
+        continue;
+      }
+      const lines = text.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i]!.includes(needle)) continue;
+        const fact = parseFact(lines[i]!, file.name, i + 1);
+        if (fact) out.push(fact);
+      }
+    }
+    return out;
+  }
+
   private searchFiles(): { path: string; name: string }[] {
     const out: { path: string; name: string }[] = [];
     const push = (f: string): void => {

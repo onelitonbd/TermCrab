@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৬৬%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬৫টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৩টা আধা (PARTIAL), ২৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২০৯ দিন, later ~১৪২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৬৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬৮টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪২টা আধা (PARTIAL), ২৬টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২০৩ দিন, later ~১৪২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 65 | wired and observable |
+| ✅ WORKING | 68 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 43 | exists, narrower than theirs |
+| 🟡 PARTIAL | 42 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 28 | nothing in the tree |
+| ⚪ ABSENT | 26 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 66%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 67%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~209d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 108 | ~203d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~142d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~351d | |
+| **total** | 150 | ~345d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -227,18 +227,18 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Security audits / doctor | openclaw security audit, policy CLI | 🟡 PARTIAL | src/mobile/doctor.ts checks Termux-specific hazards, not policy | parity | 3 |
 | Rate limiting / loop protection | bot-loop protection, caps | ✅ WORKING | src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4 | later | — |
 
-### sessions — 42% (8 checks)
+### sessions — 74% (8 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Transcript persistence | SQLite + archived JSONL + WAL | 🟡 PARTIAL | JSONL append in src/agent/sessions.ts:39; no DB | parity | — |
+| Transcript persistence | SQLite + archived JSONL + WAL | ✅ WORKING | append-only JSONL, one whole line per write, fsync before the call returns (SessionStore.append), a torn tail healed before the next append and reported by readDetailed() as a torn tail rather than skipped silently; `termcrab sessions verify [--repair]` walks every transcript and says what is damaged, and a middle line (which append never writes) is reported, never rewritten. There is still no SQLite/WAL: a phone-sized agent keeps its transcript as plain files it can read with any tool | parity | — |
 | Transcript write fencing | expectedWriterRunId on every append | ✅ WORKING | SessionStore.claim() writes a writer lock (owner + pid + heartbeat) before a turn writes anything: a second writer is refused by name (or waits), a dead/expired claim is reclaimed, append() is one O_APPEND write of one line and heals a torn tail, and the gateway/CLI/cron/voice all share it. Pinned by test/writer-fence.test.ts (8.1-8.4) | core | — |
-| Session search | anchored snippet search + redaction | 🟡 PARTIAL | toolbox.ts substring search over 30 sessions, no anchors | parity | 3 |
-| Lifecycle reset policies | mode none|daily|idle + atHour | ⚪ ABSENT | manual /new only (server.ts:498) | parity | 3 |
+| Session search | anchored snippet search + redaction | ✅ WORKING | src/agent/session-search.ts ranks every line of every transcript: BM25-ish weights with a document-frequency table, an all-terms bonus, an exact-phrase boost, a 30-day recency half-life and a down-weight for tool output; the archive file is searched too, so an old conversation is findable, and every hit carries session, role, when, file:line and a snippet with the matched words marked. One function serves `termcrab sessions search`, `/sessions search` and the agent tool `sessions_search`. Redaction of secrets before indexing is not attempted — the transcript is a plain file on the owner device | parity | — |
+| Lifecycle reset policies | mode none|daily|idle + atHour | ✅ WORKING | src/agent/session-policy.ts: `agent.sessionReset` = never (default) | daily | idle:<minutes>, parsed forgivingly and validated by config. The policy is applied before a turn (the loop calls applyReset), it archives the live transcript into `<session>.archive.jsonl` and never deletes a line, `/status` and `sessions show` state the policy and why a reset is or is not due, and `termcrab sessions reset <id>` does it on demand. An hour-of-day variant (`atHour`) is not implemented; idle and daily are the two the phone needs | parity | — |
 | Multi-user scoping | dmScope 4 modes + identity links | 🟡 PARTIAL | per-chat key `${channel}:${chatId}` (server.ts:496) — isolated by accident | parity | 3 |
 | Session tools surface | sessions_list/history/search/send/status | ✅ WORKING | src/agent/toolbox.ts:644-880 | parity | — |
 | Main rolling session | agent:<id>:main with background routing | ⚪ ABSENT | five separate session keys (web:main, telegram:*, cron:*, heartbeat, dream) | later | 8 |
-| Session attachment (multi-client) | openclaw attach, projections | ⚪ ABSENT | CLI builds its own AgentCtx (src/cli.ts:298) and writes the same JSONL the gateway writes | later | 8 |
+| Session attachment (multi-client) | openclaw attach, projections | 🟡 PARTIAL | src/agent/session-view.ts answers "what belongs to this conversation": files touched (with read/write and counts), facts learned in it (found by their provenance stamp), approvals waiting on it, tools used, the digest, the reset policy and the live writer fence, through `termcrab sessions show <id>` / `/sessions show <id>`. What is not there yet is a projection/merge protocol for two clients writing one session — today the write fence serialises them (one writer at a time) rather than merging two views | later | 8 |
 
 ### skills — 65% (6 checks)
 

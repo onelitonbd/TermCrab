@@ -5,6 +5,7 @@ import { ChatResult, Provider, ProviderMessage, ThinkingLevel, Usage } from '../
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
 import { contextEngine, pruneToolResults } from './context.js';
+import { applyReset, parseResetPolicy } from './session-policy.js';
 import { Entry, newRunId, QueueFullError, QueuedTurn, SessionQueue, SessionStore } from './sessions.js';
 import {
   approvalTimeoutMs,

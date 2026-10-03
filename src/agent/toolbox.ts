@@ -1,3 +1,4 @@
+import { formatSessionHits, searchSessions } from './session-search.js';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -774,21 +775,12 @@ export function extraTools(env: ToolEnv): Tool[] {
     },
     async execute(args) {
       const store = requireSessions();
-      const q = argStr(args, 'query').toLowerCase();
-      const targets = args.sessionId ? [String(args.sessionId)] : store.list().slice(0, 30).map((s) => s.id);
-      const hits: string[] = [];
-      for (const sid of targets) {
-        for (const e of store.read(sid)) {
-          const body = e.role === 'tool' ? `${e.name} ${e.result}` : e.content;
-          const idx = String(body).toLowerCase().indexOf(q);
-          if (idx >= 0) {
-            const snippet = String(body).slice(Math.max(0, idx - 60), idx + 140).replace(/\n/g, ' ');
-            hits.push(`${sid} [${e.role}] ...${snippet}...`);
-            if (hits.length >= 20) return clip(hits.join('\n'), 8000);
-          }
-        }
-      }
-      return hits.length ? clip(hits.join('\n'), 8000) : `no matches for "${q}"`;
+      // 21.2: ranked, archive-inclusive search — the same function the CLI and
+      // the chat use, so "find that conversation" behaves the same everywhere.
+      const query = argStr(args, 'query');
+      const hits = searchSessions(query, { limit: 20, sessionId: args.sessionId ? String(args.sessionId) : undefined }, store);
+      if (!hits.length) return `no matches for "${query}"`;
+      return clip(formatSessionHits(query, hits), 8000);
     },
   });
   tools.push({

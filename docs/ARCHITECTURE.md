@@ -96,6 +96,9 @@ users' runtime.
 | `src/agent/progress.ts` | Per-session progress card the agent maintains and the UI shows |
 | `src/agent/prompt.ts` | system prompt (SOUL + memory + skills index + env) |
 | `src/agent/secrets.ts` | Protected credentials: values are only returned on explicit request (audited) |
+| `src/agent/session-policy.ts` | When a conversation should start fresh (21.3) |
+| `src/agent/session-search.ts` | Search across past conversations: the transcripts on disk, ranked (21.2) |
+| `src/agent/session-view.ts` | What belongs to one conversation (21.4): `termcrab sessions show <id>` |
 | `src/agent/sessions.ts` | JSONL transcripts + compaction + SessionQueue (FIFO) + replay |
 | `src/agent/status.ts` | `termcrab status`: live state from the running gateway, with a disk-read fallback when the panel is down |
 | `src/agent/suggestions.ts` | Follow-up task cards suggested by the agent; the operator dismisses them |
@@ -120,7 +123,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\|zsh\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\|zsh\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |

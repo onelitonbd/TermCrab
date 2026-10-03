@@ -55,6 +55,9 @@ import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
 import { commandHelp, completionScript, renderCommandIndex } from './command-help.js';
 import { CODE_TTL_MS, formatDevice, listDevices, liveCodes, pairCode, revokeDevice } from './gateway/devices.js';
+import { formatSessionHits, searchSessions } from './agent/session-search.js';
+import { applyReset } from './agent/session-policy.js';
+import { formatSessionView, sessionView } from './agent/session-view.js';
 import { ANSI, paint } from './core/color.js';
 
 const HELP = `🦀 TermCrab — your personal AI assistant that runs on your own device.
@@ -76,7 +79,7 @@ Everyday extras:
   termcrab memory [show|search ...]  look inside memory
   termcrab memory compact <session>  summarise an old chat with the model (the full transcript stays on disk)
   termcrab skills [list|import|new]  add extra abilities (skill folders, git repos)
-  termcrab sessions [ls|export|purge|rename]  manage chats: save one as text, clean old ones
+  termcrab sessions [ls|search|show|export|reset|verify|purge|rename]  chats: find one, see what is in it, save it, clean old ones
   termcrab agents new <name> --template brief|teacher|researcher   starter personality
   termcrab embeddings [status|setup] smart memory search (optional, offline-capable)
   termcrab transcribe <file>          turn a voice recording into text (offline, needs whisper.cpp)
@@ -1375,6 +1378,114 @@ export async function main(argv: string[]): Promise<void> {
         console.log(`🧹 removed ${r.removed} old chat file(s), freed ${Math.max(0, Math.round(r.freedBytes / 1024))} KB (older than ${days} day(s))`);
         return;
       }
+      if (sub === 'search') {
+        const limitIdx = rest.indexOf('--limit');
+        const limit = limitIdx >= 0 ? Number(rest[limitIdx + 1]) : 10;
+        const sessIdx = rest.indexOf('--session');
+        const sessionId = sessIdx >= 0 ? rest[sessIdx + 1] : undefined;
+        // The query is every word that is not a flag or a flag's value:
+        // `sessions search plumber --json` searches "plumber", not "--json".
+        const FLAGS_WITH_VALUE = new Set(['--limit', '--session']);
+        const qParts: string[] = [];
+        for (let i = 1; i < rest.length; i++) {
+          const token = rest[i]!;
+          if (FLAGS_WITH_VALUE.has(token)) {
+            i += 1;
+            continue;
+          }
+          if (token === '--json' || token.startsWith('--')) continue;
+          qParts.push(token);
+        }
+        const q = qParts.join(' ').trim();
+        if (!q) {
+          if (machine) failJson('sessions', 'missing query', 'usage: termcrab sessions search <words> [--session <id>] [--limit n]');
+          else {
+            console.error('usage: termcrab sessions search <words> [--session <id>] [--limit n]');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const hits = searchSessions(q, { limit: Number.isFinite(limit) ? limit : 10, sessionId }, store);
+        if (machine) {
+          emitJson('sessions', { query: q, count: hits.length, hits });
+          return;
+        }
+        console.log(formatSessionHits(q, hits));
+        return;
+      }
+      if (sub === 'verify') {
+        const repair = rest.includes('--repair');
+        const report = store.verifyAll({ repair });
+        if (machine) {
+          emitJson('sessions', { ...report, repairedNow: repair });
+          return;
+        }
+        const mb = (n: number): string => `${Math.max(1, Math.round(n / 1024))} KB`;
+        console.log('');
+        console.log(`  🧾 ${report.sessions.length} transcript(s) · ${mb(report.bytes)} · ${report.badLines} unreadable line(s)`);
+        for (const s of report.sessions) {
+          if (!s.badLines && !s.repairedBytes) continue;
+          const bits = [
+            `${s.badLines} unreadable`,
+            s.repairedBytes ? `cut ${s.repairedBytes} torn byte(s)` : '',
+          ].filter(Boolean).join(' · ');
+          console.log(`     ${s.id}: ${bits}`);
+        }
+        if (!report.badLines) {
+          console.log(
+            repair && report.repaired > 0
+              ? `     cut ${report.repaired} torn byte(s) — every line parses now`
+              : '     every line parses — nothing to repair',
+          );
+        } else if (!repair) {
+          console.log('     run again with --repair to cut torn tails (a middle line is never rewritten automatically)');
+        } else {
+          console.log('     ⚠️ unreadable lines remain — those are not a torn tail; look at the file before trusting it');
+        }
+        console.log('');
+        return;
+      }
+      if (sub === 'show') {
+        if (!a) {
+          if (machine) failJson('sessions', 'missing session id', 'usage: termcrab sessions show <id>');
+          else {
+            console.error('usage: termcrab sessions show <id>');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const view = sessionView(a, { store, memory: await makeMemoryStore(), resetPolicy: loadConfig().agent.sessionReset });
+        if (machine) {
+          emitJson('sessions', view);
+          return;
+        }
+        console.log('');
+        console.log(formatSessionView(view).split('\n').map((l) => (l.startsWith('💬') || l.startsWith('   ') ? `  ${l}` : `  ${l}`)).join('\n'));
+        console.log('');
+        return;
+      }
+      if (sub === 'reset') {
+        if (!a) {
+          if (machine) failJson('sessions', 'missing session id', 'usage: termcrab sessions reset <id>');
+          else {
+            console.error('usage: termcrab sessions reset <id>');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const outcome = applyReset(store, a, { kind: 'idle', minutes: 0, label: 'manual reset' });
+        if (!outcome.reset) {
+          if (machine) failJson('sessions', `nothing to reset in ${a}`, 'termcrab sessions ls');
+          else {
+            console.error(`nothing to reset in ${a} — the transcript is already empty`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        if (machine) emitJson('sessions', { id: a, archivedTo: outcome.archivedTo, entries: outcome.entries });
+        else console.log(`🔄 archived ${outcome.entries} entry/entries of ${a} — the next turn starts fresh, nothing was deleted`);
+        return;
+      }
       if (sub === 'rename') {
         if (!a || !b) {
           console.error('usage: termcrab sessions rename <old-id> <new-id>');
@@ -1394,7 +1505,7 @@ export async function main(argv: string[]): Promise<void> {
         if (r !== 'ok') process.exitCode = 1;
         return;
       }
-      console.error('usage: termcrab sessions [ls|export <id>|purge --older-than N|rename <old> <new>]');
+      console.error('usage: termcrab sessions [ls|search <words>|show <id>|export <id>|reset <id>|verify [--repair]|purge --older-than N|rename <old> <new>]');
       process.exitCode = 1;
       return;
     }

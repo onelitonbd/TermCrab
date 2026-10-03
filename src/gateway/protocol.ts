@@ -38,6 +38,7 @@ export const EVENT_FAMILIES: Array<{ family: string; types: string[]; when: stri
   { family: 'schedule', types: ['cron'], when: 'a scheduled job fires or is edited', payload: 'job id, name, next run' },
   { family: 'memory', types: ['dream'], when: 'memory is consolidated', payload: 'file, count, by' },
   { family: 'panel', types: ['update', 'tasks', 'ask'], when: 'the panel reloads config, suggests a task, or asks a question', payload: 'section / suggestions / question' },
+  { family: 'session', types: ['session:reset'], when: 'a conversation\'s working context starts over', payload: 'sessionId, reason (the transcript is archived, not deleted)' },
 ];
 
 /** Every type the gateway may put on the wire. */

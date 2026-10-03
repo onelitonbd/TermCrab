@@ -261,6 +261,30 @@ export interface WriterHolder {
   heartbeatAt: number;
 }
 
+/** A line in a transcript that could not be read, and why (21.1). */
+export interface TranscriptDamage {
+  file: string;
+  line: number;
+  bytes: number;
+  why: 'torn tail (crash mid-write)' | 'unreadable line';
+}
+
+export interface TranscriptReport {
+  sessions: Array<{
+    id: string;
+    entries: number;
+    hot: number;
+    archived: number;
+    badLines: number;
+    repairedBytes: number;
+    bytes: number;
+  }>;
+  sessionsWithDamage: number;
+  badLines: number;
+  repaired: number;
+  bytes: number;
+}
+
 export interface ClaimOpts {
   /** Wait up to this long for a live writer to release before refusing (0 = refuse now). */
   waitMs?: number;
@@ -297,6 +321,16 @@ export class SessionStore {
   }
 
   /** Cold storage for a session that outgrew the hot window. Never deleted. */
+  /** Public view of where a transcript lives (search, `sessions show`, tests). */
+  transcriptFile(sessionId: string): string {
+    return this.file(sessionId);
+  }
+
+  /** Public view of where the overflow of a transcript lives. */
+  archivePath(sessionId: string): string {
+    return this.archiveFile(sessionId);
+  }
+
   private archiveFile(sessionId: string): string {
     return path.join(this.root, `${sanitizeSessionId(sessionId)}${ARCHIVE_SUFFIX}`);
   }
@@ -450,13 +484,18 @@ export class SessionStore {
    * line in the file parses. `opts.owner` marks a fenced write: the claim is
    * refreshed, and a live writer that lost its claim quietly takes it back.
    */
-  append(sessionId: string, entry: Entry, opts: { owner?: string } = {}): void {
+  append(sessionId: string, entry: Entry, opts: { owner?: string; durable?: boolean } = {}): void {
     const f = this.file(sessionId);
     this.healTail(f);
     if (opts.owner) this.refreshFence(sessionId, opts.owner);
     const fd = fs.openSync(f, 'a');
     try {
       fs.writeSync(fd, `${JSON.stringify(entry)}\n`, null, 'utf8');
+      // Phone storage on a dying battery is exactly where "the last thing the
+      // user said" must survive: flush the line to disk before calling it done
+      // (21.1). One fsync per entry; the caller can pass durable:false for
+      // bulk writes that do not mind losing the tail.
+      if (opts.durable !== false) fs.fsyncSync(fd);
     } finally {
       fs.closeSync(fd);
     }
@@ -527,19 +566,70 @@ export class SessionStore {
 
   /** Read a transcript: the archive first, then the live file. Nothing is lost. */
   read(sessionId: string): Entry[] {
-    const out: Entry[] = [];
+    return this.readDetailed(sessionId).entries;
+  }
+
+  /**
+   * The same read, but honest about damage (21.1). A line that does not parse
+   * is reported by line number instead of being silently skipped, so
+   * `termcrab sessions verify` can say "3 lines unreadable" rather than "fine".
+   */
+  readDetailed(sessionId: string): { entries: Entry[]; badLines: TranscriptDamage[] } {
+    const entries: Entry[] = [];
+    const badLines: TranscriptDamage[] = [];
     for (const f of [this.archiveFile(sessionId), this.file(sessionId)]) {
       if (!fs.existsSync(f)) continue;
-      for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
+      const raw = fs.readFileSync(f, 'utf8');
+      const lines = raw.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]!;
         if (!line.trim()) continue;
         try {
-          out.push(JSON.parse(line) as Entry);
+          entries.push(JSON.parse(line) as Entry);
         } catch {
-          /* skip corrupt lines */
+          badLines.push({
+            file: f,
+            line: i + 1,
+            bytes: Buffer.byteLength(line, 'utf8'),
+            why: raw.endsWith('\n') || i < lines.length - 1 ? 'unreadable line' : 'torn tail (crash mid-write)',
+          });
         }
       }
     }
-    return out;
+    return { entries, badLines };
+  }
+
+  /**
+   * Walk every transcript and report what is on disk: how many entries parse,
+   * which lines do not, and what a repair would cut. With `repair`, torn tails
+   * are healed (the only damage a crash can leave — a middle line is never
+   * written by `append`, so damage there means something else touched the file
+   * and is left for a human to look at).
+   */
+  verifyAll(opts: { repair?: boolean } = {}): TranscriptReport {
+    const report: TranscriptReport = { sessions: [], sessionsWithDamage: 0, badLines: 0, repaired: 0, bytes: 0 };
+    if (!fs.existsSync(this.root)) return report;
+    for (const row of this.list()) {
+      const before = fs.existsSync(this.file(row.id)) ? fs.statSync(this.file(row.id)).size : 0;
+      if (opts.repair) this.healTail(this.file(row.id));
+      const after = fs.existsSync(this.file(row.id)) ? fs.statSync(this.file(row.id)).size : 0;
+      const { entries, badLines } = this.readDetailed(row.id);
+      const repaired = before - after;
+      report.sessions.push({
+        id: row.id,
+        entries: entries.length,
+        hot: row.hot,
+        archived: row.archived,
+        badLines: badLines.length,
+        repairedBytes: repaired,
+        bytes: row.bytes,
+      });
+      report.bytes += row.bytes;
+      report.badLines += badLines.length;
+      report.repaired += repaired;
+      if (badLines.length) report.sessionsWithDamage += 1;
+    }
+    return report;
   }
 
   /**

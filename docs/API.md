@@ -41,6 +41,7 @@ The families a client can rely on:
 | `schedule` | `cron` | a scheduled job fires or is edited | job id, name, next run |
 | `memory` | `dream` | memory is consolidated | file, count, by |
 | `panel` | `update`, `tasks`, `ask` | the panel reloads config, suggests a task, or asks a question | section, suggestions, question |
+| `session` | `session:reset` | a conversation's working context starts over (the transcript is archived, not deleted) | sessionId, reason |
 
 Unknown *types* may appear later and a client must ignore what it does not
 know; an unknown `v` may not be ignored — refuse it rather than mis-read it.
@@ -72,6 +73,11 @@ one device; its token stops working on the next request.
 ```
 Headers: `authorization: Bearer <token>`, optional `idempotency-key: <any string>`.
 → `202 { "turnId": "…", "sessionId": "web:main", "status": "queued" }` (runs the full agent loop)
+Conversation history: `GET /api/sessions` lists chats; each session's working
+context can start over by policy (`agent.sessionReset` = `never` | `daily` |
+`idle:<minutes>`), which archives the live transcript into
+`<session>.archive.jsonl` — nothing is deleted, and `termcrab sessions search`
+still finds it.
 Retrying with the same `idempotency-key` (day-long memory) returns the same run
 with `"replayed": true` instead of starting a second turn — a phone that loses
 the answer must not pay for the question twice.

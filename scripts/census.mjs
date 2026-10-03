@@ -177,24 +177,27 @@ check('agent', 'Timeouts + error containment', 'per-phase budgets', 'WORKING',
   'loop.ts containment; tests in test/loop.test.ts', { pattern: 'error', expect: 'present' }, 0);
 
 // -------------------------------------------------------------- 3. sessions
-check('sessions', 'Transcript persistence', 'SQLite + archived JSONL + WAL', 'PARTIAL',
-  'JSONL append in src/agent/sessions.ts:39; no DB', { pattern: 'appendFileSync', expect: 'present' }, 0);
+check('sessions', 'Transcript persistence', 'SQLite + archived JSONL + WAL', 'WORKING',
+  'append-only JSONL, one whole line per write, fsync before the call returns (SessionStore.append), a torn tail healed before the next append and reported by readDetailed() as a torn tail rather than skipped silently; `termcrab sessions verify [--repair]` walks every transcript and says what is damaged, and a middle line (which append never writes) is reported, never rewritten. There is still no SQLite/WAL: a phone-sized agent keeps its transcript as plain files it can read with any tool',
+  { file: 'src/agent/sessions.ts', pattern: 'healTail', expect: 'present' }, 0);
 check('sessions', 'Transcript write fencing', 'expectedWriterRunId on every append', 'WORKING',
   'SessionStore.claim() writes a writer lock (owner + pid + heartbeat) before a turn writes anything: a second writer is refused by name (or waits), a dead/expired claim is reclaimed, append() is one O_APPEND write of one line and heals a torn tail, and the gateway/CLI/cron/voice all share it. Pinned by test/writer-fence.test.ts (8.1-8.4)', 
   { pattern: 'WriterHolder', expect: 'present' }, 0);
-check('sessions', 'Session search', 'anchored snippet search + redaction', 'PARTIAL',
-  'toolbox.ts substring search over 30 sessions, no anchors', { pattern: 'sessions_search', expect: 'present' }, 3);
-check('sessions', 'Lifecycle reset policies', 'mode none|daily|idle + atHour', 'ABSENT',
-  'manual /new only (server.ts:498)', { pattern: 'resetByType|identityLinks', expect: 'absent' }, 3);
+check('sessions', 'Session search', 'anchored snippet search + redaction', 'WORKING',
+  'src/agent/session-search.ts ranks every line of every transcript: BM25-ish weights with a document-frequency table, an all-terms bonus, an exact-phrase boost, a 30-day recency half-life and a down-weight for tool output; the archive file is searched too, so an old conversation is findable, and every hit carries session, role, when, file:line and a snippet with the matched words marked. One function serves `termcrab sessions search`, `/sessions search` and the agent tool `sessions_search`. Redaction of secrets before indexing is not attempted — the transcript is a plain file on the owner device',
+  { file: 'src/agent/session-search.ts', pattern: 'export function searchSessions', expect: 'present' }, 0);
+check('sessions', 'Lifecycle reset policies', 'mode none|daily|idle + atHour', 'WORKING',
+  'src/agent/session-policy.ts: `agent.sessionReset` = never (default) | daily | idle:<minutes>, parsed forgivingly and validated by config. The policy is applied before a turn (the loop calls applyReset), it archives the live transcript into `<session>.archive.jsonl` and never deletes a line, `/status` and `sessions show` state the policy and why a reset is or is not due, and `termcrab sessions reset <id>` does it on demand. An hour-of-day variant (`atHour`) is not implemented; idle and daily are the two the phone needs',
+  { file: 'src/agent/session-policy.ts', pattern: 'export function applyReset', expect: 'present' }, 0);
 check('sessions', 'Multi-user scoping', 'dmScope 4 modes + identity links', 'PARTIAL',
   'per-chat key `${channel}:${chatId}` (server.ts:496) — isolated by accident', { pattern: 'dmScope', expect: 'absent' }, 3);
 check('sessions', 'Session tools surface', 'sessions_list/history/search/send/status', 'WORKING',
   'src/agent/toolbox.ts:644-880', { pattern: 'sessions_list', expect: 'present' }, 0);
 check('sessions', 'Main rolling session', 'agent:<id>:main with background routing', 'ABSENT',
   'five separate session keys (web:main, telegram:*, cron:*, heartbeat, dream)', { pattern: "'heartbeat'", expect: 'present' }, 8);
-check('sessions', 'Session attachment (multi-client)', 'openclaw attach, projections', 'ABSENT',
-  'CLI builds its own AgentCtx (src/cli.ts:298) and writes the same JSONL the gateway writes',
-  { pattern: /attachSession|attachToGateway/, expect: 'absent' }, 8);
+check('sessions', 'Session attachment (multi-client)', 'openclaw attach, projections', 'PARTIAL',
+  'src/agent/session-view.ts answers "what belongs to this conversation": files touched (with read/write and counts), facts learned in it (found by their provenance stamp), approvals waiting on it, tools used, the digest, the reset policy and the live writer fence, through `termcrab sessions show <id>` / `/sessions show <id>`. What is not there yet is a projection/merge protocol for two clients writing one session — today the write fence serialises them (one writer at a time) rather than merging two views',
+  { file: 'src/agent/session-view.ts', pattern: 'export function sessionView', expect: 'present' }, 8);
 
 // ---------------------------------------------------------- 4. context/memory
 check('context', 'Compaction that preserves history', 'summary + full history stays on disk', 'WORKING',

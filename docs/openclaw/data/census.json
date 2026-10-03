@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T14:59:46.695Z",
+ "measured": "2026-10-03T15:08:12.048Z",
  "tally": {
-  "WORKING": 65,
+  "WORKING": 68,
   "BETTER": 14,
-  "PARTIAL": 43,
+  "PARTIAL": 42,
   "BROKEN": 0,
-  "ABSENT": 28
+  "ABSENT": 26
  },
- "coverage": 66,
- "effortLeft": 351,
+ "coverage": 67,
+ "effortLeft": 345,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1081"
+    "detail": "1 match(es): src/gateway/server.ts:1100"
    }
   },
   {
@@ -59,7 +59,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1083"
+    "detail": "1 match(es): src/gateway/server.ts:1102"
    }
   },
   {
@@ -94,7 +94,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:290"
+    "detail": "1 match(es): src/gateway/server.ts:292"
    }
   },
   {
@@ -130,7 +130,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/protocol.ts:74"
+    "detail": "1 match(es): src/gateway/protocol.ts:67"
    }
   },
   {
@@ -147,7 +147,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:269"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:274"
    }
   },
   {
@@ -164,7 +164,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:1954"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:1973"
    }
   },
   {
@@ -181,7 +181,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:903"
+    "detail": "4 match(es): src/gateway/server.ts:922"
    }
   },
   {
@@ -198,7 +198,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:534, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:535, src/core/approvals.ts:135"
    }
   },
   {
@@ -215,7 +215,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "40 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/protocol.ts:44"
+    "detail": "40 match(es): src/agent/toolbox.ts:10, src/gateway/canvas.ts:5, src/gateway/protocol.ts:36"
    }
   },
   {
@@ -266,7 +266,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:290"
+    "detail": "1 match(es): src/gateway/server.ts:292"
    }
   },
   {
@@ -283,7 +283,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:381, src/cli.ts:994, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:382, src/cli.ts:997, src/command-help.ts:168"
    }
   },
   {
@@ -317,7 +317,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:26, src/cli.ts:194, src/gateway/protocol.ts:39"
+    "detail": "6 match(es): src/agent/loop.ts:27, src/cli.ts:197, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -334,7 +334,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:28, src/cli.ts:184"
+    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:187"
    }
   },
   {
@@ -351,7 +351,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/sessions.ts:1060"
+    "detail": "1 match(es): src/agent/sessions.ts:1150"
    }
   },
   {
@@ -368,7 +368,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:928"
+    "detail": "3 match(es): src/agent/sessions.ts:1018"
    }
   },
   {
@@ -385,7 +385,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:136"
+    "detail": "1 match(es): src/cli.ts:139"
    }
   },
   {
@@ -419,7 +419,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:90"
+    "detail": "2 match(es): src/agent/loop.ts:91"
    }
   },
   {
@@ -436,7 +436,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:341"
+    "detail": "1 match(es): src/agent/loop.ts:342"
    }
   },
   {
@@ -470,7 +470,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "93 match(es): src/agent/loop.ts:27, src/agent/sessions.ts:16, src/gateway/protocol.ts:42"
+    "detail": "93 match(es): src/agent/loop.ts:28, src/agent/sessions.ts:16, src/gateway/protocol.ts:34"
    }
   },
   {
@@ -487,7 +487,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:451, src/agent/sessions.ts:1093"
+    "detail": "2 match(es): src/agent/loop.ts:452, src/agent/sessions.ts:1183"
    }
   },
   {
@@ -504,7 +504,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1094, src/gateway/server.ts:1229"
+    "detail": "3 match(es): src/agent/sessions.ts:1280, src/cli.ts:1097, src/gateway/server.ts:1248"
    }
   },
   {
@@ -538,7 +538,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:883"
+    "detail": "1 match(es): src/agent/toolbox.ts:875"
    }
   },
   {
@@ -555,7 +555,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:47, src/gateway/protocol.ts:39"
+    "detail": "2 match(es): src/agent/loop.ts:48, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -572,24 +572,25 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "478 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
+    "detail": "482 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
    "area": "sessions",
    "capability": "Transcript persistence",
    "openclaw": "SQLite + archived JSONL + WAL",
-   "verdict": "PARTIAL",
-   "evidence": "JSONL append in src/agent/sessions.ts:39; no DB",
+   "verdict": "WORKING",
+   "evidence": "append-only JSONL, one whole line per write, fsync before the call returns (SessionStore.append), a torn tail healed before the next append and reported by readDetailed() as a torn tail rather than skipped silently; `termcrab sessions verify [--repair]` walks every transcript and says what is damaged, and a middle line (which append never writes) is reported, never rewritten. There is still no SQLite/WAL: a phone-sized agent keeps its transcript as plain files it can read with any tool",
    "probe": {
-    "pattern": "appendFileSync",
+    "file": "src/agent/sessions.ts",
+    "pattern": "healTail",
     "expect": "present"
    },
    "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/memory.ts:322, src/agent/secrets.ts:40, src/agent/sessions.ts:682"
+    "detail": "3 match(es): src/agent/sessions.ts:489"
    }
   },
   {
@@ -613,34 +614,36 @@
    "area": "sessions",
    "capability": "Session search",
    "openclaw": "anchored snippet search + redaction",
-   "verdict": "PARTIAL",
-   "evidence": "toolbox.ts substring search over 30 sessions, no anchors",
+   "verdict": "WORKING",
+   "evidence": "src/agent/session-search.ts ranks every line of every transcript: BM25-ish weights with a document-frequency table, an all-terms bonus, an exact-phrase boost, a 30-day recency half-life and a down-weight for tool output; the archive file is searched too, so an old conversation is findable, and every hit carries session, role, when, file:line and a snippet with the matched words marked. One function serves `termcrab sessions search`, `/sessions search` and the agent tool `sessions_search`. Redaction of secrets before indexing is not attempted — the transcript is a plain file on the owner device",
    "probe": {
-    "pattern": "sessions_search",
+    "file": "src/agent/session-search.ts",
+    "pattern": "export function searchSessions",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:766"
+    "detail": "1 match(es): src/agent/session-search.ts:121"
    }
   },
   {
    "area": "sessions",
    "capability": "Lifecycle reset policies",
    "openclaw": "mode none|daily|idle + atHour",
-   "verdict": "ABSENT",
-   "evidence": "manual /new only (server.ts:498)",
+   "verdict": "WORKING",
+   "evidence": "src/agent/session-policy.ts: `agent.sessionReset` = never (default) | daily | idle:<minutes>, parsed forgivingly and validated by config. The policy is applied before a turn (the loop calls applyReset), it archives the live transcript into `<session>.archive.jsonl` and never deletes a line, `/status` and `sessions show` state the policy and why a reset is or is not due, and `termcrab sessions reset <id>` does it on demand. An hour-of-day variant (`atHour`) is not implemented; idle and daily are the two the phone needs",
    "probe": {
-    "pattern": "resetByType|identityLinks",
-    "expect": "absent"
+    "file": "src/agent/session-policy.ts",
+    "pattern": "export function applyReset",
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/session-policy.ts:91"
    }
   },
   {
@@ -674,7 +677,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:729"
+    "detail": "1 match(es): src/agent/toolbox.ts:730"
    }
   },
   {
@@ -691,24 +694,25 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:543, src/command-help.ts:111"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:546, src/command-help.ts:111"
    }
   },
   {
    "area": "sessions",
    "capability": "Session attachment (multi-client)",
    "openclaw": "openclaw attach, projections",
-   "verdict": "ABSENT",
-   "evidence": "CLI builds its own AgentCtx (src/cli.ts:298) and writes the same JSONL the gateway writes",
+   "verdict": "PARTIAL",
+   "evidence": "src/agent/session-view.ts answers \"what belongs to this conversation\": files touched (with read/write and counts), facts learned in it (found by their provenance stamp), approvals waiting on it, tools used, the digest, the reset policy and the live writer fence, through `termcrab sessions show <id>` / `/sessions show <id>`. What is not there yet is a projection/merge protocol for two clients writing one session — today the write fence serialises them (one writer at a time) rather than merging two views",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "file": "src/agent/session-view.ts",
+    "pattern": "export function sessionView",
+    "expect": "present"
    },
    "effort": 8,
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/session-view.ts:54"
    }
   },
   {
@@ -725,7 +729,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:464"
+    "detail": "3 match(es): src/agent/sessions.ts:503"
    }
   },
   {
@@ -742,7 +746,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:297, src/agent/sessions.ts:747, src/cli.ts:1582"
+    "detail": "4 match(es): src/agent/loop.ts:298, src/agent/sessions.ts:837, src/cli.ts:1693"
    }
   },
   {
@@ -884,7 +888,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:375, src/agent/tools.ts:374, src/cli.ts:1520"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:374, src/cli.ts:1631"
    }
   },
   {
@@ -901,7 +905,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:192"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:197"
    }
   },
   {
@@ -918,7 +922,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:59, src/agent/prompt.ts:19"
+    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:60, src/agent/prompt.ts:19"
    }
   },
   {
@@ -969,7 +973,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:634"
+    "detail": "2 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:635"
    }
   },
   {
@@ -986,7 +990,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:68"
+    "detail": "3 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:69"
    }
   },
   {
@@ -1003,7 +1007,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1499, src/agent/tools.ts:498"
+    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1491, src/agent/tools.ts:498"
    }
   },
   {
@@ -1054,7 +1058,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "61 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:93"
+    "detail": "62 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -1108,7 +1112,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "83 match(es): src/agent/context.ts:93, src/agent/prompt.ts:148, src/agent/toolbox.ts:248"
+    "detail": "83 match(es): src/agent/context.ts:93, src/agent/prompt.ts:148, src/agent/toolbox.ts:249"
    }
   },
   {
@@ -1125,7 +1129,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "78 match(es): src/agent/toolbox.ts:53"
+    "detail": "78 match(es): src/agent/toolbox.ts:54"
    }
   },
   {
@@ -1142,7 +1146,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/ask.ts:3, src/agent/toolbox.ts:979"
+    "detail": "2 match(es): src/agent/ask.ts:3, src/agent/toolbox.ts:971"
    }
   },
   {
@@ -1176,7 +1180,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1129, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1121, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -1210,7 +1214,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1128"
+    "detail": "1 match(es): src/agent/toolbox.ts:1120"
    }
   },
   {
@@ -1348,7 +1352,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:519, src/mobile/doctor.ts:383"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:521, src/mobile/doctor.ts:383"
    }
   },
   {
@@ -1484,7 +1488,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:122"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:127"
    }
   },
   {
@@ -1501,7 +1505,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:635"
+    "detail": "1 match(es): src/gateway/server.ts:641"
    }
   },
   {
@@ -1535,7 +1539,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "10 match(es): src/agent/toolbox.ts:19, src/channels/api.ts:68, src/channels/conversations.ts:92"
+    "detail": "10 match(es): src/agent/toolbox.ts:20, src/channels/api.ts:68, src/channels/conversations.ts:92"
    }
   },
   {
@@ -1622,7 +1626,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:60, src/agent/status.ts:112"
+    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:61, src/agent/status.ts:112"
    }
   },
   {
@@ -1656,7 +1660,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/toolbox.ts:239, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
+    "detail": "18 match(es): src/agent/toolbox.ts:240, src/gateway/server.ts:43, src/providers/capabilities.ts:2"
    }
   },
   {
@@ -1690,7 +1694,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:65, src/agent/tools.ts:43, src/gateway/server.ts:387"
+    "detail": "8 match(es): src/agent/loop.ts:66, src/agent/tools.ts:43, src/gateway/server.ts:389"
    }
   },
   {
@@ -1707,7 +1711,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "95 match(es): src/agent/loop.ts:208, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "95 match(es): src/agent/loop.ts:209, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1724,7 +1728,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:192"
+    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:193"
    }
   },
   {
@@ -1775,7 +1779,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1000"
+    "detail": "1 match(es): src/agent/toolbox.ts:992"
    }
   },
   {
@@ -1878,7 +1882,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "72 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:184"
+    "detail": "72 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:187"
    }
   },
   {
@@ -1912,7 +1916,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "32 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "36 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -1929,7 +1933,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:300, src/command-help.ts:376"
+    "detail": "2 match(es): src/cli.ts:303, src/command-help.ts:382"
    }
   },
   {
@@ -1963,7 +1967,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "60 match(es): src/agent/loop.ts:208, src/cli.ts:39, src/command-help.ts:224"
+    "detail": "60 match(es): src/agent/loop.ts:209, src/cli.ts:39, src/command-help.ts:224"
    }
   },
   {
@@ -2014,7 +2018,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:55, src/gateway/auth.ts:20, src/gateway/server.ts:290"
+    "detail": "5 match(es): src/core/config.ts:55, src/gateway/auth.ts:20, src/gateway/server.ts:292"
    }
   },
   {
@@ -2065,7 +2069,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/agent/prompt.ts:244, src/agent/secrets.ts:16, src/agent/toolbox.ts:42"
+    "detail": "13 match(es): src/agent/prompt.ts:244, src/agent/secrets.ts:16, src/agent/toolbox.ts:43"
    }
   },
   {
@@ -2082,7 +2086,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1129, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "20 match(es): src/agent/toolbox.ts:1121, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2186,7 +2190,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "617 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "635 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2271,7 +2275,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2343"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2362"
    }
   },
   {
@@ -2288,7 +2292,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:304, src/gateway/server.ts:83"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:310, src/gateway/server.ts:83"
    }
   },
   {
@@ -2305,7 +2309,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "61 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:93"
+    "detail": "62 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -2553,7 +2557,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "69 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "70 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {
