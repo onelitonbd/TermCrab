@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৮৬%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৮৮টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৭টা আধা (PARTIAL), ৩টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৩৩ দিন, later ~১৯ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৮৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯০টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৬টা আধা (PARTIAL), ২টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১১৩ দিন, later ~১৯ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 88 | wired and observable |
+| ✅ WORKING | 90 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 27 | exists, narrower than theirs |
+| 🟡 PARTIAL | 26 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 3 | nothing in the tree |
+| ⚪ ABSENT | 2 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 86%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 88%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~133d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~113d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~19d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~152d | in-scope only |
+| **total** | 132 | ~132d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -284,13 +284,13 @@ Out of scope, and why:
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
 | Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4 | parity | — |
 
-### surfaces — 71% (9 in-scope checks, 2 out of scope)
+### surfaces — 88% (9 in-scope checks, 2 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Web control UI | React+Vite dashboard, rebuilt in 2.0 | 🟡 PARTIAL | ui/index.html — one 6,779-line file, 9 views, no build step, no component model | parity | 8 |
-| Full-screen TUI | openclaw tui / chat / terminal | ⚪ ABSENT | no raw mode, no alternate screen anywhere in src/ | parity | 15 |
-| Interactive REPL | TUI --local | 🟡 PARTIAL | src/cli.ts:336 readline REPL, 4 slash commands | parity | 5 |
+| Full-screen TUI | openclaw tui / chat / terminal | ✅ WORKING | src/tui/*: `termcrab tui` drives a real screen — the alternate buffer with bracketed paste, entered and left on every exit path (quit, Ctrl-C, EOF, a crash in a turn), raw keys decoded with partial escape sequences and split code points kept for the next read, and a frame that is exactly rows x cols cells (wide characters counted as two). The transcript streams deltas as they arrive, a tool call is one line with its duration, thinking is dimmed, the input box edits with history (Up/Down), Ctrl-U/K/A/E, backspace and a cursor that slides instead of overflowing; /sessions opens an arrow-select picker over every conversation on disk, /new, /status, /history, /dir and /help answer in the transcript, and a resize redraws to the new size. When a gateway is running the screen attaches to the same session (28.2) so a turn from the panel or the phone appears here while it happens, with the surface it came from; opening the screen before the gateway is up retries instead of failing. A pipe or a file is told to use the line REPL rather than drawn into. Pinned by test/tier2r.test.ts 29.1-29.3 | parity | — |
+| Interactive REPL | TUI --local | ✅ WORKING | Two ways into the same agent from a terminal: `termcrab agent` is the readline REPL (one-shot message, /as <name>, /agents, /new, exit) and `termcrab tui` is the full screen above — both talk in the rolling main session by default, both honour --as and --tier local, and the REPL prints events as they happen. OpenClaw's TUI is richer still in layout (side panels, per-pane scrolling, mouse); ours is one screen that fits a phone | parity | — |
 | CLI command coverage | ~90 commands, 101 doc pages | 🟡 PARTIAL | 29 commands in one switch (src/cli.ts) — still far fewer words than their ~90, but every one of them documents itself (13.3) and completes (13.4) | parity | 8 |
 | Per-command help | every command documents its flags | ✅ WORKING | src/command-help.ts is one table (usage, summary, flags, example) for every command: `termcrab help <cmd>` and `termcrab <cmd> --help` work on all of them — including commands whose flag parser used to reject --help. The test fails if a command in the CLI switch has no entry, or a documented flag is never parsed. test/tier2b.test.ts 13.3 | parity | — |
 | JSON output mode | reserved stdout + failure envelope | ✅ WORKING | one envelope for every structured command: {ok, command, data} on success, {ok:false, command, error:{message, hint}} on failure, exactly one document on stdout (src/core/json-out.ts). `--json` works on status, sessions, skills, cron, memory, approvals, usage, disk, doctor, run/wait and stop; in json mode logs move to stderr (setLogToStderr) so a warning cannot corrupt the document; the exit code keeps the shell convention (0/1/124/130). Documented in docs/CLI.md and in `termcrab help <cmd>`. test/tier2c.test.ts 14.1-14.5 | parity | — |

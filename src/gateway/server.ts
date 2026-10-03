@@ -1476,8 +1476,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         const attachMatch = pathname.match(/^\/api\/sessions\/([^/]+)\/attach$/);
         if (attachMatch && req.method === 'GET') {
           const sid = decodeURIComponent(attachMatch[1]!);
-          if (!sessions.exists(sid)) {
-            json(res, 404, { error: `no such session: ${sid}` });
+          // A conversation with nothing in it yet is a conversation: attaching
+          // before the first message is how a client opens on one it has not
+          // used (the TUI opens on `main` before you ever type). Only a
+          // nonsensical id is refused.
+          if (!sid || sid.includes('/') || sid.length > 128) {
+            json(res, 400, { error: `bad session id: ${sid}` });
             return;
           }
           res.writeHead(200, {

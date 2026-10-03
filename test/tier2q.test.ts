@@ -134,7 +134,13 @@ test('28.2 /attach streams this session only, and the viewer count is real', asy
     const base = `http://127.0.0.1:${config.gateway.port}`;
     const auth = { authorization: 'Bearer test-token' };
 
-    assert.equal((await fetch(`${base}/api/sessions/nobody/attach`, { headers: auth })).status, 404);
+    // A conversation with nothing in it attaches too: an empty state frame.
+    const empty = await fetch(`${base}/api/sessions/never-used/attach`, { headers: auth });
+    assert.equal(empty.status, 200);
+    const firstFrame = new TextDecoder().decode((await empty.body!.getReader().read()).value ?? new Uint8Array());
+    assert.match(firstFrame, /"sessionId":"never-used"/);
+    assert.match(firstFrame, /"transcript":\[\]/);
+    assert.equal((await fetch(`${base}/api/sessions/${'x'.repeat(200)}/attach`, { headers: auth })).status, 400);
 
     const store = handle.agent.sessions;
     store.append('main', { role: 'user', content: 'the phone said this', ts: Date.now() });

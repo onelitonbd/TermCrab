@@ -38,6 +38,24 @@ chmod +x ~/.local/bin/termcrab
 echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc
 ```
 
+## The full-screen terminal
+
+`termcrab tui` draws the whole screen: the transcript, one line per tool call,
+the input box and a status bar. On a phone it is the nicest way to watch a long
+turn, and it is the same conversation as the panel and your Telegram DM.
+
+```bash
+termcrab tui              # opens on the main session
+termcrab tui --session work
+termcrab tui --no-attach  # do not watch the gateway for turns from other surfaces
+```
+
+Two phone-sized notes: **Termux's extra keys row** is the easy way to send ↑ ↓
+and Ctrl-C (long-press the keyboard to enable it, then tap the arrow), and if the
+screen looks wrong after a rotation, `Ctrl-L` redraws it. Leave with `/quit` or
+Ctrl-C; a stray Ctrl-C while a turn runs stops the turn first, and the second
+one leaves — the terminal is restored either way.
+
 ## Stay alive on a phone
 
 Android kills background apps. Three layers defeat it:

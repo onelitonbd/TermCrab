@@ -108,6 +108,19 @@ export const COMMANDS: CommandDoc[] = [
     example: 'termcrab agent "what can you do?"',
   },
   {
+    cmd: 'tui',
+    usage: 'tui [--session <id>] [--as <name>] [--frames <file>] [--no-attach] [--demo]',
+    summary: 'full-screen terminal: transcript, tool cards, live turns from other surfaces',
+    flags: [
+      '--session <id>   open a specific conversation (default: the rolling main session)',
+      '--as <name>      talk to a named agent',
+      '--no-attach      do not watch the gateway for turns from the panel or your phone',
+      '--frames <file>  append every drawn frame to a file (for tests and bug reports)',
+      '--demo           answer offline with the built-in mock brain',
+    ],
+    example: 'termcrab tui',
+  },
+  {
     cmd: 'heartbeat',
     usage: 'heartbeat',
     summary: 'run one self-check right now',

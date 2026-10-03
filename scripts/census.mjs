@@ -415,10 +415,12 @@ check('automation', 'Gmail / IMAP watchers', 'PubSub + IMAP integrations', 'ABSE
 check('surfaces', 'Web control UI', 'React+Vite dashboard, rebuilt in 2.0', 'PARTIAL',
   'ui/index.html — one 6,779-line file, 9 views, no build step, no component model',
   { pattern: /id="view-chat"/, scope: 'ui', expect: 'present' }, 8);
-check('surfaces', 'Full-screen TUI', 'openclaw tui / chat / terminal', 'ABSENT',
-  'no raw mode, no alternate screen anywhere in src/', { pattern: 'setRawMode|1049', expect: 'absent' }, 15);
-check('surfaces', 'Interactive REPL', 'TUI --local', 'PARTIAL',
-  'src/cli.ts:336 readline REPL, 4 slash commands', { pattern: 'readline', expect: 'present' }, 5);
+check('surfaces', 'Full-screen TUI', 'openclaw tui / chat / terminal', 'WORKING',
+  'src/tui/*: `termcrab tui` drives a real screen — the alternate buffer with bracketed paste, entered and left on every exit path (quit, Ctrl-C, EOF, a crash in a turn), raw keys decoded with partial escape sequences and split code points kept for the next read, and a frame that is exactly rows x cols cells (wide characters counted as two). The transcript streams deltas as they arrive, a tool call is one line with its duration, thinking is dimmed, the input box edits with history (Up/Down), Ctrl-U/K/A/E, backspace and a cursor that slides instead of overflowing; /sessions opens an arrow-select picker over every conversation on disk, /new, /status, /history, /dir and /help answer in the transcript, and a resize redraws to the new size. When a gateway is running the screen attaches to the same session (28.2) so a turn from the panel or the phone appears here while it happens, with the surface it came from; opening the screen before the gateway is up retries instead of failing. A pipe or a file is told to use the line REPL rather than drawn into. Pinned by test/tier2r.test.ts 29.1-29.3',
+  { file: 'src/tui/app.ts', pattern: 'setRawMode', expect: 'present', min: 2 }, 0);
+check('surfaces', 'Interactive REPL', 'TUI --local', 'WORKING',
+  'Two ways into the same agent from a terminal: `termcrab agent` is the readline REPL (one-shot message, /as <name>, /agents, /new, exit) and `termcrab tui` is the full screen above — both talk in the rolling main session by default, both honour --as and --tier local, and the REPL prints events as they happen. OpenClaw\'s TUI is richer still in layout (side panels, per-pane scrolling, mouse); ours is one screen that fits a phone',
+  { file: 'src/cli.ts', pattern: 'readline', expect: 'present' }, 0);
 check('surfaces', 'CLI command coverage', '~90 commands, 101 doc pages', 'PARTIAL',
   '29 commands in one switch (src/cli.ts) — still far fewer words than their ~90, but every one of them documents itself (13.3) and completes (13.4)',
   { pattern: 'case \'', expect: 'present' }, 8);

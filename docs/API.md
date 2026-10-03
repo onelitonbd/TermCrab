@@ -150,7 +150,8 @@ is `state`: the last 60 transcript entries, the running turn and the viewer
 count, so a tab that just opened catches up without a second request. After
 that it is the same wire format as `/api/events`, filtered to this session, so
 two phones, a laptop and the terminal can watch one thread and none of them
-misses a message. 404 for an unknown session.
+misses a message. A conversation with nothing in it yet (or one you have never
+opened) attaches too, with an empty tail; a nonsensical id answers 400.
 
 ### `GET /api/sessions/:id`
 → `{ "messages": [ …transcript entries… ] }`

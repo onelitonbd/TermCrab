@@ -127,7 +127,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
@@ -190,5 +190,9 @@ users' runtime.
 | `src/skills/loader.ts` | SkillStore: discovery, override, prompt index |
 | `src/skills/registry.ts` | ClawHub-compatible search/install/publish |
 | `src/skills/scaffold.ts` | skill templates |
+| `src/tui/app.ts` | The alternate screen, raw keys, live turns and the attach stream (29) |
+| `src/tui/frame.ts` | The whole screen as a pure function of state and terminal size (29) |
+| `src/tui/keys.ts` | Raw bytes to named keys, partial escape sequences included (29) |
+| `src/tui/text.ts` | Terminal-cell arithmetic: width, cut, wrap, pad (29) |
 
 <!-- END DOCS MAP -->

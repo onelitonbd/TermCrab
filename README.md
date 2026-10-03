@@ -108,6 +108,7 @@ termcrab gateway        run the gateway (HTTP API + SSE + channels + heartbeat +
 termcrab supervisor     run the gateway with auto-restart watchdog
 termcrab agent [msg] [--as <name>] [--tier local]
                            chat one-shot or interactive REPL (/as <name>, /agents inside)
+termcrab tui            full-screen terminal: live transcript, tool cards, shared main session
 termcrab say <text>        speak text aloud (termux-tts-speak / espeak / say ...)
 termcrab doctor [--json|--share]  diagnose the installation (--share = safe paste for help)
 termcrab heartbeat      run one proactive tick now
@@ -129,6 +130,32 @@ termcrab completion sh  bash | zsh | fish completion script (`termcrab completio
 termcrab status --json   every structured command takes --json: one document on stdout
                          (`{ok, command, data}` / `{ok:false, …, error}`) — see docs/CLI.md
 ```
+
+## The terminal, full screen
+
+`termcrab tui` is the third surface, not a second REPL: the alternate screen, a
+transcript that grows while the model is still talking, one line per tool call
+with its duration, thinking dimmed, and a status bar that names the provider and
+the session. It opens on the **rolling main session** — the same conversation the
+web panel and your Telegram DM use.
+
+```
+🦀 TermCrab 0.61.0                        main · openai:gpt-4o-mini
+› what is on the board today?
+⏺ read_file workspace/board.md ✓ 12ms
+⏺ Two things: the plumber at 11, and the invoice is still unpaid.
+  (from telegram)
+› _
+main session · shared with the panel and your Telegram DM · /help for keys
+```
+
+While the screen is open it **attaches to the gateway** (when one is running), so
+a turn you started from the panel or the phone appears in the terminal as it
+happens, marked with where it came from. Keys: `Enter` send · `↑`/`↓` history or
+scroll · `Ctrl-U`/`Ctrl-K` edit · `Ctrl-L` clear · `Ctrl-C` stop the turn, twice
+to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select
+another conversation) · `/new` · `/status` · `/history` · `/dir` · `/help` ·
+`/quit`. No terminal (a pipe, a cron job)? It says so instead of drawing garbage.
 
 ## Named agents
 

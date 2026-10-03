@@ -67,6 +67,7 @@ import { listRuns } from './core/tracing.js';
 import { formatSessionHits, searchSessions } from './agent/session-search.js';
 import { applyReset } from './agent/session-policy.js';
 import { rollingLine, rollingSessionKey } from './agent/rolling.js';
+import { runTui } from './tui/app.js';
 import { formatSessionView, sessionView } from './agent/session-view.js';
 import { ANSI, paint } from './core/color.js';
 
@@ -82,6 +83,7 @@ Start here (the 5 commands most people ever need):
   termcrab doctor           health check: tells you what's broken and exactly how to fix it
 
 Everyday extras:
+  termcrab tui                        full-screen terminal: live transcript, tool cards, one screen
   termcrab agent "msg" --as <name>   talk to a named agent (workspace/agents/<name>/SOUL.md)
   termcrab agent "msg" --tier local  run this one task on your own local model, if set up
   termcrab say <text>                speak text aloud
@@ -284,6 +286,17 @@ async function buildMemoryStore(config: ReturnType<typeof loadConfig>): Promise<
 /** `skills.allow` as the loader wants it: a list means an allow-list, empty means all. */
 function skillsAllow(config: Config): string[] | undefined {
   return config.skills?.allow?.length ? config.skills.allow : undefined;
+}
+
+/**
+ * Where a local gateway would be listening (29.3). The TUI attaches to it only
+ * when it answers — a phone with no gateway running must not print an error for
+ * doing the right thing.
+ */
+function gatewayUrlFor(config: Config): string {
+  const host = config.gateway.host === '0.0.0.0' || !config.gateway.host ? '127.0.0.1' : config.gateway.host;
+  const port = config.gateway.port || 7788;
+  return `http://${host.includes(':') ? `[${host}]` : host}:${port}`;
 }
 
 async function makeAgentCtx() {
@@ -499,6 +512,57 @@ export async function main(argv: string[]): Promise<void> {
       if (result.ok) console.log(`🔊 spoke via ${result.backend}`);
       else {
         console.error(`tts failed: ${result.error}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    case 'tui': {
+      const { values } = parseArgs({
+        args: rest,
+        options: {
+          session: { type: 'string' },
+          as: { type: 'string' },
+          frames: { type: 'string' },
+          attach: { type: 'boolean', default: true },
+          'no-attach': { type: 'boolean', default: false },
+          demo: { type: 'boolean', default: false },
+        },
+        allowPositionals: false,
+      });
+      const ctx = await makeAgentCtx();
+      if (values.demo) {
+        ctx.provider = createMock(ctx.config.provider.model);
+        console.error('(offline demo: answering with the built-in mock brain — no network, no key)');
+      }
+      const agentName = values.as ? sanitizeAgentName(values.as) ?? undefined : undefined;
+      if (values.as && !agentName) {
+        console.error(`invalid agent name: ${values.as} (use lowercase letters, digits, - or _)`);
+        process.exitCode = 1;
+        return;
+      }
+      // The attach stream is what makes this the third surface rather than a
+      // second REPL: if a gateway is up, a turn from the panel or the phone
+      // appears in this screen while it happens.
+      // `--no-attach` (attaching to the gateway is the default; a phone with no
+      // panel running should not have to see a connection attempt).
+      const wantAttach = values.attach && !values['no-attach'] && !rest.includes('--no-attach');
+      const attach = wantAttach
+        ? { url: gatewayUrlFor(ctx.config), token: ctx.config.gateway.token }
+        : undefined;
+      const framesOut = values.frames ? fs.createWriteStream(values.frames, { flags: 'a' }) : null;
+      const ui = runTui({
+        ctx,
+        sessionId: values.session,
+        agent: agentName,
+        version: version(),
+        attach,
+        onFrame: framesOut ? (lines) => framesOut.write(`${lines.join('\n')}\n―\n`) : undefined,
+      });
+      const result = await ui.done;
+      framesOut?.end();
+      if (result.reason === 'error') {
+        console.error(result.error ?? 'the screen could not start');
         process.exitCode = 1;
       }
       return;

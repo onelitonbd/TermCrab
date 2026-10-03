@@ -29,6 +29,32 @@ Failure — the same shape, plus the fix:
 The **exit code still carries the shell convention**, so `if termcrab run ...; then`
 keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 
+## The screen (`termcrab tui`)
+
+Interactive, so it writes no JSON envelope — but it is scriptable in the two ways
+that matter: `--frames <file>` appends every drawn frame (plain text, one
+`―` separator) for a bug report or a test, and everything it does to the
+terminal goes through a stream, so a test can drive it without a TTY. It opens on
+the rolling main session unless `--session <id>` says otherwise, and attaches to
+the gateway (`--no-attach` turns that off) so turns from the panel or the phone
+appear on the same screen.
+
+```
+🦀 TermCrab 0.61.0                        main · openai:gpt-4o-mini
+› what is on the board today?
+⏺ read_file workspace/board.md ✓ 12ms
+⏺ Two things: the plumber at 11, and the invoice is still unpaid.
+› _                                        (from telegram)
+⏺ attached: turns from the panel or your phone on main show up here
+main session · shared with the panel and your Telegram DM · /help for keys
+```
+
+Keys: `Enter` send · `↑`/`↓` history (or scroll when the transcript is scrolled) ·
+`Ctrl-U` clear before the cursor · `Ctrl-K` clear after it · `Ctrl-A`/`Ctrl-E`
+start/end · `Ctrl-L` clear the screen · `Ctrl-C` stop a running turn, press again
+to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select) ·
+`/new` · `/status` · `/history` · `/dir` · `/help` · `/quit`.
+
 ## Which commands, and what is inside
 
 | Command | `data` |

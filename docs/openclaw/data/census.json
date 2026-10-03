@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T18:37:04.226Z",
+ "measured": "2026-10-03T18:47:56.161Z",
  "tally": {
-  "WORKING": 88,
+  "WORKING": 90,
   "BETTER": 14,
-  "PARTIAL": 27,
+  "PARTIAL": 26,
   "BROKEN": 0,
-  "ABSENT": 3
+  "ABSENT": 2
  },
- "coverage": 86,
+ "coverage": 88,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 152,
+ "effortLeft": 132,
  "areas": [
   "agent",
   "automation",
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2364"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2368"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1058, src/command-help.ts:168"
+    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1122, src/command-help.ts:181"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/loop.ts:32, src/cli.ts:253, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:255, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:243"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:245"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:157, src/gateway/server.ts:1548, src/mobile/doctor.ts:525"
+    "detail": "5 match(es): src/cli.ts:159, src/gateway/server.ts:1552, src/mobile/doctor.ts:525"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "135 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:308"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:321"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1158, src/gateway/server.ts:1584"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1222, src/gateway/server.ts:1588"
    }
   },
   {
@@ -644,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "538 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
+    "detail": "574 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
    }
   },
   {
@@ -841,7 +841,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2162"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2226"
    }
   },
   {
@@ -999,7 +999,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:394, src/cli.ts:2100"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:394, src/cli.ts:2164"
    }
   },
   {
@@ -1950,7 +1950,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:210"
+    "detail": "86 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:210"
    }
   },
   {
@@ -2074,38 +2074,41 @@
    "area": "surfaces",
    "capability": "Full-screen TUI",
    "openclaw": "openclaw tui / chat / terminal",
-   "verdict": "ABSENT",
-   "evidence": "no raw mode, no alternate screen anywhere in src/",
+   "verdict": "WORKING",
+   "evidence": "src/tui/*: `termcrab tui` drives a real screen — the alternate buffer with bracketed paste, entered and left on every exit path (quit, Ctrl-C, EOF, a crash in a turn), raw keys decoded with partial escape sequences and split code points kept for the next read, and a frame that is exactly rows x cols cells (wide characters counted as two). The transcript streams deltas as they arrive, a tool call is one line with its duration, thinking is dimmed, the input box edits with history (Up/Down), Ctrl-U/K/A/E, backspace and a cursor that slides instead of overflowing; /sessions opens an arrow-select picker over every conversation on disk, /new, /status, /history, /dir and /help answer in the transcript, and a resize redraws to the new size. When a gateway is running the screen attaches to the same session (28.2) so a turn from the panel or the phone appears here while it happens, with the surface it came from; opening the screen before the gateway is up retries instead of failing. A pipe or a file is told to use the line REPL rather than drawn into. Pinned by test/tier2r.test.ts 29.1-29.3",
    "probe": {
-    "pattern": "setRawMode|1049",
-    "expect": "absent"
+    "file": "src/tui/app.ts",
+    "pattern": "setRawMode",
+    "expect": "present",
+    "min": 2
    },
-   "effort": 15,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "4 match(es) (min 2): src/tui/app.ts:142"
    }
   },
   {
    "area": "surfaces",
    "capability": "Interactive REPL",
    "openclaw": "TUI --local",
-   "verdict": "PARTIAL",
-   "evidence": "src/cli.ts:336 readline REPL, 4 slash commands",
+   "verdict": "WORKING",
+   "evidence": "Two ways into the same agent from a terminal: `termcrab agent` is the readline REPL (one-shot message, /as <name>, /agents, /new, exit) and `termcrab tui` is the full screen above — both talk in the rolling main session by default, both honour --as and --tier local, and the REPL prints events as they happen. OpenClaw's TUI is richer still in layout (side panels, per-pane scrolling, mouse); ours is one screen that fits a phone",
    "probe": {
+    "file": "src/cli.ts",
     "pattern": "readline",
     "expect": "present"
    },
-   "effort": 5,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/channels/signal.ts:3, src/cli.ts:4, src/gateway/wake-service.ts:2"
+    "detail": "6 match(es): src/cli.ts:4"
    }
   },
   {
@@ -2124,7 +2127,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "82 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:240"
+    "detail": "98 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:242"
    }
   },
   {
@@ -2181,7 +2184,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:359, src/command-help.ts:446"
+    "detail": "2 match(es): src/cli.ts:372, src/command-help.ts:459"
    }
   },
   {
@@ -2219,7 +2222,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:39, src/command-help.ts:224"
+    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:39, src/command-help.ts:237"
    }
   },
   {
@@ -2468,7 +2471,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "736 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "763 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2563,7 +2566,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2781"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2785"
    }
   },
   {
@@ -2582,7 +2585,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:374, src/gateway/server.ts:84"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:387, src/gateway/server.ts:84"
    }
   },
   {
@@ -2878,7 +2881,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "79 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "80 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

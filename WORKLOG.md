@@ -16,54 +16,54 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এইমাত্র শেষ (ব্যাচ ২৮ পূর্ণ): sessions — ৮৫% → ৮৬%, sessions area ১০০%।**
-  - **একটাই rolling main session (২৮.১):** প্যানেল, টার্মিনাল আর মালিকের Telegram DM (allowedUserIds-এর ভিতরের id) সবাই এক `main` session-এ কথা বলে — ফোনে জিজ্ঞেস করে ল্যাপটপ খুললে কথোপকথন চলতে থাকে। দিন বদলালে প্রথম turn-এ session রোল করে: পুরনো transcript `<session>.archive.jsonl`-এ যায় (মুছে যায় না, `sessions search`-এ খুঁজে পাওয়া যায়), নতুন থ্রেড `[rolling]` নোট দিয়ে শুরু হয়, আর loop-এ event আসে `session:reset` (reason `rolling`)। cron/heartbeat/dream/subagent নিজের key রাখে।
-  - **একটা session, অনেক client (২৮.২):** `GET /api/sessions/<id>/attach` — per-conversation SSE; প্রথম frame-ই `state` (শেষ ৬০টা entry, চলমান turn, কত জন attach করা আছে), তারপর `/api/events`-এর মতো versioned frame কিন্তু শুধু ওই session-এর। `GET /api/sessions` এখন `viewers`/`running` দেখায়; tab বন্ধ করলে viewer কমে। প্যানেল `main` session-এ খোলে আর live status-এ "Session: main (rolling)" দেখায়।
-  - **এক gateway, অনেক মানুষ (২৮.৩):** `channels.telegram.scoping = chat|user`; কার মেসেজ সেটা রেকর্ড হয় (run trace-এ `user`, memory fact-এর source-এ সেই মানুষ), আর অন্য কারো thread মালিকের `main`-এ মেশে না।
-  - **আসল bug পাওয়া গেল:** turn শুরুর আগে roll করতে হয় — আগে user মেসেজ লেখা হচ্ছিল আগে, ফলে "আজকেও কথা বলেছি" ভেবে roll হত না। test সেটা ধরে ফেলেছিল।
-- **সংখ্যা:** **৮৬%** of in-scope checks (WORKING ৮৮ · BETTER ১৪ · PARTIAL ২৭ · ABSENT ৩), বাকি খাটনি ~১৫২ দিন, drift 0, স্যুট **৭৮০ টেস্ট · 777 pass · 0 fail**।
-- **পরের কাজ (ব্যাচ ২৯):** Full-screen TUI (15d) — alt-screen panes, streaming transcript, tool cards, session attach; তারপর sandboxing (30) আর database/migrations (31)।
+- **এইমাত্র শেষ (ব্যাচ ২৯ পূর্ণ): full-screen terminal — ৮৬% → ৮৮%, surfaces lane অনেক এগোল।**
+  - **সত্যিকারের স্ক্রিন (২৯.১):** `termcrab tui` — alternate buffer (যে পথেই বেরোনো হোক: `/quit`, Ctrl-C, EOF, turn ভাঙলেও — screen ঠিক ফিরে আসে), bracketed paste, raw key decode (আধা-আসা arrow sequence আর ভাঙা emoji পরের read-এর জন্য রাখা হয়), আর frame ঠিক terminal-এর মাপে — চওড়া অক্ষর (বাংলা/জাপানি) দুই cell ধরে, তাই ডান ধার কখনো এলোমেলো হয় না। `Ctrl-L` rotate-এর পরে redraw করে, resize নিজেই ধরা পড়ে।
+  - **চলন্ত turn চোখের সামনে (২৯.২):** উত্তর আসার সাথে সাথে transcript-এ stream হয়, প্রতিটা tool call এক লাইনে সময়সহ, thinking dim; ইনপুট বক্সটা shell-এর মতো (`↑`/`↓` history, Ctrl-U/K/A/E, backspace, cursor এক পাশে সরবে — লাইন overflow করবে না)। `/sessions` পিকার দিয়ে যেকোনো কথোপকথন খোলা যায়, `/new`, `/status`, `/history`, `/dir`, `/help` transcript-এ উত্তর দেয়। pipe-এ চালালে garbage আঁকার বদলে বলে দেয় REPL ব্যবহার করতে।
+  - **অন্য surface-এর সাথে সংযুক্ত (২৯.৩):** gateway চালু থাকলে screen ২৮.২-এর attach stream-এ জুড়ে যায় — প্যানেল বা ফোন থেকে শুরু করা turn এখানেই live দেখা যায়, কোথা থেকে এসেছে লেখা থাকে; gateway-টা একটু পরে উঠলে কয়েক সেকেন্ড retry করে (`--no-attach` দিয়ে বন্ধ)। খালি conversation-এ attach করতে চাইলে আগে 404 আসত — এখন খালি state frame আসে (আসল bug, test-এ ধরা)।
+- **সংখ্যা:** **৮৮%** of in-scope checks (WORKING ৯০ · BETTER ১৪ · PARTIAL ২৬ · ABSENT ২), বাকি খাটনি ~১৩২ দিন, drift 0, স্যুট **৭৯১ টেস্ট · 0 fail**; release **0.61.0**।
+- **পরের কাজ (ব্যাচ ৩০):** Sandboxing (8d) — bubblewrap/proot থাকলে সত্যিকারের sandbox-এ code execution, না থাকলে সৎভাবে না-করার কথা বলা; তারপর Database + migrations (31), শেষে PARTIAL বাকিগুলো (Embedding providers, Bootstrap file set, ops/security)।
 
 ---
 
-## 2. Now — batch 28, finished: one session for you, many clients on it (this commit)
+## 2. Now — batch 29, finished: the terminal is a surface (this commit)
 
-The sessions spine. Until this batch a session was "one thread per room, and nothing ever
-rolls" — right for a group chat, wrong for one person with a phone, a laptop and a terminal.
+The third surface, done properly. Until now "terminal" meant `termcrab agent`: a readline
+prompt that printed events as text rolled in. That is a fine REPL and a poor third surface —
+no screen, no live view, no way to see what the phone just did to the same conversation.
 
 | # | Step | Status | Evidence |
 |---|---|---|---|
-| 28.1 | Main rolling session | ✔ done | `src/agent/rolling.ts` (`rollingSessionKey`, `rollMainSession`, `rollingLine`): the owner surfaces (web/cli/voice/terminal/repl, plus a Telegram DM whose chat id is an allowed id) share `agent.mainSession` (default `main`); groups, other people, cron, heartbeat, dream and subagents keep their own keys. The loop rolls **before** the turn writes — the live transcript is appended to `<session>.archive.jsonl`, the file is emptied and the fresh thread opens with a `[rolling]` system note naming the archive — and emits `session:reset` with reason `rolling`. `agent.rollingSession: false` restores the old one-thread-per-surface behaviour. `test/tier2q.test.ts` 28.1 (key mapping per surface, opt-out, the roll itself, an empty session, and a real turn through the loop that rolls and says so) |
-| 28.2 | Session attachment (multi-client) | ✔ done | `GET /api/sessions/:id/attach`: a per-conversation SSE stream whose first frame is a `state` snapshot (last 60 entries, the running turn, the viewer count) and then only that session's versioned frames — several clients on one thread, none of them missing a message (`test/tier2q.test.ts` 28.2 proves the filtering, the second viewer, the release on close, and the 404). `GET /api/sessions` reports `viewers`/`running`; `POST /api/chat` with no `sessionId` lands in the rolling main session; the panel learns the session name from `/api/status` and opens on it |
-| 28.3 | Multi-user scoping | ✔ done | `channels.telegram.scoping = chat` (default: one thread per room) or `user` (one thread per person, so their DM and their mentions follow them); who spoke is recorded rather than guessed — `runTurn` takes a `user`, the run trace carries it (`startRun` user) and every fact the turn writes carries it as its source. `test/tier2q.test.ts` 28.3 |
-| 28.4 | Docs + census | ✔ done | `docs/API.md` (attach route, the default-session rule, `viewers`/`running`), `docs/CHANNELS.md` ("your own thread, and other people's" + `scoping`), `docs/CLI.md` (`sessions ls` main/rolling, `sessions show` rolling line), `docs/ARCHITECTURE.md` (+`rolling.ts`), census rows re-judged: Main rolling session ABSENT → WORKING, Session attachment PARTIAL → WORKING, Multi-user scoping PARTIAL → WORKING (**86%**, sessions area 100%, effort ~171d → ~152d, drift 0) |
+| 29.1 | A real screen: alternate buffer, raw keys, exact frames | ✔ done | `src/tui/text.ts` (cell arithmetic: wide chars, cut/truncate/wrap/pad), `src/tui/keys.ts` (raw bytes → named keys; a half-arrived CSI sequence and a split code point are kept for the next read), `src/tui/frame.ts` (`renderFrame` is a pure function of state × size, always exactly rows × cols; the cursor slides instead of overflowing), `src/tui/app.ts` (alt screen + bracketed paste entered and left on every exit path, resize redraws, non-TTY refuses). `test/tier2r.test.ts` 29.1 |
+| 29.2 | A live turn in the screen | ✔ done | deltas stream into the transcript as they arrive, a tool call is one line that updates in place with its duration, thinking is dimmed, the input box is editable the whole time (history with ↑/↓, Ctrl-U/K/A/E, backspace, delete), `/sessions` opens an arrow-select picker, `/new` `/status` `/history` `/dir` `/help` answer in the transcript, Ctrl-C stops a turn then leaves. `test/tier2r.test.ts` 29.2 (over a fake TTY, with `--frames`-style frame capture) |
+| 29.3 | Attach to a session (and to other surfaces) | ✔ done | the screen opens on the rolling main session, and when a gateway is running it attaches to `GET /api/sessions/:id/attach` (28.2) so a turn from the panel or the phone is drawn here while it happens, labelled with its origin; it retries while the gateway is still coming up; attaching to an empty conversation now streams an empty state instead of 404. `test/tier2r.test.ts` 29.3 (a real gateway + a real panel turn) |
+| 29.4 | Docs + census | ✔ done | `README.md` (`termcrab tui` in the CLI block + a section with a frame sample and the key list), `docs/CLI.md` (the screen, its keys and `--frames`), `docs/TERMUX.md` (extra-keys row, Ctrl-L after a rotation), `docs/ARCHITECTURE.md` (+4 rows), census: Full-screen TUI ABSENT → WORKING, Interactive REPL PARTIAL → WORKING (**88%**, effort ~152d → ~132d, drift 0) |
 
-**Limits stated in the open:** a roll is judged by the transcript's last entry and the local day, not
-by a scheduler — a phone left off for a week rolls once, not seven times; two clients editing the
-same transcript at the same instant still serialize on the write fence (that is what keeps the
-transcript honest, and it is why "no message lost" is true); "identity links" (tying two channel
-accounts to one person) are not implemented — scoping is per-channel config.
+**Limits stated in the open:** one screen, not panes — no side panels, per-pane scrolling or mouse
+(OpenClaw's TUI has those; a phone does not want them), no syntax highlighting of tool output, and
+the picker is arrow-keys-only. The transcript pane shows the live turn and the note trail, not the
+whole archived conversation: `/history` reads the file when you want the tail.
 
-**Next action:** batch 29 — the full-screen TUI, so the terminal stops being a line printer.
+**Next action:** batch 30 — sandboxing: run code execution in bubblewrap/proot when the device has
+it, and say plainly when it does not.
 
-## 3. Next — batch 29: a full-screen terminal (the third surface, done properly)
+## 3. Next — batch 30: sandboxing you can point at
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 29.1 | The screen: panes, alt-screen, keys | ☐ todo | `termcrab tui` draws a real full-screen UI (transcript, input, status bar) with the alternate screen and restores the terminal on exit, resize, `q`/Ctrl-C; a non-TTY says so instead of drawing garbage |
-| 29.2 | Live turn in the TUI | ☐ todo | a turn streams into the transcript pane as it happens (deltas), tool calls become one-line cards that update in place, thinking is dimmed, and the input box stays usable while a turn runs |
-| 29.3 | Attach to a session, and remember | ☐ todo | the TUI attaches to the rolling main session by default and can switch sessions (`/sessions`, arrow-select), using the 28.2 attach stream so a phone turn appears while you watch |
-| 29.4 | Docs + census | ☐ todo | README/TERMUX/CLI rows with a real screenshot-free key list; Full-screen TUI ABSENT → WORKING with its test; three surfaces re-checked end to end |
+| 30.1 | Detect and use a real sandbox | ☐ todo | `exec`/code execution runs inside `bwrap` (or `proot` where bwrap is impossible, e.g. unprivileged Android) when present: bind only the workspace + a scratch tmp, no network unless asked, a hard wall clock and memory cap; the args are built and asserted, not shelled through a string |
+| 30.2 | An honest refusal when there is none | ☐ todo | with no sandbox binary, the tool says so in one sentence, names the package to install, and does not silently run unsandboxed; a config key can accept the risk explicitly (`agent.sandbox: off`) and the transcript records which mode ran |
+| 30.3 | Doctor + docs + panel | ☐ todo | `termcrab doctor` reports the sandbox mode and what is missing; `docs/SECURITY.md` explains what each mode does and does not protect; the panel shows the mode next to approvals |
+| 30.4 | Docs + census | ☐ todo | the row moves with its test; three surfaces re-checked end to end |
 
-**After that (batch 30, 31):** Sandboxing (~8d: bubblewrap/proot when present, an honest refusal
-when not) and Database + migrations (~8d: a file-based migration runner with a version stamp,
-backup/restore that round-trips a home). Then the PARTIAL leftovers: Embedding providers, Bootstrap
-file set, and the ops/security rows the census still shows as half-done.
+**After that (batch 31):** Database + migrations (~8d: a file-based migration runner with a version
+stamp, and backup/restore that round-trips a home), then the PARTIAL leftovers the census still
+shows: Embedding providers, Bootstrap file set, and the ops/security half-rows.
 
 ## 4. Done — batches, commits, and the proof
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 29 | `PENDING` | **The terminal is a surface**: `termcrab tui` — alternate screen + bracketed paste entered and left on every exit path, raw keys decoded with partial escapes and split code points kept, frames that are exactly rows × cols (wide characters counted as two), a streaming transcript with one-line tool cards, a shell-like input box with history, an arrow-select session picker, and a gateway attach so a turn from the panel or the phone is drawn here while it happens | `test/tier2r.test.ts` 29.1–29.3 (11 tests: cell arithmetic + wrapping, exact frames at two sizes, cursor sliding, key/paste decoding, a typed turn streaming in over a fake TTY and the terminal restored, history/Ctrl-U/backspace/`/help`/picker/resize, the non-TTY refusal, and a real gateway turn appearing live) | 791 tests · 790 pass · 0 fail · 1 skipped (environment-dependent); census **86% → 88%** (WORKING 88 → 90, PARTIAL 27 → 26, ABSENT 3 → 2), effort ~152d → ~132d, drift 0 · release 0.61.0 |
 | 28 | `13dfd46` | **Sessions: one for you, many clients on it** (batch 28 finished): one rolling main session shared by the panel, the terminal and the owner's Telegram DM — archived daily rather than deleted, with a note in the fresh thread; a per-conversation SSE attach route so several clients watch one thread without missing a message (`viewers`/`running` on `/api/sessions`); and honest multi-user scoping (`channels.telegram.scoping = chat|user`) with the speaker recorded on the run and on every fact it writes | `test/tier2q.test.ts` 28.1–28.3 (9 tests: surface→session mapping and the opt-out, the roll itself + an empty session, a real turn through the loop that rolls before it writes, the attach stream's state frame/filtering/second viewer/release/404, the panel's default session and `/api/status`, scoping + run provenance) | 780 tests · 777 pass · 0 fail · 3 skipped; census **85% → 86%** (WORKING 85 → 88, PARTIAL 29 → 27, ABSENT 4 → 3), sessions area 100%, effort ~171d → ~152d, drift 0 |
 | 27 | `0c7c213` | **Providers and the loop's limits** (batch 27 finished): native Anthropic (`/v1/messages`) and Gemini (`:generateContent`) adapters behind the shared contract; a model catalog that asks the endpoint and falls back with a note (`termcrab models`); named API keys outside config.json (`termcrab auth`, mode 0600, audited); a local tier that never falls back silently; and a turn watchdog (`agent.turnBudgetSec` / `agent.idleSec`) that stops a stuck turn with the reason and keeps what the model had said | `test/tier2p.test.ts` 27.2–27.4 (9 tests: exact Anthropic request + streaming reassembly, exact Gemini body + id synthesis, resolveProvider for all four types, catalog offline/live, keys never printed + mismatch errors, local tier with the note, a hanging provider stopped in ~1 s) | score **81% → 85%** (WORKING 77 → 85), PARTIAL 34 → 29, ABSENT 7 → 4, effort ~201d → ~171d, drift 0 |
 | 27.1 | `ff54f6b` | **Parallel tool batches**: consecutive read-only tool calls from one model turn run as one bounded batch (`agent.parallelTools`, default 4, 1 = off); a mutating or approval-gated call flushes the batch and runs alone; transcript order stays the model's order, spans/ids stay per call, and a failing tool is its own result. Safety is opt-in through one auditable table of 19 read-only tool names | `test/tier2o.test.ts` (5 tests: three 120 ms read-only tools really overlap, a mutating tool never overlaps, one failure does not cancel the batch, `parallelTools: 1` is strictly serial, the table's shape) | score **80% → 81%** (132 in-scope checks), ABSENT 8 → 7, WORKING 76 → 77, drift 0 |
