@@ -245,9 +245,9 @@ check('tools', 'Phone / device tools', 'iOS+Android nodes (camera, screen, locat
   { pattern: 'battery', expect: 'present' }, 0);
 check('tools', 'Image / media generation', 'image, video, music generation', 'ABSENT',
   'no generation tools', { pattern: 'image_gen|generate_image', expect: 'absent' }, 6);
-check('tools', 'Document extraction', 'pdf/docx/pptx extraction', 'ABSENT',
-  'no extraction libraries (a PDF that arrives is saved intact — see the channels media row — but its text is not parsed out)',
-  { pattern: /pdf-parse|pdfjs-dist|mammoth|pptx2json|libreoffice --convert/, expect: 'absent' }, 3);
+check('tools', 'Document extraction', 'pdf/docx/pptx extraction', 'WORKING',
+  'the text of what arrives is read by our own zero-dependency readers (src/channels/extract.ts): PDF content streams with FlateDecode, DOCX/PPTX/XLSX through a small ZIP reader on node:zlib, every text format as-is — capped at 20 000 characters with a truncation note, a scanned PDF refused with a sentence that names OCR, a .zip not opened and said so (16.1); pictures are read by a model that can see them, as a real image part on the wire, or the agent is told "I saved it but cannot see it" with the exact command (16.2, src/channels/vision.ts). Pinned by test/tier2e.test.ts',
+  { paths: ['src/channels/extract.ts', 'src/channels/vision.ts'], expect: 'present' }, 3);
 check('tools', 'Tool count', '~44 in-loop tools + plugin tools', 'PARTIAL',
   '41 in toolbox.ts + 13 in tools.ts', { pattern: "name: '", expect: 'present' }, 0);
 check('tools', 'Tool schema validation', 'TypeBox-validated arguments', 'PARTIAL',
@@ -447,7 +447,8 @@ check('mobile', 'Termux doctor', 'n/a on Android (unsupported)', 'BETTER',
 check('mobile', 'Voice STT/TTS', 'whisper + TTS providers', 'PARTIAL',
   'src/mobile/{tts,tts-stream,stt,whisper}.ts — termux-api + optional whisper.cpp', { pattern: 'whisper', expect: 'present' }, 3);
 check('mobile', 'Transcription', 'realtime transcription service', 'PARTIAL',
-  'termcrab transcribe (offline whisper.cpp, optional)', { pattern: 'transcribe', expect: 'present' }, 3);
+  'a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL',
+  { pattern: 'transcribe', expect: 'present' }, 3);
 check('mobile', 'Native GUI / foreground service', 'desktop apps + node apps', 'ABSENT',
   'no companion app; a persistent notification is the closest', { pattern: 'foreground service', expect: 'absent' }, 20);
 

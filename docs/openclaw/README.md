@@ -74,7 +74,7 @@ Both scripts take their inputs from the working tree, so a run after any code ch
 | Words of OpenClaw documentation reviewed | 2.49 M |
 | Fenced code blocks catalogued | 5,249 |
 | TermCrab capabilities tracked by census | **150** (15 areas) |
-| TermCrab capability score | **58%** (44% when this study was written) |
+| TermCrab capability score | **59%** (44% when this study was written) |
 | … of which **broken** (code exists, nothing calls it) | **0** |
 | … where TermCrab is ahead of OpenClaw | 14 |
 | Effort left in the core lane | **~0 days** (was ~40) |
@@ -101,6 +101,7 @@ This study was written before the fixes; the tracker is the live document, and
 | Five channel adapters with no tests | **WORKING + tested**: Discord, Slack, Signal, SMS and Matrix route to the agent and queue failed sends; the SDK/daemon stays optional (batch 13) |
 | Typing indicators · Per-command help · Shell completion · Colour discipline — all ABSENT | **WORKING**, each with a test (batch 13) |
 | `JSON output mode` — PARTIAL (`doctor --json` only) | **WORKING**: one envelope for 11 commands, failure included, logs moved to stderr; the contract is written down in `docs/CLI.md` (batch 14) |
+| `Document extraction` — ABSENT | **WORKING**: our own zero-dependency readers take the text out of an arriving PDF (content streams + FlateDecode), DOCX/PPTX/XLSX (small ZIP reader on `node:zlib`) and every text format, capped with a truncation note; a scanned PDF is refused with an OCR sentence. A picture is described by a model that can see (real `image_url` part) or the agent is told plainly that it cannot see it (batch 16) |
 | `Media send/receive` · `Group / ambient events` · `Slash commands in chat` | **WORKING / PARTIAL / WORKING**: Telegram files in *and* out (inbox, `send_file`, executables refused), group messages only when addressed, and `/usage` `/sessions` `/memory` `/help` in the chat — rules in `docs/CHANNELS.md` (batch 15) |
 
 ## Relationship to the older reports

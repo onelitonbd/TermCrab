@@ -1,4 +1,4 @@
-import { ChatOpts, ChatRequest, ChatResult, FetchLike, Provider, ProviderError, ToolDef, Usage, isAbortError, readError } from './types.js';
+import { ChatImage, ChatOpts, ChatRequest, ChatResult, FetchLike, Provider, ProviderError, ToolDef, Usage, isAbortError, readError } from './types.js';
 import { sseData } from './sse.js';
 import {
   getModelCapabilities,
@@ -42,6 +42,30 @@ function toOpenAiTools(tools: ToolDef[]): unknown[] | undefined {
   }));
 }
 
+/** The `data:` URL an OpenAI-compatible server expects for an inline image. */
+function imageDataUrl(image: ChatImage): string {
+  return `data:${image.mimeType};base64,${image.dataBase64}`;
+}
+
+/**
+ * Attach `req.image` to the last user message as a content-parts array. OpenAI
+ * (and every compatible server we know) accepts `[{type:'text'}, {type:'image_url'}]`;
+ * a request with a picture and no user message still gets one, so the image can
+ * never be silently dropped.
+ */
+function attachImage(messages: unknown[], image: ChatImage): void {
+  const part = { type: 'image_url', image_url: { url: imageDataUrl(image) } };
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i] as { role?: string; content?: unknown };
+    if (m.role === 'user') {
+      const text = typeof m.content === 'string' ? m.content : '';
+      m.content = [...(text ? [{ type: 'text', text }] : []), part];
+      return;
+    }
+  }
+  messages.push({ role: 'user', content: [part] });
+}
+
 function buildMessages(req: ChatRequest): unknown[] {
   const messages: unknown[] = [{ role: 'system', content: req.system }];
   for (const m of req.messages) {
@@ -60,6 +84,7 @@ function buildMessages(req: ChatRequest): unknown[] {
       messages.push(msg);
     }
   }
+  if (req.image) attachImage(messages, req.image);
   return messages;
 }
 

@@ -8,7 +8,7 @@ their SDKs is bundled, because a phone install must stay dependency-free.
 
 | Channel | Inbound text | Files in | Files out | Typing | Groups | Needs |
 |---|---|---|---|---|---|---|
-| **Telegram** | ✅ full | ✅ photos, documents, voice → `workspace/inbox/` | ✅ `send_file` (≤ 20 MB) | ✅ `typing…` while it works | ✅ mention-only by default | a bot token |
+| **Telegram** | ✅ full | ✅ photos, documents, voice → `workspace/inbox/`, then read (`extract.ts`) / transcribed / described | ✅ `send_file` (≤ 20 MB) | ✅ `typing…` while it works | ✅ mention-only by default | a bot token |
 | WhatsApp | ✅ allowlisted JIDs | ➖ text only | ➖ text only | ➖ | ✅ mention-only | `baileys` + a phone paired |
 | Discord | ✅ allowlisted guilds/users | ➖ | ➖ | ➖ | ✅ channels/users allowlist | `discord.js` |
 | Slack | ✅ allowlisted channels/users | ➖ | ➖ | ➖ | ✅ | `@slack/bolt` |
@@ -24,7 +24,8 @@ does not carry media. Every one of those cells is covered by
 
 - **Inbound files.** A photo, a document or a voice note is downloaded through
   `getFile`, checked (size ≤ `channels.telegram.maxFileMb`, default **20 MB**;
-  extension on the allowed list) and written to
+  extension on the allowed list — pictures, PDFs, text, Office files `.docx
+  .xlsx .pptx`, audio and archives) and written to
   `~/.termcrab/workspace/inbox/<timestamp>-<name>` — the agent is told the path
   and the caption, e.g. `[photo saved to inbox/2026-10-03T10-00-00-photo-….jpg] what is this?`
 - **Executables are refused, by name.** `.apk .dex .exe .bin .so .sh .bat .cmd
@@ -43,12 +44,47 @@ does not carry media. Every one of those cells is covered by
   tokens and cost, the same numbers `termcrab usage --json` reports),
   `/sessions`, `/memory`, `/agents`, `/providers`, `/heartbeat`, `/help`.
 
+## What happens to a file that arrives (16.1–16.3)
+
+Saving a file is not an answer, so the intake reads what it can and tells the
+agent the truth about the rest:
+
+- **Documents are read.** PDF, DOCX, PPTX, XLSX and every text format have their
+  text pulled out by our own readers (`src/channels/extract.ts`, zero
+  dependencies: PDF content streams + FlateDecode, Office files through a small
+  ZIP reader on `node:zlib`). The text is capped (20 000 characters) and a
+  truncation note is appended, so a 400-page PDF cannot blow up the context.
+  A **scanned PDF** has no text layer: the agent is told that, plus the fact that
+  an OCR app on the phone can read it — no empty answer pretending the document
+  was blank. A `.zip` is saved but not opened, and says so.
+- **Pictures are described** by the configured model, when it can see them
+  (`gpt-4o`, `gpt-4.1`, `gpt-5`, `claude-3/4`, `gemini`, `qwen…-vl`, `llava`,
+  `pixtral`, …). The picture goes on the wire as a real image part — see
+  `src/channels/vision.ts`. With a text-only model the agent is told *"I saved it
+  but cannot see it"* and the exact command to fix it. Pictures above 4 MB are
+  refused before they cost a call. The one-shot description is what the agent
+  reads; the base64 picture never enters the transcript.
+- **Voice notes are transcribed** through whisper.cpp when it is installed
+  (`termcrab transcribe` uses the same engine): the transcript *is* the message
+  the agent answers. Without the engine the agent is told what to install; a
+  recording above 5 MB is not chewed up on the phone and says so.
+- **Turn any of it off** with `channels.telegram.readDocuments`,
+  `channels.telegram.transcribeVoice`, `channels.telegram.describePhotos` (all
+  default `true`).
+- **The inbox is swept, your workspace is not.** `workspace/inbox/` is its own
+  area in `termcrab disk`, trimmed by the ordinary retention rule
+  (`storage.keepDays`, default 30 days) — while everything you wrote into
+  `workspace/` is never a trim candidate.
+
 ## Config worth knowing
 
 ```bash
 termcrab config set channels.telegram.allowedUserIds [123456789]   # who may talk to it
 termcrab config set channels.telegram.groupPolicy mention          # or: all
 termcrab config set channels.telegram.maxFileMb 10                 # smaller inbox
+termcrab config set channels.telegram.readDocuments false          # do not open documents
+termcrab config set channels.telegram.transcribeVoice false        # keep voice notes as files
+termcrab config set channels.telegram.describePhotos false         # do not describe pictures
 ```
 
 A channel with an empty allowlist **stays off** — a bot that answers anybody who

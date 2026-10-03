@@ -28,6 +28,19 @@ export interface ProviderMessage {
 
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
+/**
+ * One picture to look at (16.2). Attached to the request rather than embedded
+ * in a message so that `ProviderMessage.content` stays a plain string for every
+ * existing caller, transcript and compaction path: only an adapter that knows
+ * how to send an image looks at this field at all.
+ */
+export interface ChatImage {
+  /** e.g. image/jpeg. Anything else is refused before a request is made. */
+  mimeType: string;
+  /** Base64, without the `data:` prefix. */
+  dataBase64: string;
+}
+
 export interface ChatRequest {
   system: string;
   messages: ProviderMessage[];
@@ -35,6 +48,8 @@ export interface ChatRequest {
   maxTokens?: number;
   temperature?: number;
   thinkingLevel?: ThinkingLevel;
+  /** When set, the last `user` message carries this picture (vision models). */
+  image?: ChatImage;
 }
 
 /**

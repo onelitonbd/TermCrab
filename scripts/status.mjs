@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
+import { parseWorklog } from './worklog-parse.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const WORKLOG = path.join(ROOT, 'WORKLOG.md');
@@ -31,23 +32,7 @@ function gitHead() {
 }
 
 function readWorklog() {
-  const text = fs.readFileSync(WORKLOG, 'utf8');
-  const updated = /\*\*Updated:\*\* ([^\n·]+)/.exec(text)?.[1]?.trim() ?? '';
-  // Step tables live under "## 2. Now" and "## 3. Next" (any numbering), each
-  // row: | id | step | ▶ doing / ☐ todo / ✔ done | evidence |
-  const section = (n) => {
-    const m = new RegExp(`^## ${n}\\. ([\\s\\S]*?)(?=^## |\\Z)`, 'm').exec(text);
-    return m ? m[1] : '';
-  };
-  const rowsOf = (body) =>
-    [...body.matchAll(/^\|\s*(\d+\.\d+)\s*\|\s*([^|]+?)\s*\|\s*(▶ doing|☐ todo|✔ done)[^|]*\|/gm)].map((m) => ({
-      id: m[1],
-      step: m[2].replace(/\*\*/g, ''),
-      state: m[3],
-    }));
-  const now = rowsOf(section(2));
-  const next = rowsOf(section(3));
-  return { updated, stepLines: now, nextSteps: next };
+  return parseWorklog(fs.readFileSync(WORKLOG, 'utf8'));
 }
 
 /**

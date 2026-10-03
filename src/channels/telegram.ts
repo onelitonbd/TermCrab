@@ -4,6 +4,7 @@ import { TelegramApi } from './api.js';
 import { log } from '../core/logger.js';
 import { outboxAck, outboxFail, outboxMarkSending, outboxPending, outboxPush } from '../mobile/outbox.js';
 import { escapeHtml, mdToTelegramHtml } from './markdown.js';
+import type { ArrivalInfo } from './intake.js';
 import {
   acceptIncoming,
   DEFAULT_MAX_FILE_MB,
@@ -36,6 +37,12 @@ export interface TelegramDeps {
     Partial<Pick<TelegramApi, 'sendChatAction' | 'getFile' | 'downloadFile' | 'sendDocument'>>;
   /** Test seam: where an incoming file lands (default: workspace/inbox). */
   saveFile?: (file: IncomingFile) => Promise<SavedFile> | SavedFile;
+  /**
+   * What the agent is told when a file arrives (16.1–16.3). Defaults to the
+   * plain "saved to …" sentence; the gateway passes `makeIntake(config)` so a
+   * document is read, a voice note transcribed and a picture described.
+   */
+  intake?: (saved: SavedFile, info: ArrivalInfo) => Promise<string>;
 }
 
 /** Telegram forgets a typing indicator after ~5s, so long turns re-send it. */
@@ -336,7 +343,11 @@ export class TelegramChannel {
       const bytes = await api.downloadFile(info.file_path, maxMb * 1024 * 1024);
       const save = this.deps.saveFile ?? saveIncoming;
       const saved = await save({ name: pick.name, bytes, kind: pick.kind, mimeType: pick.mime, caption: msg!.caption });
-      return { ok: true, text: describeIncoming(saved, { kind: pick.kind, caption: msg!.caption }) };
+      const arrival: ArrivalInfo = { name: pick.name, kind: pick.kind, mimeType: pick.mime, caption: msg!.caption };
+      const text = this.deps.intake
+        ? await this.deps.intake(saved, arrival)
+        : describeIncoming(saved, { kind: pick.kind, caption: msg!.caption });
+      return { ok: true, text };
     } catch (err) {
       return { ok: false, reason: err instanceof Error ? err.message : String(err) };
     }

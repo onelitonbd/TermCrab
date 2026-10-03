@@ -57,6 +57,7 @@ import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
 import { TelegramChannel } from '../channels/telegram.js';
+import { makeIntake } from '../channels/intake.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
 import { ChannelName } from '../channels/api.js';
@@ -469,6 +470,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     const state = readTelegramState();
     telegram = new TelegramChannel({
       cfg: tgCfg,
+      // 16.1–16.3: what arrives becomes something the agent can answer about —
+      // a document is read, a voice note transcribed, a photo described.
+      intake: makeIntake(config),
       getOffset: () => readTelegramState().offset,
       setOffset: (n) => writeTelegramState(n),
       onMessage: async (_userId, chatId, text, displayName) => {

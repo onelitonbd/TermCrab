@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.48.0 - 2026-10-03
+
+- **A file that arrives is now read, not just stored.** The text inside an arriving PDF, DOCX, PPTX, XLSX or text file is pulled out by **our own readers** — no dependency added: PDF content streams are inflated (`FlateDecode`) and turned back into lines (`Tj`/`TJ`/`'`/`"`, with `Td`/`TD`/`T*`/`ET` breaking them), Office files are opened through a small ZIP reader on `node:zlib`. The text is capped at 20 000 characters **with a truncation note inside the text**, so a long document cannot silently change what the agent is answering.
+- **A scan is not an empty document.** A PDF with no text layer gets one honest sentence (with the OCR suggestion) instead of a blank answer; a `.zip` is saved but not opened, and says so; a missing file says it could not be opened. The whole module never throws.
+- **Pictures are looked at, or the limit is stated.** When the configured model can see (`gpt-4o`, `gpt-4.1`, `gpt-5`, `claude-3/4`, `gemini`, `qwen…-vl`, `llava`, `pixtral`, …) the picture goes to it as a real `image_url` content part, after the text, tools off, at most 2 sentences back — and that description is what the agent reads, so the base64 JPEG never enters a transcript or the disk. A text-only model produces *"I saved it but cannot see it"* plus the exact `termcrab config set provider.model …` command; a picture over 4 MB is refused before it costs a call. `o1` is deliberately not treated as a vision model.
+- **A voice note becomes the message.** Arriving audio is transcribed through the same `whisper.cpp` engine `termcrab transcribe` uses, and the transcript is what the agent answers. Over 5 MB it says the recording is too long to transcribe on the phone instead of chewing CPU; with no engine installed the agent gets the one-line install hint.
+- **Each of the three is a switch:** `channels.telegram.readDocuments`, `.transcribeVoice`, `.describePhotos` — all default `true`.
+- **The inbox is swept; your workspace is not.** `workspace/inbox/` is now its own area in `termcrab disk` and in the disk budget (retention `storage.keepDays`, default 30 days), while anything written into `workspace/` is never a trim candidate.
+- **Two gaps this batch's own tests exposed:** the readers could open Office files but the channel's allow-list did not list them (a Word file sent to the bot was refused as unknown — now `.docx .xlsx .pptx .xml` are allowed), and a `.pdf` arriving was previously saved with its text unread.
+- **The rules are written down per channel:** `docs/CHANNELS.md` now has *What happens to a file that arrives* — the readers, the caps, the vision rules, the off-switches, the retention promise, and the limits (no OCR, spreadsheet numbers not read, archives not opened, Telegram-only for now).
+- **The verifier of the tracker had a bug of its own.** `scripts/status.mjs` ended the "Now" section with a `\Z` anchor — JavaScript reads that as a literal capital **Z**, so a step whose evidence mentioned "ZIP" silently truncated the batch and every row after it disappeared from the report. The parser now lives in `scripts/worklog-parse.mjs` with a real end-of-input anchor, and `test/worklog.test.ts` pins the ZIP case.
+- Tests: **605 cases, 0 failures** (3 skipped by design; 27 new in `test/tier2e.test.ts`, including a hand-built PDF and a hand-built ZIP so nothing about extraction is mocked). Census: **WORKING 53 → 54 · ABSENT 37 → 36 · BROKEN 0**, score **58% → 59%**, drift 0, core lane still empty.
+
+
 ## 0.47.0 - 2026-10-03
 
 - **Telegram can finally hand the agent a file.** A photo, a document or a voice note now lands in `workspace/inbox/<timestamp>-<name>` and the agent is asked about it with the path and the caption (`[photo saved to inbox/2026-10-03T…-shot.jpg (12 KB)] look at this`). Names are sanitised, two files cannot collide, and the fetch happens with the same bot token the poller already uses.

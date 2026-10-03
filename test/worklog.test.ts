@@ -24,6 +24,37 @@ async function freePort(): Promise<number> {
  * the panel, honest about being behind, and it must fail the suite when a commit
  * forgets it. These tests are what makes "tracking" a promise instead of a habit.
  */
+test('the tracker parser cannot be fooled by a letter in the evidence', async () => {
+  // Regression: the end-of-section anchor used to be `\Z`, which JavaScript
+  // reads as a literal capital Z — so a step whose evidence mentioned "ZIP"
+  // truncated the section and every row after it vanished from the report.
+  // Import by absolute path: the script is not compiled into dist/, so the
+  // import must point at the repository's own scripts/ directory.
+  const { pathToFileURL } = await import('node:url');
+  const mod = (await import(
+    pathToFileURL(path.join(process.cwd(), 'scripts', 'worklog-parse.mjs')).href
+  )) as { parseWorklog: (text: string) => { stepLines: { id: string }[]; nextSteps: { id: string }[] } };
+  const { parseWorklog } = mod;
+  const sample = [
+    '# Worklog',
+    '## 2. Now — a batch',
+    '| # | Step | Status | Evidence |',
+    '|---|---|---|---|',
+    '| 1.1 | one | ✔ done | a ZIP reader and a zlib stream |',
+    '| 1.2 | two | ✔ done | plain evidence |',
+    '| 1.3 | three | ▶ doing | more evidence |',
+    '',
+    '## 3. Next — the batch after',
+    '| # | Step | Status | Acceptance test |',
+    '|---|---|---|---|',
+    '| 2.1 | four | ☐ todo | something |',
+  ].join('\n');
+  const parsed = parseWorklog(sample);
+  assert.equal(parsed.stepLines.length, 3, 'every row survives the word ZIP');
+  assert.deepEqual(parsed.stepLines.map((r) => r.id), ['1.1', '1.2', '1.3']);
+  assert.deepEqual(parsed.nextSteps.map((r) => r.id), ['2.1']);
+});
+
 test('work tracker: fresh, reachable, and on the panel', async (t) => {
   const root = process.cwd();
   const file = path.join(root, 'WORKLOG.md');
@@ -33,8 +64,8 @@ test('work tracker: fresh, reachable, and on the panel', async (t) => {
     assert.match(text, /^## 2\. Now/m, 'a "Now" section with the active batch');
     assert.match(text, /^## 3\. Next/m, 'a "Next" section with the queue');
     assert.match(text, /^## 4\. Done/m, 'a "Done" section with commits + proofs');
-    assert.match(text, /^\| 15\.\d+ /m, 'the current batch is a step table');
-    assert.match(text, /^\| 16\.\d+ /m, 'the next batch is a step table');
+    assert.match(text, /^\| 16\.\d+ /m, 'the current batch is a step table');
+    assert.match(text, /^\| 17\.\d+ /m, 'the next batch is a step table');
     assert.match(text, /fails? the suite|npm test/i, 'the rules say a stale tracker fails the suite');
   });
 

@@ -10,7 +10,7 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৫৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫৩টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৬টা আধা (PARTIAL), ৩৭টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **এখনকার স্কোর: ৫৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫৪টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৬টা আধা (PARTIAL), ৩৬টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
 - **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪০ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -51,14 +51,14 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 53 | wired and observable |
+| ✅ WORKING | 54 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 46 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 37 | nothing in the tree |
+| ⚪ ABSENT | 36 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 58%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 59%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
@@ -171,7 +171,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Offline outbox | not addressed | 🏅 BETTER | src/mobile/outbox.ts is an ack-after-send queue for flaky mobile networks: a failed send keeps its text, reason and attempt count; an item claimed but never acked (the process died) comes back on the next read; the file is written atomically; delivered items are swept after a week. Guarantee stated honestly as "at-least-once, acked exactly once" — a crash between a successful send and its ack can repeat one message. Pinned by test/tier2.test.ts 12.5 (never dropped, never delivered twice, survives a restart) | parity | — |
 | Termux doctor | n/a on Android (unsupported) | 🏅 BETTER | src/mobile/doctor.ts checks build source, wake lock, battery optimisation, proot leftovers | parity | 1 |
 | Voice STT/TTS | whisper + TTS providers | 🟡 PARTIAL | src/mobile/{tts,tts-stream,stt,whisper}.ts — termux-api + optional whisper.cpp | parity | 3 |
-| Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
+| Transcription | realtime transcription service | 🟡 PARTIAL | a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
 ### ops — 64% (12 checks)
@@ -277,7 +277,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | macOS/Windows/Linux apps | native desktop apps | ⚪ ABSENT | Termux-first by design | later | — |
 | iOS / Android companion apps | paired nodes with camera/screen | ⚪ ABSENT | no native app; Termux:API is the bridge | later | — |
 
-### tools — 56% (12 checks)
+### tools — 64% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -289,7 +289,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | MCP client | MCP + ACP protocols | ✅ WORKING | src/providers/mcp.ts (stdio JSON-RPC) wired at server.ts:345 into AgentCtx | parity | 2 |
 | Phone / device tools | iOS+Android nodes (camera, screen, location) | 🏅 BETTER | 15 Termux:API tools in src/agent/toolbox.ts (camera, location, sms, clipboard, battery, wifi, notification…) | parity | — |
 | Image / media generation | image, video, music generation | ⚪ ABSENT | no generation tools | later | 6 |
-| Document extraction | pdf/docx/pptx extraction | ⚪ ABSENT | no extraction libraries (a PDF that arrives is saved intact — see the channels media row — but its text is not parsed out) | later | 3 |
+| Document extraction | pdf/docx/pptx extraction | ✅ WORKING | the text of what arrives is read by our own zero-dependency readers (src/channels/extract.ts): PDF content streams with FlateDecode, DOCX/PPTX/XLSX through a small ZIP reader on node:zlib, every text format as-is — capped at 20 000 characters with a truncation note, a scanned PDF refused with a sentence that names OCR, a .zip not opened and said so (16.1); pictures are read by a model that can see them, as a real image part on the wire, or the agent is told "I saved it but cannot see it" with the exact command (16.2, src/channels/vision.ts). Pinned by test/tier2e.test.ts | later | 3 |
 | Tool count | ~44 in-loop tools + plugin tools | 🟡 PARTIAL | 41 in toolbox.ts + 13 in tools.ts | parity | — |
 | Tool schema validation | TypeBox-validated arguments | 🟡 PARTIAL | lightweight hand-rolled argument parsing | parity | 3 |
 | Human-in-the-loop prompts | ask_user overlay + timers | 🟡 PARTIAL | ask_user tool exists (toolbox.ts:894) and gated tools now raise a real approval card (panel + CLI) - but there is still no terminal/TUI renderer, so the loop only pauses where a browser or a second terminal can answer | parity | 2 |

@@ -20,7 +20,9 @@ export const INBOUND_EXTENSIONS = [
   // pictures
   '.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic',
   // documents people actually send a phone agent
-  '.pdf', '.txt', '.md', '.csv', '.json', '.yaml', '.yml', '.log', '.ics', '.vcf',
+  '.pdf', '.txt', '.md', '.csv', '.json', '.yaml', '.yml', '.xml', '.log', '.ics', '.vcf',
+  // office files — the readers in extract.ts (16.1) can open these three
+  '.docx', '.xlsx', '.pptx',
   // audio (whisper can read these later)
   '.ogg', '.oga', '.mp3', '.m4a', '.wav', '.opus', '.flac',
   // archives and zips of the above

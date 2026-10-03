@@ -2,10 +2,11 @@
  * The disk budget (10.6). A phone that fills up should get *quieter*, not
  * broken: when the state directory grows past the budget the oldest, least
  * valuable files (old chat transcripts, rotated logs, usage lines, stale
- * progress cards) are trimmed — never the config, the memory, the skills or
- * anything the user is currently writing (a lock file, or a file touched in the
- * last minute). Whatever is trimmed is reported in bytes, so nobody has to
- * guess what happened.
+ * progress cards, and the inbox of files strangers sent the bot — 16.4) are
+ * trimmed — never the config, the memory, the skills, anything the user wrote
+ * into the workspace, or a file touched in the last minute (which is what a
+ * file being written right now looks like). Whatever is trimmed is reported in
+ * bytes, so nobody has to guess what happened.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,6 +25,11 @@ const AREAS: { name: string; prefix: string; trimmable: boolean }[] = [
   { name: 'sessions', prefix: 'sessions/', trimmable: true },
   { name: 'memory', prefix: 'memory/', trimmable: false },
   { name: 'skills', prefix: 'skills/', trimmable: false },
+  // First match wins, so the inbox is listed (and trimmed) as its own area
+  // before the general `workspace/` rule — the files the user wrote into the
+  // workspace are never touched, but files a stranger sent to the bot are
+  // transient by nature (16.4).
+  { name: 'inbox', prefix: 'workspace/inbox/', trimmable: true },
   { name: 'workspace', prefix: 'workspace/', trimmable: false },
   { name: 'logs', prefix: 'logs/', trimmable: true },
   { name: 'usage', prefix: 'usage/', trimmable: true },

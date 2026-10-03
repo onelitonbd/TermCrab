@@ -67,8 +67,15 @@ export function createMock(model = 'mock-1'): Provider {
 
       const said = userText || '(nothing)';
       const toolSaid = (lastTool?.content ?? '').split('\n')[0]?.trim();
-      const text =
-        `[mock:${resolved}] You said: ${said}` + (toolSaid ? `. Tool said: ${toolSaid}` : '.');
+      // Offline vision (16.2): the mock cannot see, and says so in a way that is
+      // impossible to mistake for a real description. It does report the bytes
+      // it was handed, which is what a test needs to prove the picture made it
+      // through the whole path (channel -> intake -> provider).
+      const imageNote = req.image
+        ? `(offline vision) I was handed an image: ${req.image.mimeType || 'image/jpeg'}, ` +
+          `${Math.max(1, Math.round(Buffer.from(req.image.dataBase64, 'base64').byteLength / 1024))} KB. `
+        : '';
+      const text = `[mock:${resolved}] ${imageNote}You said: ${said}` + (toolSaid ? `. Tool said: ${toolSaid}` : '.');
 
       if (opts?.onDelta) {
         const size = Math.max(1, Math.ceil(text.length / CHUNKS));

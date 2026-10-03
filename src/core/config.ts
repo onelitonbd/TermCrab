@@ -108,6 +108,12 @@ export interface Config {
       groupPolicy?: 'mention' | 'all';
       /** Largest file accepted from a chat, in MB (default 20). */
       maxFileMb?: number;
+      /** Read the text out of a document that arrives (default true). */
+      readDocuments?: boolean;
+      /** Transcribe a voice note that arrives (default true; needs whisper.cpp). */
+      transcribeVoice?: boolean;
+      /** Describe a photo that arrives with a model that can see (default true). */
+      describePhotos?: boolean;
     };
     whatsapp?: {
       enabled: boolean;

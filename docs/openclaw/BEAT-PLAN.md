@@ -63,9 +63,10 @@
 
 | T1.8 | মেশিন-পাঠ্য CLI (batch 14 ✔ ২০২৬-১০-০৩) | JSON output mode | ~2d | test: প্রতিটা structured কমান্ডে `--json` — stdout-এ **ঠিক একটা** ডকুমেন্ট `{ok, command, data}`, ব্যর্থ হলেও `{ok:false, …, error:{message, hint}}` আর exit code অপরিবর্তিত (0/1/124/130); `--json` মোডে লগ stderr-এ, তাই একটা warning ডকুমেন্ট নষ্ট করতে পারে না — `test/tier2c.test.ts` 14.1–14.5, চুক্তি লেখা `docs/CLI.md`-তে। `termcrab help <cmd>` এখন কী কী key আছে তাও বলে |
 
+| T1.10 | আসা ফাইল পড়া যায় (batch 16 ✔ ২০২৬-১০-০৩) | Document extraction · Transcription | ~2d | test: PDF (FlateDecode + text ops) / DOCX / PPTX / XLSX পড়া হয় নিজের reader-এ, ক্যাপ + truncation নোট, স্ক্যান PDF-এ "টেক্সট নেই" বলা হয় — `test/tier2e.test.ts` 16.1; ছবি সত্যিকারের image part হয়ে দেখতে-পারা মডেলে যায়, নাহলে সৎ "দেখতে পারছি না" + কমান্ড — 16.2; ভয়েস note → transcript, ৫ MB ক্যাপ, engine ছাড়া ইনস্টল-হিন্ট — 16.3; inbox এখন disk-এর আলাদা area, retention-এ পরিষ্কার — 16.4; নিয়ম `docs/CHANNELS.md`-এ — 16.5। census: ABSENT 37→36, WORKING 53→54, score 59% |
 | T1.9 | চ্যাট-সারফেস আসল করা (batch 15 ✔ ২০২৬-১০-০৩) | Media send/receive · Group / ambient events · Slash commands in chat | ~3d | test: ছবি/ডকুমেন্ট ভয়েস inbox-এ নামে আর এজেন্ট path পায় (executables বাদ, ২০ MB সীমা) — `test/tier2d.test.ts` 15.1; `send_file` টুল + outbox — 15.2; গ্রুপে mention/উত্তর ছাড়া চুপ, mention ছেঁটে যায় — 15.3; চ্যাটে `/usage /sessions /memory /help` আসল ডেটা থেকে — 15.4; নিয়ম লেখা `docs/CHANNELS.md`-তে — 15.5। census: PARTIAL 47→46, WORKING 51→53, score 58% |
 
-**সাব-টোটাল: ~৩৯ দিন → core lane খালি (batch 11-এ শেষ, ২০২৬-১০-০৩), BROKEN ০, drift ০; প্যারিটি লেনও এগোচ্ছে (batch 13–15)।**
+**সাব-টোটাল: ~৪১ দিন → core lane খালি (batch 11-এ শেষ, ২০২৬-১০-০৩), BROKEN ০, drift ০; প্যারিটি লেনও এগোচ্ছে (batch 13–15)।**
 
 ### Tier 2 — ফোন-নেটিভ জয় (১৪টা BETTER এখানেই; এটাই মোত)
 
@@ -116,6 +117,7 @@
 | **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোট-দাবির টেস্ট + মাপা সংখ্যা — **✔ batch 12 (২০২৬-১০-০৩)**: bench + README-র সংখ্যা, offline end-to-end, TERMUX গাইড, outbox exactly-once | সংখ্যা বাড়েনি (WORKING 41 · BETTER 14), কিন্তু প্রতিটা দাবির পিছনে এখন টেস্ট/স্ক্রিপ্ট |
 | **D** | ~১ সপ্তাহ | প্যারিটি লেনের সস্তা ফ্লিপ — **✔ batch 13 (২০২৬-১০-০৩)**: Telegram typing, colour/TTY শৃঙ্খলা, প্রতি-কমান্ড help, shell completion, আর পাঁচটা চ্যানেল অ্যাডাপ্টারের আসল রাউটিং+টেস্ট | **WORKING 41→50 · PARTIAL 53→48 · score 53%→57%**, drift 0 |
 | **E** | ~১ সপ্তাহ | মেশিন-পাঠ্য CLI — **✔ batch 14 (২০২৬-১০-০৩)**: একটা JSON envelope, ১১টা কমান্ডে `--json`, `--json` মোডে লগ stderr-এ, ব্যর্থতাও envelope + exit code, `docs/CLI.md` | **WORKING 50→51 · PARTIAL 48→47**, score 57%, drift 0 |
+| **G** | ~৩–৪ দিন | ইনবক্স-সচেতন এজেন্ট — **প্ল্যান করা (batch 17)**: `inbox_list`/`inbox_read` টুল + চ্যাটে `/inbox`, পড়া টেক্সট একবারই রাখা (বারবার ফাইল পড়া বন্ধ), সরানো ফাইলের সৎ উত্তর | target: ইনবক্স আসল জায়গা — এজেন্ট "কাল যে ফাইলটা পাঠিয়েছিলে" বলতে পারবে |
 | **F** | ~১ সপ্তাহ | চ্যাট-সারফেস — **✔ batch 15 (২০২৬-১০-০৩)**: Telegram-এ media in/out (inbox + `send_file` + outbox), গ্রুপে mention-শৃঙ্খলা, চ্যাটে `/usage /sessions /memory /help`, `docs/CHANNELS.md` | **WORKING 51→53 · PARTIAL 47→46**, channels area 64%→76%, score 58%, drift 0 |
 | **D** | ~৩ সপ্তাহ | Tier 0-র বাকি + যেসব PARTIAL ফ্লিপ করা সস্তা (চ্যানেল: Discord/Slack/Signal/SMS/Matrix ~২দিন করে) | BETTER ~25, PARTIAL কমতে থাকে |
 
