@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { log } from '../core/logger.js';
-import { outboxPush, outboxTake, OutboxItem } from '../mobile/outbox.js';
+import { outboxAck, outboxFail, outboxMarkSending, outboxPending, outboxPush } from '../mobile/outbox.js';
 import { stateDir, home } from '../core/paths.js';
 
 /**
@@ -132,16 +132,20 @@ export class WhatsAppChannel {
   /** Send with outbox fallback (mobile networks drop packets). */
   async send(jid: string, text: string): Promise<void> {
     if (await this.trySend(jid, text)) return;
-    outboxPush({ channel: 'whatsapp', chatId: jid, text, ts: Date.now(), attempts: 1 });
+    outboxPush({ channel: 'whatsapp', chatId: jid, text });
   }
 
   /** Retry queued whatsapp items; called by the gateway's outbox flusher. */
   async flushOutbox(): Promise<number> {
-    const items = outboxTake('whatsapp');
     let sent = 0;
-    for (const item of items) {
-      if (await this.trySend(String(item.chatId), item.text)) sent++;
-      else outboxPush({ ...item, attempts: item.attempts + 1 });
+    for (const item of outboxPending('whatsapp')) {
+      outboxMarkSending(item.id);
+      if (await this.trySend(String(item.chatId), item.text)) {
+        outboxAck(item.id);
+        sent++;
+      } else {
+        outboxFail(item.id, 'send failed');
+      }
     }
     return sent;
   }

@@ -8,10 +8,14 @@
 ## সারসংক্ষেপ (বাংলায়)
 
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
-- **এখনকার স্কোর: ৪৪%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ২৪টা পুরো কাজ করে, ১৪টায় তুমি OpenClaw-এর চেয়ে এগিয়ে (মোবাইল লেয়ার), ৬০টা আধা, **৭টা ভাঙা**, ৪৫টা নেই।
-- **সবচেয়ে জরুরি কথা:** ৭টা জায়গায় কোড লেখা আছে কিন্তু **কিছুই সেটা ব্যবহার করে না** — কিউ, approvals, compaction, মেমোরি বুটস্ট্র্যাপ। এগুলো ঠিক করা মানে নতুন ফিচার নয়, **আগের কাজ শেষ করা**। এটার জন্য লেগবে **~৪০ দিন**।
-- **পূর্ণ প্রতিযোগিতার জন্য বাকি: ~৩২০ দিন (core + parity)।** আর OpenClaw-কে হুবহু ম্যাচ করতে চাইলে ~৪৮০ দিন — একা মানুষের পক্ষে যেটা প্রায় দুই বছর আর সেটা কোনো কাজে আসবে না।
-- **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি ২৮টা জিনিস consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
+
+<!-- BEGIN SUMMARY-BN -->
+- **এখনকার স্কোর: ৫৩%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৪১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৫৩টা আধা (PARTIAL), ৪২টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৬৬ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
+<!-- END SUMMARY-BN -->
+
+- **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি জিনিসগুলো consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
 
 ---
 
@@ -164,7 +168,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Process supervision | systemd/launchd where available | 🏅 BETTER | src/mobile/supervisor.ts restart watchdog replaces systemd | parity | — |
 | Boot autostart | launchd/systemd unit install | 🏅 BETTER | src/mobile/boot.ts writes ~/.termux/boot/<script> with termux-wake-lock + supervisor | parity | — |
 | Power-aware scheduling | fixed heartbeat interval | 🏅 BETTER | src/mobile/power.ts battery-aware heartbeat (pauses under 20%) | parity | — |
-| Offline outbox | not addressed | 🏅 BETTER | src/mobile/outbox.ts store-and-forward for flaky mobile networks | parity | — |
+| Offline outbox | not addressed | 🏅 BETTER | src/mobile/outbox.ts is an ack-after-send queue for flaky mobile networks: a failed send keeps its text, reason and attempt count; an item claimed but never acked (the process died) comes back on the next read; the file is written atomically; delivered items are swept after a week. Guarantee stated honestly as "at-least-once, acked exactly once" — a crash between a successful send and its ack can repeat one message. Pinned by test/tier2.test.ts 12.5 (never dropped, never delivered twice, survives a restart) | parity | — |
 | Termux doctor | n/a on Android (unsupported) | 🏅 BETTER | src/mobile/doctor.ts checks build source, wake lock, battery optimisation, proot leftovers | parity | 1 |
 | Voice STT/TTS | whisper + TTS providers | 🟡 PARTIAL | src/mobile/{tts,tts-stream,stt,whisper}.ts — termux-api + optional whisper.cpp | parity | 3 |
 | Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
@@ -185,7 +189,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
-| Docs that match the code | generated docs map, tested examples | ✅ WORKING | the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist | core | — |
+| Docs that match the code | generated docs map, tested examples | ✅ WORKING | the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist. The README performance numbers are generated the same way (scripts/bench.mjs) and checked against a fresh run (test/tier2.test.ts 12.1), and every command the phone guide prints is verified against the real CLI (12.3) | core | — |
 
 ### plugins — 0% (4 checks)
 
@@ -348,7 +352,7 @@ Score is the census score for that area. "Their pages" is how many pages docs.op
 **Also note:** with no plugin API and no registry, you cannot be poisoned (ClawHavoc found 1,467 malicious skills) — that is a real, defensible position, not a gap to be embarrassed about.
 
 ### channels — 35% · their pages: 109
-**Real:** Telegram (working, allowlist, chunking, outbox), WhatsApp (Baileys, optional), and Discord/Slack/Signal/SMS/Matrix adapters wired in `server.ts:37-41` — each needing a third-party dep that Termux users usually cannot install.
+**Real:** Telegram (working, allowlist, chunking, outbox, and the only one a phone can rely on), WhatsApp (Baileys, optional), and Discord/Slack/Signal/SMS/Matrix adapters wired in `server.ts` — each needing a third-party dep that Termux users usually cannot install, and **none of the five has a test yet** (batch 13's first job, not a claim).
 **Fake:** 6 adapters that exist as files but are unreachable for most users. In the UI they may look like support; in practice, on a phone, they are dead weight.
 **The move:** be honest about which channels are *supported* vs *best-effort*. Then fix the one that matters: 4 Telegram commands is the narrowest surface in the product (`/new /agents /status /heartbeat`).
 
@@ -373,7 +377,7 @@ Score is the census score for that area. "Their pages" is how many pages docs.op
 **The move:** the auth fix is the whole ballgame. A phone agent with an open LAN port is a worse product than a phone agent with fewer features.
 
 ### mobile — 79% — your best area, and the reason the project exists
-**Real:** bionic guard loaded before anything else, TMPDIR handling, supervisor as a systemd replacement, Termux:Boot scripts, battery-adaptive heartbeat, offline outbox, a doctor that checks the exact failure modes the community blogged about, voice wake loop.
+**Real:** bionic guard loaded before anything else, TMPDIR handling, supervisor as a systemd replacement, Termux:Boot scripts, battery-adaptive heartbeat, offline outbox (exactly-once tested), a doctor that checks the exact failure modes the community blogged about, voice wake loop — and the phone claims now carry measured numbers, generated by `scripts/bench.mjs` into the README's bench block (idle RSS, cold start, install, restart, one offline turn; `test/tier2.test.ts` 12.1 fails if the README drifts).
 **This is 13 of your 13 BETTER rows.** OpenClaw has no official Android path in 1,335 pages of documentation. Whatever else is true, the phone story is real and it is yours.
 **The move:** keep it that way. Every future feature should be judged first on what it costs on a phone.
 

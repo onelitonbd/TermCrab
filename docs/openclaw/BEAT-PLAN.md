@@ -65,14 +65,14 @@
 
 | # | যা | OpenClaw-এর নিজের ডক কী বলে | আমাদের কী আছে | জয়ের বাক্য | Effort | প্রমাণ |
 |---|---|---|---|---|---|---|
-| T2.1 | **কে হোস্ট** | *"Role: companion node app (Android does not host the Gateway). Gateway required: yes (run it on macOS, Linux, or Windows via WSL2)"* — `/platforms/android` | ফোনেই গেটওয়ে (`termcrab gateway`, Termux) | **"আপনার ফোনই এজেন্ট। আরেকটা কম্পিউটার, পেয়ারিং বা অ্যাপ দরকার নেই।"** | 1d (end-to-end test + measured doc) | airplane-mode end-to-end: ফোনে মেসেজ → উত্তর (টেস্ট + ডক) |
+| T2.1 | **কে হোস্ট** ✔ (batch 12) | *"Role: companion node app (Android does not host the Gateway). Gateway required: yes (run it on macOS, Linux, or Windows via WSL2)"* — `/platforms/android` | ফোনেই গেটওয়ে (`termcrab gateway`, Termux) | **"আপনার ফোনই এজেন্ট। আরেকটা কম্পিউটার, পেয়ারিং বা অ্যাপ দরকার নেই।"** | 1d ✔ (batch 12) | 12.2: mock brain + নেটওয়ার্ক গার্ডে শূন্য external request; CLI → HTTP → queue → run → transcript |
 | T2.2 | ইনস্টল শর্ত | Node **24.16+ / 26.1+**, নেটিভ SQLite, ARMv7 unsupported — `/install/index.md`, `/install/installer.md` | zero runtime deps, Node ≥20.10, `pkg install nodejs-lts` | "যে ফোনে Termux চলে, সেখানেই চলে — nvm, npx, SQLite বিল্ড নেই" | 0d (শিপড) | `npm install` → ~0.5s, 0 নেটিভ মডিউল (census: Dependency surface 🏅) |
 | T2.3 | Android ইনস্টল ডক | ৪৩টা `/install` পেজ, কিন্তু Android/Termux-এ **এজেন্ট বসানোর পথ নেই** — শুধু `ssh` করে হোস্টে যাওয়ার helper script (`/help/scripts.md`) | `docs/TERMUX.md` + onboard + boot install | "যে পেজটা ওদের ডকে নেই — ৪ কমান্ডে ফোনে এজেন্ট" | 2d (ডক লিখতে) | ডক + মাপা সময় |
 | T2.4 | ফোনের সেন্সর/টুল | mobile node: camera/location/screen/notification, **কিন্তু app + pairing + হোস্ট লাগে** | ১৫টা Termux:API টুল সরাসরি (SMS, ক্যামেরা, ক্লিপবোর্ড, ব্যাটারি, WiFi, কনট্যাক্ট, নোটিফিকেশন…) | "একই প্রসেস ফোনটা ছুঁতে পারে — মাঝখানে broker/pairing নেই" | 0d (শিপড) | `test/phone-tools.test.ts` + ডেমো লিস্ট |
 | T2.5 | Boot autostart | host-এ launchd/systemd (ডকে: *"System control … lives on the Gateway host"*) | Termux:Boot স্ক্রিপ্ট + wake-lock + supervisor | "Android-এ কোনো init সিস্টেম নেই — তবু রিবুটের পর এজেন্ট ফিরে আসে" | 0d (শিপড) | test + TERMUX গাইড |
 | T2.6 | প্রসেস সুপারভিশন | host init নেয় দায়িত্ব | নিজের supervisor (lock file, restart watchdog) | "ইনিট না থাকলেও এজেন্ট নিজেকে বাঁচায়" | 0.5d (restart test) | test: kill → ৩০s-এ ফিরে, restart count দেখা যায় |
 | T2.7 | ব্যাটারি-সচেতন সcheduling | এমন ধারণা নেই (হোস্ট সর্বদা চালু ধরে নেওয়া) | heartbeat pauses < 20% unless charging | "ফোনের ব্যাটারির হিসাব এজেন্ট নিজে রাখে" | 0d (শিপড) | census: Power-aware scheduling 🏅 + test |
-| T2.8 | Offline outbox | gateway অনলাইন ধরে নেওয়া | store-and-forward, ঠিক একবার | "নেট গেলে মেসেজ হারায় না, ফিরলে ঠিক একবার পৌঁছায়" | 0.5d (exactly-once test) | airplane-mode test: restore → exactly once |
+| T2.8 | Offline outbox ✔ (batch 12) | gateway অনলাইন ধরে নেওয়া | store-and-forward, ঠিক একবার | "নেট গেলে মেসেজ হারায় না, ফিরলে পৌঁছায় — আর একবার ack হলে দ্বিতীয়বার যায় না" | 0.5d ✔ (batch 12) | `test/tier2.test.ts` 12.5: down → queued; restart → delivered once; acked → never again |
 | T2.9 | অফলাইন ভয়েস | voice node (app), ভারী কাজ মডেলে | wake word + whisper.cpp STT + TTS locally | "নেট ছাড়াও ফোন কথা বোঝে" | 0d (শিপড) | census: Terminal voice loop 🏅 |
 | T2.10 | অফলাইন মস্তিষ্ক | এর বিকল্প নেই — প্রোভাইডার লাগবে | `provider.type=mock` + `--demo`, no key/network | "কী ছাড়া, নেট ছাড়া পুরো লুপ চালিয়ে দেখানো যায়" | 0d (শিপড) | `test/offline.test.ts` |
 | T2.11 | Bionic ফাঁদ | community shim/TMPDIR/patch, proot≈3GB | `src/mobile/bionic.ts` লোড হয় প্রথমে; TMPDIR default | "Error 13 / TMPDIR / proot — এই তিনটা ফাঁদ আমাদের ডিজাইনে নেই" | 0d (শিপড) | census: Android bionic guard, TMPDIR handling 🏅 |
@@ -84,10 +84,10 @@
 
 | # | কাজ | কেন এটা জয় | Effort | প্রমাণ |
 |---|---|---|---|---|
-| T3.1 | মাপা সংখ্যা: idle RAM, cold start, restart time, outbox-once | "unmeasured claims are how trust dies" ([analysis/10](analysis/10-mobile-the-moat.md) §3) | 2d | `scripts/bench.mjs` (planned) + ফোনের মডেলসহ README-তে সংখ্যা |
-| T3.2 | README ফোন-কেন্দ্রিক করা | পড়ুয়া প্রথম প্যারাতেই জয়টা দেখবে | 1d | প্রমাণ: README diff + লিঙ্ক |
+| T3.1 | মাপা সংখ্যা ✔ (batch 12) | "unmeasured claims are how trust dies" ([analysis/10](analysis/10-mobile-the-moat.md) §3) | 2d ✔ | `scripts/bench.mjs` (idle RSS · cold start · install · restart · এক টার্ন) README-র জেনারেটেড ব্লকে; 12.1 ফ্রেশ রান-এর সঙ্গে মেলায় |
+| T3.2 | README ফোন-কেন্দ্রিক করা ✔ (batch 12) | পড়ুয়া প্রথম প্যারাতেই জয়টা দেখবে | 1d ✔ | প্রথম স্ক্রিনে "কী / কোথায় চলে / খরচ কত" + মাপা সংখ্যা; 12.4 টেস্টে পিন করা |
 | T3.3 | নেটিভ অ্যাপের ২০% (widget/foreground polish) — **তবুও নয়**, যতক্ষণ ব্যবহারকারী না চায় | Termux:API ৮০% দেয়, maintenance ০% | 0d | প্রমাণ: §4 kill list — কোনো কাজ নেই |
-| T3.4 | Termux-নির্দিষ্ট ডক গাইড (MIUI/ColorOS battery, proot cleanup) | ওদের ডকের যে পেজ নেই | 2d | `docs/TERMUX.md` extended |
+| T3.4 | Termux-নির্দিষ্ট ডক গাইড ✔ (batch 12) | ওদের ডকের যে পেজ নেই | 2d ✔ | `docs/TERMUX.md`: MIUI/HyperOS · ColorOS/OxygenOS · One UI · Funtouch · EMUI ব্যাটারি টেবিল, wake-lock, proot পরিষ্কার; 12.3 প্রতিটা কমান্ড আসল কি না মেলায় |
 
 ### Tier 4 — যেখানে লড়ব না (kill list, লেখা থাকুক)
 
@@ -107,7 +107,7 @@
 |---|---|---|---|
 | **A** | ~২ সপ্তাহ | batch 5 (কিউ) ✔ — BROKEN **7→4**, drift 0 (২০২৬-১০-০৩) + Tier 0-র ৭টা ছোট ফ্লিপ | BROKEN ≤4 · WORKING +7 |
 | **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals · 7 ✔ স্মৃতি · 8 ✔ write fencing · 9 ✔ usage · 10 ✔ Tier-0 sweep (৭/৭) · **11 ✔ মডেল-লেখা compaction + generated docs map** — সব ২০২৬-১০-০৩ | **BROKEN 0, drift 0, core lane ~০ দিন** (census: WORKING 41, score 53%) |
-| **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোত-দাবির টেস্ট + মাপা সংখ্যা (T3.1–T3.4) | BETTER 14 → ~22, দাবিগুলো প্রমাণিত |
+| **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোট-দাবির টেস্ট + মাপা সংখ্যা — **✔ batch 12 (২০২৬-১০-০৩)**: bench + README-র সংখ্যা, offline end-to-end, TERMUX গাইড, outbox exactly-once | সংখ্যা বাড়েনি (WORKING 41 · BETTER 14), কিন্তু প্রতিটা দাবির পিছনে এখন টেস্ট/স্ক্রিপ্ট |
 | **D** | ~৩ সপ্তাহ | Tier 0-র বাকি + যেসব PARTIAL ফ্লিপ করা সস্তা (চ্যানেল: Discord/Slack/Signal/SMS/Matrix ~২দিন করে) | BETTER ~25, PARTIAL কমতে থাকে |
 
 **প্রথম কাজ সবসময় যেটা ব্রোকেন — নতুন ফিচার পরে।** কারণ: BROKEN সারি মানে ফাইল-ট্রি-তে ফিচার আছে কিন্তু কোনো কোড সেটা ছোঁয় না; ওগুলোই "আমরা এগিয়ে" ভ্রম তৈরি করে।

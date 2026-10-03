@@ -42,8 +42,42 @@ termux-wake-lock           # 2. hold CPU awake (run once per boot)
 termcrab supervisor        # 3. auto-restart the gateway if it ever dies
 ```
 
-Plus: **Settings → Apps → Termux → Battery → Unrestricted** (varies by OEM;
-MIUI/HyperOS: also "Autostart" toggle).
+Plus **Settings → Apps → Termux → Battery → Unrestricted**. Every OEM hides that switch
+somewhere else, and a phone that "keeps killing the agent" is almost always one of these:
+
+| Phone | What to switch off | Where it hides |
+|---|---|---|
+| Xiaomi / Redmi / POCO (MIUI, HyperOS) | Autostart for **Termux** and **Termux:Boot**, plus No restrictions | Settings → Apps → Manage apps → Termux → Battery saver; Recents → lock the card |
+| Oppo / Realme / OnePlus (ColorOS, OxygenOS) | Allow background activity, Auto-launch, and Sleep standby optimization | Settings → Battery → App battery management → Termux |
+| Samsung (One UI) | Adaptive battery for Termux | Settings → Battery → Background usage limits → Never sleeping apps |
+| Vivo / iQOO (Funtouch, OriginOS) | High background power consumption + Autostart | Settings → Battery → Background power consumption management |
+| Huawei / Honor (EMUI, MagicOS) | "Manage automatically" off, then allow all three toggles | Settings → Battery → App launch |
+
+After changing anything, check with `termcrab doctor` and `termcrab boot status`.
+
+## Keep it up for weeks
+
+```bash
+termcrab boot install     # writes ~/.termux/boot/start-termcrab (wake-lock + supervisor)
+termcrab boot status      # says whether the script is there, and whether we are on Termux
+termcrab supervisor       # restart-on-crash loop, logs in ~/.termcrab/logs/
+```
+
+Two gotchas worth knowing:
+
+1. **Termux:Boot must be opened once** after installing it from F-Droid, otherwise Android
+   never fires the boot broadcast and nothing auto-starts.
+2. `termux-wake-lock` is held by the boot script (and by `termcrab supervisor`); if the CPU is
+   still sleeping, run it once by hand and in the Termux notification tap **Acquire wakelock**.
+
+## Coming from proot / Ubuntu containers
+
+You do not need them, and they cost gigabytes:
+
+```bash
+proot-distro remove ubuntu     # if you installed one while following an older guide
+pkg uninstall proot-distro     # and the tool itself, if you want the space back
+```
 
 ## What TermCrab fixes for you automatically
 

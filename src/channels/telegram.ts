@@ -1,6 +1,6 @@
 import { TelegramApi } from './api.js';
 import { log } from '../core/logger.js';
-import { outboxPush, outboxTake, OutboxItem } from '../mobile/outbox.js';
+import { outboxAck, outboxFail, outboxMarkSending, outboxPending, outboxPush } from '../mobile/outbox.js';
 import { escapeHtml, mdToTelegramHtml } from './markdown.js';
 
 export { escapeHtml };
@@ -16,6 +16,8 @@ export interface TelegramDeps {
   onMessage: (userId: number, chatId: number, text: string, displayName: string) => Promise<string>;
   getOffset: () => number;
   setOffset: (n: number) => void;
+  /** Test seam: the real API client is built from cfg.token. */
+  api?: Pick<TelegramApi, 'sendMessage' | 'getUpdates' | 'getMe'>;
 }
 
 export function chunkText(text: string, size = 3900): string[] {
@@ -39,7 +41,7 @@ export class TelegramChannel {
   private backoffMs = 1000;
 
   constructor(private readonly deps: TelegramDeps) {
-    this.api = new TelegramApi(deps.cfg.token);
+    this.api = (deps.api ?? new TelegramApi(deps.cfg.token)) as TelegramApi;
   }
 
   start(): void {
@@ -76,20 +78,27 @@ export class TelegramChannel {
     try {
       await this.deliver(chatId, text);
     } catch (err) {
+      const item = outboxPush({ channel: 'telegram', chatId, text });
       log.warn('telegram send failed, queuing to outbox:', err instanceof Error ? err.message : err);
-      outboxPush({ channel: 'telegram', chatId, text, ts: Date.now(), attempts: 1 });
+      void item;
     }
   }
 
+  /**
+   * Retry queued replies. Each item is claimed, sent, then acked — a crash
+   * between the send and the ack can repeat one message, a crash before the
+   * send repeats none that were already delivered (see mobile/outbox.ts).
+   */
   async flushOutbox(): Promise<number> {
-    const items = outboxTake('telegram');
     let sent = 0;
-    for (const item of items) {
+    for (const item of outboxPending('telegram')) {
+      outboxMarkSending(item.id);
       try {
         await this.deliver(Number(item.chatId), item.text);
+        outboxAck(item.id);
         sent++;
-      } catch {
-        outboxPush({ ...item, attempts: item.attempts + 1 });
+      } catch (err) {
+        outboxFail(item.id, err instanceof Error ? err.message : String(err));
       }
     }
     return sent;

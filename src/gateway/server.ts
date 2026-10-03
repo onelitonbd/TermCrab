@@ -42,6 +42,7 @@ import { applyUpdate, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { getModelCapabilities, normalizeThinkingLevel } from '../providers/capabilities.js';
 import { getCachedCaps, modelCapsKey, probeModel, probeModels } from '../providers/probe.js';
+import { outboxSweep } from '../mobile/outbox.js';
 import { createMcpClient } from '../providers/mcp.js';
 import { listRuns, clearRuns } from '../core/tracing.js';
 import { speakStream } from '../mobile/tts-stream.js';
@@ -332,7 +333,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             log.info('config: provider updated');
             // Kick off a fresh probe for the new model/baseUrl/key combo if
             // we haven't probed it yet, so the thinking picker updates quickly.
-            if (fresh.provider.model) {
+            if (fresh.provider.model && fresh.provider.type !== 'mock') {
               const newBase = fresh.provider.baseUrl || 'https://api.openai.com/v1';
               if (!getCachedCaps(newBase, fresh.provider.model, fresh.provider.apiKey)) {
                 probeModel({
@@ -566,6 +567,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
   // ---- Outbox flush (offline tolerance) ----
   const outboxTimer = setInterval(() => {
+    outboxSweep(); // forget replies that were delivered days ago
     if (telegram) {
       void telegram.flushOutbox().then((n) => {
         if (n > 0) log.info(`outbox: flushed ${n} telegram message(s)`);
@@ -607,7 +609,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   // request in the background to learn which thinking levels the server
   // actually accepts. The chat UI reads the result via /api/config. Errors
   // are swallowed — heuristic detection is always the fallback.
-  if (config.provider.model) {
+  // The offline brain has no server to ask, and a phone with no key must not
+  // send a packet to discover that — probing is for real providers only.
+  if (config.provider.model && config.provider.type !== 'mock') {
     const baseUrl = config.provider.baseUrl || 'https://api.openai.com/v1';
     const already = getCachedCaps(baseUrl, config.provider.model, config.provider.apiKey);
     if (!already) {

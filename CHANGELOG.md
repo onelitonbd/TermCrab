@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.44.0 - 2026-10-03
+
+- **The phone claims now carry measured numbers.** `scripts/bench.mjs` times a fresh `npm install` (0.26 s — zero runtime dependencies), a cold start (103 ms), the idle gateway's RAM (67 MB), a stop-and-start (166 ms) and one real offline turn (83 ms), and writes them into the README's bench block with the Node version, the date and a stated ±40% tolerance. `test/tier2.test.ts` re-runs it and fails if the README's numbers drift too far from a live reading, so they cannot quietly become a lie.
+- **The whole loop is proven to run with no network.** With the offline brain, one test blocks every non-loopback request and drives message in → queue → run → answer out, both through the panel API and the real CLI, then checks the transcript on disk. It caught a real leak: the gateway probed `api.openai.com` even when the provider was the mock brain. Startup and config-change probes now skip it, and `probeModel({offline:true})` says "nothing to probe" instead of failing a request.
+- **The offline outbox stops losing replies.** It was a take-then-send list: a crash mid-send silently deleted a message, and a half-written file dropped them all. It is now an **ack-after-send queue** — claim, send, ack; a claim that died comes back as pending; a failed send keeps its text, reason and attempt count; the file is written atomically; delivered items are swept after a week. The telegram and whatsapp flushers use it, and the guarantee is stated honestly: **at-least-once, acked exactly once** (a crash between a successful send and its ack can repeat one message; acking first would lose messages instead).
+- **The Termux guide answers the question a phone actually asks.** OEM battery killers by name (MIUI/HyperOS, ColorOS/OxygenOS, One UI, Funtouch, EMUI) with where each switch hides, the Termux:Boot "open it once or nothing starts" gotcha, wake-lock behaviour, and the proot/Ubuntu cleanup that gives gigabytes back. A test now fails if the guide prints a `termcrab` command the CLI does not have, or an `npm run` script that does not exist.
+- **The first screen of the README answers three questions:** what it is, where it runs, and what it costs (free, MIT, zero runtime dependencies — you pay only your provider's tokens, and `--demo` needs no key and no network).
+- **The tracker's Bengali summary is generated now.** It had been hand-written and had been showing "44%, 7 broken" for three batches while the code had moved to 53% and zero broken — the exact rot `scripts/census.mjs` exists to prevent. It is written from the same tally as the block below it.
+- Tests: **494 cases, 0 failures** (3 skipped by design). Census unchanged — batch 12 proved claims instead of adding rows: **WORKING 41 · BETTER 14 · PARTIAL 53 · ABSENT 42 · BROKEN 0**, score 53%, drift 0, core lane ~0 days.
+
+
 ## 0.43.0 - 2026-10-03
 
 - **The summary of a long chat is now written by the model, not by a grep.** When a session crosses the compaction threshold, the turns leaving the prompt window are handed to a model — the local tier if one is configured, else the model answering the turn — in bounded chunks (4,000 chars each, at most 4 calls), and its text is what lands in `memory/compacted/<session>.md`. The block header records the engine and the coverage: `## Compacted 2026-10-03 09:12 (240 turns, by model sum-1)`.
