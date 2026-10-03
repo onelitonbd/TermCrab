@@ -9,6 +9,9 @@ export interface ProgressCard {
   doing: string[];
   done: string[];
   updatedAt: number;
+  /** The partial answer of the turn that is running right now (10.4). */
+  draft?: string;
+  draftAt?: number;
 }
 
 function dir(): string {
@@ -49,6 +52,27 @@ export function updateProgress(
   if (patch.doing) card.doing = clampList(patch.doing);
   if (patch.done) card.done = clampList(patch.done);
   return saveProgress(card);
+}
+
+/**
+ * Store the partial answer the agent has produced so far (10.4). Written while
+ * the turn runs, so a panel that reloads mid-turn can show the same draft, and
+ * read by `getProgress()`.
+ */
+export function saveDraft(session: string, text: string): ProgressCard {
+  const card = getProgress(session) ?? { session, todo: [], doing: [], done: [], updatedAt: Date.now() };
+  card.draft = text.slice(0, 4000);
+  card.draftAt = Date.now();
+  return saveProgress(card);
+}
+
+/** The turn ended: the draft is either the final answer or was thrown away. */
+export function clearDraft(session: string): void {
+  const card = getProgress(session);
+  if (!card || card.draft === undefined) return;
+  delete card.draft;
+  delete card.draftAt;
+  saveProgress(card);
 }
 
 export function clearProgress(session: string): boolean {

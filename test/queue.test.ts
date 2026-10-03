@@ -50,7 +50,18 @@ test('queue: interrupt aborts running turn', () => {
   assert.ok(interrupted);
   assert.ok(ctrl.signal.aborted);
   assert.equal(turn.status, 'interrupted');
+  // The lane stays busy until the runner actually settles (10.3): that is how
+  // the partial answer and the status travel together, and how the next
+  // queued turn starts from a clean transcript.
+  assert.equal(q.getRunning('s1')?.id, turn.id);
+
+  q.recordInterrupt('s1', 'half an answer\n\n[interrupted]');
+  assert.equal(q.getRunning('s1')?.output, 'half an answer\n\n[interrupted]');
+
+  q.markDone(turn.id, 's1', 'half an answer\n\n[interrupted]');
   assert.equal(q.getRunning('s1'), null);
+  assert.equal(q.getTurn('s1', turn.id)?.status, 'interrupted');
+  assert.match(q.getTurn('s1', turn.id)?.output ?? '', /half an answer/);
 });
 
 test('queue: interrupt with no running turn returns false', () => {

@@ -47,25 +47,25 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 32 | wired and observable |
+| ✅ WORKING | 39 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 61 | exists, narrower than theirs |
+| 🟡 PARTIAL | 54 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 43 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 49%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 52%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~4d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 108 | ~266d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~446d | |
+| **total** | 150 | ~434d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
-### agent — 70% (16 checks)
+### agent — 81% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -73,17 +73,17 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Tool calling round-trip | parallel + serialized batches | ✅ WORKING | src/agent/loop.ts:245 sequential tool execution | parity | — |
 | Per-session run serialization | session lanes + writer claims | ✅ WORKING | src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving inside the process, and the cross-process guarantee is the writer claim (SessionStore.claim) pinned by test/writer-fence.test.ts | core | — |
 | Queue modes steer/followup/collect/interrupt | 4 modes + debounce + cap | ✅ WORKING | all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6 | core | — |
-| Run identity + terminal wait | runId + agent.wait replay | 🟡 PARTIAL | newRunId() in loop.ts:114; no wait endpoint (only sessions/agents_wait tools) | parity | 2 |
+| Run identity + terminal wait | runId + agent.wait replay | ✅ WORKING | one id per run (the queue turn id IS the trace id, server.ts runner) + GET /api/runs/:id returns status/output/error/tokens; `termcrab run --wait <id>` exits 0 done / 1 failed / 124 timeout / 130 stopped. test/tier0.test.ts 10.2 | parity | — |
 | Parallel tool batches | launched together, results merged | ⚪ ABSENT | loop.ts:245 is a sequential for-await | parity | 3 |
 | Loop budget + idle watchdog | 172800s budget, 120s/300s idle, overflow recovery | 🟡 PARTIAL | PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197) | parity | 3 |
 | Repetition / loop detection | repeated-call guards | ✅ WORKING | src/agent/loop.ts:249-264 repetition detector | parity | — |
 | Model failover chain | ordered chain + cooldowns + auth profiles | ✅ WORKING | resolveProviderChain + cooldowns (src/providers/index.ts) | parity | 1 |
 | Reasoning / thinking levels | 7 levels incl. minimal/ultra | ✅ WORKING | src/providers/capabilities.ts 6 levels + effort mapping | parity | 1 |
 | Steering into a live run | runtime-boundary steering | ✅ WORKING | a steered message joins the running turn's transcript inside the same run (loop.ts drains SessionQueue.takeSteers); a 'steer' event is emitted; test/queue-serialize.test.ts 5.4/5.4b | core | — |
-| Abort / stop a running turn | Esc, /stop, /abort | 🟡 PARTIAL | AbortSignal plumbed through providers; no user-facing abort route in the web panel | parity | 2 |
+| Abort / stop a running turn | Esc, /stop, /abort | ✅ WORKING | POST /api/stop (one session or everything) + `termcrab stop` + the panel stop button; the abort reaches the in-flight provider call, the partial answer is kept and marked [interrupted], and the lane stays busy until the runner settles so no work is orphaned. test/tier0.test.ts 10.3 | parity | — |
 | Lifecycle hooks | 14 typed hooks + HOOK.md | ⚪ ABSENT | no hook registry (no api.on / registerHook) | later | 12 |
 | Subagents | sessions_spawn, agents_wait, lanes, worktrees | 🟡 PARTIAL | sessions_spawn/agents_wait/sessions_yield in src/agent/toolbox.ts:798+ | parity | 6 |
-| Progress drafts / partial updates | incremental draft messages | 🟡 PARTIAL | progress_card tool + src/agent/progress.ts | parity | 1 |
+| Progress drafts / partial updates | incremental draft messages | ✅ WORKING | {type:'draft'} events carry the whole partial answer (emitted at most once per round, so a surface replaces instead of appending) and it is saved in the progress card (state/progress/<session>.json) so a reload mid-turn still shows it; the panel paints it and marks the bubble as a draft. test/tier0.test.ts 10.4 | parity | — |
 | Timeouts + error containment | per-phase budgets | ✅ WORKING | loop.ts containment; tests in test/loop.test.ts | parity | — |
 
 ### automation — 34% (7 checks)
@@ -134,7 +134,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + memory head; IDENTITY.md/BOOTSTRAP.md absent | parity | 3 |
 
-### gateway — 58% (16 checks)
+### gateway — 61% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -144,7 +144,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Bind-time safety guard | loopback-first defaults | ✅ WORKING | src/gateway/server.ts:257 refuses non-loopback without token | parity | — |
 | Pairing / device identity | device challenge + approval + store | ⚪ ABSENT | no device pairing in src/ (the only "pairing" is WhatsApp QR login in src/channels/whatsapp.ts:14) | later | 4 |
 | Typed wire protocol + idempotency | TypeBox schemas, req/res/event frames | ⚪ ABSENT | plain HTTP JSON, no schema layer | later | 6 |
-| Config hot-reload | watch + validate + apply | 🟡 PARTIAL | fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346), pinned by test/api.test.ts "config file password change hot-applies"; the fresh file is not schema-validated before the merge | parity | 1 |
+| Config hot-reload | watch + validate + apply | ✅ WORKING | fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346) AND validateConfig() runs first (src/core/config.ts): broken JSON or an error-severity key is refused and reported through /api/config configProblems, warnings apply; `termcrab config set` refuses the same way. test/tier0.test.ts 10.1 | parity | — |
 | Health / status endpoint | health + presence + doctor | ✅ WORKING | src/gateway/server.ts /api/health, /api/status, /api/doctor | parity | — |
 | Inbound webhooks | authenticated agent hooks | ✅ WORKING | POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts | core | — |
 | Approval queue + endpoint | operator approvals, HITL gates | ✅ WORKING | src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5) | core | — |
@@ -170,7 +170,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 55% (12 checks)
+### ops — 60% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -180,7 +180,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Service install | openclaw gateway install (systemd/launchd) | 🟡 PARTIAL | Termux supervisor; docs/LOCAL.md covers a systemd path | parity | 3 |
 | Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | 🟡 PARTIAL | src/core/logger.ts + doctor; /api/logs; no metrics export | parity | 4 |
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
-| Release discipline | CalVer, release notes, validation programme | 🟡 PARTIAL | CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme | parity | 2 |
+| Release discipline | CalVer, release notes, validation programme | ✅ WORKING | scripts/release.mjs writes package.json and the CHANGELOG section together and --check fails the suite when they drift (test/tier0.test.ts 10.7); --notes feeds `gh release create`, --tag refuses a dirty tree; package.json now carries the same version as the newest CHANGELOG entry | parity | — |
 | Work tracking (what is being built, right now) | n/a | ✅ WORKING | WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker | core | — |
 | Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
@@ -236,18 +236,18 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Main rolling session | agent:<id>:main with background routing | ⚪ ABSENT | five separate session keys (web:main, telegram:*, cron:*, heartbeat, dream) | later | 8 |
 | Session attachment (multi-client) | openclaw attach, projections | ⚪ ABSENT | CLI builds its own AgentCtx (src/cli.ts:298) and writes the same JSONL the gateway writes | later | 8 |
 
-### skills — 56% (6 checks)
+### skills — 65% (6 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | SKILL.md loading | progressive disclosure + gating | ✅ WORKING | src/skills/loader.ts + load_skill tool (tools.ts:318) | parity | — |
 | Bundled skill library | 49 bundled + 13k ClawHub | 🟡 PARTIAL | 5 bundled: daily-briefing, shell-safety, termux-api, voice, web-research | parity | 6 |
-| Skill precedence + overrides | multi-root precedence, allowlists | 🟡 PARTIAL | src/skills/loader.ts + registry.ts resolve user skills over bundled ones; no gating/allowlists | parity | 2 |
+| Skill precedence + overrides | multi-root precedence, allowlists | ✅ WORKING | src/skills/loader.ts: roots read left to right, later wins — a user skill replaces a bundled one in list(), get() and the prompt index; skills.allow is an allow-list (empty = all) wired from config in server.ts and the CLI; documented in docs/SKILLS.md and pinned by test/tier0.test.ts 10.5 | parity | — |
 | Agent-authored skills | skill-workshop review flow | 🟡 PARTIAL | skill_workshop tool (toolbox.ts) + scaffold.ts | parity | 3 |
 | Skill registry / distribution | ClawHub + signed manifests | ⚪ ABSENT | no registry by design; termcrab import openclaw is the only path | later | — |
 | OpenClaw compatibility | n/a | 🏅 BETTER | termcrab import openclaw reads their SKILL.md folders and workspace files unchanged (src/migrate/openclaw.ts, 558 lines) | parity | — |
 
-### storage — 36% (5 checks)
+### storage — 47% (5 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -255,7 +255,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Database + migrations | SQLite with schema migrations | ⚪ ABSENT | flat files throughout | later | 8 |
 | Backup / restore | openclaw backup | 🟡 PARTIAL | sessions export + manual copying; no backup command | parity | 3 |
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
-| Disk budget + pruning | usage caps, retention | 🟡 PARTIAL | sessions purge --older-than N | parity | 2 |
+| Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6 | parity | — |
 
 ### surfaces — 25% (11 checks)
 
@@ -304,7 +304,7 @@ The rule that built it: a row leaves this table only when a test proves it, not 
 |---|---|---|---|
 | — | *(nothing)* | — | Nothing in the tree is a feature that no code path reaches. It stays that way because every batch ends with `node scripts/census.mjs` (BROKEN must stay 0, drift must stay 0) and because a new claim has to arrive with its test. |
 
-**What is still missing is *absent*, not broken** — nobody pretends it exists. The core lane is nearly finished (~4 focused days left, all of it Tier-0 polish in [BEAT-PLAN.md](BEAT-PLAN.md)); the long tail is parity work (channels, plugins, provider breadth) and by design wait until the phone-first story is airtight.
+**What is still missing is *absent*, not broken** — nobody pretends it exists. The core lane is down to **one capability and one honesty row**: a model-written compaction summary (`LLM summarisation for compaction`, ~3d) and the docs-map row (~1d — the tree is checked by `test/docs-map.test.ts`, but the map is still hand-written). Everything else in the core lane is WORKING: queue, approvals, memory, fencing, usage, and the seven Tier-0 flips of batch 10 (config validation, run wait, stop, drafts, skill precedence, disk budget, release discipline). The long tail is parity work (channels, plugins, provider breadth) and by design waits until the phone-first story is airtight.
 
 ---
 

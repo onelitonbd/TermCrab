@@ -3,7 +3,19 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { parseArgs } from 'node:util';
-import { loadConfig, saveConfig, cfgGet, cfgSet, describeConfigLocation, generateToken, configExists } from './core/config.js';
+import {
+  type Config,
+  loadConfig,
+  saveConfig,
+  cfgGet,
+  cfgSet,
+  describeConfigLocation,
+  generateToken,
+  configExists,
+  validateConfig,
+  configProblems,
+} from './core/config.js';
+import { diskBudgetBytes, diskKeepDays, diskUsage, enforceDiskBudget } from './core/disk.js';
 import { ensureLayout, home, workspaceDir, memoryDir, configPath } from './core/paths.js';
 import { log, setLogLevel } from './core/logger.js';
 import { onboard, OnboardFlags } from './onboard.js';
@@ -70,6 +82,10 @@ Everyday extras:
   termcrab approvals approve <id>    let that one tool run
   termcrab approvals deny <id>       refuse it — the agent is told and moves on
   termcrab usage [--json]           today's tokens (and cost when a price is known)
+  termcrab run "msg" [--no-wait]    ask the running panel to do it, and wait for the answer
+  termcrab run --wait <id>          wait for a run you started (0 done · 1 failed · 124 timeout · 130 stopped)
+  termcrab stop [session]           stop what the agent is doing right now (partial answer is kept)
+  termcrab disk [--trim]            how much space the agent uses (--trim = enforce the budget now)
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
   termcrab supervisor                start the gateway with auto-restart (always-on mode)
   termcrab onboard                   first-time setup wizard
@@ -82,6 +98,56 @@ Examples:
   termcrab agent "what can you do?"
   termcrab config set channels.telegram.allowedUserIds [123456789]
 `;
+
+interface RunView {
+  runId: string;
+  sessionId: string | null;
+  status: 'queued' | 'running' | 'done' | 'error' | 'interrupted';
+  output: string | null;
+  error: string | null;
+  startedAt: number | null;
+  durationMs: number | null;
+  tokensIn: number | null;
+  tokensOut: number | null;
+}
+
+/**
+ * Wait for a run the panel is executing and print what it produced (10.2).
+ * Exit codes follow the usual shell conventions so a script can branch:
+ * 0 done, 1 failed, 124 still running when the timeout ran out, 130 stopped by
+ * a person.
+ */
+async function waitForRun(client: GatewayClient, runId: string, timeoutSec: number, asJson: boolean): Promise<number> {
+  const deadline = Date.now() + Math.max(0, timeoutSec) * 1000;
+  for (;;) {
+    const run = await client.json<RunView>(`/api/runs/${encodeURIComponent(runId)}`);
+    if (run.status === 'done' || run.status === 'error' || run.status === 'interrupted') {
+      if (asJson) {
+        console.log(JSON.stringify(run, null, 2));
+      } else if (run.output) {
+        console.log(run.output);
+      }
+      if (run.status === 'error') {
+        console.error(`run ${runId} failed: ${run.error ?? 'unknown error'}`);
+        return 1;
+      }
+      if (run.status === 'interrupted') {
+        console.error(`run ${runId} was stopped${run.output ? ' — the text above is what it had written' : ''}`);
+        return 130;
+      }
+      if (!asJson && !run.output) console.error(`run ${runId} finished with no output`);
+      return 0;
+    }
+    if (Date.now() >= deadline) {
+      console.error(
+        `run ${runId} is still running after ${timeoutSec}s (status: ${run.status})` +
+          ` — wait longer (--timeout <seconds>) or stop it: termcrab stop`,
+      );
+      return 124;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
 
 function printEvents(ev: AgentEvent): void {
   switch (ev.type) {
@@ -126,10 +192,15 @@ async function buildMemoryStore(config: ReturnType<typeof loadConfig>): Promise<
   return new MemoryStore(memoryDir(), index);
 }
 
+/** `skills.allow` as the loader wants it: a list means an allow-list, empty means all. */
+function skillsAllow(config: Config): string[] | undefined {
+  return config.skills?.allow?.length ? config.skills.allow : undefined;
+}
+
 async function makeAgentCtx() {
   const config = loadConfig();
   const memory = await buildMemoryStore(config);
-  const skills = new SkillStore();
+  const skills = new SkillStore(undefined, { allow: skillsAllow(config) });
   const sessions = new SessionStore();
   let localProvider;
   if (config.localProvider?.enabled && config.localProvider.model) {
@@ -400,7 +471,7 @@ export async function main(argv: string[]): Promise<void> {
 
     case 'skills': {
       const [sub = 'list', source] = rest;
-      const store = new SkillStore();
+      const store = new SkillStore(undefined, { allow: skillsAllow(loadConfig()) });
       if (sub === 'import') {
         if (!source) {
           console.error('usage: termcrab skills import <folder|git-url> [--force]');
@@ -807,6 +878,136 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'run':
+    case 'wait': {
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      const flags = rest.filter((r) => r.startsWith('--'));
+      const args = rest.filter((r) => !r.startsWith('--'));
+      const asJson = flags.includes('--json');
+      const timeoutIdx = rest.indexOf('--timeout');
+      const timeoutSec = timeoutIdx >= 0 && rest[timeoutIdx + 1] ? Number(rest[timeoutIdx + 1]) : 120;
+      if (!Number.isFinite(timeoutSec) || timeoutSec < 0) {
+        console.error('usage: termcrab run --wait <id> [--timeout <seconds>] [--json]');
+        process.exitCode = 1;
+        return;
+      }
+      // `wait` is the short alias: both mean "wait for this run".
+      const waitMode = cmd === 'wait' || flags.includes('--wait') || flags.includes('-w');
+      try {
+        if (waitMode) {
+          const id = args[0];
+          if (!id) {
+            console.error('usage: termcrab run --wait <id>    (the id is printed when a run starts)');
+            process.exitCode = 1;
+            return;
+          }
+          process.exitCode = await waitForRun(client, id, timeoutSec, asJson);
+          return;
+        }
+        const message = args.join(' ').trim();
+        if (!message) {
+          console.error('usage: termcrab run "what to do" [--session <id>] [--no-wait] [--json]');
+          console.error('       termcrab run --wait <id> [--timeout <seconds>]');
+          console.error('       (a one-off turn without the panel: termcrab agent "what to do")');
+          process.exitCode = 1;
+          return;
+        }
+        const sidIdx = rest.indexOf('--session');
+        const sessionId = sidIdx >= 0 && rest[sidIdx + 1] ? rest[sidIdx + 1]! : 'cli:main';
+        const submitted = await client.json<{ turnId: string; status: string; queueLength?: number }>('/api/chat', {
+          method: 'POST',
+          json: { message, sessionId },
+        });
+        if (asJson) {
+          console.log(JSON.stringify(submitted, null, 2));
+        } else {
+          console.log(`▶ run ${submitted.turnId} (session ${sessionId})${submitted.status === 'queued' ? ' — waiting for the lane' : ''}`);
+        }
+        if (flags.includes('--no-wait')) return;
+        process.exitCode = await waitForRun(client, submitted.turnId, timeoutSec, asJson);
+        return;
+      } catch (err) {
+        if (err instanceof GatewayNotRunningError) {
+          console.error(err.message);
+          console.error('`termcrab run` submits to the panel so the queue, the approvals and the panel all see it.');
+          console.error('For a one-off turn without a panel: termcrab agent "what to do"');
+        } else {
+          console.error(`run: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    case 'stop': {
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      const asJson = rest.includes('--json');
+      const session = rest.find((r) => !r.startsWith('--'));
+      try {
+        const res = await client.json<{ count: number; stopped: string[]; sessions: string[] }>('/api/stop', {
+          method: 'POST',
+          json: session ? { sessionId: session } : {},
+        });
+        if (asJson) {
+          console.log(JSON.stringify(res, null, 2));
+          return;
+        }
+        if (!res.count) {
+          console.log(session ? `nothing is running in ${session}` : 'nothing is running');
+          return;
+        }
+        console.log(`🛑 stopped ${res.count} turn(s): ${res.stopped.join(', ')}`);
+        console.log('   (whatever it had already written is kept, marked [interrupted])');
+        return;
+      } catch (err) {
+        if (err instanceof GatewayNotRunningError) console.error(err.message);
+        else console.error(`stop: ${err instanceof Error ? err.message : String(err)}`);
+        process.exitCode = 1;
+        return;
+      }
+    }
+
+    case 'disk': {
+      const config = loadConfig();
+      const asJson = rest.includes('--json');
+      const maxIdx = rest.indexOf('--max-mb');
+      const maxMb = maxIdx >= 0 && rest[maxIdx + 1] ? Number(rest[maxIdx + 1]) : diskBudgetBytes(config) / (1024 * 1024);
+      const keepIdx = rest.indexOf('--keep-days');
+      const keepDays = keepIdx >= 0 && rest[keepIdx + 1] ? Number(rest[keepIdx + 1]) : diskKeepDays(config);
+      if (!Number.isFinite(maxMb) || maxMb <= 0 || !Number.isFinite(keepDays) || keepDays < 0) {
+        console.error('usage: termcrab disk [--trim] [--max-mb <n>] [--keep-days <n>] [--json]');
+        process.exitCode = 1;
+        return;
+      }
+      const before = diskUsage();
+      const mb = (b: number): string => `${(b / (1024 * 1024)).toFixed(1)} MB`;
+      const budgetBytes = maxMb * 1024 * 1024;
+      const trim = rest.includes('--trim') ? enforceDiskBudget(budgetBytes, { keepDays }) : null;
+      if (asJson) {
+        console.log(JSON.stringify({ before, budgetBytes, keepDays, trim }, null, 2));
+        return;
+      }
+      console.log('');
+      console.log(`  💾 ${before.root}`);
+      console.log(`     used    ${mb(before.totalBytes)} of ${mb(budgetBytes)} budget (${before.files} file(s), keeping the last ${keepDays} day(s))`);
+      for (const [area, bytes] of Object.entries(before.byArea).sort((a, b) => b[1] - a[1])) {
+        if (bytes > 0) console.log(`     ${area.padEnd(10)} ${mb(bytes).padStart(10)}`);
+      }
+      if (trim) {
+        console.log(`     trimmed ${trim.removed} file(s), freed ${(trim.freedBytes / 1024).toFixed(1)} KB`);
+        for (const note of trim.notes) console.log(`       ${note}`);
+        if (trim.overBudget) {
+          console.log('     ⚠️ still over budget — nothing else may be trimmed (memory, skills and the config are never touched)');
+        }
+      } else if (before.totalBytes > budgetBytes) {
+        console.log('     ⚠️ over budget — run: termcrab disk --trim');
+      }
+      console.log('');
+      return;
+    }
+
     case 'status': {
       const config = loadConfig();
       console.log(await statusReport(config));
@@ -1071,6 +1272,12 @@ export async function main(argv: string[]): Promise<void> {
     case 'config': {
       const [sub = 'list', key, ...valueParts] = rest;
       const cfg = loadConfig();
+      const blockingProblems = configProblems().filter((p) => p.severity === 'error');
+      if (blockingProblems.length && sub !== 'path') {
+        console.error(`⚠️  ${describeConfigLocation()} is being ignored (${blockingProblems.length} problem(s)):`);
+        for (const problem of blockingProblems) console.error(`    ${problem.path}: ${problem.message}`);
+        console.error('    (fix the file, or set the value again with: termcrab config set <key> <value>)');
+      }
       if (sub === 'path') {
         console.log(describeConfigLocation());
         return;
@@ -1133,6 +1340,16 @@ export async function main(argv: string[]): Promise<void> {
         const next = cfgSet(cfg, key, value);
         // Special: rotating token
         if (key === 'gateway.token' && value === 'generate') next.gateway.token = generateToken();
+        // 10.1: the same check the hot-reload path uses. A value that cannot
+        // work never reaches the file, so it can never break a running agent.
+        const blocking = validateConfig(next).filter((p) => p.severity === 'error');
+        if (blocking.length) {
+          console.error(`❌ refusing to save — ${blocking.length} problem(s) in the config:`);
+          for (const problem of blocking) console.error(`   ${problem.path}: ${problem.message}`);
+          console.error('   (the file was left exactly as it was)');
+          process.exitCode = 1;
+          return;
+        }
         saveConfig(next);
         console.log(`✅ ${key} = ${JSON.stringify(cfgGet(next, key))}`);
         return;

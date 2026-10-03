@@ -168,6 +168,23 @@ export interface Config {
     /** Hybrid embedding search when @huggingface/transformers (or @xenova) is installed. */
     embeddings: boolean;
   };
+  /**
+   * Disk budget (batch 10). When the state directory grows past maxMb, the
+   * oldest trimmable files (old transcripts, logs, usage lines) are removed
+   * instead of letting the phone fill up. `autoTrim: false` disables it.
+   */
+  storage: {
+    maxMb: number;
+    keepDays: number;
+    autoTrim: boolean;
+  };
+  /**
+   * Which skills the agent may use at all. Empty means "every skill the roots
+   * contain" (the default); a non-empty list is an allow-list, so a skill that
+   * arrives from a git repo or a migrated setup cannot reach the prompt until
+   * it is named here (10.5).
+   */
+  skills: { allow: string[] };
   /** Homepage widget visibility, managed by the dashboard tool. */
   dashboard?: { widgets: Record<string, boolean> };
   update: { checkOnStart: boolean };
@@ -197,6 +214,8 @@ export function defaults(): Config {
     },
     dream: { enabled: true, everyHours: 24 },
     memory: { embeddings: true },
+    storage: { maxMb: 500, keepDays: 30, autoTrim: true },
+    skills: { allow: [] },
     update: { checkOnStart: false },
     security: {
       approvals: {
@@ -223,22 +242,39 @@ function deepMerge<T>(base: T, patch: unknown): T {
 /** Raw file contents this process last read or wrote (detects outside edits). */
 let lastPersistedRaw: string | null = null;
 
+/** What the last loadConfig() thought of the file on disk (see validateConfig). */
+let lastConfigProblems: ConfigProblem[] = [];
+
 export function loadConfig(): Config {
   ensureLayout();
   const p = configPath();
   if (!fs.existsSync(p)) {
     lastPersistedRaw = null;
+    lastConfigProblems = [];
     return defaults();
   }
   let rawText: string;
   try {
     rawText = fs.readFileSync(p, 'utf8');
-  } catch {
+  } catch (err) {
+    lastConfigProblems = [
+      { path: '(file)', severity: 'error', message: `cannot read the config file: ${err instanceof Error ? err.message : String(err)}` },
+    ];
     return defaults();
   }
   lastPersistedRaw = rawText;
+  let parsed: unknown;
   try {
-    const raw = JSON.parse(rawText) as Partial<Config>;
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    lastConfigProblems = [
+      { path: '(file)', severity: 'error', message: `not valid JSON (${err instanceof Error ? err.message : String(err)}) — the file was ignored` },
+    ];
+    return defaults();
+  }
+  lastConfigProblems = validateConfig(parsed);
+  try {
+    const raw = parsed as Partial<Config>;
     const merged = deepMerge(defaults(), raw);
     // Coerce legacy provider types (anthropic / gemini / ollama) to the single
     // supported wire format: OpenAI-compatible. Older configs with apiKey+baseUrl
@@ -278,10 +314,23 @@ export function readExternalConfigChange(): Config | null {
   if (lastPersistedRaw !== null && rawText === lastPersistedRaw) return null;
   try {
     JSON.parse(rawText);
-  } catch {
+  } catch (err) {
+    // Half-written or broken: never applied, and never silent (10.1). The
+    // panel reads this via configProblems() and shows it beside the editor.
+    lastConfigProblems = [
+      {
+        path: '(file)',
+        severity: 'error',
+        message: `not valid JSON (${err instanceof Error ? err.message : String(err)}) — the file was ignored`,
+      },
+    ];
     return null;
   }
-  return loadConfig();
+  const fresh = loadConfig();
+  // A file that parses but cannot work is refused as a whole, so a typo can
+  // never reach a running agent. Warnings are reported and applied.
+  if (lastConfigProblems.some((p) => p.severity === 'error')) return null;
+  return fresh;
 }
 
 /** Read just the panel password from the config file. Never changes any state. */
@@ -293,6 +342,226 @@ export function readConfigFileToken(): string | null {
   } catch {
     return null;
   }
+}
+
+
+/**
+ * Structural check of a config file's contents, used before anything is applied
+ * (10.1). `error` means "do not apply this" — the running agent keeps its
+ * previous settings; `warn` is reported to the panel but still applied, so a
+ * newer key or a typo can never lock somebody out of their own agent.
+ */
+export interface ConfigProblem {
+  /** Dotted path, e.g. gateway.port — the key to fix. */
+  path: string;
+  message: string;
+  severity: 'error' | 'warn';
+}
+
+const KNOWN_TOP = new Set([
+  'version',
+  'provider',
+  'providers',
+  'gateway',
+  'agent',
+  'security',
+  'fallbackProviders',
+  'mcpServers',
+  'hooks',
+  'channels',
+  'heartbeat',
+  'localProvider',
+  'dream',
+  'memory',
+  'skills',
+  'dashboard',
+  'update',
+  'storage',
+]);
+
+/** Provider types we accept: today's two, plus the legacy names loadConfig coerces. */
+const PROVIDER_TYPES = new Set(['openai', 'mock', 'anthropic', 'gemini', 'ollama']);
+
+export function validateConfig(raw: unknown): ConfigProblem[] {
+  const problems: ConfigProblem[] = [];
+  const err = (path: string, message: string): void => void problems.push({ path, message, severity: 'error' });
+  const warn = (path: string, message: string): void => void problems.push({ path, message, severity: 'warn' });
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    err('(root)', 'the config must be a JSON object');
+    return problems;
+  }
+  const root = raw as Record<string, unknown>;
+
+  for (const key of Object.keys(root)) {
+    if (!KNOWN_TOP.has(key)) warn(key, `unknown key "${key}" — it is kept but nothing reads it`);
+  }
+
+  const objAt = (parent: Record<string, unknown>, key: string, known?: Set<string>): Record<string, unknown> | null => {
+    const v = parent[key];
+    if (v === undefined || v === null) return null;
+    if (typeof v !== 'object' || Array.isArray(v)) {
+      err(key, `must be a JSON object, got ${Array.isArray(v) ? 'array' : typeof v}`);
+      return null;
+    }
+    const o = v as Record<string, unknown>;
+    if (known) for (const k of Object.keys(o)) if (!known.has(k)) warn(`${key}.${k}`, `unknown key "${key}.${k}"`);
+    return o;
+  };
+  const str = (o: Record<string, unknown>, prefix: string, key: string): void => {
+    const v = o[key];
+    if (v !== undefined && typeof v !== 'string') err(`${prefix}${key}`, `must be a string, got ${typeof v}`);
+  };
+  const bool = (o: Record<string, unknown>, prefix: string, key: string): void => {
+    const v = o[key];
+    if (v !== undefined && typeof v !== 'boolean') err(`${prefix}${key}`, `must be true or false, got ${typeof v}`);
+  };
+  const numIn = (o: Record<string, unknown>, prefix: string, key: string, lo: number, hi: number, integer = false): void => {
+    const v = o[key];
+    if (v === undefined) return;
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi || (integer && !Number.isInteger(v))) {
+      err(`${prefix}${key}`, `must be ${integer ? 'a whole number' : 'a number'} between ${lo} and ${hi}, got ${JSON.stringify(v)}`);
+    }
+  };
+  const oneOf = (o: Record<string, unknown>, prefix: string, key: string, allowed: string[]): void => {
+    const v = o[key];
+    if (v === undefined) return;
+    if (typeof v !== 'string' || !allowed.includes(v)) err(`${prefix}${key}`, `must be one of ${allowed.join(' | ')}, got ${JSON.stringify(v)}`);
+  };
+  const strArr = (o: Record<string, unknown>, prefix: string, key: string): void => {
+    const v = o[key];
+    if (v === undefined) return;
+    if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) err(`${prefix}${key}`, 'must be an array of strings');
+  };
+
+  const gateway = objAt(root, 'gateway', new Set(['host', 'port', 'token']));
+  if (gateway) {
+    str(gateway, 'gateway.', 'host');
+    str(gateway, 'gateway.', 'token');
+    numIn(gateway, 'gateway.', 'port', 1, 65535, true);
+  }
+
+  const provider = objAt(
+    root,
+    'provider',
+    new Set([
+      'type',
+      'baseUrl',
+      'apiKey',
+      'model',
+      'maxTokens',
+      'temperature',
+      'stream',
+      'priceInPerM',
+      'priceOutPerM',
+    ]),
+  );
+  if (provider) {
+    const t = provider.type;
+    if (t !== undefined && (typeof t !== 'string' || !PROVIDER_TYPES.has(t))) {
+      err('provider.type', `must be one of ${[...PROVIDER_TYPES].join(' | ')}, got ${JSON.stringify(t)}`);
+    }
+    str(provider, 'provider.', 'model');
+    str(provider, 'provider.', 'apiKey');
+    str(provider, 'provider.', 'baseUrl');
+    const base = provider.baseUrl;
+    if (typeof base === 'string' && base && !/^https?:\/\//.test(base)) {
+      err('provider.baseUrl', `must start with http:// or https://, got ${JSON.stringify(base)}`);
+    }
+    bool(provider, 'provider.', 'stream');
+    numIn(provider, 'provider.', 'maxTokens', 1, 1_000_000, true);
+    numIn(provider, 'provider.', 'temperature', 0, 2);
+    numIn(provider, 'provider.', 'priceInPerM', 0, 100_000);
+    numIn(provider, 'provider.', 'priceOutPerM', 0, 100_000);
+  }
+
+  const agent = objAt(
+    root,
+    'agent',
+    new Set([
+      'name',
+      'allowExec',
+      'maxIterations',
+      'timezone',
+      'compactThreshold',
+      'memoryBudget',
+      'failover',
+      'queueMode',
+      'allowBrowser',
+      'allowCodeExec',
+      'isolation',
+    ]),
+  );
+  if (agent) {
+    str(agent, 'agent.', 'name');
+    str(agent, 'agent.', 'timezone');
+    bool(agent, 'agent.', 'allowExec');
+    bool(agent, 'agent.', 'failover');
+    bool(agent, 'agent.', 'allowBrowser');
+    bool(agent, 'agent.', 'allowCodeExec');
+    numIn(agent, 'agent.', 'maxIterations', 1, 100, true);
+    numIn(agent, 'agent.', 'compactThreshold', 5, 10_000, true);
+    numIn(agent, 'agent.', 'memoryBudget', 0, 1_000_000, true);
+    oneOf(agent, 'agent.', 'queueMode', ['followup', 'steer', 'collect', 'interrupt']);
+    oneOf(agent, 'agent.', 'isolation', ['shared', 'isolated']);
+  }
+
+  const security = objAt(root, 'security', new Set(['approvals']));
+  const approvals = security ? objAt(security, 'approvals', new Set(['enabled', 'tools', 'timeoutSec', 'onTimeout'])) : null;
+  if (approvals) {
+    bool(approvals, 'security.approvals.', 'enabled');
+    strArr(approvals, 'security.approvals.', 'tools');
+    numIn(approvals, 'security.approvals.', 'timeoutSec', 1, 86_400);
+    oneOf(approvals, 'security.approvals.', 'onTimeout', ['deny', 'allow']);
+  }
+
+  const heartbeat = objAt(root, 'heartbeat', new Set(['enabled', 'minutes', 'pauseBelow']));
+  if (heartbeat) {
+    bool(heartbeat, 'heartbeat.', 'enabled');
+    numIn(heartbeat, 'heartbeat.', 'minutes', 1, 10_080);
+    numIn(heartbeat, 'heartbeat.', 'pauseBelow', 0, 100);
+  }
+
+  // Added by batch 10: the disk budget (see src/core/disk.ts). Optional — a
+  // config written before this batch keeps working with the defaults.
+  const storage = objAt(root, 'storage', new Set(['maxMb', 'keepDays', 'autoTrim']));
+  if (storage) {
+    numIn(storage, 'storage.', 'maxMb', 1, 10_000_000);
+    numIn(storage, 'storage.', 'keepDays', 0, 3650);
+    bool(storage, 'storage.', 'autoTrim');
+  }
+
+  const skills = objAt(root, 'skills', new Set(['allow']));
+  if (skills) strArr(skills, 'skills.', 'allow');
+
+  const mcp = root.mcpServers;
+  if (mcp !== undefined) {
+    if (!Array.isArray(mcp)) err('mcpServers', 'must be an array');
+    else
+      mcp.forEach((row, i) => {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) {
+          err(`mcpServers[${i}]`, 'must be an object with name + command');
+          return;
+        }
+        const r = row as Record<string, unknown>;
+        if (typeof r.name !== 'string' || !r.name) err(`mcpServers[${i}].name`, 'must be a non-empty string');
+        if (typeof r.command !== 'string' || !r.command) err(`mcpServers[${i}].command`, 'must be a non-empty string');
+        if (r.args !== undefined && (!Array.isArray(r.args) || r.args.some((a) => typeof a !== 'string'))) {
+          err(`mcpServers[${i}].args`, 'must be an array of strings');
+        }
+      });
+  }
+
+  return problems;
+}
+
+/** What the last loadConfig() thought of the file: errors block, warnings inform. */
+export function configProblems(): ConfigProblem[] {
+  return lastConfigProblems.map((p) => ({ ...p }));
+}
+
+/** The first blocking problem, or null when the file may be applied. */
+export function configBlockedBy(): ConfigProblem | null {
+  return lastConfigProblems.find((p) => p.severity === 'error') ?? null;
 }
 
 export function generateToken(): string {

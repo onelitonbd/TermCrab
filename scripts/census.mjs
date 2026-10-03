@@ -109,9 +109,9 @@ check('gateway', 'Pairing / device identity', 'device challenge + approval + sto
   { pattern: /devicePair|pairingStore|approveDevice/, expect: 'absent' }, 4);
 check('gateway', 'Typed wire protocol + idempotency', 'TypeBox schemas, req/res/event frames', 'ABSENT',
   'plain HTTP JSON, no schema layer', { pattern: 'TypeBox|typebox', expect: 'absent' }, 6);
-check('gateway', 'Config hot-reload', 'watch + validate + apply', 'PARTIAL',
-  'fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346), pinned by test/api.test.ts "config file password change hot-applies"; the fresh file is not schema-validated before the merge',
-  { pattern: 'fs.watch', expect: 'present' }, 1);
+check('gateway', 'Config hot-reload', 'watch + validate + apply', 'WORKING',
+  'fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346) AND validateConfig() runs first (src/core/config.ts): broken JSON or an error-severity key is refused and reported through /api/config configProblems, warnings apply; `termcrab config set` refuses the same way. test/tier0.test.ts 10.1',
+  { pattern: 'validateConfig', expect: 'present' }, 0);
 check('gateway', 'Health / status endpoint', 'health + presence + doctor', 'WORKING',
   'src/gateway/server.ts /api/health, /api/status, /api/doctor', { pattern: "/api/doctor", expect: 'present' }, 0);
 check('gateway', 'Inbound webhooks', 'authenticated agent hooks', 'WORKING',
@@ -146,8 +146,9 @@ check('agent', 'Per-session run serialization', 'session lanes + writer claims',
 check('agent', 'Queue modes steer/followup/collect/interrupt', '4 modes + debounce + cap', 'WORKING',
   'all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6',
   { pattern: 'MAX_QUEUED_TURNS', expect: 'present' }, 0);
-check('agent', 'Run identity + terminal wait', 'runId + agent.wait replay', 'PARTIAL',
-  'newRunId() in loop.ts:114; no wait endpoint (only sessions/agents_wait tools)', { pattern: 'newRunId', expect: 'present' }, 2);
+check('agent', 'Run identity + terminal wait', 'runId + agent.wait replay', 'WORKING',
+  'one id per run (the queue turn id IS the trace id, server.ts runner) + GET /api/runs/:id returns status/output/error/tokens; `termcrab run --wait <id>` exits 0 done / 1 failed / 124 timeout / 130 stopped. test/tier0.test.ts 10.2',
+  { pattern: '/api/runs/', expect: 'present' }, 0);
 check('agent', 'Parallel tool batches', 'launched together, results merged', 'ABSENT',
   'loop.ts:245 is a sequential for-await', { pattern: 'Promise.all\\(.*execute', expect: 'absent' }, 3);
 check('agent', 'Loop budget + idle watchdog', '172800s budget, 120s/300s idle, overflow recovery', 'PARTIAL',
@@ -161,14 +162,16 @@ check('agent', 'Reasoning / thinking levels', '7 levels incl. minimal/ultra', 'W
 check('agent', 'Steering into a live run', 'runtime-boundary steering', 'WORKING',
   "a steered message joins the running turn's transcript inside the same run (loop.ts drains SessionQueue.takeSteers); a 'steer' event is emitted; test/queue-serialize.test.ts 5.4/5.4b",
   { pattern: 'takeSteers', expect: 'present' }, 0);
-check('agent', 'Abort / stop a running turn', 'Esc, /stop, /abort', 'PARTIAL',
-  'AbortSignal plumbed through providers; no user-facing abort route in the web panel', { pattern: 'AbortController', expect: 'present' }, 2);
+check('agent', 'Abort / stop a running turn', 'Esc, /stop, /abort', 'WORKING',
+  'POST /api/stop (one session or everything) + `termcrab stop` + the panel stop button; the abort reaches the in-flight provider call, the partial answer is kept and marked [interrupted], and the lane stays busy until the runner settles so no work is orphaned. test/tier0.test.ts 10.3',
+  { pattern: '/api/stop', expect: 'present' }, 0);
 check('agent', 'Lifecycle hooks', '14 typed hooks + HOOK.md', 'ABSENT',
   'no hook registry (no api.on / registerHook)', { pattern: 'registerHook|api\\.on\\(', expect: 'absent' }, 12);
 check('agent', 'Subagents', 'sessions_spawn, agents_wait, lanes, worktrees', 'PARTIAL',
   'sessions_spawn/agents_wait/sessions_yield in src/agent/toolbox.ts:798+', { pattern: 'sessions_spawn', expect: 'present' }, 6);
-check('agent', 'Progress drafts / partial updates', 'incremental draft messages', 'PARTIAL',
-  'progress_card tool + src/agent/progress.ts', { pattern: 'progress', expect: 'present' }, 1);
+check('agent', 'Progress drafts / partial updates', 'incremental draft messages', 'WORKING',
+  "{type:'draft'} events carry the whole partial answer (emitted at most once per round, so a surface replaces instead of appending) and it is saved in the progress card (state/progress/<session>.json) so a reload mid-turn still shows it; the panel paints it and marks the bubble as a draft. test/tier0.test.ts 10.4",
+  { pattern: /emitDraft|'draft'/, expect: 'present' }, 0);
 check('agent', 'Timeouts + error containment', 'per-phase budgets', 'WORKING',
   'loop.ts containment; tests in test/loop.test.ts', { pattern: 'error', expect: 'present' }, 0);
 
@@ -257,9 +260,9 @@ check('skills', 'SKILL.md loading', 'progressive disclosure + gating', 'WORKING'
   'src/skills/loader.ts + load_skill tool (tools.ts:318)', { pattern: 'load_skill', expect: 'present' }, 0);
 check('skills', 'Bundled skill library', '49 bundled + 13k ClawHub', 'PARTIAL',
   '5 bundled: daily-briefing, shell-safety, termux-api, voice, web-research', { pattern: 'SKILL.md', expect: 'present' }, 6);
-check('skills', 'Skill precedence + overrides', 'multi-root precedence, allowlists', 'PARTIAL',
-  'src/skills/loader.ts + registry.ts resolve user skills over bundled ones; no gating/allowlists',
-  { pattern: /SkillStore|userOverride|resolveSkills/, expect: 'present' }, 2);
+check('skills', 'Skill precedence + overrides', 'multi-root precedence, allowlists', 'WORKING',
+  'src/skills/loader.ts: roots read left to right, later wins — a user skill replaces a bundled one in list(), get() and the prompt index; skills.allow is an allow-list (empty = all) wired from config in server.ts and the CLI; documented in docs/SKILLS.md and pinned by test/tier0.test.ts 10.5',
+  { pattern: 'permitted', expect: 'present' }, 0);
 check('skills', 'Agent-authored skills', 'skill-workshop review flow', 'PARTIAL',
   'skill_workshop tool (toolbox.ts) + scaffold.ts', { pattern: 'skill_workshop', expect: 'present' }, 3);
 check('skills', 'Skill registry / distribution', 'ClawHub + signed manifests', 'ABSENT',
@@ -408,8 +411,9 @@ check('storage', 'Backup / restore', 'openclaw backup', 'PARTIAL',
   'sessions export + manual copying; no backup command', { pattern: 'export', expect: 'present' }, 3);
 check('storage', 'Atomic updates + rollback', 'guarded upgrades, versioned state', 'PARTIAL',
   'src/core/updat{er,e}.ts check-only update path (never auto-applies)', { pattern: 'update', expect: 'present' }, 4);
-check('storage', 'Disk budget + pruning', 'usage caps, retention', 'PARTIAL',
-  'sessions purge --older-than N', { pattern: 'purge', expect: 'present' }, 2);
+check('storage', 'Disk budget + pruning', 'usage caps, retention', 'WORKING',
+  'src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6',
+  { pattern: 'enforceDiskBudget', expect: 'present' }, 0);
 
 // ------------------------------------------------------ 14. mobile/platform
 check('mobile', 'Android bionic guard', 'community shim, hand-edited', 'BETTER',
@@ -450,9 +454,9 @@ check('ops', 'Logs + diagnostics', 'seven-page doctor, log levels, OTel, Prometh
   'src/core/logger.ts + doctor; /api/logs; no metrics export', { pattern: 'logger', expect: 'present' }, 4);
 check('ops', 'Telemetry stance', 'version check only, opt-out', 'BETTER',
   'no telemetry at all; update check is manual', { pattern: 'telemetry', expect: 'absent' }, 0);
-check('ops', 'Release discipline', 'CalVer, release notes, validation programme', 'PARTIAL',
-  'CHANGELOG.md (47 KB) + 21 tags from v0.1.0 to v0.36.0; no release validation programme',
-  { paths: ['CHANGELOG.md'], expect: 'present' }, 2);
+check('ops', 'Release discipline', 'CalVer, release notes, validation programme', 'WORKING',
+  'scripts/release.mjs writes package.json and the CHANGELOG section together and --check fails the suite when they drift (test/tier0.test.ts 10.7); --notes feeds `gh release create`, --tag refuses a dirty tree; package.json now carries the same version as the newest CHANGELOG entry',
+  { paths: ['scripts/release.mjs', 'CHANGELOG.md'], expect: 'present' }, 0);
 check('ops', 'Work tracking (what is being built, right now)', 'n/a', 'WORKING',
   'WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker',
   { paths: ['WORKLOG.md', 'scripts/status.mjs'], expect: 'present' }, 0, 'core');

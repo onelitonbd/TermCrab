@@ -3,7 +3,15 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Config, ProviderEntry, cfgSet, saveConfig, configExists, readExternalConfigChange } from '../core/config.js';
+import {
+  Config,
+  ProviderEntry,
+  cfgSet,
+  saveConfig,
+  configExists,
+  configProblems,
+  readExternalConfigChange,
+} from '../core/config.js';
 import { log } from '../core/logger.js';
 import {
   PACKAGE_ROOT,
@@ -19,6 +27,8 @@ import {
   workspaceDir,
 } from '../core/paths.js';
 import { AgentCtx, runQueuedTurn, runTurn, providerLabel } from '../agent/loop.js';
+import { diskBudgetBytes, diskKeepDays, diskUsage, enforceDiskBudget } from '../core/disk.js';
+import { getRun } from '../core/tracing.js';
 import { buildTools } from '../agent/tools.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
@@ -33,7 +43,7 @@ import { resolveProvider } from '../providers/index.js';
 import { getModelCapabilities, normalizeThinkingLevel } from '../providers/capabilities.js';
 import { getCachedCaps, modelCapsKey, probeModel, probeModels } from '../providers/probe.js';
 import { createMcpClient } from '../providers/mcp.js';
-import { listRuns, getRun, clearRuns } from '../core/tracing.js';
+import { listRuns, clearRuns } from '../core/tracing.js';
 import { speakStream } from '../mobile/tts-stream.js';
 import { startContinuousStt } from '../mobile/tts-stream.js';
 import { DiscordChannel } from '../channels/discord.js';
@@ -278,7 +288,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const memory = new MemoryStore(undefined, embeddingIndex);
-  const skills = new SkillStore();
+  const skills = new SkillStore(undefined, {
+    allow: config.skills?.allow?.length ? config.skills.allow : undefined,
+  });
   const sessions = new SessionStore();
   // Optional local model tier (llama.cpp / ollama / llama-server on-device).
   let localProvider;
@@ -362,6 +374,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
 
+  // 10.6: the budget is enforced before anything else runs, so a phone that
+  // filled up while the gateway was down starts instead of failing to write.
+  try {
+    const trim = enforceDiskBudget(diskBudgetBytes(config), { keepDays: diskKeepDays(config) });
+    if (trim.removed) {
+      log.info(
+        `disk budget: removed ${trim.removed} old file(s), freed ${Math.round(trim.freedBytes / 1024)} KB` +
+          (trim.overBudget ? ' — still over budget, nothing trimmable left' : ''),
+      );
+    }
+  } catch (err) {
+    log.warn(`disk budget check failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   const agent: AgentCtx = { config, memory, skills, sessions, localProvider, queue: agentQueue, mcpClients };
 
   // The queue runs turns, one at a time per session. Every surface that submits
@@ -370,6 +396,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   agentQueue.setMode(config.agent.queueMode || 'followup');
   agentQueue.setRunner(async (turn, signal) => {
     return await runTurn(agent, {
+      // One identity per run: the id a script waits on (10.2) is the id the
+      // trace, the turn poll and the SSE frames all carry.
+      runId: turn.id,
       owner: turn.channel ?? 'gateway',
       sessionId: turn.sessionId,
       userMessage: turn.userMessage,
@@ -853,6 +882,58 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        /**
+         * A run, by id, whatever surface started it (10.2). The queue knows the
+         * turn (status, output, error); the trace knows the numbers (tokens,
+         * duration). Both share one id.
+         */
+        const runMatch = pathname.match(/^\/api\/runs\/([^/]+)$/);
+        if (runMatch && req.method === 'GET') {
+          const runId = decodeURIComponent(runMatch[1]!);
+          const turn = agentQueue.getTurn('', runId);
+          const trace = getRun(runId);
+          if (!turn && !trace) {
+            json(res, 404, { error: `no run ${runId}` });
+            return;
+          }
+          json(res, 200, {
+            runId,
+            sessionId: turn?.sessionId ?? trace?.sessionId ?? null,
+            status: turn?.status ?? trace?.status ?? 'running',
+            output: turn?.output ?? null,
+            error: turn?.error ?? trace?.error ?? null,
+            startedAt: turn?.startedAt ?? trace?.start ?? null,
+            enqueuedAt: turn?.enqueuedAt ?? null,
+            durationMs: trace?.durationMs ?? null,
+            tokensIn: trace?.tokensIn ?? null,
+            tokensOut: trace?.tokensOut ?? null,
+          });
+          return;
+        }
+
+        /** Stop every running turn, or one session's (10.3). */
+        if (req.method === 'POST' && pathname === '/api/stop') {
+          const body = await readJsonBody(req);
+          const only = typeof body?.sessionId === 'string' ? body.sessionId : '';
+          let stopped: { sessionId: string; turnId: string }[];
+          if (only) {
+            const running = agentQueue.getRunning(only);
+            stopped = running && agentQueue.interrupt(only) ? [{ sessionId: only, turnId: running.id }] : [];
+          } else {
+            stopped = agentQueue.stopAll();
+          }
+          for (const s of stopped) {
+            bus.emit({ type: 'stop', sessionId: s.sessionId, turnId: s.turnId } as unknown as BusEvent);
+          }
+          json(res, 200, {
+            ok: true,
+            count: stopped.length,
+            stopped: stopped.map((s) => s.turnId),
+            sessions: stopped.map((s) => s.sessionId),
+          });
+          return;
+        }
+
         // Interrupt a running turn
         const interruptMatch = pathname.match(/^\/api\/chat\/([^/]+)\/interrupt$/);
         if (interruptMatch && req.method === 'POST') {
@@ -1278,6 +1359,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           json(res, 200, {
             config: redactConfig(config),
             path: configPath(),
+            // A refused edit is never applied, but it is never silent either.
+            configProblems: configProblems(),
             thinking: {
               model: config.provider.model || '',
               supportsThinking: caps.supportsThinking,
@@ -1606,8 +1689,21 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             memory: { ...memory.stats(), index: memory.indexStats(), facts: countMemoryFacts() },
             agents: listAgents(),
             queue: agentQueue.stats(),
+            disk: { ...diskUsage(), budgetBytes: diskBudgetBytes(config), keepDays: diskKeepDays(config) },
             configPath: configPath(),
             termux: isTermux(),
+          });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/disk') {
+          const usage = diskUsage();
+          const budgetBytes = diskBudgetBytes(config);
+          json(res, 200, {
+            ...usage,
+            budgetBytes,
+            keepDays: diskKeepDays(config),
+            overBudget: usage.totalBytes > budgetBytes,
           });
           return;
         }

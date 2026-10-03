@@ -265,9 +265,10 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('setSendMode'), 'send button switches into stop mode');
       assert.ok(html.includes('stopMode'), 'stop-mode class');
       assert.ok(
-        html.includes("if (txt) send(); else if (state.busy && state.abort) state.abort.abort();"),
+        html.includes("if (txt) send();") && html.includes('else if (state.busy) stopRun();'),
         'empty box + busy = stop; a draft + busy = queued send',
       );
+      assert.ok(html.includes("api('/api/stop'"), 'stop asks the server, not just the browser (10.3)');
       for (const v of ['status', 'providers', 'memory', 'tools', 'settings']) {
         const m = html.match(new RegExp('<button data-goto="' + v + '">([\\s\\S]*?)</button>'));
         assert.ok(m, v + ' sidebar button present');

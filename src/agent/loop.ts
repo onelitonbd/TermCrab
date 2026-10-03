@@ -16,6 +16,7 @@ import {
 import { buildTools, Tool, ToolEnv } from './tools.js';
 import { spawnTask as spawnBgTask } from './tasks.js';
 import { startRun, endRun, addSpan, endSpan, addToolCall } from '../core/tracing.js';
+import { clearDraft, saveDraft } from './progress.js';
 import { computeCost } from '../core/pricing.js';
 import { recordUsage } from '../core/usage.js';
 
@@ -36,6 +37,13 @@ export type AgentEvent =
       /** Only when a price was known for the model. */
       costUsd?: number;
     }
+  /**
+   * The best partial answer so far, while the turn is still running (10.4).
+   * Carries the whole text (not a chunk) so a surface replaces its draft
+   * instead of appending, and so a reload can recover it from the progress
+   * file. The final answer still arrives as `delta` + `run:end`.
+   */
+  | { type: 'draft'; text: string; sessionId: string }
   /** A message steered into the running turn (queue mode 'steer'). */
   | { type: 'steer'; text: string; sessionId: string }
   | { type: 'approval'; approval: import('../core/approvals.js').Approval }
@@ -66,6 +74,8 @@ export interface RunOpts {
   tier?: 'cloud' | 'local';
   thinkingLevel?: ThinkingLevel;
   onEvent?: (ev: AgentEvent) => void;
+  /** Use this run id instead of a fresh one (the queue turn id, 10.2). */
+  runId?: string;
   /** Abort signal for interrupt support. */
   signal?: AbortSignal;
   /** Skip the queue (used by subagents and internal calls). */
@@ -124,13 +134,21 @@ async function chatWithTimeout(
   req: Parameters<Provider['chat']>[0],
   onDelta?: (chunk: string) => void,
   onThinkingDelta?: (chunk: string) => void,
+  /** The turn's abort signal: stopping the turn must stop the wait on the model. */
+  signal?: AbortSignal,
 ): Promise<ChatResult> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), PROVIDER_TIMEOUT_MS);
+  const onAbort = (): void => ctrl.abort();
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  }
   try {
     return await provider.chat(req, { signal: ctrl.signal, onDelta, onThinkingDelta });
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', onAbort);
   }
 }
 
@@ -219,7 +237,7 @@ export async function runQueuedTurn(ctx: AgentCtx, opts: RunOpts): Promise<strin
 /** The turn body: everything after the write fence has been taken. */
 async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Promise<string> {
   const emit = opts.onEvent ?? (() => undefined);
-  const runId = newRunId();
+  const runId = opts.runId ?? newRunId();
   const { userMessage } = opts;
 
   // Named agents get their own session namespace: <agent>:<sessionId>
@@ -313,6 +331,31 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     if (opts.signal.aborted) abortCtrl.abort();
     else opts.signal.addEventListener('abort', () => abortCtrl.abort(), { once: true });
   }
+  // 10.4: whatever text the model has produced so far this turn. A tool loop
+  // produces text before each tool round; that text is a *draft*, and the panel
+  // shows it (persisted in the progress card) instead of staying silent until
+  // the final answer. The queue's `interrupt` also reads it, so stopping a turn
+  // from outside keeps what the model had already said (10.3).
+  let partial = '';
+  let lastDraft = '';
+  const emitDraft = (text: string): void => {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed === lastDraft) return;
+    lastDraft = trimmed;
+    partial = text;
+    try {
+      saveDraft(sessionId, text);
+    } catch {
+      /* a progress card is a convenience, never a reason to fail a turn */
+    }
+    emit({ type: 'draft', text, sessionId });
+  };
+  /** The answer to keep when the user stops the turn half-way. */
+  const interruptedText = (): string =>
+    partial.trim()
+      ? `${partial.trim()}\n\n[interrupted] The user cancelled this request.`
+      : '[interrupted] The user cancelled this request.';
+
   // Usage is accumulated across the whole turn: a tool loop makes several
   // provider calls, and the owner cares about the turn, not the call.
   const usageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0, estimated: false };
@@ -344,9 +387,26 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
    * meter line for the day. Called on every path (normal, aborted, capped,
    * error) so a turn that burned tokens never goes unaccounted.
    */
-  const finishTurn = (text: string, iterations: number, error?: string): void => {
+  const finishTurn = (
+    text: string,
+    iterations: number,
+    opts: { error?: string; status?: 'done' | 'error' | 'interrupted' } = {},
+  ): void => {
+    const { error } = opts;
+    try {
+      clearDraft(sessionId);
+    } catch {
+      /* ignore */
+    }
     const usage = turnUsage();
     const costUsd = turnCost();
+    // The trace ends exactly once, here — every exit path (normal, aborted,
+    // capped, error) goes through finishTurn, so /api/runs never shows a run
+    // that is 'running' an hour after it died.
+    endRun(runId, usage?.promptTokens, usage?.completionTokens, {
+      status: opts.status ?? (error ? 'error' : 'done'),
+      error,
+    });
     if (usage) {
       recordUsage({
         sessionId,
@@ -377,9 +437,10 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     };
     for (let i = 0; i < maxIter; i++) {
       if (abortCtrl.signal.aborted) {
-        finalText = '[interrupted] The user cancelled this request.';
+        finalText = interruptedText();
         appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
-        finishTurn(finalText, i);
+        ctx.queue?.recordInterrupt(sessionId, finalText);
+        finishTurn(finalText, i, { status: 'interrupted', error: 'interrupted' });
         return finalText;
       }
       drainSteers();
@@ -393,12 +454,14 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         (chunk) => {
           if (!chunk) return;
           streamedChars += chunk.length;
+          partial += chunk;
           emit({ type: 'delta', text: chunk });
         },
         (thinkingChunk) => {
           if (!thinkingChunk) return;
           emit({ type: 'thinking:delta', text: thinkingChunk, sessionId });
         },
+        abortCtrl.signal,
       );
       noteUsage(result.usage);
 
@@ -413,6 +476,9 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
           thinkingBlocks: result.thinkingBlocks,
         });
         if (result.text && !streamedChars) emit({ type: 'delta', text: result.text });
+        // The model spoke before calling a tool: that is a draft of the answer,
+        // not the answer (10.4).
+        if (result.text) emitDraft(result.text);
 
         for (const call of result.toolCalls) {
           emit({ type: 'tool:start', name: call.name, args: call.args, toolCallId: call.id, sessionId });
@@ -461,9 +527,10 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
               );
               if (decision === 'aborted') {
                 resolveApproval(approval.id, false, 'aborted');
-                finalText = '[interrupted] The user cancelled this request.';
+                finalText = interruptedText();
                 appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
-                finishTurn(finalText, i);
+                ctx.queue?.recordInterrupt(sessionId, finalText);
+                finishTurn(finalText, i, { status: 'interrupted', error: 'interrupted' });
                 if (span) endSpan(runId, span.id);
                 return finalText;
               }
@@ -535,7 +602,6 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         usage: turnUsage(),
         costUsd: turnCost(),
       });
-      endRun(runId);
       finishTurn(finalText, i + 1);
       return finalText;
     }
@@ -545,6 +611,16 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     finishTurn(finalText, maxIter);
     return finalText;
   } catch (err) {
+    // An abort is a decision, not a failure: the user stopped the turn and must
+    // keep whatever the model had said so far (10.3). The queue already knows it
+    // was interrupted; hand it the text so `run --wait` / the poll can read it.
+    if (abortCtrl.signal.aborted) {
+      const text = interruptedText();
+      appendEntry({ role: 'assistant', content: text, ts: Date.now() });
+      ctx.queue?.recordInterrupt(sessionId, text);
+      finishTurn(text, 0, { status: 'interrupted', error: 'interrupted' });
+      return text;
+    }
     // Keep the cause (ECONNREFUSED, TLS, DNS codes) — the UI prints friendly
     // hints keyed off it, and the plain message alone ("fetch failed") hides it.
     const base = err instanceof Error ? err.message : String(err);
@@ -563,7 +639,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     const fallback = `[agent error] ${message}`;
     appendEntry({ role: 'assistant', content: fallback, ts: Date.now() });
     // The provider may have billed the calls that did happen before the throw.
-    finishTurn(fallback, 0, message);
+    finishTurn(fallback, 0, { error: message });
     return fallback;
   }
 }

@@ -595,6 +595,10 @@ export interface QueuedTurn {
   tier?: 'cloud' | 'local';
   thinkingLevel?: import('../providers/types.js').ThinkingLevel;
   enqueuedAt: number;
+  /** When the runner picked it up (absent while it is still queued). */
+  startedAt?: number;
+  /** When an operator stopped it (absent unless it was interrupted). */
+  interruptedAt?: number;
   status: 'queued' | 'running' | 'done' | 'error' | 'interrupted';
   output?: string;
   error?: string;
@@ -722,6 +726,7 @@ export class SessionQueue {
     if (!q || q.length === 0) return null;
     const primary = q.shift()!;
     primary.status = 'running';
+    primary.startedAt = Date.now();
     this.running.set(sessionId, primary);
     this.abortControllers.set(`${sessionId}:${primary.id}`, new AbortController());
     if (this.mode === 'collect' && q.length > 0) {
@@ -786,6 +791,7 @@ export class SessionQueue {
     if (!turn) return;
     this.abortControllers.set(`${sessionId}:${turnId}`, ctrl);
     turn.status = 'running';
+    turn.startedAt = Date.now();
     this.running.set(sessionId, turn);
     // The turn is no longer waiting: keeping it in the array made
     // getQueueLength() lie for the rest of the process's life.
@@ -801,7 +807,9 @@ export class SessionQueue {
     this.abortControllers.delete(`${sessionId}:${turnId}`);
     const turn = this.running.get(sessionId);
     if (!turn || turn.id !== turnId) return;
-    turn.status = 'done';
+    // A stopped turn keeps its `interrupted` status and whatever text the
+    // runner settled with (the partial answer — 10.3).
+    if (turn.status !== 'interrupted') turn.status = 'done';
     turn.output = output;
     this.running.delete(sessionId);
     this.finish(sessionId, turn);
@@ -847,10 +855,42 @@ export class SessionQueue {
     const ctrl = this.abortControllers.get(`${sessionId}:${turn.id}`);
     if (ctrl) ctrl.abort();
     turn.status = 'interrupted';
-    this.running.delete(sessionId);
-    this.abortControllers.delete(`${sessionId}:${turn.id}`);
-    this.finish(sessionId, turn);
+    turn.interruptedAt = Date.now();
+    // The lane stays busy until the runner actually settles: it keeps whatever
+    // the model had already said, and the next queued turn starts from a clean
+    // transcript (no orphaned work). markDone() preserves the status.
     return true;
+  }
+
+  /**
+   * The runner's last word after an interrupt: attach the text it kept (final
+   * answer + `[interrupted]`) so `termcrab run --wait`, the poll endpoint and
+   * the panel all read the same thing (10.3).
+   */
+  recordInterrupt(sessionId: string, output: string): void {
+    const turn = this.running.get(sessionId);
+    if (!turn || turn.status !== 'interrupted') return;
+    turn.output = output;
+    this.notify(sessionId, turn);
+  }
+
+  /** Every turn currently running, for `POST /api/stop` and the panel. */
+  listRunning(): { sessionId: string; turnId: string; startedAt: number; userMessage: string }[] {
+    return [...this.running.entries()].map(([sessionId, turn]) => ({
+      sessionId,
+      turnId: turn.id,
+      startedAt: turn.startedAt ?? turn.enqueuedAt,
+      userMessage: turn.userMessage.slice(0, 200),
+    }));
+  }
+
+  /** Stop every running turn (one tap on the panel, `termcrab stop`). */
+  stopAll(): { sessionId: string; turnId: string }[] {
+    const stopped: { sessionId: string; turnId: string }[] = [];
+    for (const { sessionId, turnId } of this.listRunning()) {
+      if (this.interrupt(sessionId)) stopped.push({ sessionId, turnId });
+    }
+    return stopped;
   }
 
   /** Get turn by id across running, queued, and recently completed turns. */
@@ -870,8 +910,14 @@ export class SessionQueue {
    */
   stats(): { sessions: number; running: number; waiting: number } {
     let waiting = 0;
-    for (const q of this.queues.values()) waiting += q.length;
-    return { sessions: this.queues.size, running: this.running.size, waiting };
+    const busy = new Set<string>(this.running.keys());
+    for (const [sessionId, q] of this.queues.entries()) {
+      waiting += q.length;
+      if (q.length) busy.add(sessionId);
+    }
+    // Only sessions with work count: an idle session that queued something an
+    // hour ago is not busy, so "N waiting" never lies (10.3).
+    return { sessions: busy.size, running: this.running.size, waiting };
   }
 
   /** How many messages are waiting for the session (the run in flight is not waiting). */

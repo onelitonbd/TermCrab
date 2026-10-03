@@ -1,6 +1,6 @@
 {
   "name": "termcrab",
-  "version": "0.36.0",
+  "version": "0.42.0",
   "description": "TermCrab - the always-on AI agent that lives in your Termux. Gateway, channels, skills, memory. Zero native dependencies.",
   "type": "module",
   "license": "MIT",
@@ -41,7 +41,8 @@
     "build:test": "tsc -p tsconfig.test.json && node scripts/copy-assets.mjs",
     "test": "npm run build:test && node --test --test-timeout=60000 dist/test/*.test.js",
     "start": "node dist/src/bin/termcrab.js",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

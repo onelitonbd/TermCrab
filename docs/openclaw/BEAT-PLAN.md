@@ -36,15 +36,15 @@
 
 | # | যা | OpenClaw | TermCrab | জয়ের বাক্য | Effort | প্রমাণ |
 |---|---|---|---|---|---|---|
-| T0.1 | Config hot-reload | watch + validate + apply (`/gateway/configuration`) | fs.watch + merge + provider re-resolve; **validation নেই** | "বদলটা আগে যাচাই, তারপর 적용 — ভাঙা কনফিগ কখনো চলমান এজেন্টকে ফেলে দেয় না" | 0.5d | test: invalid JSON → config unchanged + warn |
-| T0.2 | Run identity + wait | run ids in protocol (`/gateway/protocol`) | RUN ID আছে, `--wait` নেই | "স্ক্রিপ্ট এজেন্টকে অপেক্ষা করাতে পারে: `termcrab run --wait <id>`" | 1d | test: wait returns the run's output/exit |
-| T0.3 | Abort/stop | operator abort (`/gateway`) | abort কনট্রোলার আছে, বাইরে থেকে থামানোর পথ নেই | "ফোন থেকে একটা ট্যাপে চলমান কাজ থামে" | 1d | test: stop mid-run → `[interrupted]` |
-| T0.4 | Progress drafts | streaming events | `thinking:delta` আছে, partial answer নেই | "এজেন্ট ভাবতে ভাবতে খসড়া দেখায়, চুপ করে থাকে না" | 1d | test: ≥2 partial events before the final text |
-| T0.5 | Skill precedence | override order documented | override order implicit | "কোন skill জিতবে সেটা লেখা আর টেস্ট করা" | 0.5d | test: user skill overrides bundled one |
-| T0.6 | Disk budget + pruning | state layout/backups pages | কোনো বাজেট নেই | "ফোনের স্টোরেজ শেষ হয়ে এজেন্ট থামবে না — বাজেট ছাড়ালে নিজে ছাঁটে" | 1d | test: prune keeps last N days, prints freed bytes |
-| T0.7 | Release discipline | CalVer + release notes + validation | CHANGELOG আছে, tag/notes স্ক্রিপ্ট নেই | "প্রতিটা রিলিজ নাম্বারযুক্ত আর তার নোট আগে থেকে লেখা" | 0.5d | script: `npm run release -- minor` → tag + notes |
+| T0.1 | Config hot-reload ✔ | watch + validate + apply (`/gateway/configuration`) | fs.watch + merge + provider re-resolve; **validation নেই** | "বদলটা আগে যাচাই, তারপর 적용 — ভাঙা কনফিগ কখনো চলমান এজেন্টকে ফেলে দেয় না" | 0.5d | test: invalid JSON → config unchanged + warn |
+| T0.2 | Run identity + wait ✔ | run ids in protocol (`/gateway/protocol`) | RUN ID আছে, `--wait` নেই | "স্ক্রিপ্ট এজেন্টকে অপেক্ষা করাতে পারে: `termcrab run --wait <id>`" | 1d | test: wait returns the run's output/exit |
+| T0.3 | Abort/stop ✔ | operator abort (`/gateway`) | abort কনট্রোলার আছে, বাইরে থেকে থামানোর পথ নেই | "ফোন থেকে একটা ট্যাপে চলমান কাজ থামে" | 1d | test: stop mid-run → `[interrupted]` |
+| T0.4 | Progress drafts ✔ | streaming events | `thinking:delta` আছে, partial answer নেই | "এজেন্ট ভাবতে ভাবতে খসড়া দেখায়, চুপ করে থাকে না" | 1d | test: ≥2 partial events before the final text |
+| T0.5 | Skill precedence ✔ | override order documented | override order implicit | "কোন skill জিতবে সেটা লেখা আর টেস্ট করা" | 0.5d | test: user skill overrides bundled one |
+| T0.6 | Disk budget + pruning ✔ | state layout/backups pages | কোনো বাজেট নেই | "ফোনের স্টোরেজ শেষ হয়ে এজেন্ট থামবে না — বাজেট ছাড়ালে নিজে ছাঁটে" | 1d | test: prune keeps last N days, prints freed bytes |
+| T0.7 | Release discipline ✔ | CalVer + release notes + validation | CHANGELOG আছে, tag/notes স্ক্রিপ্ট নেই | "প্রতিটা রিলিজ নাম্বারযুক্ত আর তার নোট আগে থেকে লেখা" | 0.5d | script: `npm run release -- minor` → tag + notes |
 
-**সাব-টোটাল: ~৫.৫ দিনে ৭টা সারি WORKING/BETTER।**
+**সাব-টোটাল: ~৫.৫ দিনে ৭টা সারি WORKING/BETTER — সাতটাই শেষ (batch 10, ২০২৬-১০-০৩)।** এখন census-এ ওই সাতটা সারির কটা WORKING: ১০.১ config hot-reload, ১০.২ run wait, ১০.৩ stop, ১০.৪ drafts, ১০.৫ skill precedence, ১০.৬ disk budget, ১০.৭ release discipline — প্রতিটার প্রমাণ `test/tier0.test.ts`।
 
 ### Tier 1 — দিন থেকে সপ্তাহ (এগুলো জয় না — এগুলো না করলে ওরা আমাদের হারায়)
 
@@ -105,7 +105,7 @@
 | Phase | কত দিন | কী | কোন সারি বদলায় |
 |---|---|---|---|
 | **A** | ~২ সপ্তাহ | batch 5 (কিউ) ✔ — BROKEN **7→4**, drift 0 (২০২৬-১০-০৩) + Tier 0-র ৭টা ছোট ফ্লিপ | BROKEN ≤4 · WORKING +7 |
-| **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals · 7 ✔ স্মৃতি · 8 ✔ write fencing · 9 ✔ usage (সব ২০২৬-১০-০৩) | **BROKEN 0**, core lane ~৪ দিন বাকি (শুধু Tier-0 polish) |
+| **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals · 7 ✔ স্মৃতি · 8 ✔ write fencing · 9 ✔ usage · **10 ✔ Tier-0 sweep (৭/৭)** — সব ২০২৬-১০-০৩ | **BROKEN 0**, core lane ~৪ দিন বাকি (model-written compaction ~৩ দিন + docs সারি ~১ দিন — batch 11) |
 | **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোত-দাবির টেস্ট + মাপা সংখ্যা (T3.1–T3.4) | BETTER 14 → ~22, দাবিগুলো প্রমাণিত |
 | **D** | ~৩ সপ্তাহ | Tier 0-র বাকি + যেসব PARTIAL ফ্লিপ করা সস্তা (চ্যানেল: Discord/Slack/Signal/SMS/Matrix ~২দিন করে) | BETTER ~25, PARTIAL কমতে থাকে |
 

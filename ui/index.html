@@ -504,6 +504,16 @@
   .tpChk { flex-shrink: 0; color: #d9456f; display: inline-flex; }
   .tpList { max-height: min(52vh, 420px); overflow-y: auto; }
 
+  /* ---- progress drafts (10.4): the bubble says it is still a draft ---- */
+  .msg.drafting .textBody::after {
+    content: '✍️ draft';
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--mut);
+    vertical-align: baseline;
+  }
+
   /* ---- stop / max-iterations notice ---- */
   .warn {
     display: flex;
@@ -2968,6 +2978,10 @@
     thinkCaps: null,
     thinkStartTime: null,
     thinkInterval: null,
+    /** A stop was already asked for (one tap must not send five requests). */
+    stopSent: false,
+    /** Config-file problems the panel was told about (they are never silent). */
+    configProblems: [],
   };
   const currentSession = () => $('session').value || 'web:main';
 
@@ -4282,6 +4296,19 @@
         || rows.find((r) => r.querySelector('.d.pending'));
       if (row) markToolLine(row, ev.ok !== false, ev.result || ev.preview || '');
     });
+    es.addEventListener('draft', (e) => {
+      // A partial answer while the turn is still running (10.4). It replaces
+      // the bubble text (the next delta keeps appending to it), and the bubble
+      // is marked as a draft until the final answer arrives.
+      let ev;
+      try { ev = JSON.parse(e.data); } catch { return; }
+      if (ev.sessionId && ev.sessionId !== currentSession()) return;
+      if (state.pollDone) return;
+      if (!state.live || !log.contains(state.live)) { state.live = addMsg('bot', ''); state.liveRaw = ''; }
+      state.liveRaw = ev.text || state.liveRaw;
+      setLiveMarkdown(state.liveRaw);
+      if (state.live) state.live.classList.add('drafting');
+    });
     es.addEventListener('delta', (e) => {
       if (state.pollDone) return;
       stopThinkingTimer();
@@ -4568,6 +4595,44 @@
     refreshProgressCard();
   }
 
+  /** Paint the live bubble (creating the text body if needed). Shared by the
+   *  send path, streamed deltas and progress drafts so all three agree. */
+  function setLiveMarkdown(textStr, isErr) {
+    if (!state.live) return;
+    const think = state.live.querySelector('.think');
+    if (think) think.remove();
+    state.live.classList.remove('drafting');
+    let tb = state.live.querySelector('.textBody');
+    if (!tb) {
+      tb = document.createElement('div');
+      tb.className = 'textBody';
+      state.live.appendChild(tb);
+    }
+    if (isErr) state.live.classList.add('err');
+    tb.innerHTML = renderMarkdown(textStr);
+  }
+
+  /**
+   * Stop the running turn for real (10.3): the server aborts the model call,
+   * keeps the partial answer, and the lane is free for the next message. The
+   * client keeps polling, so the partial text lands in the same bubble.
+   */
+  async function stopRun() {
+    if (state.stopSent) return;
+    state.stopSent = true;
+    try {
+      await api('/api/stop', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSession() }),
+      });
+      addMsg('sys', 'Stopping…');
+    } catch (err) {
+      state.stopSent = false;
+      showComposerError(err.message || 'could not stop the run');
+    }
+  }
+
   async function send() {
     const text = $('input').value.trim();
     if (!text) return;
@@ -4605,19 +4670,6 @@
         // Poll the turn-status endpoint until the reply is ready.
         // (POST /api/chat returns 202 immediately — the reply is generated
         // in the background, so we wait for it here.)
-        const setLiveMarkdown = (textStr, isErr) => {
-          if (!state.live) return;
-          const think = state.live.querySelector('.think');
-          if (think) think.remove();
-          let tb = state.live.querySelector('.textBody');
-          if (!tb) {
-            tb = document.createElement('div');
-            tb.className = 'textBody';
-            state.live.appendChild(tb);
-          }
-          if (isErr) state.live.classList.add('err');
-          tb.innerHTML = renderMarkdown(textStr);
-        };
         const deadline = Date.now() + 120000; // 2 min max
         while (Date.now() < deadline) {
           if (state.abort && state.abort.signal.aborted) break;
@@ -4638,6 +4690,16 @@
               state.pollDone = true;
               state.liveRaw = t.error || 'Crabby got no text back from the model. Try again, or switch models in Providers.';
               setLiveMarkdown(state.liveRaw, true);
+              break;
+            }
+            if (t.status === 'interrupted') {
+              // Stopped from outside (this panel's stop button, the CLI, the
+              // API). Whatever was written is kept — the marker is stripped
+              // from the bubble and shown as a plain notice (10.3).
+              state.pollDone = true;
+              state.liveRaw = (t.output || '').replace(/\n*\[interrupted\][^\n]*$/i, '').trim();
+              setLiveMarkdown(state.liveRaw || 'Stopped before any text was written.');
+              addMsg('sys', 'Stopped — nothing else will run for this turn.');
               break;
             }
           } catch { /* transient poll failure — keep trying */ }
@@ -4687,6 +4749,7 @@
       state.liveRaw = '';
       state.abort = null;
       state.busy = false;
+      state.stopSent = false;
       setQueueWait(0);
       document.body.classList.remove('busy');
       setSendMode(false);
@@ -4897,7 +4960,14 @@
     }
   }
 
-  $('send').onclick = () => { const txt = $('input').value.trim(); if (txt) send(); else if (state.busy && state.abort) state.abort.abort(); };
+  $('send').onclick = () => {
+    const txt = $('input').value.trim();
+    if (txt) send();
+    // Empty box + busy = stop. It asks the server to stop, so the model call
+    // ends too and the partial answer is kept (10.3) — aborting only the
+    // browser's fetch would leave the turn running in the panel.
+    else if (state.busy) stopRun();
+  };
   $('input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
@@ -6827,12 +6897,32 @@
   function updateStatusBand() {
     const band = $('statusBand');
     if (!band) return;
+    const bad = state.configProblems || [];
+    if (bad.length) {
+      // A refused config edit is the most important thing on this screen: the
+      // agent is running on the settings it already had (10.1).
+      band.style.display = 'flex';
+      band.textContent =
+        'Your config file is being ignored (' + bad.length + ' problem' + (bad.length === 1 ? '' : 's') + '): ' +
+        bad[0].path + ' — ' + bad[0].message;
+      band.title = bad.map((p) => p.path + ': ' + p.message).join('\n');
+      return;
+    }
     if (!navigator.onLine) {
       band.style.display = 'flex';
       band.textContent = 'Offline — messages will be queued';
     } else {
       band.style.display = 'none';
     }
+  }
+
+  // Ask the panel what it thinks of the config file on disk (10.1).
+  async function refreshConfigProblems() {
+    try {
+      const d = await api('/api/config');
+      state.configProblems = (d.configProblems || []).filter((p) => p.severity === 'error');
+    } catch { /* the panel will tell us another way */ }
+    updateStatusBand();
   }
 
   // ---- Composer progress + error ----
@@ -7100,6 +7190,7 @@ async function bootstrap() {
       loadSlashCommands();
       restoreDraft();
       updateStatusBand();
+      refreshConfigProblems();
       refreshTaskCards();
       refreshProgressCard();
       refreshCanvas();
