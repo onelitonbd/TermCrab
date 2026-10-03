@@ -114,6 +114,12 @@ export interface Config {
     allowCodeExec: boolean;
     /** Multi-agent isolation: shared (default) | isolated (separate memory/skills per agent). */
     isolation: 'shared' | 'isolated';
+    /**
+     * How many read-only tool calls from one model turn may run at once
+     * (27.1). 1 turns batching off entirely; a mutating or approval-gated
+     * tool is never batched whatever this says. Default 4.
+     */
+    parallelTools?: number;
   };
   /**
    * Human-in-the-loop safety. `approvals` gates the named tools in the agent
@@ -261,7 +267,7 @@ export function defaults(): Config {
     providers: [],
     media: { imageModel: '', size: '1024x1024' },
     gateway: { host: '127.0.0.1', port: 7788, token: '' },
-    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000 },
+    agent: { name: 'Crabby', allowExec: true, maxIterations: 8, timezone: '', compactThreshold: 60, failover: true, queueMode: 'followup', allowBrowser: false, allowCodeExec: false, isolation: 'shared', memoryBudget: 3000, parallelTools: 4 },
     fallbackProviders: [],
     mcpServers: [],
     hooks: [],
@@ -565,6 +571,7 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'allowBrowser',
       'allowCodeExec',
       'isolation',
+      'parallelTools',
     ]),
   );
   if (agent) {
@@ -577,6 +584,7 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     numIn(agent, 'agent.', 'maxIterations', 1, 100, true);
     numIn(agent, 'agent.', 'compactThreshold', 5, 10_000, true);
     numIn(agent, 'agent.', 'memoryBudget', 0, 1_000_000, true);
+    numIn(agent, 'agent.', 'parallelTools', 1, 8);
     numIn(agent, 'agent.', 'execTimeoutSec', 1, 3600);
     bool(agent, 'agent.', 'execAllowDangerous');
     strArr(agent, 'agent.', 'execDenyPatterns');

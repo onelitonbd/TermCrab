@@ -64,6 +64,12 @@ export interface AgentCtx {
   queue?: SessionQueue;
   /** MCP clients keyed by server name. */
   mcpClients?: Map<string, import('../providers/mcp.js').McpClient>;
+  /**
+   * Extra tools appended after the built-ins. The loop's own tests use it to
+   * pin batching and approval behaviour without shipping those tools, and a
+   * caller that assembled tools itself (an embedded run) can pass them here.
+   */
+  tools?: Tool[];
 }
 
 export interface RunOpts {
@@ -326,7 +332,7 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         prompt,
       }),
   };
-  const tools = await buildTools(toolEnv);
+  const tools = [...(await buildTools(toolEnv)), ...(ctx.tools ?? [])];
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));
   const engine = contextEngine(ctx.config.agent.contextEngine);
   const system = buildSystemPrompt({
@@ -505,29 +511,101 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
         // not the answer (10.4).
         if (result.text) emitDraft(result.text);
 
-        for (const call of result.toolCalls) {
-          emit({ type: 'tool:start', name: call.name, args: call.args, toolCallId: call.id, sessionId });
-          // Repetition detector: same tool + same args over and over.
-          // 6th time → warn the AI. 8th time → stop the turn.
+        // ---- Tool calls (27.1) -------------------------------------------
+        // The model may ask for several tools in one turn. Read-only tools run
+        // as one bounded batch; anything that can change something (or needs a
+        // human) is executed alone, in the order the model asked for. Results
+        // are always written to the transcript in that order, because that is
+        // what the provider expects and what the model reads back.
+        const batchLimit = Math.max(1, Math.min(8, Math.round(ctx.config.agent?.parallelTools ?? 4)));
+        const state = { lastCallKey, repeatCount };
+
+        /** The repetition rule (unchanged): 6th warns, 8th stops the turn. */
+        const repetitionStop = (call: { name: string; args: Record<string, unknown> }): string | null => {
           const key = call.name + ':' + JSON.stringify(call.args || {});
-          if (key === lastCallKey) repeatCount++;
-          else { repeatCount = 1; lastCallKey = key; }
-          if (repeatCount === 6) {
+          if (key === state.lastCallKey) state.repeatCount++;
+          else { state.repeatCount = 1; state.lastCallKey = key; }
+          if (state.repeatCount === 6) {
             appendEntry({
               role: 'system',
-              content: `You have called ${call.name} with the exact same arguments ${repeatCount} times. Stop repeating. Give a final answer or try a different approach.`,
+              content: `You have called ${call.name} with the exact same arguments ${state.repeatCount} times. Stop repeating. Give a final answer or try a different approach.`,
               ts: Date.now(),
             });
           }
-          if (repeatCount >= 8) {
-            finalText = `[stopped] You repeated ${call.name} with the same arguments ${repeatCount} times.`;
+          if (state.repeatCount >= 8) {
+            return `[stopped] You repeated ${call.name} with the same arguments ${state.repeatCount} times.`;
+          }
+          return null;
+        };
+
+        interface BatchOut { call: { id: string; name: string; args: Record<string, unknown> }; output: string; ok: boolean }
+
+        /** Run a batch of read-only calls at once; results come back in order. */
+        const runBatch = async (calls: BatchOut['call'][]): Promise<BatchOut[]> => {
+          for (const call of calls) emit({ type: 'tool:start', name: call.name, args: call.args, toolCallId: call.id, sessionId });
+          const started = Date.now();
+          const outs = await Promise.all(
+            calls.map(async (call): Promise<BatchOut> => {
+              const tool = toolMap.get(call.name);
+              const span = addSpan(runId, `tool:${call.name}`, { args: call.args, parallel: true });
+              const toolStart = Date.now();
+              try {
+                if (!tool) throw new Error(`unknown tool: ${call.name}`);
+                const output = await tool.execute(call.args);
+                if (span) endSpan(runId, span.id);
+                addToolCall(runId, call.name, Date.now() - toolStart, true);
+                emit({ type: 'tool:end', name: call.name, ok: true, preview: output.slice(0, 200), result: output, toolCallId: call.id, sessionId });
+                return { call, output, ok: true };
+              } catch (err) {
+                const output = err instanceof Error ? err.message : String(err);
+                if (span) endSpan(runId, span.id);
+                addToolCall(runId, call.name, Date.now() - toolStart, false);
+                emit({ type: 'tool:end', name: call.name, ok: false, preview: output.slice(0, 200), result: output, toolCallId: call.id, sessionId });
+                return { call, output, ok: false };
+              }
+            }),
+          );
+          if (calls.length > 1) {
+            log.debug(`[batch] ${calls.length} read-only tools in ${Date.now() - started}ms (${calls.map((c) => c.name).join(', ')})`);
+          }
+          // Transcript order = the model's order, not the finishing order.
+          for (const out of outs) {
+            appendEntry({ role: 'tool', toolCallId: out.call.id, name: out.call.name, result: out.output, ts: Date.now() });
+          }
+          return outs;
+        };
+
+        let pending: BatchOut['call'][] = [];
+        const flush = async (): Promise<void> => {
+          if (!pending.length) return;
+          const batch = pending;
+          pending = [];
+          await runBatch(batch);
+        };
+
+        for (const call of result.toolCalls) {
+          const stopped = repetitionStop(call);
+          if (stopped) {
+            // Earlier calls in this turn still ran: finish what was queued.
+            await flush();
+            finalText = stopped;
             appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
             finishTurn(finalText, i);
             return finalText;
           }
+
+          const tool = toolMap.get(call.name);
+          const canBatch = batchLimit > 1 && tool?.parallelSafe === true && !needsApproval(ctx.config, call.name);
+          if (canBatch) {
+            pending.push(call);
+            if (pending.length >= batchLimit) await flush();
+            continue;
+          }
+          await flush();
+
+          emit({ type: 'tool:start', name: call.name, args: call.args, toolCallId: call.id, sessionId });
           let output: string;
           let ok = true;
-          const tool = toolMap.get(call.name);
           const toolStart = Date.now();
           const span = addSpan(runId, `tool:${call.name}`, { args: call.args });
           try {
@@ -591,6 +669,11 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
             ts: Date.now(),
           });
         }
+        await flush();
+        // Keep the repetition detector's memory across turns (it was file-scope
+        // before this restructure).
+        lastCallKey = state.lastCallKey;
+        repeatCount = state.repeatCount;
         continue;
       }
 

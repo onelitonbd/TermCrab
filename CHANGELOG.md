@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.58.0 - 2026-10-03
+
+- **Tools from one turn now run together — when that is safe.** Until now a model that asked for three tools in one turn got them one after another: three 120 ms reads took 360 ms. Consecutive read-only calls now run as one bounded batch (`Promise.all`, `agent.parallelTools`, default 4 — set it to 1 to turn batching off entirely), and results are written to the transcript in the order the model asked for them, not the order they finished. `tool:start`/`tool:end` keep their per-call ids and spans, so the panel and `termcrab runs` see each tool normally.
+- **And when it is not safe, nothing changes.** Only tools that cannot change anything are batched: one auditable table of 19 read-only names (`PARALLEL_SAFE_TOOLS`: `get_time`, `list_dir`, `read_file`, `view_image`, `web_search`, `web_fetch`, `search_memory`, `load_skill`, the `sessions_*` reads, `conversations_list`, `inbox_list`/`inbox_read`, `battery`, `wifi_info`, `location`, `github_identity_status`). Anything that writes, executes, sends or needs a human's approval flushes the batch and runs alone — two mutations in one batch have no defined order, and the model did not give one. A tool that fails is that tool's result, not a cancelled batch.
+- Census: **80% → 81%** of 132 in-scope checks (WORKING 76 → 77, ABSENT 8 → 7), effort left ~201 developer-days, drift 0.
+- Tests: **5 new cases** in `test/tier2o.test.ts` — three 120 ms read-only tools really overlap (the batch finishes in under 320 ms, and all three are in flight at once), a mutating tool waits for the batch and the next read waits for it (peak concurrency 1), one failing tool leaves the others' results intact, `agent.parallelTools: 1` is strictly serial, and the safety table is checked for shape (`exec`, `write_file` and `send_file` must never appear in it).
+
 ## 0.57.0 - 2026-10-03
 
 - **A standing order is a sentence the agent always follows.** `termcrab orders add "always answer in Bengali"` (with `list`, `remove <id>` and `--json`), the chat command `/orders [add|remove]`, the panel's command palette (`/orders` is in `GET /api/slash`) and the agent's own `intent` tool all read and write one store, `state/intents.json`, and the system prompt injects them as `# Standing orders` into every turn. The precedence is written into the prompt itself: standing orders outrank long-term memory and workspace notes, and never override the safety rules. Adding or removing one changes the next turn immediately.

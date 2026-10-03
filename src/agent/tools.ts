@@ -48,6 +48,14 @@ export interface ToolEnv {
 export interface Tool {
   def: ToolDef;
   execute(args: Record<string, unknown>): Promise<string>;
+  /**
+   * True only for tools that cannot change anything: no writes, no shell, no
+   * messages, no approvals. The loop may run several of these at once when a
+   * model asks for them in one turn (27.1). Everything else stays sequential,
+   * because "two mutations in a batch" has no defined order — and the model
+   * did not give one.
+   */
+  parallelSafe?: boolean;
 }
 
 const MAX_OUTPUT = 20_000;
@@ -189,6 +197,20 @@ export function htmlToText(html: string): string {
     .replace(/\n{3,}/g, '\n\n');
   return text;
 }
+
+/**
+ * Tools whose only effect is reading (27.1). Kept as one table so the decision
+ * is auditable in a single place; the tests check that every name here really
+ * exists, so a rename cannot silently disable batching.
+ */
+export const PARALLEL_SAFE_TOOLS: readonly string[] = [
+  'get_time', 'list_dir', 'read_file', 'view_image',
+  'web_search', 'web_fetch',
+  'search_memory', 'load_skill',
+  'sessions_list', 'sessions_history', 'sessions_search', 'session_status',
+  'conversations_list', 'inbox_list', 'inbox_read',
+  'battery', 'wifi_info', 'location', 'github_identity_status',
+] as const;
 
 export async function buildTools(env: ToolEnv): Promise<Tool[]> {
   const roots = [home(), process.cwd(), ...(env.extraRoots ?? [])];
@@ -600,6 +622,10 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
 
   // 22.2: every tool's declared schema is enforced at the boundary, once, for
   // every caller — a malformed argument comes back as a sentence, not a crash.
+  // One audit point, after every family has pushed its tools.
+  const safe = new Set(PARALLEL_SAFE_TOOLS);
+  for (const t of tools) if (safe.has(t.def.name)) t.parallelSafe = true;
+
   return tools.map((tool) => guardToolExecute(tool));
 }
 

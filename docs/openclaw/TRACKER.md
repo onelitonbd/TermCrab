@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৮০%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৬টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৪টা আধা (PARTIAL), ৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৫৮ দিন, later ~৪৬ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৮১%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৭টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৪টা আধা (PARTIAL), ৭টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৫৫ দিন, later ~৪৬ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 76 | wired and observable |
+| ✅ WORKING | 77 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 34 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 8 | nothing in the tree |
+| ⚪ ABSENT | 7 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 80%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 81%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,13 +86,13 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~158d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~155d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~46d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~204d | in-scope only |
+| **total** | 132 | ~201d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
-### agent — 87% (16 in-scope checks)
+### agent — 93% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -101,7 +101,7 @@ Out of scope, and why:
 | Per-session run serialization | session lanes + writer claims | ✅ WORKING | src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving inside the process, and the cross-process guarantee is the writer claim (SessionStore.claim) pinned by test/writer-fence.test.ts | core | — |
 | Queue modes steer/followup/collect/interrupt | 4 modes + debounce + cap | ✅ WORKING | all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6 | core | — |
 | Run identity + terminal wait | runId + agent.wait replay | ✅ WORKING | one id per run (the queue turn id IS the trace id, server.ts runner) + GET /api/runs/:id returns status/output/error/tokens; `termcrab run --wait <id>` exits 0 done / 1 failed / 124 timeout / 130 stopped. test/tier0.test.ts 10.2 | parity | — |
-| Parallel tool batches | launched together, results merged | ⚪ ABSENT | loop.ts:245 is a sequential for-await | parity | 3 |
+| Parallel tool batches | launched together, results merged | ✅ WORKING | src/agent/loop.ts runs consecutive read-only calls from one model turn as a bounded batch (Promise.all, agent.parallelTools default 4, 1 = off); a mutating or approval-gated call flushes the batch and runs alone, so ordering is never guessed; transcript entries are written in the model order and tool:start/tool:end keep their per-call ids; one tool failing is that tool result, not a cancelled batch. Safety is opt-in: only the 19 names in PARALLEL_SAFE_TOOLS (src/agent/tools.ts) are batched, and every name there is checked against the live toolbox. Pinned by test/tier2o.test.ts (overlap, ordering, failure isolation, the knob, the table shape) | parity | — |
 | Loop budget + idle watchdog | 172800s budget, 120s/300s idle, overflow recovery | 🟡 PARTIAL | PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197) | parity | 3 |
 | Repetition / loop detection | repeated-call guards | ✅ WORKING | src/agent/loop.ts:249-264 repetition detector | parity | — |
 | Model failover chain | ordered chain + cooldowns + auth profiles | ✅ WORKING | resolveProviderChain + cooldowns (src/providers/index.ts) | parity | 1 |

@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T17:47:10.953Z",
+ "measured": "2026-10-03T18:01:26.802Z",
  "tally": {
-  "WORKING": 76,
+  "WORKING": 77,
   "BETTER": 14,
   "PARTIAL": 34,
   "BROKEN": 0,
-  "ABSENT": 8
+  "ABSENT": 7
  },
- "coverage": 80,
+ "coverage": 81,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 204,
+ "effortLeft": 201,
  "areas": [
   "agent",
   "automation",
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:306"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:312"
    }
   },
   {
@@ -220,7 +220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:535, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:598, src/core/approvals.ts:135"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:382, src/cli.ts:1048, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:388, src/cli.ts:1048, src/command-help.ts:168"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:238"
+    "detail": "6 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:29, src/cli.ts:238"
    }
   },
   {
@@ -439,19 +439,20 @@
    "area": "agent",
    "capability": "Parallel tool batches",
    "openclaw": "launched together, results merged",
-   "verdict": "ABSENT",
-   "evidence": "loop.ts:245 is a sequential for-await",
+   "verdict": "WORKING",
+   "evidence": "src/agent/loop.ts runs consecutive read-only calls from one model turn as a bounded batch (Promise.all, agent.parallelTools default 4, 1 = off); a mutating or approval-gated call flushes the batch and runs alone, so ordering is never guessed; transcript entries are written in the model order and tool:start/tool:end keep their per-call ids; one tool failing is that tool result, not a cancelled batch. Safety is opt-in: only the 19 names in PARALLEL_SAFE_TOOLS (src/agent/tools.ts) are batched, and every name there is checked against the live toolbox. Pinned by test/tier2o.test.ts (overlap, ordering, failure isolation, the knob, the table shape)",
    "probe": {
-    "pattern": "Promise.all\\(.*execute",
-    "expect": "absent"
+    "file": "src/agent/loop.ts",
+    "pattern": {},
+    "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/loop.ts:547"
    }
   },
   {
@@ -470,7 +471,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:91"
+    "detail": "2 match(es): src/agent/loop.ts:97"
    }
   },
   {
@@ -489,7 +490,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:342"
+    "detail": "5 match(es): src/agent/loop.ts:348"
    }
   },
   {
@@ -546,7 +547,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:452, src/agent/sessions.ts:1183"
+    "detail": "2 match(es): src/agent/loop.ts:458, src/agent/sessions.ts:1183"
    }
   },
   {
@@ -759,7 +760,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:757"
+    "detail": "2 match(es): src/agent/toolbox.ts:757, src/agent/tools.ts:210"
    }
   },
   {
@@ -836,7 +837,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:298, src/agent/sessions.ts:837, src/cli.ts:2008"
+    "detail": "4 match(es): src/agent/loop.ts:304, src/agent/sessions.ts:837, src/cli.ts:2007"
    }
   },
   {
@@ -994,7 +995,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:372, src/cli.ts:1946"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:394, src/cli.ts:1945"
    }
   },
   {
@@ -1013,7 +1014,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:228"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:234"
    }
   },
   {
@@ -1090,7 +1091,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:662"
+    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:662, src/agent/tools.ts:211"
    }
   },
   {
@@ -1109,7 +1110,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:70"
+    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:70, src/agent/tools.ts:208"
    }
   },
   {
@@ -1128,7 +1129,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:496"
+    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:518"
    }
   },
   {
@@ -1147,7 +1148,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/tools.ts:557"
+    "detail": "1 match(es): src/agent/tools.ts:579"
    }
   },
   {
@@ -1185,7 +1186,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "62 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "63 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -1307,7 +1308,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/prompt.ts:249, src/agent/tools.ts:325"
+    "detail": "3 match(es): src/agent/prompt.ts:249, src/agent/tools.ts:209"
    }
   },
   {
@@ -1670,7 +1671,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:158"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:164"
    }
   },
   {
@@ -1919,7 +1920,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "99 match(es): src/agent/loop.ts:209, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "99 match(es): src/agent/loop.ts:215, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1938,7 +1939,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:193"
+    "detail": "85 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:199"
    }
   },
   {
@@ -2112,7 +2113,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "81 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:235"
+    "detail": "80 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:235"
    }
   },
   {
@@ -2207,7 +2208,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "65 match(es): src/agent/loop.ts:209, src/cli.ts:39, src/command-help.ts:224"
+    "detail": "65 match(es): src/agent/loop.ts:215, src/cli.ts:39, src/command-help.ts:224"
    }
   },
   {
@@ -2456,7 +2457,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "700 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "701 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2589,7 +2590,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "62 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "63 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -2866,7 +2867,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "75 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "76 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

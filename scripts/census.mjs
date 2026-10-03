@@ -175,8 +175,9 @@ check('agent', 'Queue modes steer/followup/collect/interrupt', '4 modes + deboun
 check('agent', 'Run identity + terminal wait', 'runId + agent.wait replay', 'WORKING',
   'one id per run (the queue turn id IS the trace id, server.ts runner) + GET /api/runs/:id returns status/output/error/tokens; `termcrab run --wait <id>` exits 0 done / 1 failed / 124 timeout / 130 stopped. test/tier0.test.ts 10.2',
   { pattern: '/api/runs/', expect: 'present' }, 0);
-check('agent', 'Parallel tool batches', 'launched together, results merged', 'ABSENT',
-  'loop.ts:245 is a sequential for-await', { pattern: 'Promise.all\\(.*execute', expect: 'absent' }, 3);
+check('agent', 'Parallel tool batches', 'launched together, results merged', 'WORKING',
+  'src/agent/loop.ts runs consecutive read-only calls from one model turn as a bounded batch (Promise.all, agent.parallelTools default 4, 1 = off); a mutating or approval-gated call flushes the batch and runs alone, so ordering is never guessed; transcript entries are written in the model order and tool:start/tool:end keep their per-call ids; one tool failing is that tool result, not a cancelled batch. Safety is opt-in: only the 19 names in PARALLEL_SAFE_TOOLS (src/agent/tools.ts) are batched, and every name there is checked against the live toolbox. Pinned by test/tier2o.test.ts (overlap, ordering, failure isolation, the knob, the table shape)',
+  { file: 'src/agent/loop.ts', pattern: /Promise\.all\(/, expect: 'present' }, 0);
 check('agent', 'Loop budget + idle watchdog', '172800s budget, 120s/300s idle, overflow recovery', 'PARTIAL',
   'PROVIDER_TIMEOUT_MS 180s whole-request (loop.ts:53) + maxIter 1000 (loop.ts:197)', { pattern: 'PROVIDER_TIMEOUT_MS', expect: 'present' }, 3);
 check('agent', 'Repetition / loop detection', 'repeated-call guards', 'WORKING',
