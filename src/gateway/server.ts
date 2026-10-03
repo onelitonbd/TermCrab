@@ -18,7 +18,7 @@ import {
   uiDir,
   workspaceDir,
 } from '../core/paths.js';
-import { AgentCtx, runTurn, providerLabel } from '../agent/loop.js';
+import { AgentCtx, runQueuedTurn, runTurn, providerLabel } from '../agent/loop.js';
 import { buildTools } from '../agent/tools.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
@@ -368,6 +368,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   agentQueue.setMode(config.agent.queueMode || 'followup');
   agentQueue.setRunner(async (turn, signal) => {
     return await runTurn(agent, {
+      owner: turn.channel ?? 'gateway',
       sessionId: turn.sessionId,
       userMessage: turn.userMessage,
       channel: turn.channel,
@@ -395,7 +396,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   // ---- Wake loop (voice or typed), visible to the panel over SSE ----
   const wake = new WakeService({
     onCommand: async (text: string) => {
-      const reply = await runTurn(agent, {
+      const reply = await runQueuedTurn(agent, {
         sessionId: 'wake:main',
         userMessage: text,
         channel: 'voice',
@@ -520,7 +521,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
 
     const routed = parseAgentPrefix(text, listAgents());
-    const result = await runTurn(agent, {
+    const result = await runQueuedTurn(agent, {
       sessionId: baseSession,
       userMessage: routed.text,
       channel,
@@ -994,7 +995,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             json(res, 404, { error: 'cron not found' });
             return;
           }
-          const output = await runTurn(agent, {
+          const output = await runQueuedTurn(agent, {
             sessionId: `cron:${job.id}`,
             userMessage: `[manual:${job.name}] ${job.prompt}`,
             channel: 'cron',

@@ -16,49 +16,51 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এইমাত্র শেষ (ব্যাচ ৭):** স্মৃতি আর ভোলে না — `remember()` যা লেখে সেটাই এখন প্রম্পটে ঢোকে (নতুন ফ্যাক্ট আগে, বাইট-বাজেট মেনে, প্রতিটার সোর্স লাইন `MEMORY.md:<লাইন>` সহ, আর ব্লকটাই বলে দেয় কতটা বাদ পড়ল); compaction এখন ইতিহাস **মোছে না** — সারমর্ম লিখে বাকি লাইনগুলো `<session>.archive.jsonl`-এ যায়, `read()` পুরো কথোপকথন ফেরত দেয়, আর মডেল আগের অংশের ডাইজেস্ট পায়।
-- **সংখ্যায়:** ৪৫০টা টেস্ট · ০ ফেল · ~১৯ সেকেন্ড; census **BROKEN ৩ → ১**, drift ০, capability ৪৬% → ৪৭%; core lane-এ বাকি ~১২ দিন (আগে ~১৮)।
-- **পরের কাজ (ব্যাচ ৮):** transcript write fencing — গেটওয়ে আর CLI একই ফাইলে লিখলেও আর মিশবে না। **~৩ দিন।**
+- **এইমাত্র শেষ (ব্যাচ ৮):** এক ট্রান্সক্রিপ্টে এখন এক লেখক — `SessionStore.claim()` টার্ন শুরুর আগেই owner+pid+heartbeat সহ writer lock নেয়; দ্বিতীয় লেখককে নাম ধরে (owner + pid) ফিরিয়ে দেওয়া হয়, মরা প্রসেস বা বাসি heartbeat-এর claim নিজে থেকে উদ্ধার হয়, append এক লাইনে এক O_APPEND লেখা (মাঝপথে kill করলেও বাকি লাইনগুলো পড়া যায়), আর telegram/whatsapp/voice/cron সব এখন একই per-session lane দিয়ে যায় — অর্থাৎ ব্যাচ ৫-এ যেটাকে "শুধু এক প্রসেসের ভিতরে" সীমা বলে ঘোষণা করা হয়েছিল, সেটা আর নেই।
+- **ডকুমেন্টও আর মিথ্যা বলে না:** `docs/ARCHITECTURE.md`-এ যেসব provider ফাইল নেই (`gemini.ts`, `anthropic.ts`, `ollama.ts`) সেগুলো বাদ দেওয়া হয়েছে, আর `test/docs-map.test.ts` এখন ফেল করে যদি ARCHITECTURE.md/API.md-তে এমন `.ts` ফাইলের নাম থাকে যেটা রেপোতে নেই — census-এর শেষ BROKEN সারিটাও তাই গেল।
+- **সংখ্যায়:** ৪৫৭টা টেস্ট · ০ ফেল · ~১৯ সেকেন্ড; census **BROKEN ১ → ০**, drift ০, capability ৪৭% → ৪৮%; core lane-এ বাকি ~৭ দিন (আগে ~১২), অর্থাৎ core checklist কার্যত শেষ — এরপর যা বাকি তা parity/later।
+- **পরের কাজ (ব্যাচ ৯):** usage/token হিসাব — প্রতি টার্নের টোকেন সংখ্যা (এবং দাম জানা থাকলে খরচ) লুপ থেকে প্যানেল আর CLI পর্যন্ত; এখন কোনো সংখ্যাই নেই। **~৩ দিন।**
 - **কীভাবে নিজে যাচাই করবে:** `node scripts/status.mjs` (এক সেকেন্ড), `node scripts/status.mjs --tests` (স্যুট সহ), `node scripts/census.mjs`, আর প্যানেলের **Work** পেজ।
 
 ---
 
-## 2. Now — batch 7: memory that doesn't forget (this commit)
+## 2. Now — batch 8: one writer per transcript (this commit)
 
-**Why:** two rows said BROKEN for the same reason — the code existed but no path reached it. `MEMORY.md` is append-only (`remember()` writes at the bottom) while the prompt injected `readHead(3000)`, the *oldest* 3000 chars, so a fact written today could never enter context. And `compact()` rewrote the session `.jsonl` with only the kept lines (plus a second deletion path in the old rolling window), so summarising *was* deleting — the opposite of OpenClaw's rule that the full history stays on disk.
+**Why:** this was the last census **BROKEN** row, and it was real. `SessionQueue` serialised turns *inside one process*; the gateway installed its runner with `skipQueue`, and `SessionStore.append` had no writer claim at all — so the panel and a `termcrab agent` (or a cron tick against the same session id) could interleave lines into one `sessions/<id>.jsonl`, and a kill between `open` and `write` could leave a half-written line that every later reader had to guess at. The fix had to live in the store, because CLI/dream/heartbeat/cron all call `runTurn` directly and never touch the queue.
 
 | # | Step | Status | Evidence / acceptance test |
 |---|---|---|---|
-| 7.1 | A fact written now reaches the next prompt | ✔ done | `test/memory-truth.test.ts` 7.1 (newest fact injected, oldest fall out) + 7.1b (a real `runTurn` sends it in the system prompt) |
-| 7.2 | Compaction summarises without deleting history | ✔ done | 7.2: 120 entries → digest written, `read()` still returns all 120 in order, overflow in `sessions/<id>.archive.jsonl`, only the hot window shrinks; `test/compaction.test.ts` updated to the new contract |
-| 7.3 | The bootstrap injection is budgeted and measured | ✔ done | 7.3: the block fits `agent.memoryBudget` (bytes), names the budget, and says `showing the newest N of M facts` — nothing dropped silently |
-| 7.4 | Recalled facts carry provenance | ✔ done | 7.4: every injected fact cites `MEMORY.md:<line>`, and `remember()` reports the line it wrote |
-| 7.5 | The two memory rows leave BROKEN | ✔ done | `node scripts/census.mjs` → **BROKEN 3 → 1**, drift 0, core lane 18d → 12d (probes: `readForPrompt`, `archiveOverflow`) |
+| 8.1 | A session has one writer at a time | ✔ done | `test/writer-fence.test.ts` 8.1: a second claim is refused and names the holder (owner + pid); 8.1b: a real `runTurn` on a held session returns `[busy] … cli …`, emits an error event, and writes **nothing** |
+| 8.2 | The claim survives a crash | ✔ done | 8.2: a dead pid and a stale heartbeat are both reclaimed; a live holder with a fresh heartbeat is still honoured |
+| 8.3 | Appends are atomic per entry | ✔ done | 8.3: a torn tail (`{"role":"assis`) is cut before the next write, every remaining line parses, and one append adds exactly one line (single `O_APPEND` write, no rewrite) |
+| 8.4 | Channel, voice and cron turns go through the lane | ✔ done | 8.4: two surfaces on one session id serialise — the provider never sees two calls at once, order is preserved; telegram/whatsapp, the wake loop and cron now submit via `runQueuedTurn`, closing the batch-5 limit |
+| 8.5 | The last BROKEN row leaves the census | ✔ done | `node scripts/census.mjs` → **BROKEN 1 → 0**, drift 0 (probes: `WriterHolder`); the remaining BROKEN row was the docs map, so it was fixed for real and is now guarded by `test/docs-map.test.ts` |
 
-**Extras the tests forced:** the model now also receives the last compacted digest (`# Earlier in this conversation (compacted)`), so a shrunk window does not mean amnesia; and session totals in `list()` count hot + archived entries, so the panel shows the true conversation length instead of only the hot window.
+**Extras the tests forced:** the fence is re-entrant for the *same* surface in the same process (a tool that starts a nested turn on the same session is not a second writer), and a live writer whose claim lapsed (TTL expiry while stalled) retakes it on its next append instead of losing an entry — losing transcript lines would be worse than a lock that lapsed. Lock files are `sessions/<id>.lock`, so `list()` and `purgeOlderThan()` ignore them by construction and the panel shows no phantom sessions.
 
-**Known limits (declared, not hidden):** the digest is extractive (key lines, 200-char slices) — a model-written summary is a separate ABSENT row (batch 9+ candidate). The archive grows and is never deleted; a disk-budget policy for it is deliberately not invented here. The budget is in bytes, not tokens.
+**Known limits (declared, not hidden):** the claim is a lock file, not an OS advisory lock — a writer that bypasses `SessionStore.append` can still write the file (nothing in Node can stop that portably); `waitMs` waits synchronously (`Atomics.wait`) because the store is synchronous, so waiting is for short handovers, while queueing remains the mechanism for real work; only the last line of a torn file is healed (a torn line in the middle means something else rewrote the file, which is exactly what the fence prevents).
 
-**Next action:** batch 8 step 8.1 — the failing test that proves two writers cannot interleave one transcript.
+**Next action:** batch 9 step 9.1 — take the usage numbers the providers already return and stop throwing them away.
 
 ---
 
-## 3. Next — batch 8: one writer per transcript (core lane, ~3 days, starts after this commit)
+## 3. Next — batch 9: usage and cost accounting (core lane, ~3 days)
 
-The last BROKEN row. Today the gateway and the CLI can both append to the same `sessions/<id>.jsonl` (`SessionStore.append`), and the queue only serialises turns *inside one process* — two surfaces (panel + `termcrab agent`) can still interleave lines. The fix is a real writer claim plus an atomic append, not a bigger in-memory queue. Tests first, as always.
+The census calls this row **ABSENT**: `usage` (prompt/completion tokens) is parsed by no provider, carried by no event, shown by no surface. On a phone on mobile data that is the one number the owner needs to trust an always-on agent — and it is also the last core-lane row in the plan.
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 8.1 | A session has one writer at a time | ☐ todo | a second writer's claim is refused (or waits), and it says who holds it |
-| 8.2 | The claim survives a crash | ☐ todo | a stale claim (dead pid / old timestamp) is reclaimed instead of wedging the session |
-| 8.3 | Appends are atomic per entry | ☐ todo | killing the process mid-turn leaves a file where every line still parses |
-| 8.4 | Channel, voice and cron turns go through the lane | ☐ todo | two surfaces on one session id serialise (the declared batch-5 limit) |
-| 8.5 | The last BROKEN row leaves the census | ☐ todo | `census.mjs` → **BROKEN 1 → 0**, drift 0 |
+| 9.1 | Provider responses carry usage | ☐ todo | `ChatResult` exposes prompt/completion tokens for every provider, mock included (the mock reports deterministic numbers so tests never guess) |
+| 9.2 | The loop records usage per turn | ☐ todo | a finished turn reports its tokens (and cost when the model is priced); `run:end` carries them to the panel |
+| 9.3 | The panel shows tokens per turn and per day | ☐ todo | the transcript footer shows the turn's tokens; the header/status line shows today's total, from real events — never an estimate |
+| 9.4 | The CLI reports it | ☐ todo | `termcrab usage` prints today's tokens (and cost) for the running panel, or says the panel is down instead of inventing numbers |
+| 9.5 | The token row leaves the census | ☐ todo | `census.mjs`: that row ABSENT → PARTIAL/WORKING with a probe on the real code, drift 0 |
 
 ## 4. Done — batches, commits, and the proof
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 8 | `_this commit_` | **One writer per transcript**: `SessionStore.claim()` — writer lock (owner + pid + heartbeat), refused-by-name second writer, stale-claim reclaim, atomic one-line appends with torn-tail healing, and a live writer that never loses an entry; telegram/whatsapp/wake/cron now run through the per-session lane; `docs/ARCHITECTURE.md` fixed and guarded by a test | `test/writer-fence.test.ts` (5 cases: claim/refuse, stale reclaim, torn write, refusal to write, two surfaces one lane) + `test/docs-map.test.ts` (2 cases) | **457 tests · 0 fail · ~19 s**; census **BROKEN 1 → 0**, drift 0, capability 48%, core lane 12d → ~7d |
 | 7 | `4562b6c` | **Memory that does not forget**: the prompt gets the newest facts first, budgeted and sourced (`MEMORY.md:<line>`), `remember()` reports where it wrote; compaction writes a digest and archives the overflow instead of deleting it, `read()` returns the whole conversation, and the model still sees the compacted digest; new `agent.memoryBudget` (3000 bytes) | `test/memory-truth.test.ts` (6 cases: newest-fact injection, a real run's system prompt, no-deletion compaction, digest injection, budget honesty, provenance) + `test/compaction.test.ts` | census **BROKEN 3 → 1**, drift 0, core lane 18d → 12d |
 | 6 | `4dd35be` | **An approval gate that really stops the tool**: the loop consults `needsApproval()` before dispatch, emits the pending record over SSE, waits with a timeout + default policy, and the decision is answerable from the panel card or `termcrab approvals`; refusal is a tool result, abort is honoured | `test/approvals.test.ts` (7 cases: gate, refusal, timeout, `onTimeout:allow`, real CLI over HTTP, panel source) | census **BROKEN 4 → 3**, drift 0, core lane 23d → 18d |
 | 5 | `5fe6651` | **A queue you can trust**: one lane per session (second message waits, never interleaves); all four modes really work (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs); truthful `queueLength`; backlog capped (429); panel "N waiting" chip + a second message while busy; `termcrab status` reports live queue state from the panel | `test/queue-serialize.test.ts` (10 new cases: unit + loop + real HTTP with a slow upstream), `test/queue.test.ts`, full suite | **437 tests · 0 fail · 18.0 s**; census **BROKEN 7 → 4**, drift 0, capability 46% (was 43%) |

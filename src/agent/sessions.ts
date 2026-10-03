@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { sessionsDir, ensureLayout, home } from '../core/paths.js';
 
@@ -27,6 +28,49 @@ export function sanitizeSessionId(id: string): string {
   return clean || 'default';
 }
 
+/**
+ * Who is writing a session's transcript. The fence is a tiny JSON lock file
+ * (`sessions/<id>.lock`) holding this record; a lock is honoured while its pid
+ * is alive AND its heartbeat is fresh, so a crashed writer cannot wedge a chat
+ * forever and a wedged one (SIGSTOP, a hung tool) is reclaimed after `ttlMs`.
+ */
+export interface WriterHolder {
+  /** Which surface took it: gateway, cli, cron, voice, heartbeat, dream. */
+  owner: string;
+  pid: number;
+  host: string;
+  /** ms epoch the claim was first taken. */
+  since: number;
+  /** ms epoch of the last append or touch (this is what staleness is judged on). */
+  heartbeatAt: number;
+}
+
+export interface ClaimOpts {
+  /** Wait up to this long for a live writer to release before refusing (0 = refuse now). */
+  waitMs?: number;
+  /** A claim whose heartbeat is older than this is stale even if the pid is alive. */
+  ttlMs?: number;
+}
+
+/** The result of `claim()`: take it, or be told who holds the session. */
+export interface SessionClaim {
+  ok: boolean;
+  /** Who holds it (set when ok is false, and when a stale claim was replaced). */
+  holder?: WriterHolder;
+  /** True when an existing stale claim was reclaimed instead of honoured. */
+  reclaimed?: boolean;
+  /** Time spent waiting for a live holder before this answer. */
+  waitedMs?: number;
+  /** Drop the claim. Safe to call more than once. */
+  release: () => void;
+  /** Refresh the heartbeat (a long turn does this on every append). */
+  touch: () => void;
+}
+
+/** A claim older than this (heartbeat) is treated as wedged, not live. */
+const DEFAULT_CLAIM_TTL_MS = 300_000;
+const CLAIM_POLL_MS = 25;
+
 export class SessionStore {
   constructor(private readonly root: string = sessionsDir()) {
     ensureLayout();
@@ -41,11 +85,228 @@ export class SessionStore {
     return path.join(this.root, `${sanitizeSessionId(sessionId)}${ARCHIVE_SUFFIX}`);
   }
 
-  append(sessionId: string, entry: Entry): void {
+  /** The writer lock for a session. Not a transcript, so `list()` ignores it. */
+  private lockFile(sessionId: string): string {
+    return path.join(this.root, `${sanitizeSessionId(sessionId)}.lock`);
+  }
+
+  /** The current writer, or null when the session is free (or the lock is torn). */
+  readClaim(sessionId: string): WriterHolder | null {
+    const f = this.lockFile(sessionId);
+    let raw: string;
+    try {
+      raw = fs.readFileSync(f, 'utf8');
+    } catch {
+      return null;
+    }
+    try {
+      const h = JSON.parse(raw) as WriterHolder;
+      return typeof h?.pid === 'number' && typeof h?.owner === 'string' ? h : null;
+    } catch {
+      // A half-written lock cannot fence anything; the next claimer replaces it.
+      return null;
+    }
+  }
+
+  /** Atomic lock write: a torn lock file would look like "nobody" to a claimer. */
+  private writeClaim(sessionId: string, holder: WriterHolder): void {
+    const f = this.lockFile(sessionId);
+    const tmp = `${f}.${process.pid}.${crypto.randomBytes(3).toString('hex')}.tmp`;
+    fs.writeFileSync(tmp, `${JSON.stringify(holder)}\n`, 'utf8');
+    fs.renameSync(tmp, f);
+  }
+
+  /** Is the process that took a claim still running? (pid 0 = the kernel). */
+  private isAlive(pid: number): boolean {
+    if (!Number.isInteger(pid) || pid <= 0) return false;
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (err) {
+      // EPERM means it exists but belongs to another user: still alive.
+      return (err as NodeJS.ErrnoException).code === 'EPERM';
+    }
+  }
+
+  /** Block without spinning (the store is synchronous by design). */
+  private sleepSync(ms: number): void {
+    if (ms <= 0) return;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  }
+
+  /**
+   * Claim the right to write a session's transcript — the fence that makes
+   * "one writer per transcript" true across processes and surfaces, not just
+   * inside one queue. A second claimant is refused and told who holds it
+   * (or waits `waitMs` first). A stale claim — dead pid, or a heartbeat older
+   * than `ttlMs` — is reclaimed instead of wedging the session.
+   */
+  claim(sessionId: string, owner: string, opts: ClaimOpts = {}): SessionClaim {
+    const ttl = opts.ttlMs ?? DEFAULT_CLAIM_TTL_MS;
+    const waitMs = Math.max(0, opts.waitMs ?? 0);
+    const started = Date.now();
+    let reclaimed = false;
+
+    for (;;) {
+      const now = Date.now();
+      const holder = this.readClaim(sessionId);
+
+      if (!holder || !this.isAlive(holder.pid) || now - holder.heartbeatAt > ttl) {
+        if (holder) reclaimed = true;
+        const mine: WriterHolder = {
+          owner,
+          pid: process.pid,
+          host: os.hostname(),
+          since: now,
+          heartbeatAt: now,
+        };
+        this.writeClaim(sessionId, mine);
+        return this.claimHandle(sessionId, owner, mine, reclaimed, started);
+      }
+
+      // The same process, claiming for the same surface again (a tool that
+      // starts a nested turn on this session): hand the claim straight back.
+      if (holder.owner === owner && holder.pid === process.pid) {
+        const mine: WriterHolder = { ...holder, heartbeatAt: now };
+        this.writeClaim(sessionId, mine);
+        return this.claimHandle(sessionId, owner, mine, reclaimed, started);
+      }
+
+      if (Date.now() - started >= waitMs) {
+        return {
+          ok: false,
+          holder,
+          reclaimed,
+          waitedMs: Date.now() - started,
+          release: () => undefined,
+          touch: () => undefined,
+        };
+      }
+      this.sleepSync(Math.min(CLAIM_POLL_MS, waitMs - (Date.now() - started)));
+    }
+  }
+
+  private claimHandle(
+    sessionId: string,
+    owner: string,
+    holder: WriterHolder,
+    reclaimed: boolean,
+    started: number,
+  ): SessionClaim {
+    return {
+      ok: true,
+      holder,
+      reclaimed,
+      waitedMs: Date.now() - started,
+      release: () => {
+        this.releaseClaim(sessionId, owner);
+      },
+      touch: () => {
+        this.touchClaim(sessionId, owner);
+      },
+    };
+  }
+
+  /** Drop a claim, but only the one this owner holds. */
+  releaseClaim(sessionId: string, owner?: string): boolean {
+    const holder = this.readClaim(sessionId);
+    if (holder && owner && (holder.owner !== owner || holder.pid !== process.pid)) return false;
+    try {
+      fs.unlinkSync(this.lockFile(sessionId));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Refresh the heartbeat so a slow-but-alive turn keeps its claim. */
+  touchClaim(sessionId: string, owner: string): boolean {
+    const holder = this.readClaim(sessionId);
+    if (!holder || holder.owner !== owner || holder.pid !== process.pid) return false;
+    this.writeClaim(sessionId, { ...holder, heartbeatAt: Date.now() });
+    return true;
+  }
+
+  /**
+   * Add one entry. One write of one whole line (O_APPEND), so a kill in the
+   * middle of a turn cannot interleave with another writer's line; a tail left
+   * half-written by an earlier crash is cut before the next append, so every
+   * line in the file parses. `opts.owner` marks a fenced write: the claim is
+   * refreshed, and a live writer that lost its claim quietly takes it back.
+   */
+  append(sessionId: string, entry: Entry, opts: { owner?: string } = {}): void {
     const f = this.file(sessionId);
-    fs.appendFileSync(f, `${JSON.stringify(entry)}\n`, 'utf8');
+    this.healTail(f);
+    if (opts.owner) this.refreshFence(sessionId, opts.owner);
+    const fd = fs.openSync(f, 'a');
+    try {
+      fs.writeSync(fd, `${JSON.stringify(entry)}\n`, null, 'utf8');
+    } finally {
+      fs.closeSync(fd);
+    }
     // Keep the live file small; older lines move to the archive (not the bin).
     this.archiveOverflow(sessionId, KEEP + 40);
+  }
+
+  /** Cut a half-written trailing line (a process killed mid-append). */
+  private healTail(f: string): void {
+    let size: number;
+    try {
+      size = fs.statSync(f).size;
+    } catch {
+      return;
+    }
+    if (size === 0) return;
+    const fd = fs.openSync(f, 'r+');
+    try {
+      const last = Buffer.alloc(1);
+      fs.readSync(fd, last, 0, 1, size - 1);
+      if (last[0] === 0x0a) return; // ends on a newline: nothing torn
+      let cut = 0;
+      let pos = size;
+      const chunk = Buffer.alloc(8192);
+      for (;;) {
+        const start = Math.max(0, pos - chunk.length);
+        const n = fs.readSync(fd, chunk, 0, pos - start, start);
+        let found = -1;
+        for (let i = n - 1; i >= 0; i--) {
+          if (chunk[i] === 0x0a) {
+            found = start + i + 1;
+            break;
+          }
+        }
+        if (found >= 0) {
+          cut = found;
+          break;
+        }
+        if (start === 0) break;
+        pos = start;
+      }
+      fs.ftruncateSync(fd, cut);
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+
+  /**
+   * A fenced append: the caller owns the claim, so refresh its heartbeat. If
+   * the claim vanished (the TTL expired while this process was stalled) the
+   * live writer retakes it rather than losing an entry — losing transcript
+   * lines would be worse than a lock that lapsed.
+   */
+  private refreshFence(sessionId: string, owner: string): void {
+    if (!this.touchClaim(sessionId, owner)) {
+      const holder = this.readClaim(sessionId);
+      if (!holder || !this.isAlive(holder.pid)) {
+        this.writeClaim(sessionId, {
+          owner,
+          pid: process.pid,
+          host: os.hostname(),
+          since: Date.now(),
+          heartbeatAt: Date.now(),
+        });
+      }
+    }
   }
 
   /** Read a transcript: the archive first, then the live file. Nothing is lost. */

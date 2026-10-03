@@ -47,21 +47,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 30 | wired and observable |
+| ✅ WORKING | 31 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 60 | exists, narrower than theirs |
-| ⛔ BROKEN | 1 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 45 | nothing in the tree |
+| 🟡 PARTIAL | 61 | exists, narrower than theirs |
+| ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
+| ⚪ ABSENT | 44 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 47%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 48%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~12d | must exist for TermCrab to be a credible agent at all |
+| **core** | 14 | ~7d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~278d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~454d | |
+| **total** | 150 | ~449d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -71,7 +71,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 |---|---|---|---|---|---:|
 | Streaming assistant deltas | block streaming + coalescing | ✅ WORKING | src/agent/loop.ts emits delta events; src/providers/openai.ts parses SSE | parity | — |
 | Tool calling round-trip | parallel + serialized batches | ✅ WORKING | src/agent/loop.ts:245 sequential tool execution | parity | — |
-| Per-session run serialization | session lanes + writer claims | ✅ WORKING | src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving (transcript write fencing is tracked separately) | core | — |
+| Per-session run serialization | session lanes + writer claims | ✅ WORKING | src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving inside the process, and the cross-process guarantee is the writer claim (SessionStore.claim) pinned by test/writer-fence.test.ts | core | — |
 | Queue modes steer/followup/collect/interrupt | 4 modes + debounce + cap | ✅ WORKING | all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6 | core | — |
 | Run identity + terminal wait | runId + agent.wait replay | 🟡 PARTIAL | newRunId() in loop.ts:114; no wait endpoint (only sessions/agents_wait tools) | parity | 2 |
 | Parallel tool batches | launched together, results merged | ⚪ ABSENT | loop.ts:245 is a sequential for-await | parity | 3 |
@@ -170,7 +170,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Transcription | realtime transcription service | 🟡 PARTIAL | termcrab transcribe (offline whisper.cpp, optional) | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | ⚪ ABSENT | no companion app; a persistent notification is the closest | later | 20 |
 
-### ops — 52% (12 checks)
+### ops — 55% (12 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -185,7 +185,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
 | CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
-| Docs that match the code | generated docs map, tested examples | ⛔ BROKEN | docs/ARCHITECTURE.md lists files that do not exist (src/providers/gemini.ts, anthropic.ts, ollama.ts). This probe *expects* the stale line until the doc is fixed — when it reports DRIFT, the doc caught up | core | 2 |
+| Docs that match the code | generated docs map, tested examples | 🟡 PARTIAL | docs/ARCHITECTURE.md used to list files that did not exist (gemini.ts, anthropic.ts, ollama.ts); the tree now names the real providers, and test/docs-map.test.ts fails if any .ts file named in ARCHITECTURE.md or API.md is missing from the repo. Not generated, so the row is PARTIAL, not WORKING | core | 1 |
 
 ### plugins — 0% (4 checks)
 
@@ -223,12 +223,12 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Security audits / doctor | openclaw security audit, policy CLI | 🟡 PARTIAL | src/mobile/doctor.ts checks Termux-specific hazards, not policy | parity | 3 |
 | Rate limiting / loop protection | bot-loop protection, caps | ⚪ ABSENT | none | later | 2 |
 
-### sessions — 29% (8 checks)
+### sessions — 42% (8 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Transcript persistence | SQLite + archived JSONL + WAL | 🟡 PARTIAL | JSONL append in src/agent/sessions.ts:39; no DB | parity | — |
-| Transcript write fencing | expectedWriterRunId on every append | ⚪ ABSENT | no writer claim anywhere | core | 4 |
+| Transcript write fencing | expectedWriterRunId on every append | ✅ WORKING | SessionStore.claim() writes a writer lock (owner + pid + heartbeat) before a turn writes anything: a second writer is refused by name (or waits), a dead/expired claim is reclaimed, append() is one O_APPEND write of one line and heals a torn tail, and the gateway/CLI/cron/voice all share it. Pinned by test/writer-fence.test.ts (8.1-8.4) | core | — |
 | Session search | anchored snippet search + redaction | 🟡 PARTIAL | toolbox.ts substring search over 30 sessions, no anchors | parity | 3 |
 | Lifecycle reset policies | mode none|daily|idle + atHour | ⚪ ABSENT | manual /new only (server.ts:498) | parity | 3 |
 | Multi-user scoping | dmScope 4 modes + identity links | 🟡 PARTIAL | per-chat key `${channel}:${chatId}` (server.ts:496) — isolated by accident | parity | 3 |
@@ -298,17 +298,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 This is the single most important list in this repository. Each one is a feature you can see in the file tree, that the docs and the UI may both imply exists, and that no code path reaches.
 
-**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run* — the **approval gate**, and now the **memory pair**: *Compaction that preserves history* (digest + `sessions/<id>.archive.jsonl`, `read()` merges archive + live) and *Memory bootstrap injection* (newest facts first, budgeted in bytes, every fact citing `MEMORY.md:<line>`), pinned by `test/memory-truth.test.ts` (6 cases) and `test/compaction.test.ts`. The **approval gate**: `needsApproval()` runs before tool dispatch, the request reaches the panel (SSE card) and the CLI (`termcrab approvals`), refusals are tool results, and the timeout policy is configurable — pinned by `test/approvals.test.ts` (7 cases, including the real CLI binary over HTTP). The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases: unit, loop, and real HTTP against a slow upstream) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
+**Fixed since the first measurement (2026-10-03):** *Request authentication* and *Inbound webhooks* (both pinned by `test/auth.test.ts`), the whole queue trio — *Session queue*, *Queue modes* and *Steering into a live run* — the **approval gate** (`needsApproval()` runs before tool dispatch, the request reaches the panel and the CLI, refusals are tool results, `test/approvals.test.ts`), the **memory pair** (*compaction that preserves history* + *memory bootstrap injection*, `test/memory-truth.test.ts`, `test/compaction.test.ts`), the **write fence** (*transcript write fencing*: a claim per session, stale claims reclaimed, atomic appends; `test/writer-fence.test.ts`) and the **docs map** (`docs/ARCHITECTURE.md` finally names `src/providers/` as it is, and `test/docs-map.test.ts` fails if either map doc names a `.ts` file that is not in the repo). The queue now drains one lane per session (`SessionQueue.submit` → `pump` → `drain`), applies all four modes (`followup` FIFO, `steer` into the live run, `collect` merges a burst, `interrupt` cancels then runs), caps a backlog at 32 turns (HTTP 429) and keeps `queueLength` truthful; `test/queue-serialize.test.ts` (10 cases) is the proof. That is the ladder: a row leaves this table only when a test proves it, not when the code looks better.
 
 | # | Capability | Evidence | What it costs you today |
 |---|---|---|---|
-| 1 | **Transcript write fencing** | no writer claim anywhere | Two writers (gateway + CLI, which both write the same JSONL, `src/cli.ts:298`) can interleave into one transcript. |
-| 2 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). |
-| 3 | **Docs that match the code** *(census: PARTIAL)* | `docs/ARCHITECTURE.md` lists `src/providers/gemini.ts`, `anthropic.ts`, `ollama.ts` | Those files do not exist (one OpenAI-compatible client does the work). You are tracking a system in your head that partly only exists in your head. |
+| 1 | **Token/cost accounting** *(census: ABSENT)* | no `usage` field reaches `src/providers/types.ts` or the UI | No cost visibility on the surface where it matters most (a phone on mobile data). Batch 9. |
 
-*(The census carries 1 BROKEN row — transcript write fencing, row 1 below. Token accounting and docs sit under their own verdicts and stay in this table because they are what makes you distrust the map.)*
+*(The census carries **0 BROKEN rows** as of batch 8. Token accounting is the last one that matters enough to stay on this page — it is ABSENT rather than BROKEN, i.e. nothing pretends it exists, which is why the census no longer counts it here.)*
 
-Fix order, evidence and effort for these are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 8 (write fencing) → batch 9 (usage/tokens).
+Fix order, evidence and effort for the remaining row are in [ROADMAP.md](ROADMAP.md) §2 and in [WORKLOG.md](../../WORKLOG.md) §3: batch 9 (usage/tokens), then parity work.
 
 ---
 

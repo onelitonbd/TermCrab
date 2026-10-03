@@ -1,6 +1,6 @@
 import { log } from '../core/logger.js';
 import { bus, BusEvent } from '../gateway/events.js';
-import { AgentCtx, runTurn } from '../agent/loop.js';
+import { AgentCtx, runQueuedTurn } from '../agent/loop.js';
 import { findDue, loadCronState, loadCrons, saveCronState, setCronEnabled } from './store.js';
 import { decideHeartbeat, readBattery } from '../mobile/power.js';
 import { notify } from '../mobile/notify.js';
@@ -42,7 +42,7 @@ export async function cronTick(deps: CronRunnerDeps): Promise<string[]> {
 
     log.info(`cron "${job.name}" firing (${job.schedule})`);
     try {
-      const output = await runTurn(deps.ctx, {
+      const output = await runQueuedTurn(deps.ctx, {
         sessionId: `cron:${job.id}`,
         userMessage: `[scheduled:${job.name}] ${job.prompt}`,
         channel: 'cron',

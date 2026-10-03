@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.40.0 - 2026-10-03
+
+- **One writer per transcript — the last BROKEN row.** `SessionStore` now takes a writer **claim** before a turn writes anything: a lock file holding owner, pid and a heartbeat. A second writer (the CLI while the panel is answering, a cron tick against a live chat, another surface in the same process) is **refused by name** — `[busy] session web:main is being written by gateway (pid 4242, last write 0s ago); nothing was written.` — instead of interleaving lines into the same JSONL. The claim survives a crash: a dead pid or a heartbeat older than the TTL is reclaimed, and a live writer whose claim lapsed retakes it on its next append rather than losing an entry.
+- **Appends are atomic.** One `O_APPEND` write of one line per entry, and a torn tail left by a kill mid-write is cut before the next append — every line in the file parses. `runTurn` is the single fenced entry point, so CLI, dream, heartbeat, cron and the gateway all respect it; telegram/whatsapp, the wake/voice loop and cron now submit through `runQueuedTurn`, which closes the "one process only" limit declared in 0.37.0.
+- **The docs map is checked, not trusted.** `docs/ARCHITECTURE.md` listed `src/providers/gemini.ts`, `anthropic.ts` and `ollama.ts` — files that never existed (one OpenAI-compatible client does the work). The tree now names the real providers, and `test/docs-map.test.ts` fails the suite if `ARCHITECTURE.md` or `API.md` names a `.ts` file that is not in the repo.
+- Tests: **457 cases, 0 failures** (5 new in `test/writer-fence.test.ts`, 2 in `test/docs-map.test.ts`). Full run ~19 s. Census: **BROKEN 1 → 0**, drift 0, capability 48%, core-lane work left **~7 days** (was ~12).
+
 ## 0.39.0 - 2026-10-03
 
 - **Your agent now remembers what it just learned.** `MEMORY.md` is append-only, so the newest facts are the important ones — but the prompt injected the *oldest* 3000 characters (`readHead`), which meant a fact written today could never enter context. The prompt now takes the newest facts first until its byte budget is spent, renders each one with its source (`MEMORY.md:<line>`), and always states the budget and how many facts stayed on disk ("showing the newest 34 of 120 facts"); `remember()` reports the line it wrote. The budget is configurable: `agent.memoryBudget` (bytes, default 3000).

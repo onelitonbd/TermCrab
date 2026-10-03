@@ -40,10 +40,12 @@ src/
 │   └── matrix.ts          # Matrix (optional, matrix-js-sdk)
 ├── providers/
 │   ├── types.ts           # ChatRequest/ChatResult/Provider contract
-│   ├── anthropic.ts       # Messages API (content blocks, tool_use)
-│   ├── openai.ts          # chat/completions (works for OpenRouter/Groq/Ollama/...)
-│   ├── gemini.ts          # Google Gemini (REST API, streaming, tool calling)
-│   ├── ollama.ts          # Ollama local (native API, streaming, tool calling)
+│   ├── openai.ts          # the one HTTP client: chat/completions + SSE streaming,
+│   │                      #   which is also how OpenRouter/Groq/Ollama/Anthropic-
+│   │                      #   compatible endpoints are reached (no separate SDKs)
+│   ├── capabilities.ts    # per-model thinking/reasoning capability table
+│   ├── probe.ts           # live model probe behind the panel's model picker
+│   ├── sse.ts             # incremental SSE frame parser shared by streaming calls
 │   ├── mock.ts            # offline deterministic provider (tests + demo)
 │   ├── mcp.ts             # MCP client (stdio JSON-RPC, no external deps)
 │   └── index.ts           # resolveProvider() + resolveProviderChain()

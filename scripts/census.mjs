@@ -141,7 +141,7 @@ check('agent', 'Streaming assistant deltas', 'block streaming + coalescing', 'WO
 check('agent', 'Tool calling round-trip', 'parallel + serialized batches', 'WORKING',
   'src/agent/loop.ts:245 sequential tool execution', { pattern: 'tool:start', expect: 'present' }, 0);
 check('agent', 'Per-session run serialization', 'session lanes + writer claims', 'WORKING',
-  'src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving (transcript write fencing is tracked separately)',
+  'src/agent/sessions.ts SessionQueue.submit/pump/drain runs one turn at a time per session; test/queue-serialize.test.ts 5.1/5.3 pin order and no interleaving inside the process, and the cross-process guarantee is the writer claim (SessionStore.claim) pinned by test/writer-fence.test.ts',
   { pattern: 'private async drain', expect: 'present' }, 0);
 check('agent', 'Queue modes steer/followup/collect/interrupt', '4 modes + debounce + cap', 'WORKING',
   'all four modes live in SessionQueue.submit; collect merges a waiting burst into one run; MAX_QUEUED_TURNS caps a backlog (HTTP 429); test/queue-serialize.test.ts 5.3-5.6',
@@ -175,8 +175,9 @@ check('agent', 'Timeouts + error containment', 'per-phase budgets', 'WORKING',
 // -------------------------------------------------------------- 3. sessions
 check('sessions', 'Transcript persistence', 'SQLite + archived JSONL + WAL', 'PARTIAL',
   'JSONL append in src/agent/sessions.ts:39; no DB', { pattern: 'appendFileSync', expect: 'present' }, 0);
-check('sessions', 'Transcript write fencing', 'expectedWriterRunId on every append', 'ABSENT',
-  'no writer claim anywhere', { pattern: 'expectedWriterRunId', expect: 'absent' }, 4);
+check('sessions', 'Transcript write fencing', 'expectedWriterRunId on every append', 'WORKING',
+  'SessionStore.claim() writes a writer lock (owner + pid + heartbeat) before a turn writes anything: a second writer is refused by name (or waits), a dead/expired claim is reclaimed, append() is one O_APPEND write of one line and heals a torn tail, and the gateway/CLI/cron/voice all share it. Pinned by test/writer-fence.test.ts (8.1-8.4)', 
+  { pattern: 'WriterHolder', expect: 'present' }, 0);
 check('sessions', 'Session search', 'anchored snippet search + redaction', 'PARTIAL',
   'toolbox.ts substring search over 30 sessions, no anchors', { pattern: 'sessions_search', expect: 'present' }, 3);
 check('sessions', 'Lifecycle reset policies', 'mode none|daily|idle + atHour', 'ABSENT',
@@ -464,9 +465,9 @@ check('ops', 'CI matrix', 'lint + types + budgets + swiftlint + semgrep + knip',
 check('ops', 'Documentation site', 'full docs site, thousands of pages', 'PARTIAL',
   'docs/ markdown + README; no site generator, no search, no versioning',
   { paths: ['docs/ARCHITECTURE.md', 'docs/API.md'], expect: 'present' }, 5);
-check('ops', 'Docs that match the code', 'generated docs map, tested examples', 'BROKEN',
-  'docs/ARCHITECTURE.md lists files that do not exist (src/providers/gemini.ts, anthropic.ts, ollama.ts). This probe *expects* the stale line until the doc is fixed — when it reports DRIFT, the doc caught up',
-  { file: 'docs/ARCHITECTURE.md', pattern: /gemini\.ts/, expect: 'present' }, 2);
+check('ops', 'Docs that match the code', 'generated docs map, tested examples', 'PARTIAL',
+  'docs/ARCHITECTURE.md used to list files that did not exist (gemini.ts, anthropic.ts, ollama.ts); the tree now names the real providers, and test/docs-map.test.ts fails if any .ts file named in ARCHITECTURE.md or API.md is missing from the repo. Not generated, so the row is PARTIAL, not WORKING',
+  { file: 'docs/ARCHITECTURE.md', pattern: /gemini\.ts/, expect: 'absent' }, 1);
 
 // ------------------------------------------------------------------ run them
 

@@ -4,7 +4,7 @@ import { providerSummary, resolveProvider, resolveProviderChain } from '../provi
 import { ChatResult, Provider, ProviderMessage, ThinkingLevel } from '../providers/types.js';
 import { MemoryStore } from './memory.js';
 import { buildSystemPrompt, sanitizeAgentName } from './prompt.js';
-import { Entry, newRunId, SessionQueue, SessionStore } from './sessions.js';
+import { Entry, newRunId, QueueFullError, QueuedTurn, SessionQueue, SessionStore } from './sessions.js';
 import {
   approvalTimeoutMs,
   ApprovalDecision,
@@ -58,6 +58,10 @@ export interface RunOpts {
   signal?: AbortSignal;
   /** Skip the queue (used by subagents and internal calls). */
   skipQueue?: boolean;
+  /** Surface that takes the transcript write claim (defaults to the channel, else 'agent'). */
+  owner?: string;
+  /** Wait this long for a busy session before refusing (0 = refuse now). */
+  waitMs?: number;
 }
 
 const PROVIDER_TIMEOUT_MS = 180_000;
@@ -134,8 +138,74 @@ function refusalText(tool: string, decision: ApprovalDecision, timeoutSec: numbe
   return `[refused] The user refused this ${tool} call (${why}). Do not retry it; explain what you would do instead.`;
 }
 
-/** One user turn: loops until the model stops asking for tools. Returns final text. */
+/** The fence label for a turn: an explicit owner beats the channel name. */
+function turnOwner(opts: RunOpts): string {
+  return opts.owner ?? opts.channel ?? 'agent';
+}
+
+/**
+ * One user turn — the only entry point. Before a single byte is written it
+ * claims the session's transcript (SessionStore.claim): a second writer —
+ * another process, or another surface in this one — is refused by name
+ * instead of interleaving lines into the same JSONL. The claim is released
+ * when the turn ends, whether it succeeded, failed or was interrupted.
+ */
 export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
+  const emit = opts.onEvent ?? (() => undefined);
+  const agentName = opts.agent ? sanitizeAgentName(opts.agent) ?? undefined : undefined;
+  const sessionId = agentName ? `${agentName}:${opts.sessionId}` : opts.sessionId;
+  const owner = turnOwner(opts);
+  const claim = ctx.sessions.claim(sessionId, owner, { waitMs: opts.waitMs ?? 0 });
+  if (!claim.ok) {
+    const h = claim.holder;
+    const age = h ? Math.max(0, Math.round((Date.now() - h.heartbeatAt) / 1000)) : 0;
+    const who = h ? `${h.owner} (pid ${h.pid}, last write ${age}s ago)` : 'another writer';
+    const message = `[busy] session ${sessionId} is being written by ${who}; nothing was written. Try again in a moment.`;
+    log.warn(message);
+    emit({ type: 'error', message });
+    return message;
+  }
+  try {
+    return await runTurnUnfenced(ctx, opts, owner);
+  } finally {
+    claim.release();
+  }
+}
+
+/**
+ * A turn for a surface that is not already inside the queue (channels, the
+ * wake/voice loop, cron): submit it to the session's lane and wait for the
+ * result. Falls back to a direct run when there is no queue (CLI, tests) —
+ * the write fence holds either way. A full backlog is reported, not dropped.
+ */
+export async function runQueuedTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
+  const queue = ctx.queue;
+  if (!queue) return runTurn(ctx, opts);
+  let turn: QueuedTurn;
+  try {
+    turn = queue.submit({
+      sessionId: opts.sessionId,
+      userMessage: opts.userMessage,
+      channel: opts.channel,
+      agent: opts.agent,
+      tier: opts.tier,
+      thinkingLevel: opts.thinkingLevel,
+    }).turn;
+  } catch (err) {
+    if (err instanceof QueueFullError) return `[busy] ${err.message}`;
+    throw err;
+  }
+  const settled = await queue.waitForTurn(opts.sessionId, 600_000, turn.id);
+  if (!settled) return turn.output ?? `[busy] turn ${turn.id} is still running`;
+  if (settled.status === 'error') throw new Error(settled.error ?? 'turn failed');
+  if (settled.status === 'interrupted') {
+    return settled.output ?? '[interrupted] The user cancelled this request.';
+  }
+  return settled.output ?? '';
+}
+
+/** The turn body: everything after the write fence has been taken. */
+async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Promise<string> {
   const emit = opts.onEvent ?? (() => undefined);
   const runId = newRunId();
   const { userMessage } = opts;
@@ -156,7 +226,11 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     }
   }
 
-  ctx.sessions.append(sessionId, {
+  const appendEntry = (entry: Entry): void => {
+    ctx.sessions.append(sessionId, entry, { owner });
+  };
+
+  appendEntry({
     role: 'user',
     content: userMessage,
     ts: Date.now(),
@@ -233,7 +307,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
       if (!ctx.queue) return false;
       const steers = ctx.queue.takeSteers(sessionId);
       for (const text of steers) {
-        ctx.sessions.append(sessionId, { role: 'user', content: text, ts: Date.now(), channel: opts.channel });
+        appendEntry({ role: 'user', content: text, ts: Date.now(), channel: opts.channel });
         emit({ type: 'steer', text, sessionId });
       }
       return steers.length > 0;
@@ -241,7 +315,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     for (let i = 0; i < maxIter; i++) {
       if (abortCtrl.signal.aborted) {
         finalText = '[interrupted] The user cancelled this request.';
-        ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+        appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
         emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
         return finalText;
       }
@@ -266,7 +340,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
 
       if (result.toolCalls.length) {
         // Persist the assistant tool-call turn, then execute each tool.
-        ctx.sessions.append(sessionId, {
+        appendEntry({
           role: 'assistant',
           content: result.text,
           ts: Date.now(),
@@ -284,7 +358,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           if (key === lastCallKey) repeatCount++;
           else { repeatCount = 1; lastCallKey = key; }
           if (repeatCount === 6) {
-            ctx.sessions.append(sessionId, {
+            appendEntry({
               role: 'system',
               content: `You have called ${call.name} with the exact same arguments ${repeatCount} times. Stop repeating. Give a final answer or try a different approach.`,
               ts: Date.now(),
@@ -292,7 +366,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           }
           if (repeatCount >= 8) {
             finalText = `[stopped] You repeated ${call.name} with the same arguments ${repeatCount} times.`;
-            ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+            appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
             emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
             return finalText;
           }
@@ -324,7 +398,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
               if (decision === 'aborted') {
                 resolveApproval(approval.id, false, 'aborted');
                 finalText = '[interrupted] The user cancelled this request.';
-                ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+                appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
                 emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: i });
                 if (span) endSpan(runId, span.id);
                 return finalText;
@@ -346,7 +420,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
           if (span) endSpan(runId, span.id);
           addToolCall(runId, call.name, toolDuration, ok);
           emit({ type: 'tool:end', name: call.name, ok, preview: output.slice(0, 200), result: output, toolCallId: call.id, sessionId });
-          ctx.sessions.append(sessionId, {
+          appendEntry({
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
@@ -383,7 +457,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
         emit({ type: 'error', message: finalText });
       }
       if (finalText && !streamedChars) emit({ type: 'delta', text: finalText });
-      ctx.sessions.append(sessionId, {
+      appendEntry({
         role: 'assistant',
         content: finalText,
         ts: Date.now(),
@@ -399,7 +473,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     }
 
     finalText = `${finalText}\n\n[stopped: reached max tool iterations (${maxIter})]`.trim();
-    ctx.sessions.append(sessionId, { role: 'assistant', content: finalText, ts: Date.now() });
+    appendEntry({ role: 'assistant', content: finalText, ts: Date.now() });
     emit({ type: 'run:end', runId, text: finalText, sessionId, iterations: maxIter });
     return finalText;
   } catch (err) {
@@ -420,7 +494,7 @@ export async function runTurn(ctx: AgentCtx, opts: RunOpts): Promise<string> {
     log.error('agent run failed:', message);
     emit({ type: 'error', message });
     const fallback = `[agent error] ${message}`;
-    ctx.sessions.append(sessionId, { role: 'assistant', content: fallback, ts: Date.now() });
+    appendEntry({ role: 'assistant', content: fallback, ts: Date.now() });
     emit({ type: 'run:end', runId, text: fallback, sessionId, iterations: 0 });
     return fallback;
   }
