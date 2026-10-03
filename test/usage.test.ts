@@ -246,9 +246,12 @@ test('9.3 + 9.4 the panel and the CLI report the same real numbers', async (t) =
     await t.test('the CLI reads the same numbers from the running panel', async () => {
       const { stdout, code } = await runCli(['usage', '--json'], home);
       assert.equal(code, 0, 'usage exits 0 with the panel up');
-      const cliBody = JSON.parse(stdout) as { turns: number; totalTokens: number };
-      assert.equal(cliBody.turns, body.turns);
-      assert.equal(cliBody.totalTokens, body.totalTokens, 'panel and CLI agree');
+      // Batch 14: --json is one envelope, and the numbers live in data.
+      const envelope = JSON.parse(stdout) as { ok: boolean; command: string; data: { turns: number; totalTokens: number } };
+      assert.equal(envelope.ok, true);
+      assert.equal(envelope.command, 'usage');
+      assert.equal(envelope.data.turns, body.turns);
+      assert.equal(envelope.data.totalTokens, body.totalTokens, 'panel and CLI agree');
     });
 
     // The panel source shows tokens where the user reads them.

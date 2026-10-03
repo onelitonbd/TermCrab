@@ -20,6 +20,8 @@ export interface CommandDoc {
   flags: string[];
   /** A concrete thing to try, printed at the bottom. */
   example?: string;
+  /** What `--json` puts in `data`, when the command has a machine view. */
+  json?: string;
 }
 
 export const COMMANDS: CommandDoc[] = [
@@ -78,6 +80,7 @@ export const COMMANDS: CommandDoc[] = [
       '--json    machine-readable checks',
       '--share   copy-paste report with passwords stripped',
     ],
+    json: '{checks:[{name, status, detail, fix}], failed}',
     example: 'termcrab doctor --share',
   },
   {
@@ -119,8 +122,10 @@ export const COMMANDS: CommandDoc[] = [
       'import <src> --force  replace a skill that is already installed',
       'new <name>            scaffold a new skill folder',
       'new <name> --description "<one line>"  what the skill is for',
+      '--json                the list (or what an import/new did) as one document',
     ],
     example: 'termcrab skills ls',
+    json: '{count, skills:[{name, origin, description}]} · import → {source, count, results} · new → {created, path}',
   },
   {
     cmd: 'cron',
@@ -131,8 +136,10 @@ export const COMMANDS: CommandDoc[] = [
       '--prompt "<text>"    what to ask the agent each time',
       '--name <n>           a human name for the job',
       '--critical           run even when the battery is low',
+      '--json               list/add/rm/on/off as one JSON document',
     ],
     example: 'termcrab cron add --schedule "0 8 * * *" --prompt "give me a briefing" --name morning',
+    json: '{count, jobs:[{id, name, schedule, enabled, critical, nextRun, prompt}]} · add → {job, nextRun} · rm → {removed}',
   },
   {
     cmd: 'import',
@@ -151,12 +158,14 @@ export const COMMANDS: CommandDoc[] = [
     summary: 'dangerous tools waiting for your yes/no',
     flags: ['--json  machine-readable list'],
     example: 'termcrab approvals approve 3f9c1e2a',
+    json: '{count, approvals:[{id, tool, args, sessionId, createdAt}]} · approve/deny → {id, decision, by, ok}',
   },
   {
     cmd: 'usage',
     usage: 'usage [--json]',
     summary: "today's tokens (and cost when a price is known)",
     flags: ['--json  machine-readable day, totals and pricing date'],
+    json: '{day, turns, calls, promptTokens, completionTokens, totalTokens, costUsd, priced, byModel, pricingAsOf, priceConfigured}',
   },
   {
     cmd: 'run',
@@ -167,21 +176,24 @@ export const COMMANDS: CommandDoc[] = [
       '--no-wait          return as soon as the run is queued',
       '--wait <id>        wait for a run you started earlier',
       '--timeout <s>      how long to wait (exit 124 when it runs out)',
-      '--json             print the run object',
+      '--json             one JSON document, even when the run fails',
     ],
     example: 'termcrab run "summarise today" ',
+    json: '{turnId, sessionId, status, …} · --wait → the finished run {runId, status, output, error, durationMs, tokensIn, tokensOut}',
   },
   {
     cmd: 'wait',
     usage: 'wait <id> [--timeout <s>] [--json]',
     summary: 'wait for a run and print what it produced',
-    flags: ['--timeout <s>  how long to wait (exit 0 done, 1 failed, 124 timeout, 130 stopped)'],
+    flags: ['--timeout <s>  how long to wait (exit 0 done, 1 failed, 124 timeout, 130 stopped)', '--json         the finished run as one document'],
+    json: 'the finished run: {runId, status, output, error, durationMs, tokensIn, tokensOut}',
   },
   {
     cmd: 'stop',
     usage: 'stop [session] [--json]',
     summary: 'stop what the agent is doing right now (the partial answer is kept)',
     flags: ['--json  machine-readable result'],
+    json: '{count, stopped:[runId], sessions:[…]}',
   },
   {
     cmd: 'disk',
@@ -193,12 +205,14 @@ export const COMMANDS: CommandDoc[] = [
       '--keep-days <n> override the retention for this run',
       '--json          machine-readable usage',
     ],
+    json: '{before:{root, totalBytes, files, byArea}, budgetBytes, keepDays, trim, overBudget}',
   },
   {
     cmd: 'status',
-    usage: 'status',
+    usage: 'status [--json]',
     summary: 'plain-English overview: brain, memory, schedule, battery',
-    flags: [],
+    flags: ['--json  the same facts as data (the queue carries waiting/running numbers)'],
+    json: '{name, brain, localBrain, panel, queue, channels, memory, heartbeat, cron, dream, agents, configProblems}',
   },
   {
     cmd: 'dream',
@@ -221,8 +235,10 @@ export const COMMANDS: CommandDoc[] = [
       'export <id>              print a session as readable text',
       'purge --older-than <d>   delete sessions with no new lines in d days',
       'rename <old> <new>       rename a session key',
+      '--json                   list/export/purge/rename as one JSON document',
     ],
     example: 'termcrab sessions export cli:main',
+    json: '{count, sessions:[{id, messages, bytes, modified}]} · purge → {purged, freedBytes, olderThanDays} · export → {id, file, bytes} · rename → {from, to, renamed}',
   },
   {
     cmd: 'agents',
@@ -245,13 +261,15 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'memory',
-    usage: 'memory [show | search <query> | compact <session>]',
+    usage: 'memory [show | search <query> | compact <session>] [--json]',
     summary: 'look inside memory, or summarise an old chat with the model',
     flags: [
       'show                 the newest facts with their source line',
       'search <query>       search the memory files',
       'compact <session>    summarise an old chat (the full transcript stays on disk)',
+      '--json               show/search/compact as one JSON document',
     ],
+    json: 'show → {text, facts, totalFacts, bytes, budget, stats, files} · search → {query, count, hits} · compact → {session, compacted, coveredTurns, by, model, note, file}',
   },
   {
     cmd: 'boot',
@@ -299,6 +317,12 @@ export function commandHelp(name: string): string | null {
   if (doc.flags.length) {
     lines.push('');
     for (const f of doc.flags) lines.push(`  ${f}`);
+  }
+  if (doc.json) {
+    lines.push('');
+    lines.push(`  --json  one JSON document on stdout, nothing else: {"ok":true,"command":"${doc.cmd}","data":…}`);
+    lines.push(`          ${doc.json}`);
+    lines.push('          on failure: {"ok":false,"command":"…","error":{"message":…,"hint":…}}, exit code non-zero');
   }
   if (doc.example) {
     lines.push('');

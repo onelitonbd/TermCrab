@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.46.0 - 2026-10-03
+
+- **The CLI speaks JSON now, so scripts stop scraping.** Any structured command takes `--json` and then writes **exactly one document** to stdout: `{"ok":true,"command":"status","data":{…}}` on success, `{"ok":false,"command":"usage","error":{"message":"…","hint":"…"}}` on failure. It works on `status`, `sessions` (ls/export/purge/rename), `skills` (ls/import/new), `cron` (ls/add/rm/on/off), `memory` (show/search/compact), `approvals`, `usage`, `disk`, `doctor`, `run`/`wait` and `stop`.
+- **A warning can no longer corrupt the answer.** In `--json` mode every log line moves to stderr before any command runs (`setLogToStderr`), so nothing interleaves with the document — proven by planting an unknown key in `config.json` and parsing stdout anyway.
+- **Failure is data, and the exit code still means what it always did** (0 done · 1 failed · 124 timed out · 130 stopped). A missing chat, a missing cron job, a panel that is not running and a run that never finished each print `ok:false` **with the fix** in `error.hint` — and the timeout case still exits 124, so existing `if termcrab run --wait …` scripts keep working.
+- **The human pages did not get worse.** `status` was split into data (`statusData()`), page (`renderStatus()`) and the old one-line call (`statusReport()`), so the two views are rendered from the same facts and cannot disagree; every other command keeps its sentence-shaped output untouched.
+- **The contract is written down.** `docs/CLI.md` lists every command's `data` keys and shows copy-paste examples (`jq '.data.queue.running'`), and `termcrab help <cmd>` prints the same key list next to that command's flags.
+- **A config problem is visible to a script.** `status --json` reports `configProblems` as `{path, severity}` entries — a machine wants to know *which key*, not to parse the English sentence explaining it.
+- Tests: **555 cases, 0 failures** (1 skipped by design; 28 new in `test/tier2c.test.ts`). Census: **WORKING 50 → 51 · PARTIAL 48 → 47 · BROKEN 0**, score 57%, drift 0, core lane still empty.
+
+
 ## 0.45.0 - 2026-10-03
 
 - **The bot now tells you it is thinking.** In Telegram a running turn sends `typing…` immediately, refreshes it every four seconds (Telegram forgets an indicator after about five), and lets it expire the moment the answer lands. If Telegram refuses the indicator the answer still goes out, and somebody on the allowlist's wrong side sees neither. Other channels keep the honest default: no indicator rather than a dependency just to draw one.

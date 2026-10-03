@@ -78,7 +78,7 @@ Both scripts take their inputs from the working tree, so a run after any code ch
 | … of which **broken** (code exists, nothing calls it) | **0** |
 | … where TermCrab is ahead of OpenClaw | 14 |
 | Effort left in the core lane | **~0 days** (was ~40) |
-| Effort left in the parity lane | ~249 days |
+| Effort left in the parity lane | ~246 days |
 | Effort left in the later lane (deliberately deferred) | ~164 days |
 
 ## The three rules that keep this honest
@@ -100,6 +100,7 @@ This study was written before the fixes; the tracker is the live document, and
 | Offline outbox (BETTER, untested) | **Exactly-once tested**, with the guarantee stated honestly (batch 12) |
 | Five channel adapters with no tests | **WORKING + tested**: Discord, Slack, Signal, SMS and Matrix route to the agent and queue failed sends; the SDK/daemon stays optional (batch 13) |
 | Typing indicators · Per-command help · Shell completion · Colour discipline — all ABSENT | **WORKING**, each with a test (batch 13) |
+| `JSON output mode` — PARTIAL (`doctor --json` only) | **WORKING**: one envelope for 11 commands, failure included, logs moved to stderr; the contract is written down in `docs/CLI.md` (batch 14) |
 
 ## Relationship to the older reports
 

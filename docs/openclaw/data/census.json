@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T09:07:33.588Z",
+ "measured": "2026-10-03T13:50:46.503Z",
  "tally": {
-  "WORKING": 50,
+  "WORKING": 51,
   "BETTER": 14,
-  "PARTIAL": 48,
+  "PARTIAL": 47,
   "BROKEN": 0,
   "ABSENT": 38
  },
  "coverage": 57,
- "effortLeft": 413,
+ "effortLeft": 410,
  "areas": [
   "agent",
   "automation",
@@ -229,7 +229,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "15 match(es): src/agent/prompt.ts:84, src/agent/status.ts:11, src/cli.ts:30"
+    "detail": "15 match(es): src/agent/prompt.ts:84, src/agent/status.ts:11, src/cli.ts:31"
    }
   },
   {
@@ -280,7 +280,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/loop.ts:370, src/cli.ts:902, src/core/pricing.ts:61"
+    "detail": "8 match(es): src/agent/loop.ts:370, src/cli.ts:987, src/command-help.ts:168"
    }
   },
   {
@@ -314,7 +314,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:167"
+    "detail": "5 match(es): src/agent/loop.ts:25, src/cli.ts:187"
    }
   },
   {
@@ -331,7 +331,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:157"
+    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:27, src/cli.ts:177"
    }
   },
   {
@@ -382,7 +382,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:126"
+    "detail": "1 match(es): src/cli.ts:129"
    }
   },
   {
@@ -501,7 +501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:993, src/gateway/server.ts:980"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1087, src/gateway/server.ts:980"
    }
   },
   {
@@ -569,7 +569,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "426 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
+    "detail": "450 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -688,7 +688,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:509, src/command-help.ts:108"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:536, src/command-help.ts:111"
    }
   },
   {
@@ -739,7 +739,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:296, src/agent/sessions.ts:747, src/cli.ts:1306"
+    "detail": "4 match(es): src/agent/loop.ts:296, src/agent/sessions.ts:747, src/cli.ts:1439"
    }
   },
   {
@@ -824,7 +824,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1319"
+    "detail": "5 match(es): src/agent/memory.ts:46, src/agent/prompt.ts:144, src/cli.ts:1464"
    }
   },
   {
@@ -909,7 +909,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "80 match(es): src/agent/dream.ts:3, src/agent/loop.ts:58, src/agent/prompt.ts:19"
+    "detail": "88 match(es): src/agent/dream.ts:3, src/agent/loop.ts:58, src/agent/prompt.ts:19"
    }
   },
   {
@@ -926,7 +926,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "39 match(es): src/agent/loop.ts:71, src/agent/prompt.ts:17, src/cli.ts:67"
+    "detail": "39 match(es): src/agent/loop.ts:71, src/agent/prompt.ts:17, src/cli.ts:68"
    }
   },
   {
@@ -1045,7 +1045,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "59 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
+    "detail": "61 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:93"
    }
   },
   {
@@ -1610,7 +1610,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:59, src/agent/status.ts:91"
+    "detail": "40 match(es): src/agent/dream.ts:149, src/agent/loop.ts:59, src/agent/status.ts:112"
    }
   },
   {
@@ -1695,7 +1695,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "78 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "94 match(es): src/agent/loop.ts:207, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1712,7 +1712,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "75 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
+    "detail": "84 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:191"
    }
   },
   {
@@ -1866,7 +1866,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "58 match(es): src/cli.ts:157, src/command-help.ts:321, src/gateway/server.ts:1271"
+    "detail": "61 match(es): src/agent/status.ts:73, src/cli.ts:177, src/command-help.ts:345"
    }
   },
   {
@@ -1883,24 +1883,24 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:52"
+    "detail": "1 match(es): src/cli.ts:53"
    }
   },
   {
    "area": "surfaces",
    "capability": "JSON output mode",
    "openclaw": "reserved stdout + failure envelope",
-   "verdict": "PARTIAL",
-   "evidence": "doctor --json only (src/cli.ts:238)",
+   "verdict": "WORKING",
+   "evidence": "one envelope for every structured command: {ok, command, data} on success, {ok:false, command, error:{message, hint}} on failure, exactly one document on stdout (src/core/json-out.ts). `--json` works on status, sessions, skills, cron, memory, approvals, usage, disk, doctor, run/wait and stop; in json mode logs move to stderr (setLogToStderr) so a warning cannot corrupt the document; the exit code keeps the shell convention (0/1/124/130). Documented in docs/CLI.md and in `termcrab help <cmd>`. test/tier2c.test.ts 14.1-14.5",
    "probe": {
-    "pattern": "--json",
+    "pattern": "emitJson",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "27 match(es): src/channels/signal.ts:25, src/cli.ts:87, src/command-help.ts:75"
+    "detail": "25 match(es): src/cli.ts:21, src/core/json-out.ts:30"
    }
   },
   {
@@ -1917,7 +1917,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:268, src/command-help.ts:325"
+    "detail": "2 match(es): src/cli.ts:293, src/command-help.ts:349"
    }
   },
   {
@@ -1951,7 +1951,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "58 match(es): src/agent/loop.ts:207, src/cli.ts:35, src/command-help.ts:210"
+    "detail": "58 match(es): src/agent/loop.ts:207, src/cli.ts:36, src/command-help.ts:224"
    }
   },
   {
@@ -2105,7 +2105,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "24 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
+    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:561"
    }
   },
   {
@@ -2173,7 +2173,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "486 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
+    "detail": "502 match(es): src/agent/ask.ts:14, src/agent/dream.ts:31, src/agent/embed-setup.ts:22"
    }
   },
   {
@@ -2258,7 +2258,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:24, src/command-help.ts:68, src/gateway/server.ts:2094"
+    "detail": "19 match(es): src/cli.ts:25, src/command-help.ts:70, src/gateway/server.ts:2094"
    }
   },
   {
@@ -2275,7 +2275,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:26, src/command-help.ts:259, src/gateway/server.ts:79"
+    "detail": "6 match(es): src/cli.ts:27, src/command-help.ts:277, src/gateway/server.ts:79"
    }
   },
   {
@@ -2292,7 +2292,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "59 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:69"
+    "detail": "61 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/status.ts:93"
    }
   },
   {
@@ -2326,7 +2326,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "24 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:133, src/agent/tools.ts:561"
+    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:561"
    }
   },
   {
@@ -2343,7 +2343,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "34 match(es): src/cli.ts:48, src/command-help.ts:237, src/mobile/doctor.ts:457"
+    "detail": "34 match(es): src/cli.ts:49, src/command-help.ts:253, src/mobile/doctor.ts:457"
    }
   },
   {
@@ -2360,7 +2360,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "10 match(es): src/cli.ts:48, src/command-help.ts:235, src/mobile/doctor.ts:470"
+    "detail": "10 match(es): src/cli.ts:49, src/command-help.ts:251, src/mobile/doctor.ts:470"
    }
   },
   {
@@ -2465,7 +2465,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/dream.ts:8, src/agent/embed-setup.ts:10, src/agent/embed.ts:3"
+    "detail": "23 match(es): src/agent/dream.ts:8, src/agent/embed-setup.ts:10, src/agent/embed.ts:3"
    }
   },
   {
@@ -2540,7 +2540,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "62 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "63 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

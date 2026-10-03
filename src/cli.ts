@@ -17,7 +17,8 @@ import {
 } from './core/config.js';
 import { diskBudgetBytes, diskKeepDays, diskUsage, enforceDiskBudget } from './core/disk.js';
 import { ensureLayout, home, workspaceDir, memoryDir, configPath } from './core/paths.js';
-import { log, setLogLevel } from './core/logger.js';
+import { log, setLogLevel, setLogToStderr } from './core/logger.js';
+import { emitJson, errorText, failJson, jsonWanted } from './core/json-out.js';
 import { onboard, OnboardFlags } from './onboard.js';
 import { createMock } from './providers/mock.js';
 import { startGateway, version } from './gateway/server.js';
@@ -33,7 +34,7 @@ import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
 import { formatTokens, usageForDay, type UsageDay } from './core/usage.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
-import { statusReport } from './agent/status.js';
+import { renderStatus, statusData, statusReport } from './agent/status.js';
 import { GatewayClient, GatewayNotRunningError } from './gateway/client.js';
 import { planOpenclaw, applyOpenclaw } from './migrate/openclaw.js';
 import { friendlyError } from './core/friendly.js';
@@ -128,10 +129,9 @@ async function waitForRun(client: GatewayClient, runId: string, timeoutSec: numb
     const run = await client.json<RunView>(`/api/runs/${encodeURIComponent(runId)}`);
     if (run.status === 'done' || run.status === 'error' || run.status === 'interrupted') {
       if (asJson) {
-        console.log(JSON.stringify(run, null, 2));
-      } else if (run.output) {
-        console.log(run.output);
+        return jsonRunResult(run);
       }
+      if (run.output) console.log(run.output);
       if (run.status === 'error') {
         console.error(`run ${runId} failed: ${run.error ?? 'unknown error'}`);
         return 1;
@@ -140,10 +140,14 @@ async function waitForRun(client: GatewayClient, runId: string, timeoutSec: numb
         console.error(`run ${runId} was stopped${run.output ? ' — the text above is what it had written' : ''}`);
         return 130;
       }
-      if (!asJson && !run.output) console.error(`run ${runId} finished with no output`);
+      if (!run.output) console.error(`run ${runId} finished with no output`);
       return 0;
     }
     if (Date.now() >= deadline) {
+      if (asJson) {
+        failJson('run', `run ${runId} is still running after ${timeoutSec}s`, 'wait longer (--timeout <seconds>) or stop it: termcrab stop', 124);
+        return 124;
+      }
       console.error(
         `run ${runId} is still running after ${timeoutSec}s (status: ${run.status})` +
           ` — wait longer (--timeout <seconds>) or stop it: termcrab stop`,
@@ -152,6 +156,20 @@ async function waitForRun(client: GatewayClient, runId: string, timeoutSec: numb
     }
     await new Promise((r) => setTimeout(r, 250));
   }
+}
+
+/** A finished run as one envelope, with the same exit codes as the human path. */
+function jsonRunResult(run: RunView): number {
+  if (run.status === 'error') {
+    failJson('run', `run ${run.runId} failed: ${run.error ?? 'unknown error'}`, undefined, 1);
+    return 1;
+  }
+  if (run.status === 'interrupted') {
+    failJson('run', `run ${run.runId} was stopped`, run.output ? 'the text in data.output is what it had written' : undefined, 130);
+    return 130;
+  }
+  emitJson('run', run);
+  return 0;
 }
 
 function printEvents(ev: AgentEvent): void {
@@ -228,6 +246,11 @@ export async function main(argv: string[]): Promise<void> {
   const [cmd = 'help', ...rest] = argv;
 
   if (process.env.TCRAB_LOG_LEVEL === 'debug') setLogLevel('debug');
+
+  // Batch 14: with --json, stdout carries one JSON document and nothing else —
+  // so every log line moves to stderr before any command runs.
+  const machine = jsonWanted(argv);
+  if (machine) setLogToStderr(true);
 
   // `termcrab <cmd> --help` must work on every command, including the ones
   // whose flag parser would otherwise reject an unknown option (13.3).
@@ -381,8 +404,10 @@ export async function main(argv: string[]): Promise<void> {
         console.log('```');
         return;
       }
-      if (values.json) {
-        console.log(JSON.stringify(checks, null, 2));
+      if (values.json || machine) {
+        const r = renderChecks(checks);
+        emitJson('doctor', { checks, failed: r.failed });
+        if (r.failed) process.exitCode = 1;
       } else {
         const r = renderChecks(checks);
         console.log(r.text);
@@ -525,17 +550,24 @@ export async function main(argv: string[]): Promise<void> {
           return;
         }
         const force = rest.includes('--force');
-        console.log(`importing from ${source} ...`);
+        if (!machine) console.log(`importing from ${source} ...`);
         try {
           const results = await importSkills(source, { force });
+          if (machine) {
+            emitJson('skills', { source, count: results.length, results });
+            return;
+          }
           for (const r of results) {
             const icon = r.action === 'skipped' ? '⏭️' : '✅';
             console.log(`${icon} ${r.action}: ${r.name}`);
           }
           console.log(`\n${results.length} skill(s) processed. Try: termcrab skills list`);
         } catch (err) {
-          console.error(`import failed: ${err instanceof Error ? err.message : err}`);
-          process.exitCode = 1;
+          if (machine) failJson('skills', errorText(err), `importing from ${source}`);
+          else {
+            console.error(`import failed: ${errorText(err)}`);
+            process.exitCode = 1;
+          }
         }
         return;
       }
@@ -568,6 +600,10 @@ export async function main(argv: string[]): Promise<void> {
         if (!r.ok) {
           console.error(r.error);
           process.exitCode = 1;
+          return;
+        }
+        if (machine) {
+          emitJson('skills', { created: name, path: r.path });
           return;
         }
         console.log(`✅ created ${r.path}`);
@@ -645,6 +681,13 @@ export async function main(argv: string[]): Promise<void> {
         return;
       }
       const list = store.list();
+      if (machine) {
+        emitJson('skills', {
+          count: list.length,
+          skills: list.map((k) => ({ name: k.name, origin: k.origin, description: k.description })),
+        });
+        return;
+      }
       if (!list.length) {
         console.log('no skills found');
         return;
@@ -657,6 +700,22 @@ export async function main(argv: string[]): Promise<void> {
       const [sub = 'ls', id] = rest;
       if (sub === 'ls' || sub === 'list') {
         const jobs = loadCrons();
+        if (machine) {
+          emitJson('cron', {
+            count: jobs.length,
+            jobs: jobs.map((j) => {
+              let next: string | null = null;
+              try {
+                const nx = nextRun(parseCron(j.schedule));
+                next = nx ? nx.toISOString() : null;
+              } catch {
+                next = null;
+              }
+              return { id: j.id, name: j.name, schedule: j.schedule, enabled: j.enabled, critical: Boolean(j.critical), nextRun: next, prompt: j.prompt };
+            }),
+          });
+          return;
+        }
         if (!jobs.length) {
           console.log('no cron jobs. Add one:');
           console.log('  termcrab cron add --schedule "0 8 * * *" --prompt "give me a briefing" --name morning');
@@ -701,21 +760,38 @@ export async function main(argv: string[]): Promise<void> {
             critical: opts.critical,
           });
           const nx = nextRun(parseCron(job.schedule));
+          if (machine) {
+            emitJson('cron', { job, nextRun: nx ? nx.toISOString() : null });
+            return;
+          }
           console.log(`✅ cron ${job.id} "${job.name}" created. Next run: ${nx ? nx.toLocaleString() : 'n/a'}`);
         } catch (err) {
-          console.error(`error: ${err instanceof Error ? err.message : err}`);
-          process.exitCode = 1;
+          if (machine) failJson('cron', errorText(err));
+          else {
+            console.error(`error: ${errorText(err)}`);
+            process.exitCode = 1;
+          }
         }
         return;
       }
       if (sub === 'rm' || sub === 'delete') {
         const ok = removeCron(id || '');
+        if (machine) {
+          if (ok) emitJson('cron', { removed: id || '' });
+          else failJson('cron', `no cron job with id ${id ?? '(missing)'}`, 'list them: termcrab cron ls');
+          return;
+        }
         console.log(ok ? '✅ removed' : 'not found');
         if (!ok) process.exitCode = 1;
         return;
       }
       if (sub === 'on' || sub === 'off') {
         const job = setCronEnabled(id || '', sub === 'on');
+        if (machine) {
+          if (job) emitJson('cron', { job });
+          else failJson('cron', `no cron job with id ${id ?? '(missing)'}`, 'list them: termcrab cron ls');
+          return;
+        }
         console.log(job ? `✅ ${job.name} is now ${job.enabled ? 'on' : 'off'}` : 'not found');
         if (!job) process.exitCode = 1;
         return;
@@ -825,7 +901,7 @@ export async function main(argv: string[]): Promise<void> {
             approvals: { id: string; tool: string; args: Record<string, unknown>; createdAt: number; sessionId?: string }[];
           }>('/api/approvals');
           if (asJson) {
-            console.log(JSON.stringify(data, null, 2));
+            emitJson('approvals', { count: data.approvals.length, approvals: data.approvals });
             return;
           }
           if (!data.approvals.length) {
@@ -862,22 +938,29 @@ export async function main(argv: string[]): Promise<void> {
             { method: 'POST', json: { by: 'cli' } },
           );
           if (asJson) {
-            console.log(JSON.stringify(res, null, 2));
+            emitJson('approvals', { id: target, ...res });
             return;
           }
           console.log(res.decision === 'approved' ? `✅ Approved ${target} — the tool will run now.` : `🚫 Denied ${target} — the agent was told.`);
           return;
         }
-        console.error('usage: termcrab approvals [list | approve <id> | deny <id>] [--json]');
-        process.exitCode = 1;
-      } catch (err) {
-        if (err instanceof GatewayNotRunningError) {
-          console.error(err.message);
-          console.error('Approvals live inside the running panel (that is where the blocked tool is waiting).');
-        } else {
-          console.error(`approvals: ${err instanceof Error ? err.message : String(err)}`);
+        if (asJson) failJson('approvals', 'unknown subcommand', 'usage: termcrab approvals [list | approve <id> | deny <id>]');
+        else {
+          console.error('usage: termcrab approvals [list | approve <id> | deny <id>] [--json]');
+          process.exitCode = 1;
         }
-        process.exitCode = 1;
+      } catch (err) {
+        if (asJson) {
+          failJson('approvals', errorText(err), 'approvals live inside the running panel (that is where the blocked tool is waiting)');
+        } else {
+          if (err instanceof GatewayNotRunningError) {
+            console.error(err.message);
+            console.error('Approvals live inside the running panel (that is where the blocked tool is waiting).');
+          } else {
+            console.error(`approvals: ${errorText(err)}`);
+          }
+          process.exitCode = 1;
+        }
       }
       return;
     }
@@ -890,7 +973,7 @@ export async function main(argv: string[]): Promise<void> {
       try {
         const data = await client.json<UsageResponse>('/api/usage');
         if (asJson) {
-          console.log(JSON.stringify(data, null, 2));
+          emitJson('usage', data);
           return;
         }
         console.log('');
@@ -913,13 +996,17 @@ export async function main(argv: string[]): Promise<void> {
         console.log('');
         return;
       } catch (err) {
-        if (err instanceof GatewayNotRunningError) {
-          console.error('The panel is not running, so there is nothing to measure.');
-          console.error('Start it with `termcrab gateway`, then ask again.');
+        if (asJson) {
+          failJson('usage', errorText(err), 'the meter lives in the running panel: start it with `termcrab gateway`');
         } else {
-          console.error(`usage: ${err instanceof Error ? err.message : String(err)}`);
+          if (err instanceof GatewayNotRunningError) {
+            console.error('The panel is not running, so there is nothing to measure.');
+            console.error('Start it with `termcrab gateway`, then ask again.');
+          } else {
+            console.error(`usage: ${errorText(err)}`);
+          }
+          process.exitCode = 1;
         }
-        process.exitCode = 1;
       }
       return;
     }
@@ -966,7 +1053,7 @@ export async function main(argv: string[]): Promise<void> {
           json: { message, sessionId },
         });
         if (asJson) {
-          console.log(JSON.stringify(submitted, null, 2));
+          emitJson('run', { ...submitted, sessionId });
         } else {
           console.log(`▶ run ${submitted.turnId} (session ${sessionId})${submitted.status === 'queued' ? ' — waiting for the lane' : ''}`);
         }
@@ -974,14 +1061,19 @@ export async function main(argv: string[]): Promise<void> {
         process.exitCode = await waitForRun(client, submitted.turnId, timeoutSec, asJson);
         return;
       } catch (err) {
-        if (err instanceof GatewayNotRunningError) {
-          console.error(err.message);
-          console.error('`termcrab run` submits to the panel so the queue, the approvals and the panel all see it.');
-          console.error('For a one-off turn without a panel: termcrab agent "what to do"');
+        const hint = 'one-off turn without the panel: termcrab agent "what to do"';
+        if (asJson) {
+          failJson('run', errorText(err), hint);
         } else {
-          console.error(`run: ${err instanceof Error ? err.message : String(err)}`);
+          if (err instanceof GatewayNotRunningError) {
+            console.error(err.message);
+            console.error('`termcrab run` submits to the panel so the queue, the approvals and the panel all see it.');
+            console.error('For a one-off turn without a panel: termcrab agent "what to do"');
+          } else {
+            console.error(`run: ${errorText(err)}`);
+          }
+          process.exitCode = 1;
         }
-        process.exitCode = 1;
       }
       return;
     }
@@ -997,7 +1089,7 @@ export async function main(argv: string[]): Promise<void> {
           json: session ? { sessionId: session } : {},
         });
         if (asJson) {
-          console.log(JSON.stringify(res, null, 2));
+          emitJson('stop', res);
           return;
         }
         if (!res.count) {
@@ -1008,9 +1100,13 @@ export async function main(argv: string[]): Promise<void> {
         console.log('   (whatever it had already written is kept, marked [interrupted])');
         return;
       } catch (err) {
-        if (err instanceof GatewayNotRunningError) console.error(err.message);
-        else console.error(`stop: ${err instanceof Error ? err.message : String(err)}`);
-        process.exitCode = 1;
+        if (asJson) {
+          failJson('stop', errorText(err), 'stop needs the panel: it owns the runs');
+        } else {
+          if (err instanceof GatewayNotRunningError) console.error(err.message);
+          else console.error(`stop: ${errorText(err)}`);
+          process.exitCode = 1;
+        }
         return;
       }
     }
@@ -1032,7 +1128,7 @@ export async function main(argv: string[]): Promise<void> {
       const budgetBytes = maxMb * 1024 * 1024;
       const trim = rest.includes('--trim') ? enforceDiskBudget(budgetBytes, { keepDays }) : null;
       if (asJson) {
-        console.log(JSON.stringify({ before, budgetBytes, keepDays, trim }, null, 2));
+        emitJson('disk', { before, budgetBytes, keepDays, trim, overBudget: before.totalBytes > budgetBytes });
         return;
       }
       console.log('');
@@ -1056,7 +1152,12 @@ export async function main(argv: string[]): Promise<void> {
 
     case 'status': {
       const config = loadConfig();
-      console.log(await statusReport(config));
+      const data = await statusData(config);
+      if (machine) {
+        emitJson('status', data);
+        return;
+      }
+      console.log(renderStatus(data));
       return;
     }
 
@@ -1132,6 +1233,10 @@ export async function main(argv: string[]): Promise<void> {
       const store = new SessionStore();
       if (sub === 'ls' || sub === 'list') {
         const list = store.list();
+        if (machine) {
+          emitJson('sessions', { count: list.length, sessions: list });
+          return;
+        }
         if (!list.length) {
           console.log('no chats yet');
           return;
@@ -1144,18 +1249,28 @@ export async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'export') {
         if (!a) {
-          console.error('usage: termcrab sessions export <id> [file.md]');
-          process.exitCode = 1;
+          if (machine) failJson('sessions', 'missing session id', 'usage: termcrab sessions export <id> [file.md]');
+          else {
+            console.error('usage: termcrab sessions export <id> [file.md]');
+            process.exitCode = 1;
+          }
           return;
         }
         const md = store.exportMarkdown(a);
         if (md === null) {
-          console.error(`no chat found: ${a}  (see: termcrab sessions ls)`);
-          process.exitCode = 1;
+          if (machine) failJson('sessions', `no chat found: ${a}`, 'list them: termcrab sessions ls');
+          else {
+            console.error(`no chat found: ${a}  (see: termcrab sessions ls)`);
+            process.exitCode = 1;
+          }
           return;
         }
         const out = b || `${a.replace(/[^a-zA-Z0-9_.-]/g, '_')}.md`;
         fs.writeFileSync(out, md, 'utf8');
+        if (machine) {
+          emitJson('sessions', { id: a, file: out, bytes: Buffer.byteLength(md) });
+          return;
+        }
         console.log(`✅ exported to ${out}`);
         return;
       }
@@ -1169,6 +1284,10 @@ export async function main(argv: string[]): Promise<void> {
           return;
         }
         const r = store.purgeOlderThan(days);
+        if (machine) {
+          emitJson('sessions', { purged: r.removed, freedBytes: r.freedBytes, olderThanDays: days });
+          return;
+        }
         console.log(`🧹 removed ${r.removed} old chat file(s), freed ${Math.max(0, Math.round(r.freedBytes / 1024))} KB (older than ${days} day(s))`);
         return;
       }
@@ -1179,6 +1298,11 @@ export async function main(argv: string[]): Promise<void> {
           return;
         }
         const r = store.rename(a, b);
+        if (machine) {
+          if (r === 'ok') emitJson('sessions', { from: a, to: b, renamed: true });
+          else failJson('sessions', `rename failed: ${r}`, 'new id may only contain letters, digits, - _ . :');
+          return;
+        }
         if (r === 'ok') console.log(`✅ renamed ${a} -> ${b}`);
         else if (r === 'not-found') console.error(`no chat found: ${a}`);
         else if (r === 'exists') console.error(`a chat named ${b} already exists`);
@@ -1282,11 +1406,18 @@ export async function main(argv: string[]): Promise<void> {
       if (sub === 'search') {
         const q = queryParts.join(' ');
         if (!q) {
-          console.error('usage: termcrab memory search <query>');
-          process.exitCode = 1;
+          if (machine) failJson('memory', 'missing query', 'usage: termcrab memory search <query>');
+          else {
+            console.error('usage: termcrab memory search <query>');
+            process.exitCode = 1;
+          }
           return;
         }
         const hits = await memory.search(q);
+        if (machine) {
+          emitJson('memory', { query: q, count: hits.length, hits });
+          return;
+        }
         if (!hits.length) console.log('no matches');
         else for (const h of hits) console.log(`[${h.file}] ${h.line}`);
         return;
@@ -1308,6 +1439,18 @@ export async function main(argv: string[]): Promise<void> {
         const res = await ctx.sessions.compactWithModel(id, ctx.config.agent.compactThreshold || 60, {
           provider: ctx.localProvider ?? provider,
         });
+        if (machine) {
+          emitJson('memory', {
+            session: id,
+            compacted: Boolean(res.digest),
+            coveredTurns: res.covered ?? 0,
+            by: res.by,
+            model: res.model ?? null,
+            note: res.note ?? null,
+            file: res.digestFile ?? null,
+          });
+          return;
+        }
         if (!res.digest) {
           console.log(`nothing to compact in ${id} (the hot window is already small enough)`);
           return;
@@ -1319,6 +1462,18 @@ export async function main(argv: string[]): Promise<void> {
         return;
       }
       const shown = memory.readForPrompt(8000);
+      if (machine) {
+        emitJson('memory', {
+          text: shown.text,
+          facts: shown.facts,
+          totalFacts: shown.totalFacts,
+          bytes: shown.bytes,
+          budget: shown.budget,
+          stats: memory.stats(),
+          files: memoryDir(),
+        });
+        return;
+      }
       console.log(shown.text);
       console.log(
         `\n--- injected into prompts: ${shown.facts}/${shown.totalFacts} facts, ${shown.bytes}/${shown.budget} bytes` +

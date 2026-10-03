@@ -61,7 +61,9 @@
 
 | T1.7 | চ্যানেল + সারফেস প্যারিটি (batch 13 ✔ ২০২৬-১০-০৩) | Typing indicators · Per-command help · Shell completion · Colour/TTY · Discord · Slack · Signal · SMS/MMS · Matrix | ~3d | test: পাঁচটা অ্যাডাপ্টার inject করা transport দিয়ে চলে (allowlist → agent → reply → outbox) — `test/adapters.test.ts` 13.5; `termcrab <cmd> --help` প্রতিটা কমান্ডে আর প্রতিটা ডকুমেন্টেড ফ্ল্যাগ cli.ts-এ ব্যবহৃত — `test/tier2b.test.ts` 13.3; completion bash/zsh/fish একই টেবিল থেকে — 13.4; piped রানে কোনো ANSI নেই — 13.2; Telegram typing — 13.1। census: PARTIAL 53→48, WORKING 41→50, score 57% |
 
-**সাব-টোটাল: ~৩৪ দিন → core lane খালি (batch 11-এ শেষ, ২০২৬-১০-০৩), BROKEN ০, drift ০; প্যারিটি লেনও এক লাফ এগোলো (batch 13)।**
+| T1.8 | মেশিন-পাঠ্য CLI (batch 14 ✔ ২০২৬-১০-০৩) | JSON output mode | ~2d | test: প্রতিটা structured কমান্ডে `--json` — stdout-এ **ঠিক একটা** ডকুমেন্ট `{ok, command, data}`, ব্যর্থ হলেও `{ok:false, …, error:{message, hint}}` আর exit code অপরিবর্তিত (0/1/124/130); `--json` মোডে লগ stderr-এ, তাই একটা warning ডকুমেন্ট নষ্ট করতে পারে না — `test/tier2c.test.ts` 14.1–14.5, চুক্তি লেখা `docs/CLI.md`-তে। `termcrab help <cmd>` এখন কী কী key আছে তাও বলে |
+
+**সাব-টোটাল: ~৩৬ দিন → core lane খালি (batch 11-এ শেষ, ২০২৬-১০-০৩), BROKEN ০, drift ০; প্যারিটি লেনও এক লাফ এগোলো (batch 13–14)।**
 
 ### Tier 2 — ফোন-নেটিভ জয় (১৪টা BETTER এখানেই; এটাই মোত)
 
@@ -111,6 +113,7 @@
 | **B** | ~৪ সপ্তাহ | batch 6 ✔ approvals · 7 ✔ স্মৃতি · 8 ✔ write fencing · 9 ✔ usage · 10 ✔ Tier-0 sweep (৭/৭) · **11 ✔ মডেল-লেখা compaction + generated docs map** — সব ২০২৬-১০-০৩ | **BROKEN 0, drift 0, core lane ~০ দিন** (census: WORKING 41, score 53%) |
 | **C** | ~২ সপ্তাহ | Tier 2-র যাচাই-বাছাই: প্রতিটা মোট-দাবির টেস্ট + মাপা সংখ্যা — **✔ batch 12 (২০২৬-১০-০৩)**: bench + README-র সংখ্যা, offline end-to-end, TERMUX গাইড, outbox exactly-once | সংখ্যা বাড়েনি (WORKING 41 · BETTER 14), কিন্তু প্রতিটা দাবির পিছনে এখন টেস্ট/স্ক্রিপ্ট |
 | **D** | ~১ সপ্তাহ | প্যারিটি লেনের সস্তা ফ্লিপ — **✔ batch 13 (২০২৬-১০-০৩)**: Telegram typing, colour/TTY শৃঙ্খলা, প্রতি-কমান্ড help, shell completion, আর পাঁচটা চ্যানেল অ্যাডাপ্টারের আসল রাউটিং+টেস্ট | **WORKING 41→50 · PARTIAL 53→48 · score 53%→57%**, drift 0 |
+| **E** | ~১ সপ্তাহ | মেশিন-পাঠ্য CLI — **✔ batch 14 (২০২৬-১০-০৩)**: একটা JSON envelope, ১১টা কমান্ডে `--json`, `--json` মোডে লগ stderr-এ, ব্যর্থতাও envelope + exit code, `docs/CLI.md` | **WORKING 50→51 · PARTIAL 48→47**, score 57%, drift 0 |
 | **D** | ~৩ সপ্তাহ | Tier 0-র বাকি + যেসব PARTIAL ফ্লিপ করা সস্তা (চ্যানেল: Discord/Slack/Signal/SMS/Matrix ~২দিন করে) | BETTER ~25, PARTIAL কমতে থাকে |
 
 **প্রথম কাজ সবসময় যেটা ব্রোকেন — নতুন ফিচার পরে।** কারণ: BROKEN সারি মানে ফাইল-ট্রি-তে ফিচার আছে কিন্তু কোনো কোড সেটা ছোঁয় না; ওগুলোই "আমরা এগিয়ে" ভ্রম তৈরি করে।

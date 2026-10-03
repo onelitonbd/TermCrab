@@ -120,6 +120,8 @@ termcrab boot install   auto-start on device boot (Termux:Boot)
 termcrab config         get/set configuration
 termcrab help <cmd>     one command in detail (`termcrab <cmd> --help` prints the same)
 termcrab completion sh  bash | zsh | fish completion script (`termcrab completion bash`)
+termcrab status --json   every structured command takes --json: one document on stdout
+                         (`{ok, command, data}` / `{ok:false, …, error}`) — see docs/CLI.md
 ```
 
 ## Named agents

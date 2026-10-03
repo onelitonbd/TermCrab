@@ -374,8 +374,9 @@ check('surfaces', 'CLI command coverage', '~90 commands, 101 doc pages', 'PARTIA
 check('surfaces', 'Per-command help', 'every command documents its flags', 'WORKING',
   'src/command-help.ts is one table (usage, summary, flags, example) for every command: `termcrab help <cmd>` and `termcrab <cmd> --help` work on all of them — including commands whose flag parser used to reject --help. The test fails if a command in the CLI switch has no entry, or a documented flag is never parsed. test/tier2b.test.ts 13.3',
   { pattern: 'command-help', expect: 'present' }, 0);
-check('surfaces', 'JSON output mode', 'reserved stdout + failure envelope', 'PARTIAL',
-  'doctor --json only (src/cli.ts:238)', { pattern: '--json', expect: 'present' }, 3);
+check('surfaces', 'JSON output mode', 'reserved stdout + failure envelope', 'WORKING',
+  'one envelope for every structured command: {ok, command, data} on success, {ok:false, command, error:{message, hint}} on failure, exactly one document on stdout (src/core/json-out.ts). `--json` works on status, sessions, skills, cron, memory, approvals, usage, disk, doctor, run/wait and stop; in json mode logs move to stderr (setLogToStderr) so a warning cannot corrupt the document; the exit code keeps the shell convention (0/1/124/130). Documented in docs/CLI.md and in `termcrab help <cmd>`. test/tier2c.test.ts 14.1-14.5',
+  { pattern: 'emitJson', expect: 'present' }, 0);
 check('surfaces', 'Shell completion', 'openclaw completion bash|zsh|fish', 'WORKING',
   'termcrab completion bash|zsh|fish prints a script generated from the same command table — every command name appears in all three, and an unknown shell exits 1 with the usage line. test/tier2b.test.ts 13.4',
   { pattern: /completionScript\(shell\)|_termcrab/, expect: 'present' }, 0);

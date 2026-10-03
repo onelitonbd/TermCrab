@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৫৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫০টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৮টা আধা (PARTIAL), ৩৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪৯ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৫৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৫১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৭টা আধা (PARTIAL), ৩৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪৬ দিন, later ~১৬৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,9 +51,9 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 50 | wired and observable |
+| ✅ WORKING | 51 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 48 | exists, narrower than theirs |
+| 🟡 PARTIAL | 47 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 38 | nothing in the tree |
 | | **150** | tracked capabilities |
@@ -63,9 +63,9 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~249d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 108 | ~246d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 28 | ~164d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~413d | |
+| **total** | 150 | ~410d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -261,7 +261,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
 | Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. test/tier0.test.ts 10.6 | parity | — |
 
-### surfaces — 53% (11 checks)
+### surfaces — 58% (11 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -270,7 +270,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Interactive REPL | TUI --local | 🟡 PARTIAL | src/cli.ts:336 readline REPL, 4 slash commands | parity | 5 |
 | CLI command coverage | ~90 commands, 101 doc pages | 🟡 PARTIAL | 29 commands in one switch (src/cli.ts) — still far fewer words than their ~90, but every one of them documents itself (13.3) and completes (13.4) | parity | 8 |
 | Per-command help | every command documents its flags | ✅ WORKING | src/command-help.ts is one table (usage, summary, flags, example) for every command: `termcrab help <cmd>` and `termcrab <cmd> --help` work on all of them — including commands whose flag parser used to reject --help. The test fails if a command in the CLI switch has no entry, or a documented flag is never parsed. test/tier2b.test.ts 13.3 | parity | — |
-| JSON output mode | reserved stdout + failure envelope | 🟡 PARTIAL | doctor --json only (src/cli.ts:238) | parity | 3 |
+| JSON output mode | reserved stdout + failure envelope | ✅ WORKING | one envelope for every structured command: {ok, command, data} on success, {ok:false, command, error:{message, hint}} on failure, exactly one document on stdout (src/core/json-out.ts). `--json` works on status, sessions, skills, cron, memory, approvals, usage, disk, doctor, run/wait and stop; in json mode logs move to stderr (setLogToStderr) so a warning cannot corrupt the document; the exit code keeps the shell convention (0/1/124/130). Documented in docs/CLI.md and in `termcrab help <cmd>`. test/tier2c.test.ts 14.1-14.5 | parity | — |
 | Shell completion | openclaw completion bash|zsh|fish | ✅ WORKING | termcrab completion bash|zsh|fish prints a script generated from the same command table — every command name appears in all three, and an unknown shell exits 1 with the usage line. test/tier2b.test.ts 13.4 | parity | — |
 | Colour / TTY discipline | NO_COLOR, TTY-only ANSI, OSC links | ✅ WORKING | src/core/color.ts: NO_COLOR (non-empty) beats FORCE_COLOR, TCRAB_COLOR=always|never is the explicit override, otherwise colour only on a TTY — pipes, log files and chat bridges stay plain. The logger, the CLI error paths and the bin go through it; test/tier2b.test.ts 13.2 runs the real binary both ways. (OSC 8 hyperlinks: not used.) | parity | — |
 | Terminal voice loop | Talk Mode, wake words | 🏅 BETTER | termcrab wake: keyword → STT → command → TTS (src/mobile/wake.ts) — no desktop equivalent in Termux | parity | 1 |
