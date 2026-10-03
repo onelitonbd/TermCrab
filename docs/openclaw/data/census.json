@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T18:47:56.161Z",
+ "measured": "2026-10-03T23:48:20.554Z",
  "tally": {
-  "WORKING": 90,
+  "WORKING": 92,
   "BETTER": 14,
-  "PARTIAL": 26,
+  "PARTIAL": 25,
   "BROKEN": 0,
-  "ABSENT": 2
+  "ABSENT": 1
  },
- "coverage": 88,
+ "coverage": 89,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 132,
+ "effortLeft": 120,
  "areas": [
   "agent",
   "automation",
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1358"
+    "detail": "1 match(es): src/gateway/server.ts:1359"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1360"
+    "detail": "2 match(es): src/gateway/server.ts:1361"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:300"
+    "detail": "1 match(es): src/gateway/server.ts:301"
    }
   },
   {
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:348"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:361"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2368"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2369"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1179"
+    "detail": "4 match(es): src/gateway/server.ts:1180"
    }
   },
   {
@@ -298,7 +298,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:300"
+    "detail": "1 match(es): src/gateway/server.ts:301"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:159, src/gateway/server.ts:1552, src/mobile/doctor.ts:525"
+    "detail": "5 match(es): src/cli.ts:159, src/gateway/server.ts:1553, src/mobile/doctor.ts:545"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1222, src/gateway/server.ts:1588"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1222, src/gateway/server.ts:1589"
    }
   },
   {
@@ -644,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "574 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:160"
+    "detail": "574 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:178"
    }
   },
   {
@@ -762,7 +762,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:757, src/agent/tools.ts:210"
+    "detail": "2 match(es): src/agent/toolbox.ts:757, src/agent/tools.ts:211"
    }
   },
   {
@@ -803,7 +803,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:659"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:660"
    }
   },
   {
@@ -999,7 +999,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:394, src/cli.ts:2164"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:417, src/cli.ts:2164"
    }
   },
   {
@@ -1018,7 +1018,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:270"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:283"
    }
   },
   {
@@ -1076,7 +1076,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/exec-guard.ts:98"
+    "detail": "1 match(es): src/agent/exec-guard.ts:106"
    }
   },
   {
@@ -1095,7 +1095,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:662, src/agent/tools.ts:211"
+    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:662, src/agent/tools.ts:212"
    }
   },
   {
@@ -1114,7 +1114,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:70, src/agent/tools.ts:208"
+    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:70, src/agent/tools.ts:209"
    }
   },
   {
@@ -1133,26 +1133,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:518"
+    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:541"
    }
   },
   {
    "area": "tools",
    "capability": "Sandboxed code execution",
    "openclaw": "QuickJS code-mode with host bindings",
-   "verdict": "PARTIAL",
-   "evidence": "code_exec via Node vm (tools.ts:509+)",
+   "verdict": "WORKING",
+   "evidence": "Two layers now. `code_exec` runs JavaScript in a Node vm with no require, no filesystem and no network binding, with a wall-clock timeout and a capped result. `exec` runs inside the real sandbox above (bubblewrap/proot) when the device has one: read-only root, one writable workspace, private /tmp, no network by default, and the transcript records which mode ran. Shell commands shell out through argv arrays, never string interpolation. OpenClaw's QuickJS code-mode with typed host bindings is broader as a *language* environment; ours is two engines with a stated boundary each",
    "probe": {
-    "pattern": "code_exec",
+    "file": "src/agent/sandbox.ts",
+    "pattern": "export function sandboxFor",
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/tools.ts:579"
+    "detail": "1 match(es): src/agent/sandbox.ts:251"
    }
   },
   {
@@ -1171,7 +1172,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/tools.ts:16, src/gateway/server.ts:47, src/providers/mcp.ts:31"
+    "detail": "4 match(es): src/agent/tools.ts:17, src/gateway/server.ts:47, src/providers/mcp.ts:31"
    }
   },
   {
@@ -1312,7 +1313,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/prompt.ts:249, src/agent/tools.ts:209"
+    "detail": "3 match(es): src/agent/prompt.ts:249, src/agent/tools.ts:210"
    }
   },
   {
@@ -1523,7 +1524,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:546, src/mobile/doctor.ts:385"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:547, src/mobile/doctor.ts:405"
    }
   },
   {
@@ -1675,7 +1676,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:193"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:206"
    }
   },
   {
@@ -1694,7 +1695,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:897"
+    "detail": "1 match(es): src/gateway/server.ts:898"
    }
   },
   {
@@ -1912,7 +1913,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:45, src/gateway/server.ts:402"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:46, src/gateway/server.ts:403"
    }
   },
   {
@@ -2279,7 +2280,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:71, src/gateway/auth.ts:20, src/gateway/server.ts:300"
+    "detail": "5 match(es): src/core/config.ts:71, src/gateway/auth.ts:20, src/gateway/server.ts:301"
    }
   },
   {
@@ -2305,19 +2306,20 @@
    "area": "security",
    "capability": "Sandboxing",
    "openclaw": "sandbox modes, workspace roots, install policy",
-   "verdict": "ABSENT",
-   "evidence": "exec is allow/deny only; the single \"sandbox\" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run",
+   "verdict": "WORKING",
+   "evidence": "src/agent/sandbox.ts fits a real isolation boundary around every shell command: bubblewrap when the device has it (read-only root, the workspace as the only writable path plus agent.sandboxWrites, a private /tmp and a throwaway HOME so ~/.ssh is not writable, --unshare-pid/ipc/uts, --die-with-parent, and no network unless agent.sandboxNetwork says otherwise), proot where unprivileged namespaces are blocked (userspace chroot, and it says plainly that proot cannot drop the network), and an honest sentence naming the package to install when there is neither. agent.sandbox picks the policy: auto (default) runs and writes [sandbox] ran without a sandbox into the transcript, require refuses with the fix rather than running with full access, off is the pre-30 behaviour and is recorded per run. The argv is built as an array and asserted flag by flag, never a shell string; `termcrab doctor` reports the mode, GET /api/status carries it and the panel shows it. Container images, per-tool policies and a filesystem-exfiltration guard beyond the writable-path fence are not implemented. Pinned by test/tier2s.test.ts 30.1-30.3",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "file": "src/agent/sandbox.ts",
+    "pattern": "export function sandboxPlan",
+    "expect": "present"
    },
-   "effort": 8,
+   "effort": 0,
    "lane": "later",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/agent/sandbox.ts:164"
    }
   },
   {
@@ -2471,7 +2473,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "763 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "774 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2547,7 +2549,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/mobile/bionic.ts:39, src/mobile/doctor.ts:250"
+    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:270"
    }
   },
   {
@@ -2566,7 +2568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2785"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2798"
    }
   },
   {
@@ -2881,7 +2883,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "80 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "81 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

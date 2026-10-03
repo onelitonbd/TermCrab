@@ -100,7 +100,7 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab approvals approve\|deny <id> --json` | `{id, decision, by, ok}` |
 | `termcrab usage --json` | `{day, turns, calls, promptTokens, completionTokens, totalTokens, costUsd, priced, byModel, pricingAsOf, priceConfigured}` |
 | `termcrab disk --json` | `{before:{root, totalBytes, files, byArea}, budgetBytes, keepDays, trim, overBudget}` |
-| `termcrab doctor --json` | `{checks:[…], failed}` |
+| `termcrab doctor --json` | `{checks:[…], failed}` — including the shell-sandbox mode this device can offer |
 | `termcrab run "…" --json` | `{turnId, sessionId, status, …}` |
 | `termcrab run --wait <id> --json` | the finished run: `{runId, status, output, error, durationMs, tokensIn, tokensOut}` |
 | `termcrab stop --json` | `{count, stopped:[runId], sessions:[…]}` |

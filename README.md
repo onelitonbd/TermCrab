@@ -323,6 +323,9 @@ OpenClaw research that inspired it: [OPENCLAW_REPORT.md](OPENCLAW_REPORT.md)
 - Loopback bind by default; non-loopback **refuses to start** without a token
 - **Login system removed** — all `/api/*` endpoints are open (loopback binding is the only gate)
 - Telegram allowlist required; file tools are root-bounded; `exec` can be disabled
+- **Shell commands run in a sandbox** when the device can give one (bubblewrap, else proot):
+  read-only root, one writable workspace, a private `/tmp`, no network unless you ask — and when
+  there is no sandbox, the transcript says so instead of pretending (`agent.sandbox: auto|require|off`)
 - Read [SECURITY.md](SECURITY.md) before exposing anything to a network
 
 ## Contributing

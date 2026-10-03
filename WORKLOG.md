@@ -16,53 +16,54 @@
 
 ## ১. সারসংক্ষেপ (বাংলায়)
 
-- **এইমাত্র শেষ (ব্যাচ ২৯ পূর্ণ): full-screen terminal — ৮৬% → ৮৮%, surfaces lane অনেক এগোল।**
-  - **সত্যিকারের স্ক্রিন (২৯.১):** `termcrab tui` — alternate buffer (যে পথেই বেরোনো হোক: `/quit`, Ctrl-C, EOF, turn ভাঙলেও — screen ঠিক ফিরে আসে), bracketed paste, raw key decode (আধা-আসা arrow sequence আর ভাঙা emoji পরের read-এর জন্য রাখা হয়), আর frame ঠিক terminal-এর মাপে — চওড়া অক্ষর (বাংলা/জাপানি) দুই cell ধরে, তাই ডান ধার কখনো এলোমেলো হয় না। `Ctrl-L` rotate-এর পরে redraw করে, resize নিজেই ধরা পড়ে।
-  - **চলন্ত turn চোখের সামনে (২৯.২):** উত্তর আসার সাথে সাথে transcript-এ stream হয়, প্রতিটা tool call এক লাইনে সময়সহ, thinking dim; ইনপুট বক্সটা shell-এর মতো (`↑`/`↓` history, Ctrl-U/K/A/E, backspace, cursor এক পাশে সরবে — লাইন overflow করবে না)। `/sessions` পিকার দিয়ে যেকোনো কথোপকথন খোলা যায়, `/new`, `/status`, `/history`, `/dir`, `/help` transcript-এ উত্তর দেয়। pipe-এ চালালে garbage আঁকার বদলে বলে দেয় REPL ব্যবহার করতে।
-  - **অন্য surface-এর সাথে সংযুক্ত (২৯.৩):** gateway চালু থাকলে screen ২৮.২-এর attach stream-এ জুড়ে যায় — প্যানেল বা ফোন থেকে শুরু করা turn এখানেই live দেখা যায়, কোথা থেকে এসেছে লেখা থাকে; gateway-টা একটু পরে উঠলে কয়েক সেকেন্ড retry করে (`--no-attach` দিয়ে বন্ধ)। খালি conversation-এ attach করতে চাইলে আগে 404 আসত — এখন খালি state frame আসে (আসল bug, test-এ ধরা)।
-- **সংখ্যা:** **৮৮%** of in-scope checks (WORKING ৯০ · BETTER ১৪ · PARTIAL ২৬ · ABSENT ২), বাকি খাটনি ~১৩২ দিন, drift 0, স্যুট **৭৯১ টেস্ট · 0 fail**; release **0.61.0**।
-- **পরের কাজ (ব্যাচ ৩০):** Sandboxing (8d) — bubblewrap/proot থাকলে সত্যিকারের sandbox-এ code execution, না থাকলে সৎভাবে না-করার কথা বলা; তারপর Database + migrations (31), শেষে PARTIAL বাকিগুলো (Embedding providers, Bootstrap file set, ops/security)।
+- **এইমাত্র শেষ (ব্যাচ ৩০ পূর্ণ): সত্যিকারের sandbox — ৮৮% → ৮৯%, security lane অনেক এগোল।**
+  - **বubblewrap/proot (৩০.১):** `exec` এখন ডিভাইসে যা আছে তার মধ্যে চলে — bwrap থাকলে read-only root, শুধু workspace লিখনযোগ্য (`agent.sandboxWrites` দিয়ে আরও যোগ করা যায়), নিজের `/tmp` আর নকল `$HOME` (তাই script `~/.ssh`-এ লিখলেও আসলে কিছু লেখে না), `--unshare-pid/ipc/uts`, `--die-with-parent`, আর `agent.sandboxNetwork` না বললে **network একেবারে বন্ধ**। namespace বন্ধ যেসব Android kernel-এ, সেখানে proot — এবং স্পষ্ট লেখা থাকে proot network আটকাতে পারে না (ভান নয়)।
+  - **নেই মানে সৎ উত্তর (৩০.২):** `agent.sandbox` = `auto` (ডিফল্ট: চালায়, কিন্তু output-এর শুরুতে `[sandbox] ran without a sandbox: … pkg install bubblewrap`), `require` (sandbox ছাড়া **চালায়ই না**, install করার প্যাকেজ বলে), `off` (আগের আচরণ, প্রতি run-এ লেখা থাকে)। কোনো অবস্থাতেই চুপচাপ unsandboxed চলে না।
+  - **argv = array, string নয়:** sandbox-এর flag গুলো array হিসেবে বানানো আর টেস্টে একটার পর একটা যাচাই করা — ভুল flag-এর sandbox, sandbox-ই নয় বরং বিপদ (sandbox বলে মনে হয়)।
+  - **দেখা যায় সব জায়গায়:** `termcrab doctor` ডিভাইসের mode+fix দেখায়, `GET /api/status`-এ `sandbox` block, প্যানেলের live status-এ `Sandbox: bwrap|proot|none|off`।
+- **সংখ্যা:** **৮৯%** of in-scope checks (WORKING ৯২ · BETTER ১৪ · PARTIAL ২৫ · ABSENT ১), বাকি খাটনি ~১২০ দিন, drift 0, স্যুট **৭৯৯ টেস্ট · 0 fail**; release **0.62.0**।
+- **পরের কাজ (ব্যাচ ৩১):** Database + migrations (8d) — শেষ ABSENT সারি: version stamp সহ file-based migration runner, আর home round-trip করে এমন backup/restore। তারপর PARTIAL বাকিগুলো (Embedding providers, Bootstrap file set, ops/security)।
 
 ---
 
-## 2. Now — batch 29, finished: the terminal is a surface (this commit)
+## 2. Now — batch 30, finished: a sandbox you can point at (this commit)
 
-The third surface, done properly. Until now "terminal" meant `termcrab agent`: a readline
-prompt that printed events as text rolled in. That is a fine REPL and a poor third surface —
-no screen, no live view, no way to see what the phone just did to the same conversation.
+`exec` was guarded (catastrophe deny-list, timeout, capped output, approvals) and still ran
+with the whole home directory and the network in reach. This batch puts a real isolation
+boundary around it — and, where the device cannot provide one, says so instead of implying one.
 
 | # | Step | Status | Evidence |
 |---|---|---|---|
-| 29.1 | A real screen: alternate buffer, raw keys, exact frames | ✔ done | `src/tui/text.ts` (cell arithmetic: wide chars, cut/truncate/wrap/pad), `src/tui/keys.ts` (raw bytes → named keys; a half-arrived CSI sequence and a split code point are kept for the next read), `src/tui/frame.ts` (`renderFrame` is a pure function of state × size, always exactly rows × cols; the cursor slides instead of overflowing), `src/tui/app.ts` (alt screen + bracketed paste entered and left on every exit path, resize redraws, non-TTY refuses). `test/tier2r.test.ts` 29.1 |
-| 29.2 | A live turn in the screen | ✔ done | deltas stream into the transcript as they arrive, a tool call is one line that updates in place with its duration, thinking is dimmed, the input box is editable the whole time (history with ↑/↓, Ctrl-U/K/A/E, backspace, delete), `/sessions` opens an arrow-select picker, `/new` `/status` `/history` `/dir` `/help` answer in the transcript, Ctrl-C stops a turn then leaves. `test/tier2r.test.ts` 29.2 (over a fake TTY, with `--frames`-style frame capture) |
-| 29.3 | Attach to a session (and to other surfaces) | ✔ done | the screen opens on the rolling main session, and when a gateway is running it attaches to `GET /api/sessions/:id/attach` (28.2) so a turn from the panel or the phone is drawn here while it happens, labelled with its origin; it retries while the gateway is still coming up; attaching to an empty conversation now streams an empty state instead of 404. `test/tier2r.test.ts` 29.3 (a real gateway + a real panel turn) |
-| 29.4 | Docs + census | ✔ done | `README.md` (`termcrab tui` in the CLI block + a section with a frame sample and the key list), `docs/CLI.md` (the screen, its keys and `--frames`), `docs/TERMUX.md` (extra-keys row, Ctrl-L after a rotation), `docs/ARCHITECTURE.md` (+4 rows), census: Full-screen TUI ABSENT → WORKING, Interactive REPL PARTIAL → WORKING (**88%**, effort ~152d → ~132d, drift 0) |
+| 30.1 | Detect and use a real sandbox | ✔ done | `src/agent/sandbox.ts`: `detectSandbox()` probes PATH *and runs the binary* (an executable that cannot make a namespace is not a sandbox); `sandboxPlan()` builds the argv — bubblewrap: `--ro-bind / /`, `--dev /dev`, `--proc /proc`, `--tmpfs /tmp`, a throwaway HOME, `--unshare-pid/ipc/uts(-cgroup)`, `--die-with-parent`, `--new-session`, `--chdir <workspace>`, one `--bind` per writable path, `--unshare-net` unless asked; proot: `-0 -r / -w <cwd> -b /dev -b /proc -b <writes>`. `test/tier2s.test.ts` 30.1 (flag-by-flag, plus a live run when bubblewrap exists) |
+| 30.2 | An honest refusal when there is none | ✔ done | `agent.sandbox = auto` (default) runs and prefixes the output with `[sandbox] ran without a sandbox: …`; `require` refuses with the install hint before anything spawns; `off` runs with full access and says so per run. The runner takes the plan (`sandbox: {command, args}`) so nothing is re-parsed by a shell, and every `RunResult` carries `{mode, isolated, note}`. `test/tier2s.test.ts` 30.2 (all three policies, the argv the runner really spawns, and the exec tool's output note) |
+| 30.3 | Doctor + status + docs | ✔ done | `termcrab doctor` reports the mode and the fix (`fail` under `require`, `warn` under `auto`, `ok` when isolated or deliberately off); `GET /api/status` carries a `sandbox` block and the panel's live status shows `Sandbox: bwrap|proot|none|off`; `SECURITY.md` states what each mode protects and does not; README's Security section says it in one line |
+| 30.4 | Docs + census | ✔ done | `docs/ARCHITECTURE.md` (+`sandbox.ts`), `docs/CLI.md` (doctor row), census: Sandboxing ABSENT → WORKING and Sandboxed code execution PARTIAL → WORKING (**89%**, effort ~132d → ~120d, drift 0) |
 
-**Limits stated in the open:** one screen, not panes — no side panels, per-pane scrolling or mouse
-(OpenClaw's TUI has those; a phone does not want them), no syntax highlighting of tool output, and
-the picker is arrow-keys-only. The transcript pane shows the live turn and the note trail, not the
-whole archived conversation: `/history` reads the file when you want the tail.
+**Limits stated in the open:** this is a path fence and a network switch, not a jail — the command
+still runs as you, and a world-readable file outside the binds is still readable; proot cannot
+restrict the network at all; there are no container images, no per-tool policies and no
+filesystem-exfiltration guard beyond the writable-path rule.
 
-**Next action:** batch 30 — sandboxing: run code execution in bubblewrap/proot when the device has
-it, and say plainly when it does not.
+**Next action:** batch 31 — the last ABSENT row: a migration runner with a version stamp, and
+backup/restore that round-trips a whole home.
 
-## 3. Next — batch 30: sandboxing you can point at
+## 3. Next — batch 31: storage you can move between phones
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 30.1 | Detect and use a real sandbox | ☐ todo | `exec`/code execution runs inside `bwrap` (or `proot` where bwrap is impossible, e.g. unprivileged Android) when present: bind only the workspace + a scratch tmp, no network unless asked, a hard wall clock and memory cap; the args are built and asserted, not shelled through a string |
-| 30.2 | An honest refusal when there is none | ☐ todo | with no sandbox binary, the tool says so in one sentence, names the package to install, and does not silently run unsandboxed; a config key can accept the risk explicitly (`agent.sandbox: off`) and the transcript records which mode ran |
-| 30.3 | Doctor + docs + panel | ☐ todo | `termcrab doctor` reports the sandbox mode and what is missing; `docs/SECURITY.md` explains what each mode does and does not protect; the panel shows the mode next to approvals |
-| 30.4 | Docs + census | ☐ todo | the row moves with its test; three surfaces re-checked end to end |
+| 31.1 | A migration runner with a version stamp | ☐ todo | `state/schema.json` records the version; every migration is a numbered file in `src/core/migrations/` that runs once, in order, atomically (a failed step leaves the previous version, not a half-migrated home); a fresh home lands on the current version without faking history |
+| 31.2 | Backup and restore that round-trip | ☐ todo | `termcrab backup <file>` writes one archive of the home (config, sessions, memory, skills, state) with a manifest and the schema version; `termcrab restore <file>` verifies it, refuses a newer schema it cannot run, and a test restores into an empty home and gets the same facts, sessions and settings back |
+| 31.3 | Atomic update with rollback | ☐ todo | `termcrab update --apply` keeps the previous build, verifies the new one can start (`--version` + a health probe), and rolls back on failure; the state it touches is listed before it is touched |
+| 31.4 | Docs + census | ☐ todo | Database + migrations ABSENT → WORKING (or BETTER with the round-trip proof), storage rows re-measured; three surfaces re-checked end to end |
 
-**After that (batch 31):** Database + migrations (~8d: a file-based migration runner with a version
-stamp, and backup/restore that round-trips a home), then the PARTIAL leftovers the census still
-shows: Embedding providers, Bootstrap file set, and the ops/security half-rows.
+**After that (the tail):** the remaining PARTIAL rows — Embedding providers, Bootstrap file set,
+and the ops/security half-rows the census still shows (Sandboxing follow-ups excluded).
 
 ## 4. Done — batches, commits, and the proof
 
 | Batch | Commit | What shipped | Verified by | Measured |
 |---|---|---|---|---|
+| 30 | `PENDING` | **A sandbox you can point at**: every shell command runs in bubblewrap (read-only root, one writable workspace, private /tmp and HOME, no network by default) or proot where namespaces are blocked — with `agent.sandbox = auto|require|off` deciding what happens when the device has neither, an argv built as data and asserted flag by flag, the mode in `termcrab doctor`, `/api/status` and the panel, and `[sandbox] …` in the transcript when a command ran without one | `test/tier2s.test.ts` 30.1–30.3 (8 tests: detection incl. a broken binary, the exact bwrap and proot argvs, `off`, all three policies, the runner spawning the helper and reporting the mode, the exec tool's note with `require` refusing, and a live bubblewrap run when present) | 799 tests · 797 pass · 0 fail · 2 skipped (environment-dependent); census **88% → 89%** (WORKING 90 → 92, PARTIAL 26 → 25), effort ~132d → ~120d, drift 0 · release 0.62.0 |
 | 29 | `29e02fb` | **The terminal is a surface**: `termcrab tui` — alternate screen + bracketed paste entered and left on every exit path, raw keys decoded with partial escapes and split code points kept, frames that are exactly rows × cols (wide characters counted as two), a streaming transcript with one-line tool cards, a shell-like input box with history, an arrow-select session picker, and a gateway attach so a turn from the panel or the phone is drawn here while it happens | `test/tier2r.test.ts` 29.1–29.3 (11 tests: cell arithmetic + wrapping, exact frames at two sizes, cursor sliding, key/paste decoding, a typed turn streaming in over a fake TTY and the terminal restored, history/Ctrl-U/backspace/`/help`/picker/resize, the non-TTY refusal, and a real gateway turn appearing live) | 791 tests · 790 pass · 0 fail · 1 skipped (environment-dependent); census **86% → 88%** (WORKING 88 → 90, PARTIAL 27 → 26, ABSENT 3 → 2), effort ~152d → ~132d, drift 0 · release 0.61.0 |
 | 28 | `13dfd46` | **Sessions: one for you, many clients on it** (batch 28 finished): one rolling main session shared by the panel, the terminal and the owner's Telegram DM — archived daily rather than deleted, with a note in the fresh thread; a per-conversation SSE attach route so several clients watch one thread without missing a message (`viewers`/`running` on `/api/sessions`); and honest multi-user scoping (`channels.telegram.scoping = chat|user`) with the speaker recorded on the run and on every fact it writes | `test/tier2q.test.ts` 28.1–28.3 (9 tests: surface→session mapping and the opt-out, the roll itself + an empty session, a real turn through the loop that rolls before it writes, the attach stream's state frame/filtering/second viewer/release/404, the panel's default session and `/api/status`, scoping + run provenance) | 780 tests · 777 pass · 0 fail · 3 skipped; census **85% → 86%** (WORKING 85 → 88, PARTIAL 29 → 27, ABSENT 4 → 3), sessions area 100%, effort ~171d → ~152d, drift 0 |
 | 27 | `0c7c213` | **Providers and the loop's limits** (batch 27 finished): native Anthropic (`/v1/messages`) and Gemini (`:generateContent`) adapters behind the shared contract; a model catalog that asks the endpoint and falls back with a note (`termcrab models`); named API keys outside config.json (`termcrab auth`, mode 0600, audited); a local tier that never falls back silently; and a turn watchdog (`agent.turnBudgetSec` / `agent.idleSec`) that stops a stuck turn with the reason and keeps what the model had said | `test/tier2p.test.ts` 27.2–27.4 (9 tests: exact Anthropic request + streaming reassembly, exact Gemini body + id synthesis, resolveProvider for all four types, catalog offline/live, keys never printed + mismatch errors, local tier with the note, a hanging provider stopped in ~1 s) | score **81% → 85%** (WORKING 77 → 85), PARTIAL 34 → 29, ABSENT 7 → 4, effort ~201d → ~171d, drift 0 |

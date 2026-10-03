@@ -6989,6 +6989,7 @@
       parts.push('Heartbeat: ' + (s.heartbeat?.enabled ? 'on' : 'off'));
       parts.push('Memory: ' + (s.memory?.memoryBytes || 0) + ' bytes');
       if (s.sessions) parts.push('Session: ' + s.sessions.main + (s.sessions.rolling ? ' (rolling)' : ' (fixed)'));
+      if (s.sandbox) parts.push('Sandbox: ' + (s.sandbox.isolated ? s.sandbox.mode : s.sandbox.setting === 'off' ? 'off' : 'none'));
       if (s.presence?.summary) {
         // "👀 here: 1 watcher · telegram running…" — the same sentence the CLI
         // and /status use, without the emoji the chip already implies.

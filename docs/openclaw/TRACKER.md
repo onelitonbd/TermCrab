@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৮৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯০টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৬টা আধা (PARTIAL), ২টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১১৩ দিন, later ~১৯ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৮৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯২টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৫টা আধা (PARTIAL), ১টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০৯ দিন, later ~১১ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 90 | wired and observable |
+| ✅ WORKING | 92 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 26 | exists, narrower than theirs |
+| 🟡 PARTIAL | 25 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 2 | nothing in the tree |
+| ⚪ ABSENT | 1 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 88%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 89%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~113d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 14 | ~19d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~132d | in-scope only |
+| **parity** | 103 | ~109d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 14 | ~11d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 132 | ~120d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -237,13 +237,13 @@ Out of scope, and why:
 | Auth profiles / credential store | named keys, per-profile provider/base/model | ✅ WORKING | src/core/auth-profiles.ts: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url] [--model] stores the key in state/auth-profiles.json (mode 0600, every use appended to state/auth-audit.log), config.json only carries provider.authProfile: "<name>", and resolveAuth() fills the key at the one place a provider is built (src/agent/loop.ts). A missing profile or one written for another vendor is a clear error, never an empty key. Pinned by test/tier2p.test.ts 27.3 (file mode, key never printed, mismatch and missing cases) | later | — |
 | MCP as tool source | MCP + ACP | ✅ WORKING | src/providers/mcp.ts wired at server.ts:345 | parity | — |
 
-### security — 74% (8 in-scope checks)
+### security — 86% (8 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Loopback-first bind | loopback + trusted proxy modes | ✅ WORKING | src/gateway/server.ts:257 | parity | — |
 | Token enforcement | token + pairing required | ✅ WORKING | one guard in front of every /api/* route: authenticate(config, extractAuth(req)) accepts the master token or a paired device token, and the same call is rate-limited per key (src/gateway/server.ts); an empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401, test/tier2i.test.ts 20.4 does the same for /api/devices and the pair route | parity | — |
-| Sandboxing | sandbox modes, workspace roots, install policy | ⚪ ABSENT | exec is allow/deny only; the single "sandbox" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run | later | 8 |
+| Sandboxing | sandbox modes, workspace roots, install policy | ✅ WORKING | src/agent/sandbox.ts fits a real isolation boundary around every shell command: bubblewrap when the device has it (read-only root, the workspace as the only writable path plus agent.sandboxWrites, a private /tmp and a throwaway HOME so ~/.ssh is not writable, --unshare-pid/ipc/uts, --die-with-parent, and no network unless agent.sandboxNetwork says otherwise), proot where unprivileged namespaces are blocked (userspace chroot, and it says plainly that proot cannot drop the network), and an honest sentence naming the package to install when there is neither. agent.sandbox picks the policy: auto (default) runs and writes [sandbox] ran without a sandbox into the transcript, require refuses with the fix rather than running with full access, off is the pre-30 behaviour and is recorded per run. The argv is built as an array and asserted flag by flag, never a shell string; `termcrab doctor` reports the mode, GET /api/status carries it and the panel shows it. Container images, per-tool policies and a filesystem-exfiltration guard beyond the writable-path fence are not implemented. Pinned by test/tier2s.test.ts 30.1-30.3 | later | — |
 | Secrets management | vault, SecretRef, 1Password, audit | 🟡 PARTIAL | src/agent/secrets.ts + config.json plaintext | parity | 4 |
 | Skill supply chain | signed manifests after ClawHavoc | 🏅 BETTER | no registry exists to poison; skills are local files | parity | — |
 | Dependency surface | large dependency tree, 1,142 advisories in 5 months | 🏅 BETTER | zero runtime dependencies — package.json has no "dependencies" key at all | parity | — |
@@ -300,7 +300,7 @@ Out of scope, and why:
 | macOS/Windows/Linux apps | native desktop apps | 🚫 OUT OF SCOPE | Termux-first by design — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | iOS / Android companion apps | paired nodes with camera/screen | 🚫 OUT OF SCOPE | no native app; Termux:API is the bridge — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 
-### tools — 91% (12 in-scope checks)
+### tools — 95% (12 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -308,7 +308,7 @@ Out of scope, and why:
 | File operations | root-bounded fs-safe tools | ✅ WORKING | read_file/write_file/list_dir with allowed roots (tools.ts:22,97), plus the inbox the agent can browse: inbox_list / inbox_read answer from the arrival index and the saved sidecar with the same readers the intake uses, and refuse a name that contains a path (17.1–17.4, src/channels/inbox.ts) | parity | — |
 | Web fetch + search | fetch, search providers, link understanding | ✅ WORKING | web_fetch (tools.ts) + web_search (toolbox.ts) | parity | — |
 | Browser automation | CDP + Playwright + OAuth flows | 🟡 PARTIAL | CDP browser tool requires system Chrome; off by default | parity | 6 |
-| Sandboxed code execution | QuickJS code-mode with host bindings | 🟡 PARTIAL | code_exec via Node vm (tools.ts:509+) | parity | 4 |
+| Sandboxed code execution | QuickJS code-mode with host bindings | ✅ WORKING | Two layers now. `code_exec` runs JavaScript in a Node vm with no require, no filesystem and no network binding, with a wall-clock timeout and a capped result. `exec` runs inside the real sandbox above (bubblewrap/proot) when the device has one: read-only root, one writable workspace, private /tmp, no network by default, and the transcript records which mode ran. Shell commands shell out through argv arrays, never string interpolation. OpenClaw's QuickJS code-mode with typed host bindings is broader as a *language* environment; ours is two engines with a stated boundary each | parity | — |
 | MCP client | MCP + ACP protocols | ✅ WORKING | src/providers/mcp.ts (stdio JSON-RPC) wired at server.ts:345 into AgentCtx | parity | 2 |
 | Phone / device tools | iOS+Android nodes (camera, screen, location) | 🏅 BETTER | 15 Termux:API tools in src/agent/toolbox.ts (camera, location, sms, clipboard, battery, wifi, notification…) | parity | — |
 | Image / media generation | image, video, music generation | ✅ WORKING | src/media/image.ts: a real PNG is produced either by the configured image endpoint (POST {baseUrl}/images/generations, b64_json or url, model from config.media.imageModel) or, under the mock provider, drawn locally by a hand-rolled PNG encoder on node:zlib — deterministic bytes, no deps, no network. One path behind three doors: the `generate_image` tool (writes workspace/outbox), `termcrab image "prompt" [--size] [--out]`, and POST /api/image for the panel; every result says placeholder: true when nothing was sent out. Video and music are not attempted | later | — |

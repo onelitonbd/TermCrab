@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { runHealth } from '../agent/run-health.js';
 import { listRuns } from '../core/tracing.js';
 import { loadConfig, Config } from '../core/config.js';
+import { INSTALL_HINTS, detectSandbox, sandboxSetting } from '../agent/sandbox.js';
 import { home, configPath, pidPath, PACKAGE_ROOT } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
@@ -137,6 +138,25 @@ export async function runDoctor(): Promise<Check[]> {
     detail: `found v${process.versions.node}`,
     fix: 'pkg install nodejs-lts (Termux) or install Node 20+ from nodejs.org',
   });
+
+  // Sandbox (30.3): whether shell commands can be isolated on this device.
+  {
+    const info = detectSandbox();
+    const setting = sandboxSetting(cfg);
+    const status = info.isolated ? 'ok' : setting === 'require' ? 'fail' : setting === 'off' ? 'ok' : 'warn';
+    checks.push({
+      id: 'sandbox',
+      label: 'shell sandbox',
+      status,
+      detail:
+        setting === 'off'
+          ? 'agent.sandbox=off — commands run with full access to this device (your choice)'
+          : setting === 'require' && !info.isolated
+            ? `agent.sandbox=require, but ${info.note}`
+            : info.note,
+      fix: info.isolated ? undefined : `${INSTALL_HINTS.bwrap}, ${INSTALL_HINTS.proot} — or set agent.sandbox=off to stop asking`,
+    });
+  }
 
   // State home
   try {

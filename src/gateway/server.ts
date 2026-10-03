@@ -101,6 +101,7 @@ import { healthLine, runHealth } from '../agent/run-health.js';
 import { buildPresence, presenceLine, withSummary, type Presence, type PresenceChannelInput } from './presence.js';
 import { KNOWN_EVENTS, describeTrigger, planTriggers, triggerMessage, triggerSession, watcherMatches, type TriggerPayload } from './triggers.js';
 import { rollingLine, rollingSessionKey } from '../agent/rolling.js';
+import { detectSandbox, sandboxSetting } from '../agent/sandbox.js';
 import { addIntent, listIntents, removeIntent } from '../agent/intents.js';
 import { generateImage } from '../media/image.js';
 import { structuredLog } from '../core/structured-log.js';
@@ -2434,6 +2435,18 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             },
             memory: { ...memory.stats(), index: memory.indexStats(), facts: countMemoryFacts() },
             agents: listAgents(),
+            // 30.3: how shell commands are isolated right now, in one block,
+            // so the panel can say it before someone runs something sharp.
+            sandbox: (() => {
+              const info = detectSandbox();
+              const setting = sandboxSetting(config);
+              return {
+                setting,
+                mode: setting === 'off' ? 'off' : info.mode,
+                isolated: setting !== 'off' && info.isolated,
+                note: setting === 'off' ? 'sandbox is off (agent.sandbox=off) — commands run with full access' : info.note,
+              };
+            })(),
             // 28.1: the session the owner's own surfaces share, in one line.
             sessions: {
               main: config.agent.mainSession || 'main',

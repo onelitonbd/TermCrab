@@ -278,8 +278,9 @@ check('tools', 'Web fetch + search', 'fetch, search providers, link understandin
   'web_fetch (tools.ts) + web_search (toolbox.ts)', { pattern: 'web_search', expect: 'present' }, 0);
 check('tools', 'Browser automation', 'CDP + Playwright + OAuth flows', 'PARTIAL',
   'CDP browser tool requires system Chrome; off by default', { pattern: 'browser', expect: 'present' }, 6);
-check('tools', 'Sandboxed code execution', 'QuickJS code-mode with host bindings', 'PARTIAL',
-  'code_exec via Node vm (tools.ts:509+)', { pattern: 'code_exec', expect: 'present' }, 4);
+check('tools', 'Sandboxed code execution', 'QuickJS code-mode with host bindings', 'WORKING',
+  'Two layers now. `code_exec` runs JavaScript in a Node vm with no require, no filesystem and no network binding, with a wall-clock timeout and a capped result. `exec` runs inside the real sandbox above (bubblewrap/proot) when the device has one: read-only root, one writable workspace, private /tmp, no network by default, and the transcript records which mode ran. Shell commands shell out through argv arrays, never string interpolation. OpenClaw\'s QuickJS code-mode with typed host bindings is broader as a *language* environment; ours is two engines with a stated boundary each',
+  { file: 'src/agent/sandbox.ts', pattern: 'export function sandboxFor', expect: 'present' }, 0);
 check('tools', 'MCP client', 'MCP + ACP protocols', 'WORKING',
   'src/providers/mcp.ts (stdio JSON-RPC) wired at server.ts:345 into AgentCtx', { pattern: 'createMcpClient', expect: 'present' }, 2);
 check('tools', 'Phone / device tools', 'iOS+Android nodes (camera, screen, location)', 'BETTER',
@@ -450,9 +451,9 @@ check('security', 'Loopback-first bind', 'loopback + trusted proxy modes', 'WORK
 check('security', 'Token enforcement', 'token + pairing required', 'WORKING',
   'one guard in front of every /api/* route: authenticate(config, extractAuth(req)) accepts the master token or a paired device token, and the same call is rate-limited per key (src/gateway/server.ts); an empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401, test/tier2i.test.ts 20.4 does the same for /api/devices and the pair route',
   { pattern: 'export function authenticate', expect: 'present' }, 0);
-check('security', 'Sandboxing', 'sandbox modes, workspace roots, install policy', 'ABSENT',
-  'exec is allow/deny only; the single "sandbox" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run',
-  { pattern: /sandboxRoot|sandboxMode|containerize/, expect: 'absent' }, 8);
+check('security', 'Sandboxing', 'sandbox modes, workspace roots, install policy', 'WORKING',
+  'src/agent/sandbox.ts fits a real isolation boundary around every shell command: bubblewrap when the device has it (read-only root, the workspace as the only writable path plus agent.sandboxWrites, a private /tmp and a throwaway HOME so ~/.ssh is not writable, --unshare-pid/ipc/uts, --die-with-parent, and no network unless agent.sandboxNetwork says otherwise), proot where unprivileged namespaces are blocked (userspace chroot, and it says plainly that proot cannot drop the network), and an honest sentence naming the package to install when there is neither. agent.sandbox picks the policy: auto (default) runs and writes [sandbox] ran without a sandbox into the transcript, require refuses with the fix rather than running with full access, off is the pre-30 behaviour and is recorded per run. The argv is built as an array and asserted flag by flag, never a shell string; `termcrab doctor` reports the mode, GET /api/status carries it and the panel shows it. Container images, per-tool policies and a filesystem-exfiltration guard beyond the writable-path fence are not implemented. Pinned by test/tier2s.test.ts 30.1-30.3',
+  { file: 'src/agent/sandbox.ts', pattern: 'export function sandboxPlan', expect: 'present' }, 0);
 check('security', 'Secrets management', 'vault, SecretRef, 1Password, audit', 'PARTIAL',
   'src/agent/secrets.ts + config.json plaintext', { pattern: 'secrets', expect: 'present' }, 4);
 check('security', 'Skill supply chain', 'signed manifests after ClawHavoc', 'BETTER',

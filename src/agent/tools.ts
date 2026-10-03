@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { extraTools } from './toolbox.js';
 import { guardToolExecute } from './tool-schema.js';
 import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, runCommand } from './exec-guard.js';
+import { sandboxFor } from './sandbox.js';
 import { ToolDef } from '../providers/types.js';
 import { createMcpClient, mcpToolsToDefs, McpClient, McpTool } from '../providers/mcp.js';
 
@@ -330,15 +331,37 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
       // policy), the timeout always kills and says how long it waited.
       const defaultSec = env.config.agent.execTimeoutSec ?? DEFAULT_TIMEOUT_MS / 1000;
       const askedSec = typeof args.timeoutSec === 'number' ? args.timeoutSec : defaultSec;
+      // 30.1: fit the sandbox around the command before anything spawns. The
+      // argv is built as an array (never a shell string) and `require` refuses
+      // loudly instead of quietly running with full access.
+      const decision = sandboxFor(env.config, command, {
+        cwd: process.cwd(),
+        shell: resolveShell(),
+        network: env.config.agent.sandboxNetwork === true,
+        extraWrites: env.config.agent.sandboxWrites,
+      });
+      if (decision.refuse) {
+        log.warn(`exec refused (sandbox required): ${command.slice(0, 120)}`);
+        return clip(decision.reason);
+      }
       const result = await runCommand(command, resolveShell(), {
         timeoutMs: Math.min(askedSec * 1000, MAX_TIMEOUT_MS),
         maxOutputChars: MAX_OUTPUT,
         cwd: process.cwd(),
         extraDeny: env.config.agent.execDenyPatterns,
         allowDangerous: env.config.agent.execAllowDangerous === true,
+        sandbox: {
+          command: decision.plan.command,
+          args: decision.plan.args,
+          note: decision.plan.note,
+          isolated: decision.plan.isolated,
+        },
       });
       if (result.refused) log.warn(`exec refused a command: ${command.slice(0, 120)}`);
-      return clip(result.output);
+      // The transcript says how it ran: "no sandbox available" must never be
+      // something the owner has to guess.
+      const note = decision.plan.isolated ? '' : `[sandbox] ${decision.plan.note}\n`;
+      return clip(note + result.output);
     },
   });
 

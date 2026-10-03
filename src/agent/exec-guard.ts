@@ -76,6 +76,8 @@ export interface RunResult {
   durationMs: number;
   /** Refused by the guard, never started. */
   refused?: string;
+  /** How this command was isolated, and what to tell the owner (30.1). */
+  sandbox?: { mode: string; isolated: boolean; note: string };
 }
 
 export interface RunOpts {
@@ -86,6 +88,12 @@ export interface RunOpts {
   allowDangerous?: boolean;
   /** Injectable for tests: takes the place of execFile. */
   execImpl?: (shell: string, args: string[], opts: Record<string, unknown>) => Promise<{ stdout: string; stderr: string }>;
+  /**
+   * Run through a sandbox (30.1). `run` builds this from the sandbox plan, so
+   * the argv is never re-parsed by a shell and the plan is testable on its own.
+   * When absent the shell runs directly (the pre-30 behaviour).
+   */
+  sandbox?: { command: string; args: string[]; note: string; isolated: boolean };
 }
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
@@ -110,13 +118,21 @@ export async function runCommand(
       timedOut: false,
       durationMs: 0,
       refused: guard.matched,
+      sandbox: opts.sandbox
+        ? { mode: opts.sandbox.isolated ? 'sandboxed' : 'direct', isolated: opts.sandbox.isolated, note: opts.sandbox.note }
+        : undefined,
     };
   }
   const timeoutMs = Math.max(1000, Math.min(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS));
   const cap = Math.max(200, opts.maxOutputChars ?? 20_000);
   const run = opts.execImpl ?? (execFileAsync as unknown as RunOpts['execImpl'])!;
+  const program = opts.sandbox?.command ?? shell;
+  const argv = opts.sandbox?.args ?? ['-c', command];
+  const sandboxReport = opts.sandbox
+    ? { mode: opts.sandbox.isolated ? 'sandboxed' : 'direct', isolated: opts.sandbox.isolated, note: opts.sandbox.note }
+    : undefined;
   try {
-    const { stdout, stderr } = await run(shell, ['-c', command], {
+    const { stdout, stderr } = await run(program, argv, {
       timeout: timeoutMs,
       maxBuffer: 4 * 1024 * 1024,
       cwd: opts.cwd ?? process.cwd(),
@@ -132,6 +148,7 @@ export async function runCommand(
       code: 0,
       timedOut: false,
       durationMs: Date.now() - started,
+      sandbox: sandboxReport,
     };
   } catch (err) {
     const e = err as {
@@ -155,6 +172,7 @@ export async function runCommand(
         code: null,
         timedOut: true,
         durationMs: Date.now() - started,
+        sandbox: sandboxReport,
       };
     }
     const parts: string[] = [`exit error: ${e.message ?? 'failed'}`];
@@ -166,6 +184,7 @@ export async function runCommand(
       code: typeof e.code === 'number' ? e.code : null,
       timedOut: false,
       durationMs: Date.now() - started,
+      sandbox: sandboxReport,
     };
   }
 }

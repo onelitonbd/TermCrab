@@ -93,6 +93,19 @@ export interface Config {
     execDenyPatterns?: string[];
     /** Escape hatch: run even a refused command. Off by default, on purpose. */
     execAllowDangerous?: boolean;
+    /**
+     * How shell commands are isolated (30.1):
+     *   auto (default) — bubblewrap/proot when the device has one, otherwise
+     *                    the command runs and the transcript says it did not;
+     *   require        — never run outside a sandbox: refuse with the package
+     *                    to install instead;
+     *   off            — never sandbox (the pre-30 behaviour), recorded in the run.
+     */
+    sandbox?: 'auto' | 'require' | 'off';
+    /** Keep the network reachable inside the sandbox (default false: no network). */
+    sandboxNetwork?: boolean;
+    /** Extra directories a sandboxed command may write to (the workspace is always one). */
+    sandboxWrites?: string[];
     /** Compact session when entries exceed this threshold (default 60). */
     compactThreshold: number;
     /** Bytes of MEMORY.md injected into the system prompt (newest facts win). */
@@ -605,6 +618,9 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'execTimeoutSec',
       'execDenyPatterns',
       'execAllowDangerous',
+      'sandbox',
+      'sandboxNetwork',
+      'sandboxWrites',
       'failover',
       'queueMode',
       'allowBrowser',
@@ -633,6 +649,9 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     bool(agent, 'agent.', 'rollingSession');
     str(agent, 'agent.', 'mainSession');
     numIn(agent, 'agent.', 'execTimeoutSec', 1, 3600);
+    oneOf(agent, 'agent.', 'sandbox', ['auto', 'require', 'off']);
+    bool(agent, 'agent.', 'sandboxNetwork');
+    strArr(agent, 'agent.', 'sandboxWrites');
     bool(agent, 'agent.', 'execAllowDangerous');
     strArr(agent, 'agent.', 'execDenyPatterns');
     oneOf(agent, 'agent.', 'queueMode', ['followup', 'steer', 'collect', 'interrupt']);
