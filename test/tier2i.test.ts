@@ -562,11 +562,14 @@ test('20.4 SSE frames carry the version and a rising sequence number', async () 
         await reader.cancel().catch(() => undefined);
       }
       assert.ok(seen.length >= 2, `two frames arrived (${seen.length})`);
-      assert.equal(seen[0]!.v, WIRE_VERSION);
-      assert.equal(seen[0]!.type, 'tool:start', 'the type is unchanged, so existing clients keep working');
-      assert.equal(checkWireEvent(seen[0]!).length, 0);
-      assert.equal(seen[1]!.seq, (seen[0]!.seq as number) + 1, 'sequence numbers rise by one');
-      assert.ok(checkWireEvent(seen[1]!).length === 0);
+      // Attaching is itself presence news (24.1), so the newly connected
+      // client may see its own `presence` frame first; that frame is still a
+      // valid wire frame, and the real events behind it keep their shape.
+      for (const frame of seen) assert.equal(checkWireEvent(frame).length, 0, `every frame is valid: ${JSON.stringify(frame)}`);
+      const events = seen.filter((f) => f.type !== 'presence');
+      assert.equal(events[0]!.v, WIRE_VERSION);
+      assert.equal(events[0]!.type, 'tool:start', 'the type is unchanged, so existing clients keep working');
+      assert.equal(events[1]!.seq, (events[0]!.seq as number) + 1, 'sequence numbers rise by one');
     },
   );
 });

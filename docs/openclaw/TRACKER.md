@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৬৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৩টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৮টা আধা (PARTIAL), ২৫টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৯২ দিন, later ~১৩৯ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৭০%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৭৪টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩৯টা আধা (PARTIAL), ২৩টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~৩ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৯২ দিন, later ~১৩২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 73 | wired and observable |
+| ✅ WORKING | 74 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 38 | exists, narrower than theirs |
+| 🟡 PARTIAL | 39 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 25 | nothing in the tree |
+| ⚪ ABSENT | 23 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 69%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 70%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
-| **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 108 | ~192d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 28 | ~139d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~331d | |
+| **core** | 15 | ~3d | must exist for TermCrab to be a credible agent at all |
+| **parity** | 109 | ~192d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 26 | ~132d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 150 | ~327d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -90,13 +90,13 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Progress drafts / partial updates | incremental draft messages | ✅ WORKING | {type:'draft'} events carry the whole partial answer (emitted at most once per round, so a surface replaces instead of appending) and it is saved in the progress card (state/progress/<session>.json) so a reload mid-turn still shows it; the panel paints it and marks the bubble as a draft. test/tier0.test.ts 10.4 | parity | — |
 | Timeouts + error containment | per-phase budgets | ✅ WORKING | loop.ts containment; tests in test/loop.test.ts | parity | — |
 
-### automation — 34% (7 checks)
+### automation — 40% (7 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Cron scheduler | schedules, payloads, delivery, webhooks | 🟡 PARTIAL | src/cron/{parser,store,scheduler}.ts, 5-field expressions | parity | 3 |
 | Heartbeat / proactive tick | 30-min heartbeat + HEARTBEAT.md | ✅ WORKING | src/agent/heartbeat.ts + power-aware gating — TermCrab is arguably better here | parity | — |
-| Event triggers / watchers | condition watchers, stream sources | ⚪ ABSENT | time-based only: cron + heartbeat. No file/condition/stream watchers | later | 5 |
+| Event triggers / watchers | condition watchers, stream sources | 🟡 PARTIAL | src/gateway/triggers.ts: a hook may name internal events (run.failed, device.paired, file.received, cron.finished — `on: ["run.failed"]`, `device.*` or `*`) and the gateway turns them into the same queued turn a webhook POST would, with two safety rules: a hook is never woken by its own session, and each hook has a 60s cooldown. `termcrab events` prints the catalogue and who listens; the gateway warns at startup about a hook listening for an event nothing emits. NOT attempted: watchers in the OpenClaw sense — no file-change/condition polling, no stream sources, no user-defined event vocabulary | core | 3 |
 | Standing orders | persistent programs with execute-verify-report | ⚪ ABSENT | no standing-order concept (the nearest things are cron jobs and HEARTBEAT.md) | later | 5 |
 | Task board | tasks, taskflow, workboard | 🟡 PARTIAL | src/agent/tasks.ts + suggest_task/dismiss_task tools + /api/tasks | parity | 3 |
 | Scheduled delivery to channels | deliver cron output to a chat | 🟡 PARTIAL | cron runs a prompt in a session; delivery routing is manual | parity | 2 |
@@ -138,7 +138,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
 
-### gateway — 83% (16 checks)
+### gateway — 90% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -154,7 +154,7 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Approval queue + endpoint | operator approvals, HITL gates | ✅ WORKING | src/core/approvals.ts is now live: loop.ts consults needsApproval() before a gated tool runs, emits the approval over SSE, waits with a timeout + default policy, and the decision is answerable from the panel (POST /api/approvals/:id/approve|deny) or the CLI (termcrab approvals). Pinned by test/approvals.test.ts (6.1-6.5) | core | — |
 | Canvas / A2UI widgets | agent-driven UI widgets | 🟡 PARTIAL | src/gateway/canvas.ts + /api/canvas | parity | — |
 | Multi-agent routing | per-agent workspace, session, store | 🟡 PARTIAL | workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48) | parity | 3 |
-| Presence | online/typing/presence events | ⚪ ABSENT | no presence module | later | 2 |
+| Presence | online/typing/presence events | ✅ WORKING | src/gateway/presence.ts derives one picture from stores that already exist: attached gateway watchers (bus subscribers = the panel, a phone, the CLI), channels configured-vs-running (server builds the rows from live objects, so a channel that failed to start cannot claim to run), paired devices with their last sighting, and people who actually wrote — each with a stated freshness ladder (<=2 min online, <=1 h recent, older idle, never seen unknown). Read by `termcrab presence [--json]`, GET /api/presence, the presence line in /api/status and the chat /status reply; presence changes are bus events (watcher attached/left, device paired, channels started), so a UI can react without polling. Typing indicators are already sent by the telegram channel (src/channels/telegram.ts); a per-keystroke typing protocol is not attempted. Pinned by test/tier2m.test.ts (24.1) | parity | — |
 | Remote access story | Tailscale, SSH, trusted proxy, TLS pinning | 🟡 PARTIAL | docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth | parity | 3 |
 | Usage / token accounting | per-run, per-model, per-session | ✅ WORKING | providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4) | core | — |
 | Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ✅ WORKING | src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1 | later | — |

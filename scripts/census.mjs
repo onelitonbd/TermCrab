@@ -125,8 +125,9 @@ check('gateway', 'Canvas / A2UI widgets', 'agent-driven UI widgets', 'PARTIAL',
   'src/gateway/canvas.ts + /api/canvas', { pattern: 'canvas', expect: 'present' }, 0);
 check('gateway', 'Multi-agent routing', 'per-agent workspace, session, store', 'PARTIAL',
   'workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48)', { pattern: 'listAgents', expect: 'present' }, 3);
-check('gateway', 'Presence', 'online/typing/presence events', 'ABSENT',
-  'no presence module', { pattern: 'presence', expect: 'absent' }, 2);
+check('gateway', 'Presence', 'online/typing/presence events', 'WORKING',
+  'src/gateway/presence.ts derives one picture from stores that already exist: attached gateway watchers (bus subscribers = the panel, a phone, the CLI), channels configured-vs-running (server builds the rows from live objects, so a channel that failed to start cannot claim to run), paired devices with their last sighting, and people who actually wrote — each with a stated freshness ladder (<=2 min online, <=1 h recent, older idle, never seen unknown). Read by `termcrab presence [--json]`, GET /api/presence, the presence line in /api/status and the chat /status reply; presence changes are bus events (watcher attached/left, device paired, channels started), so a UI can react without polling. Typing indicators are already sent by the telegram channel (src/channels/telegram.ts); a per-keystroke typing protocol is not attempted. Pinned by test/tier2m.test.ts (24.1)',
+  { file: 'src/gateway/presence.ts', pattern: 'export function buildPresence', expect: 'present' }, 0);
 check('gateway', 'Remote access story', 'Tailscale, SSH, trusted proxy, TLS pinning', 'PARTIAL',
   'docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth',
   { pattern: /non-loopback/, expect: 'present' }, 3);
@@ -362,9 +363,9 @@ check('automation', 'Cron scheduler', 'schedules, payloads, delivery, webhooks',
   'src/cron/{parser,store,scheduler}.ts, 5-field expressions', { pattern: 'cron', expect: 'present' }, 3);
 check('automation', 'Heartbeat / proactive tick', '30-min heartbeat + HEARTBEAT.md', 'WORKING',
   'src/agent/heartbeat.ts + power-aware gating — TermCrab is arguably better here', { pattern: 'heartbeat', expect: 'present' }, 0);
-check('automation', 'Event triggers / watchers', 'condition watchers, stream sources', 'ABSENT',
-  'time-based only: cron + heartbeat. No file/condition/stream watchers',
-  { pattern: /eventTrigger|conditionWatcher|streamSource/, expect: 'absent' }, 5);
+check('automation', 'Event triggers / watchers', 'condition watchers, stream sources', 'PARTIAL',
+  'src/gateway/triggers.ts: a hook may name internal events (run.failed, device.paired, file.received, cron.finished — `on: ["run.failed"]`, `device.*` or `*`) and the gateway turns them into the same queued turn a webhook POST would, with two safety rules: a hook is never woken by its own session, and each hook has a 60s cooldown. `termcrab events` prints the catalogue and who listens; the gateway warns at startup about a hook listening for an event nothing emits. NOT attempted: watchers in the OpenClaw sense — no file-change/condition polling, no stream sources, no user-defined event vocabulary',
+  { file: 'src/gateway/triggers.ts', pattern: 'export function planTriggers', expect: 'present' }, 3);
 check('automation', 'Standing orders', 'persistent programs with execute-verify-report', 'ABSENT',
   'no standing-order concept (the nearest things are cron jobs and HEARTBEAT.md)',
   { pattern: /standingOrder/i, expect: 'absent' }, 5);
@@ -561,9 +562,9 @@ function runProbe(probe) {
 //   later  — deliberately out of scope: matching OpenClaw feature-for-feature here
 //            would cost years and buys nothing on a phone.
 const LANE_BY_CAPABILITY = [
-  [/Steering into a live run|Per-session run serialization|Queue modes|Compaction that preserves|Memory bootstrap injection|Approval queue|Request authentication|Inbound webhooks|Docs that match the code|Usage \/ token accounting|Transcript write fencing|LLM summarisation/, 'core'],
+  [/Steering into a live run|Per-session run serialization|Queue modes|Compaction that preserves|Memory bootstrap injection|Approval queue|Request authentication|Inbound webhooks|Docs that match the code|Usage \/ token accounting|Transcript write fencing|LLM summarisation|Event triggers/, 'core'],
   [/Shell completion|Colour \/ TTY discipline|Per-command help|JSON output mode|Typing indicators|Tool-result pruning|Context introspection|USER\.md|Memory store layout|Embedding providers|Memory search quality|Bootstrap file set|Lifecycle reset policies|Multi-user scoping|Session search|Session tools surface|CLI command coverage|Interactive REPL|Full-screen TUI|Web control UI|Tool schema validation|Human-in-the-loop|Bundled skill library|Skill precedence|Agent-authored skills|Reasoning \/ thinking levels|Model failover chain|Model catalog|Per-model capability|Local model tier|Cron scheduler|Task board|Scheduled delivery|Heartbeat|Parallel tool batches|Loop budget|Run identity|Abort \/ stop|Subagents|Progress drafts|MCP client|Browser automation|Sandboxed code execution|Shell execution|File operations|Web fetch|Phone \/ device tools|Telegram|WhatsApp|Group \/ ambient|Slash commands in chat|Media send|Channel routing|In-process|Voice STT|Transcription|Service install|Logs \+ diagnostics|Release discipline|Tests|CI matrix|Documentation site|Installer|Health \/ status|Canvas|Multi-agent routing|Remote access|Memory|Session tools|Repetition|Tool calling|Streaming|State layout|Backup|Atomic updates|Disk budget|Security audits|Secrets management|Doctor|Skills|MCP as tool source|Reasoning/, 'parity'],
-  [/companion apps|macOS\/Windows\/Linux apps|iOS \/ Android companion|Container \/ server deploy|25\+ further channels|Skill registry \/ distribution|Plugin API \+ lifecycle|Channel plugin interface|Provider plugin interface|Plugin manifest|Gmail \/ IMAP|Pairing \/ device identity|Typed wire protocol|Database \+ migrations|Cloud|Fleet|workboard|Rate limiting|Presence|Event triggers|Standing orders|Image \/ media generation|Document extraction|Anthropic native|Google Gemini native|Auth profiles|Sandboxing|Session attachment|Main rolling session|Lifecycle hooks|Context engine|Pluggable context engine|Memory provenance|Native GUI|Stuck-run diagnostics|Group \/ ambient events|Parallel tool batches/, 'later'],
+  [/companion apps|macOS\/Windows\/Linux apps|iOS \/ Android companion|Container \/ server deploy|25\+ further channels|Skill registry \/ distribution|Plugin API \+ lifecycle|Channel plugin interface|Provider plugin interface|Plugin manifest|Gmail \/ IMAP|Pairing \/ device identity|Typed wire protocol|Database \+ migrations|Cloud|Fleet|workboard|Rate limiting|Standing orders|Image \/ media generation|Document extraction|Anthropic native|Google Gemini native|Auth profiles|Sandboxing|Session attachment|Main rolling session|Lifecycle hooks|Context engine|Pluggable context engine|Memory provenance|Native GUI|Stuck-run diagnostics|Group \/ ambient events|Parallel tool batches/, 'later'],
 ];
 for (const c of C) {
   for (const [re, lane] of LANE_BY_CAPABILITY) {

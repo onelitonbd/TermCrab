@@ -56,6 +56,8 @@ import { AgentEvent } from './agent/loop.js';
 import { commandHelp, completionScript, renderCommandIndex } from './command-help.js';
 import { CODE_TTL_MS, formatDevice, listDevices, liveCodes, pairCode, revokeDevice } from './gateway/devices.js';
 import { formatRunHealth, runHealth } from './agent/run-health.js';
+import { formatPresence, localPresence, presenceLine, type Presence } from './gateway/presence.js';
+import { KNOWN_EVENTS, patternMatches } from './gateway/triggers.js';
 import { formatLogRecord, structuredLog } from './core/structured-log.js';
 import { listRuns } from './core/tracing.js';
 import { formatSessionHits, searchSessions } from './agent/session-search.js';
@@ -102,6 +104,8 @@ Everyday extras:
   termcrab disk [--trim]            how much space the agent uses (--trim = enforce the budget now)
   termcrab context [session]        what the model is actually sent, section by section (--json)
   termcrab runs [--json]            what is running right now, and whether it is stuck (with what to do)
+  termcrab presence [--json]        who can reach this agent right now (devices, channels, people)
+  termcrab events [--json]          which internal events can wake a hook, and who listens
   termcrab logs [n] [--json]        the last n log records (logs/termcrab.jsonl; --path prints the file)
   termcrab pair [--name phone]      print a 5-minute code so a phone/tablet can pair (no shared password typing)
   termcrab devices [list|revoke]    the devices this gateway trusts (revoke one without touching the rest)
@@ -1197,6 +1201,78 @@ export async function main(argv: string[]): Promise<void> {
       }
       console.log('');
       console.log(formatRunHealth(health));
+      console.log('');
+      return;
+    }
+
+    case 'presence': {
+      // The live picture needs the gateway process (attached watchers only
+      // exist there). Without it, devices and conversations still come from
+      // disk, and the watcher count is left unknown rather than faked.
+      const client = new GatewayClient(loadConfig());
+      let presence: Presence;
+      let live = true;
+      try {
+        const res = await client.json<{ summary: string; watchers: number | null; entries: Presence['entries'] }>('/api/presence');
+        presence = {
+          now: Date.now(),
+          watchers: res.watchers ?? null,
+          entries: res.entries ?? [],
+          summary: res.summary ?? '',
+          onlineAfterMs: 2 * 60_000,
+          recentAfterMs: 60 * 60_000,
+        };
+      } catch (err) {
+        live = false;
+        if (!machine) {
+          if (err instanceof GatewayNotRunningError) {
+            console.error('the panel is not running — showing what is on disk (attached clients cannot be known here)');
+          } else {
+            console.error(`the panel could not answer /api/presence (${errorText(err)}) — showing what is on disk`);
+          }
+        }
+        presence = localPresence();
+      }
+      const line = presence.summary || presenceLine(presence);
+      if (machine) {
+        emitJson('presence', { count: presence.entries.length, live, watchers: presence.watchers, summary: line, entries: presence.entries });
+        return;
+      }
+      console.log('');
+      console.log(`  👀 who can reach this agent${live ? '' : ' (from disk)'}`);
+      console.log('');
+      console.log(formatPresence(presence));
+      console.log('');
+      console.log(`  ${line}`);
+      console.log('  online = seen in the last 2 minute(s) · recent = last hour · idle = older');
+      console.log('');
+      return;
+    }
+
+    case 'events': {
+      // Which internal events exist, and which hooks listen for them (24.2).
+      // A hook that names an event nothing emits would be silent forever, so
+      // the catalogue and the listeners are shown together.
+      const hooks = (loadConfig().hooks ?? []).filter((h) => h.on?.length);
+      const rows = KNOWN_EVENTS.map((k) => ({
+        ...k,
+        hooks: hooks.filter((h) => (h.on ?? []).some((pattern) => patternMatches(pattern, k.name))).map((h) => h.id),
+      }));
+      if (machine) {
+        emitJson('events', { count: rows.length, events: rows });
+        return;
+      }
+      console.log('');
+      console.log('  ⚡ events that can wake an agent on their own');
+      console.log('');
+      for (const r of rows) {
+        console.log(`  ${r.name.padEnd(16)} ${r.what}`);
+        console.log(`    ${r.hooks.length ? `→ ${r.hooks.map((h) => `hook:${h}`).join(', ')}` : '(no hook listens)'}`);
+      }
+      console.log('');
+      console.log('  hooks with `on` fire on these; hooks without one stay webhook-only.');
+      console.log('  cooldown: one fire per hook per minute, and a hook is never woken by its own session.');
+      console.log('  add one: termcrab config set hooks \'[{"id":"oncall","token":"s3cret","prompt":"what broke?","on":["run.failed"]}]\'');
       console.log('');
       return;
     }

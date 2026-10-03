@@ -126,7 +126,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |
@@ -151,10 +151,12 @@ users' runtime.
 | `src/gateway/devices.ts` | Paired devices: a phone (or any client) proves it is allowed on this gateway once, with a short code, and then carries its own token (20.1) |
 | `src/gateway/events.ts` | in-process bus -> SSE subscribers |
 | `src/gateway/portal.ts` | Portal: expose a local HTTP server through the gateway under /portal/<id> |
+| `src/gateway/presence.ts` | Who can reach the agent right now, derived from watchers/channels/devices/conversations with a stated freshness ladder (batch 24). |
 | `src/gateway/protocol.ts` | The wire between a client and the gateway: a version, an envelope, checked request bodies and idempotent submissions (20.2) |
 | `src/gateway/provider-helpers.ts` | Shared provider helpers: how the gateway resolves the endpoint/key it is wired to, how it renders provider rows, and how it asks an OpenAI-compatible endpoin… |
 | `src/gateway/ratelimit.ts` | Rate limiting that answers instead of absorbing (20.3) |
 | `src/gateway/server.ts` | HTTP API + SSE + static UI + channel/heartbeat wiring |
+| `src/gateway/triggers.ts` | Event triggers: a hook that names internal events is woken by them, with self-loop and cooldown rules (batch 24). |
 | `src/gateway/wake-service.ts` | Gateway-side wake loop: the same two-phase state machine as the CLI (`termcrab wake`), but running inside the gateway so the control UI can start/stop it and… |
 | `src/migrate/openclaw.ts` | Import an existing OpenClaw install (config, memory, sessions) into ~/.termcrab |
 | `src/mobile/bionic.ts` | Android guard: networkInterfaces + TMPDIR fixes |

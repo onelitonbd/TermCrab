@@ -6978,6 +6978,11 @@
       parts.push('Dream: ' + (s.dream?.enabled ? 'on' : 'off'));
       parts.push('Heartbeat: ' + (s.heartbeat?.enabled ? 'on' : 'off'));
       parts.push('Memory: ' + (s.memory?.memoryBytes || 0) + ' bytes');
+      if (s.presence?.summary) {
+        // "👀 here: 1 watcher · telegram running…" — the same sentence the CLI
+        // and /status use, without the emoji the chip already implies.
+        parts.push((s.presence.summary || '').replace(/^👀\s*(here|quiet):\s*/, 'Here: '));
+      }
       el.textContent = parts.join(' · ');
     } catch (e) {
       el.textContent = 'status unavailable: ' + e.message;

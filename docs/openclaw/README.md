@@ -74,7 +74,7 @@ Both scripts take their inputs from the working tree, so a run after any code ch
 | Words of OpenClaw documentation reviewed | 2.49 M |
 | Fenced code blocks catalogued | 5,249 |
 | TermCrab capabilities tracked by census | **150** (15 areas) |
-| TermCrab capability score | **69%** (44% when this study was written) |
+| TermCrab capability score | **70%** (44% when this study was written) |
 | … of which **broken** (code exists, nothing calls it) | **0** |
 | … where TermCrab is ahead of OpenClaw | 14 |
 | Effort left in the core lane | **~0 days** (was ~40) |

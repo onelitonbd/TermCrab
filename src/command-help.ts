@@ -287,6 +287,22 @@ export const COMMANDS: CommandDoc[] = [
     json: '{count, live, runs:[{sessionId, turnId, runId, request, elapsedMs, verdict, lastActivity, idleMs, suggestion}]}',
   },
   {
+    cmd: 'presence',
+    usage: 'presence [--json]',
+    summary: 'who can reach this agent right now: watchers, channels, devices, people',
+    flags: ['--json   count, watchers, summary and entries[] with state + seenAgoMs'],
+    example: 'termcrab presence',
+    json: '{count, live, watchers, summary, entries:[{kind, id, label, state, lastSeenAt, seenAgoMs, detail}]}',
+  },
+  {
+    cmd: 'events',
+    usage: 'events [--json]',
+    summary: 'which internal events can wake a hook on their own, and who listens',
+    flags: ['--json   count + events[] with the hooks listening for each'],
+    example: 'termcrab events',
+    json: '{count, events:[{name, what, hooks:[id]}]}',
+  },
+  {
     cmd: 'logs',
     usage: 'logs [n] [--json|--path]',
     summary: 'the last n records from logs/termcrab.jsonl (rotation is built in)',

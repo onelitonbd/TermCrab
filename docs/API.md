@@ -41,6 +41,8 @@ The families a client can rely on:
 | `schedule` | `cron` | a scheduled job fires or is edited | job id, name, next run |
 | `memory` | `dream` | memory is consolidated | file, count, by |
 | `panel` | `update`, `tasks`, `ask` | the panel reloads config, suggests a task, or asks a question | section, suggestions, question |
+| `presence` | `presence` | who can reach the agent changes (a client attaches or leaves, a device pairs) | `change` (`started`/`watch`/`unwatch`/`paired:<id>`), `watchers`, `summary` |
+| `trigger` | `trigger` | an internal event woke a hook | `event`, `hooks[]` |
 | `session` | `session:reset` | a conversation's working context starts over (the transcript is archived, not deleted) | sessionId, reason |
 
 Unknown *types* may appear later and a client must ignore what it does not
@@ -65,6 +67,20 @@ the route is rate limited per IP, so a code cannot be brute-forced.
 { "ok": true, "v": 1, "count": 1, "runs": [ { "sessionId": "web:main", "turnId": "…", "runId": "…", "verdict": "slow", "elapsedMs": 91000, "idleMs": 91000, "lastActivity": "in tool web_fetch for 2 minute(s)", "suggestion": "still inside tool web_fetch after 2 minute(s) — give it a minute, or stop it with: termcrab stop web:main" } ] }
 ```
 Verdicts: `working` (mid-step), `slow` (>60s on one step), `stuck` (>5min with nothing new), `failing` (the provider errored), `queued` (messages waiting behind a running turn). `termcrab runs`, the `/status` chat line and the doctor's `running turns` check all read this one function.
+
+### `GET /api/presence`
+```json
+{ "ok": true, "v": 1, "count": 4, "watchers": 1, "summary": "👀 here: 1 watcher · telegram running · 1 device(s), 1 online · 1 person(s) recently",
+  "entries": [ { "kind": "panel", "id": "panel", "label": "1 watcher", "state": "online", "lastSeenAt": 1759500000000, "seenAgoMs": 0, "detail": "1 client(s) attached to the gateway (panel, phone or CLI)" } ] }
+```
+Who can reach this agent right now, derived from stores that already exist: attached gateway watchers (SSE clients), channels that are configured vs actually running, paired devices with their last sighting, and people who wrote recently. Kinds are `panel`, `channel`, `device`, `person`. States follow one stated rule: **online** = seen within 2 minutes, **recent** = within an hour, **idle** = older, **unknown** = never seen (paired but unused), **off** = configured and not running. `termcrab presence`, the `presence` block of `/api/status` and the `/status` chat reply all read this. Presence *changes* are pushed as `presence` bus events (`change`: `started` | `watch` | `unwatch` | `paired:<id>`) to `/api/events` subscribers, so a UI does not have to poll.
+
+### Event triggers (hooks with `on`)
+A hook entry may name the internal events it wakes on, and then nobody has to POST anything:
+```json
+{ "id": "oncall", "token": "s3cret", "prompt": "what broke? tell me in telegram", "on": ["run.failed"] }
+```
+Events: `run.failed` (a turn ended with an error), `device.paired` (a device redeemed a code), `file.received` (a file/photo/voice arrived in the inbox), `cron.finished` (`ok` in the payload). Patterns: an exact name, a family (`device.*`) or `*`. The turn is queued exactly like a webhook's — same lane, same queue mode, same rate limits — in session `hook:<id>`, and the message starts `[event:<name>]` so the transcript says where it came from. Two safety rules: **a hook is never woken by an event its own session produced** (otherwise a failing hook retries itself forever), and each hook has a **60-second cooldown**. `termcrab events` lists the catalogue and which hooks listen; the gateway logs a warning at startup when a hook listens for an event nothing emits. A hook without `on` stays webhook-only, exactly as before.
 
 ### Approvals
 A gated tool (any name in `security.approvals.tools`) pauses the turn *before*

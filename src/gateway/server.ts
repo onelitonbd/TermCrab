@@ -84,7 +84,7 @@ import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
-import { registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
+import { listConversations, registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -97,6 +97,8 @@ import { Approval, listApprovals, resolveApproval } from '../core/approvals.js';
 import { authKey, authenticate, constantTimeEqual, extractAuth } from './auth.js';
 import { formatSessionHits, searchSessions } from '../agent/session-search.js';
 import { healthLine, runHealth } from '../agent/run-health.js';
+import { buildPresence, presenceLine, withSummary, type Presence, type PresenceChannelInput } from './presence.js';
+import { KNOWN_EVENTS, describeTrigger, planTriggers, triggerMessage, triggerSession, type TriggerPayload } from './triggers.js';
 import { structuredLog } from '../core/structured-log.js';
 import { formatSessionView, policyLine, sessionView } from '../agent/session-view.js';
 import { CODE_TTL_MS, formatDevice, listDevices, pairCode, redeemCode, revokeDevice } from './devices.js';
@@ -438,7 +440,9 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       thinkingLevel: turn.thinkingLevel,
       signal,
       skipQueue: true,
-      onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
+      // A failed turn must say which session it was, or an event trigger
+      // cannot tell its own failure from someone else's (24.2).
+      onEvent: (ev) => bus.emit({ ...ev, sessionId: (ev as { sessionId?: string }).sessionId ?? turn.sessionId } as unknown as BusEvent),
     });
   });
 
@@ -492,6 +496,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
   // ---- Telegram (optional) ----
   let telegram: TelegramChannel | null = null;
+  // Built once: one intake closure for the life of the process.
+  const telegramIntake = makeIntake(config);
   const tgCfg = config.channels.telegram;
   if (tgCfg?.token && tgCfg.allowedUserIds?.length) {
     const state = readTelegramState();
@@ -499,7 +505,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       cfg: tgCfg,
       // 16.1–16.3: what arrives becomes something the agent can answer about —
       // a document is read, a voice note transcribed, a photo described.
-      intake: makeIntake(config),
+      // The arrival is remembered by the intake; the same moment is what
+      // "file.received" means to an event trigger (24.2).
+      intake: async (saved, info) => {
+        const text = await telegramIntake(saved, info);
+        fireTriggers('file.received', { name: saved.path.split('/').pop() ?? saved.path, bytes: saved.bytes, kind: info.kind });
+        return text;
+      },
       getOffset: () => readTelegramState().offset,
       setOffset: (n) => writeTelegramState(n),
       onMessage: async (_userId, chatId, text, displayName) => {
@@ -596,6 +608,134 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     });
   }
 
+  /**
+   * Which transports are configured, and which are actually running (24.1).
+   * "Configured" comes from the config; "running" comes from the live object
+   * the server built, so this cannot claim a channel that failed to start.
+   */
+  function presenceChannels(): PresenceChannelInput[] {
+    const c = config.channels;
+    const rows: Array<[string, unknown, boolean, string | undefined]> = [
+      ['telegram', telegram, Boolean(c.telegram?.token), undefined],
+      [
+        'whatsapp',
+        whatsapp,
+        Boolean(c.whatsapp?.enabled),
+        c.whatsapp?.enabled && !whatsapp?.available
+          ? 'configured; waiting for the WhatsApp connection (scan the QR in the terminal)'
+          : undefined,
+      ],
+      ['discord', discord, Boolean(c.discord), undefined],
+      ['slack', slack, Boolean(c.slack), undefined],
+      ['signal', signal, Boolean(c.signal), undefined],
+      ['sms', sms, Boolean(c.sms), undefined],
+      ['matrix', matrix, Boolean(c.matrix), undefined],
+    ];
+    // buildPresence() drops rows that are neither configured nor running, so
+    // the rule lives in one place; this only translates to its input shape.
+    return rows.map(([name, live, configured, detail]) => ({
+        name,
+        configured,
+        running: name === 'whatsapp' ? Boolean(whatsapp?.available) : Boolean(live),
+        detail,
+      }));
+  }
+
+  /**
+   * Attached *external* clients. bus.size would also count the gateway's own
+   * internal subscriber (the event-trigger bridge), and a watcher count that
+   * includes the server watching itself is a lie.
+   */
+  let watcherCount = 0;
+
+  /** The presence picture for this process, built from what it already owns. */
+  function presenceNow(): Presence {
+    return withSummary(
+      buildPresence({
+        watchers: watcherCount,
+        channels: presenceChannels(),
+        devices: listDevices(),
+        conversations: listConversations(),
+      }),
+    );
+  }
+
+  /** A presence change is worth one bus event, so UIs need not poll (24.1). */
+  function announcePresence(change: string): void {
+    const p = presenceNow();
+    bus.emit({ type: 'presence', change, watchers: p.watchers, summary: p.summary } as unknown as BusEvent);
+  }
+
+  // ---- Event triggers (24.2) ----
+  // A hook may name internal events; when one happens the hook gets the same
+  // queued turn a webhook POST would have produced. Matching and the safety
+  // rules (self-loop, cooldown) live in src/gateway/triggers.ts.
+  const triggerLastFired = new Map<string, number>();
+  const TRIGGER_COOLDOWN_MS = 60_000;
+
+  function fireTriggers(event: string, data: Record<string, unknown> = {}, fromSession?: string): string[] {
+    const payload: TriggerPayload = { event, fromSession, data };
+    const decisions = planTriggers(config.hooks ?? [], payload, {
+      lastFired: triggerLastFired,
+      cooldownMs: TRIGGER_COOLDOWN_MS,
+    });
+    const fired: string[] = [];
+    for (const d of decisions) {
+      if (d.skipped) {
+        log.debug(describeTrigger(d.hook, payload, d.skipped));
+        continue;
+      }
+      try {
+        // Same lane, same queue, same rate of knots as a webhook: no bypass.
+        agentQueue.submit({
+          sessionId: triggerSession(d.hook.id),
+          userMessage: triggerMessage(d.hook, payload),
+          channel: 'webhook',
+        });
+        triggerLastFired.set(d.hook.id, Date.now());
+        fired.push(d.hook.id);
+        log.info(describeTrigger(d.hook, payload));
+      } catch (err) {
+        // A full queue is a reason to skip, not to fail the event's source.
+        log.warn(`event ${event} could not reach hook ${d.hook.id}:`, err instanceof Error ? err.message : String(err));
+      }
+    }
+    if (fired.length) bus.emit({ type: 'trigger', event, hooks: fired } as unknown as BusEvent);
+    return fired;
+  }
+
+  /** Which internal bus events are worth waking someone for. */
+  function triggerFromBusEvent(ev: BusEvent): { event: string; data: Record<string, unknown>; fromSession?: string } | null {
+    const any = ev as Record<string, unknown>;
+    if (any.type === 'error') {
+      return { event: 'run.failed', data: { message: String(any.message ?? '') }, fromSession: typeof any.sessionId === 'string' ? any.sessionId : undefined };
+    }
+    if (any.type === 'presence' && String(any.change ?? '').startsWith('paired:')) {
+      return { event: 'device.paired', data: { deviceId: String(any.change).slice('paired:'.length) } };
+    }
+    if (any.type === 'cron') {
+      return { event: 'cron.finished', data: { name: String(any.name ?? ''), ok: Boolean(any.ok), preview: String(any.preview ?? '') } };
+    }
+    return null;
+  }
+
+  const unsubscribeTriggers = bus.subscribe((ev) => {
+    const trigger = triggerFromBusEvent(ev);
+    if (trigger) fireTriggers(trigger.event, trigger.data, trigger.fromSession);
+  });
+
+  // A hook listening for an event nothing emits would be silent forever: say
+  // so once at startup rather than letting the user guess.
+  for (const hook of config.hooks ?? []) {
+    for (const pattern of hook.on ?? []) {
+      const known = KNOWN_EVENTS.some((k) => pattern === '*' || pattern === k.name || (pattern.endsWith('.*') && k.name.startsWith(pattern.slice(0, -1))));
+      if (!known) log.warn(`hook ${hook.id} listens for "${pattern}", which nothing emits — see: termcrab events`);
+    }
+  }
+
+  // Once the channels are up, that fact is presence too.
+  announcePresence('started');
+
   /** Shared inbound handler for text channels (telegram/whatsapp). */
   async function handleChannelMessage(
     channel: ChannelName,
@@ -627,7 +767,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       // that says it will start over.
       const policy = policyLine(sessions, `${channel}:${chatId}`, config.agent.sessionReset);
       const runs = healthLine(runHealth({ queue: agentQueue, traces: listRuns() }));
-      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}\n${runs}\n${policy}`;
+      const here = presenceLine(presenceNow());
+      return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}\n${runs}\n${here}\n${policy}`;
     }
     // 15.4: the same facts the CLI reports with --json, available in the chat.
     if (text === '/help' || text === '/?') {
@@ -1008,6 +1149,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
         log.info(`paired device ${redeemed.device.name} (${redeemed.device.id}) from ${peer ?? 'unknown'}`);
+        announcePresence(`paired:${redeemed.device.id}`);
         json(res, 200, {
           ok: true,
           v: WIRE_VERSION,
@@ -1121,9 +1263,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           });
           const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
           ping.unref();
+          // A client attaching is presence becoming true, and its leaving is
+          // the first sign something dropped (24.1).
+          watcherCount += 1;
+          announcePresence('watch');
           req.on('close', () => {
             clearInterval(ping);
             unsubscribe();
+            watcherCount = Math.max(0, watcherCount - 1);
+            announcePresence('unwatch');
           });
           return;
         }
@@ -2020,6 +2168,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           return;
         }
 
+        /**
+         * Who can reach me right now (24.1). Derived from the stores the
+         * server already owns: attached watchers, running channels, paired
+         * devices and recent conversations.
+         */
+        if (req.method === 'GET' && pathname === '/api/presence') {
+          const p = presenceNow();
+          json(res, 200, {
+            ok: true,
+            v: WIRE_VERSION,
+            count: p.entries.length,
+            watchers: p.watchers,
+            summary: p.summary,
+            entries: p.entries,
+          });
+          return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/status') {
           json(res, 200, {
             version: version(),
@@ -2043,6 +2209,10 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             memory: { ...memory.stats(), index: memory.indexStats(), facts: countMemoryFacts() },
             agents: listAgents(),
             queue: agentQueue.stats(),
+            presence: (() => {
+              const p = presenceNow();
+              return { watchers: p.watchers, summary: p.summary, online: p.entries.filter((e) => e.state === 'online').length };
+            })(),
             disk: { ...diskUsage(), budgetBytes: diskBudgetBytes(config), keepDays: diskKeepDays(config) },
             // The newest compaction summary anywhere in this home.
             digest: lastDigestSummary(),
@@ -2482,6 +2652,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       stopHeartbeat();
       stopCron();
       stopDream();
+      unsubscribeTriggers();
       wake.stop();
       clearInterval(outboxTimer);
       if (telegram) await telegram.stop();

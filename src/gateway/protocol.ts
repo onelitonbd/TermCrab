@@ -38,6 +38,8 @@ export const EVENT_FAMILIES: Array<{ family: string; types: string[]; when: stri
   { family: 'schedule', types: ['cron'], when: 'a scheduled job fires or is edited', payload: 'job id, name, next run' },
   { family: 'memory', types: ['dream'], when: 'memory is consolidated', payload: 'file, count, by' },
   { family: 'panel', types: ['update', 'tasks', 'ask'], when: 'the panel reloads config, suggests a task, or asks a question', payload: 'section / suggestions / question' },
+  { family: 'presence', types: ['presence'], when: 'who can reach the agent changes (a client attaches or leaves, a device pairs)', payload: 'change, watchers, summary' },
+  { family: 'trigger', types: ['trigger'], when: 'an internal event woke a hook', payload: 'event, hooks[]' },
   { family: 'session', types: ['session:reset'], when: 'a conversation\'s working context starts over', payload: 'sessionId, reason (the transcript is archived, not deleted)' },
 ];
 

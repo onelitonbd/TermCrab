@@ -54,6 +54,8 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab runs --json` | `{count, live, runs:[{sessionId, turnId, runId, request, elapsedMs, verdict, lastActivity, idleMs, suggestion}]}` — verdicts: working / slow / stuck / failing / queued |
 | `termcrab logs [n] --json` | `{path, limits:{maxBytes, maxFiles}, usage:{bytes, files}, count, records:[{ts, level, area, message, …}]}` |
 | `termcrab logs --path` | the log file path on its own |
+| `termcrab presence --json` | `{count, live, watchers, summary, entries:[{kind, id, label, state, lastSeenAt, seenAgoMs, detail}]}` — states: online (≤2 min) / recent (≤1 h) / idle / unknown (never seen) / off (configured but not running) |
+| `termcrab events --json` | `{count, events:[{name, what, hooks:[id]}]}` — the internal events that can wake a hook, and who listens |
 | `termcrab sessions search <words> --json` | `{query, count, hits:[{sessionId, part, line, role, when, score, snippet}]}` — ranked across every transcript, archive included |
 | `termcrab sessions show <id> --json` | `{id, file, archive, entries, bytes, firstAt, lastAt, roles, digest, fence, policy, resetDue, resetReason, attachment:{files, facts, approvals, tools}}` |
 | `termcrab sessions verify --json` | `{sessions:[{id, entries, hot, archived, badLines, repairedBytes, bytes}], sessionsWithDamage, badLines, repaired, bytes, repairedNow}` |

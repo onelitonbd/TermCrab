@@ -126,8 +126,12 @@ export interface Config {
   fallbackProviders: ProviderCfg[];
   /** MCP servers (stdio JSON-RPC). Tools are exposed as mcp_<server>_<tool>. */
   mcpServers: { name: string; command: string; args?: string[]; env?: Record<string, string> }[];
-  /** Inbound webhooks: external services can POST to /api/hooks/:id to trigger agent runs. */
-  hooks: { id: string; token: string; prompt: string }[];
+  /**
+   * Hooks work in both directions: external services can POST to
+   * /api/hooks/:id, and (24.2) a hook with `on` is also woken by the named
+   * internal events — see src/gateway/triggers.ts for the list.
+   */
+  hooks: { id: string; token: string; prompt: string; on?: string[] }[];
   channels: {
     telegram?: {
       token: string;
