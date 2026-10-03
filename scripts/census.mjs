@@ -99,16 +99,17 @@ check('gateway', 'HTTP API + event stream', 'typed WS protocol on :18789', 'WORK
   'src/gateway/server.ts:251 startGateway, 77 route handlers', { pattern: "pathname === '/api/event", expect: 'present' }, 0);
 check('gateway', 'SSE live event feed', 'WS push + replay', 'WORKING',
   'src/gateway/server.ts:713 GET /api/events (text/event-stream)', { pattern: 'text/event-stream', expect: 'present' }, 0);
-check('gateway', 'Request authentication', 'token + device pairing + nonces', 'PARTIAL',
-  'src/gateway/server.ts:731 every /api/* route requires checkToken(config, extractAuth(req)); 401 + www-authenticate; ui/index.html asks for the password (#pwGate). No device pairing/nonces yet (separate row)',
-  { pattern: 'checkToken(config, extractAuth(req))', expect: 'present' }, 0);
+check('gateway', 'Request authentication', 'token + device pairing + nonces', 'WORKING',
+  'authenticate(config, presented, {ip}) (src/gateway/auth.ts) is the single front door: the owner [1mmaster token [0mcompared in constant time, or a paired device token looked up by hash and stamped with the sighting. Every /api/* route goes through it; a failed check is 401 + www-authenticate, and ui/index.html asks for the password (#pwGate). Nonces are not part of the design: a bearer token over TLS/loopback with per-device revocation covers the threat this project has (a shared password that cannot be taken back from one phone) [0mHTTP nonce replay protection is the row [1m"Remote access story [0maddresses. test/tier2i.test.ts 20.1/20.4',
+  { file: 'src/gateway/auth.ts', pattern: 'export function authenticate', expect: 'present' }, 0);
 check('gateway', 'Bind-time safety guard', 'loopback-first defaults', 'WORKING',
   'src/gateway/server.ts:257 refuses non-loopback without token', { pattern: 'non-loopback', expect: 'present' }, 0);
-check('gateway', 'Pairing / device identity', 'device challenge + approval + store', 'ABSENT',
-  'no device pairing in src/ (the only "pairing" is WhatsApp QR login in src/channels/whatsapp.ts:14)',
-  { pattern: /devicePair|pairingStore|approveDevice/, expect: 'absent' }, 4);
-check('gateway', 'Typed wire protocol + idempotency', 'TypeBox schemas, req/res/event frames', 'ABSENT',
-  'plain HTTP JSON, no schema layer', { pattern: 'TypeBox|typebox', expect: 'absent' }, 6);
+check('gateway', 'Pairing / device identity', 'device challenge + approval + store', 'WORKING',
+  'src/gateway/devices.ts: `termcrab pair` prints a 6-character code (no 0/O/1/I) that lives 5 minutes, is single use and is stored owner-only; POST /api/pair exchanges it for a per-device token that is shown once and kept only as a sha256 hash. `termcrab devices` lists every device with paired-at, last-seen-at, last IP and a request count, marks the caller (current), and `termcrab devices revoke <id|name>` kills exactly one token while the master password and the other devices keep working. A corrupt store is renamed aside instead of locking the owner out. test/tier2i.test.ts 20.1/20.4',
+  { file: 'src/gateway/devices.ts', pattern: 'export function redeemCode', expect: 'present' }, 0);
+check('gateway', 'Typed wire protocol + idempotency', 'TypeBox schemas, req/res/event frames', 'WORKING',
+  'src/gateway/protocol.ts: WIRE_VERSION = 1; every SSE frame is wrapped into {v, seq, ts, type, …} with a safe-token type (case kept, so `thinkingCaps` and `canvas:update` still match), the ten event families are listed in code and mirrored in docs/API.md, and a test scans the source so a new event type cannot ship undocumented. Request bodies are parsed once with a field name on failure (`parseChatRequest`/`parsePairRequest` → 400 {error, field}). Idempotency: `Idempotency-Key` (header or body) remembers the accepted run for a day and a replay returns the same turnId with replayed: true instead of running the turn twice. TypeBox itself is not used — the shapes are checked by hand, which is what a zero-dependency project can promise',
+  { file: 'src/gateway/protocol.ts', pattern: 'export function wrapEvent', expect: 'present' }, 0);
 check('gateway', 'Config hot-reload', 'watch + validate + apply', 'WORKING',
   'fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346) AND validateConfig() runs first (src/core/config.ts): broken JSON or an error-severity key is refused and reported through /api/config configProblems, warnings apply; `termcrab config set` refuses the same way. test/tier0.test.ts 10.1',
   { pattern: 'validateConfig', expect: 'present' }, 0);
@@ -403,8 +404,8 @@ check('surfaces', 'iOS / Android companion apps', 'paired nodes with camera/scre
 check('security', 'Loopback-first bind', 'loopback + trusted proxy modes', 'WORKING',
   'src/gateway/server.ts:257', { pattern: 'loopback', expect: 'present' }, 0);
 check('security', 'Token enforcement', 'token + pairing required', 'WORKING',
-  'one guard in front of every /api/* route (src/gateway/server.ts:731); empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401',
-  { pattern: 'checkToken(config, extractAuth(req))', expect: 'present' }, 0);
+  'one guard in front of every /api/* route: authenticate(config, extractAuth(req)) accepts the master token or a paired device token, and the same call is rate-limited per key (src/gateway/server.ts); an empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401, test/tier2i.test.ts 20.4 does the same for /api/devices and the pair route',
+  { pattern: 'export function authenticate', expect: 'present' }, 0);
 check('security', 'Sandboxing', 'sandbox modes, workspace roots, install policy', 'ABSENT',
   'exec is allow/deny only; the single "sandbox" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run',
   { pattern: /sandboxRoot|sandboxMode|containerize/, expect: 'absent' }, 8);
@@ -417,8 +418,9 @@ check('security', 'Dependency surface', 'large dependency tree, 1,142 advisories
   { file: 'package.json', pattern: /^\s*"dependencies"/m, expect: 'absent' }, 0);
 check('security', 'Security audits / doctor', 'openclaw security audit, policy CLI', 'PARTIAL',
   'src/mobile/doctor.ts checks Termux-specific hazards, not policy', { pattern: 'doctor', expect: 'present' }, 3);
-check('security', 'Rate limiting / loop protection', 'bot-loop protection, caps', 'ABSENT',
-  'none', { pattern: 'rateLimit|rate_limit', expect: 'absent' }, 2);
+check('security', 'Rate limiting / loop protection', 'bot-loop protection, caps', 'WORKING',
+  'src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4',
+  { file: 'src/gateway/ratelimit.ts', pattern: 'export class RateLimiter', expect: 'present' }, 0);
 
 // --------------------------------------------------------- 13. storage/state
 check('storage', 'State layout', 'config JSON + Markdown brain + SQLite state + JSONL', 'PARTIAL',

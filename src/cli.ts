@@ -54,6 +54,7 @@ import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
 import { commandHelp, completionScript, renderCommandIndex } from './command-help.js';
+import { CODE_TTL_MS, formatDevice, listDevices, liveCodes, pairCode, revokeDevice } from './gateway/devices.js';
 import { ANSI, paint } from './core/color.js';
 
 const HELP = `🦀 TermCrab — your personal AI assistant that runs on your own device.
@@ -94,6 +95,8 @@ Everyday extras:
   termcrab stop [session]           stop what the agent is doing right now (partial answer is kept)
   termcrab disk [--trim]            how much space the agent uses (--trim = enforce the budget now)
   termcrab context [session]        what the model is actually sent, section by section (--json)
+  termcrab pair [--name phone]      print a 5-minute code so a phone/tablet can pair (no shared password typing)
+  termcrab devices [list|revoke]    the devices this gateway trusts (revoke one without touching the rest)
   termcrab config [get|set|list]     change settings (same settings live in the web panel)
   termcrab help <cmd>                what one command does (same as: termcrab <cmd> --help)
   termcrab completion bash|zsh|fish  shell completion script for your shell
@@ -1113,6 +1116,83 @@ export async function main(argv: string[]): Promise<void> {
         }
         return;
       }
+    }
+
+    case 'pair': {
+      const nameIdx = rest.indexOf('--name');
+      const label = nameIdx >= 0 && rest[nameIdx + 1] ? rest[nameIdx + 1] : undefined;
+      const made = pairCode({ label });
+      const minutes = Math.round((made.ttlMs ?? CODE_TTL_MS) / 60_000);
+      if (machine) {
+        emitJson('pair', {
+          code: made.code,
+          expiresAt: new Date(made.expiresAt).toISOString(),
+          ttlMs: made.ttlMs ?? CODE_TTL_MS,
+          name: label ?? null,
+          howTo: 'POST /api/pair {code, name} to the gateway, or open the panel and paste the code there',
+        });
+        return;
+      }
+      console.log('');
+      console.log(`  📱 Pairing code: ${made.code}`);
+      console.log(`     valid for ${minutes} minute(s) · single use · only this terminal can print it`);
+      console.log(`     on the phone: POST /api/pair with {"code":"${made.code}"} — it answers with that device's own token`);
+      console.log('     then check: termcrab devices   (revoke any time: termcrab devices revoke <id>)');
+      console.log('');
+      return;
+    }
+
+    case 'devices': {
+      if (rest[0] === 'revoke') {
+        const wanted = rest[1];
+        if (!wanted) {
+          if (machine) failJson('devices', 'missing device id or name', 'usage: termcrab devices revoke <id|name>');
+          else {
+            console.error('usage: termcrab devices revoke <id|name>');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const gone = revokeDevice(wanted);
+        if (!gone) {
+          if (machine) failJson('devices', `no device ${wanted}`, 'run: termcrab devices');
+          else {
+            console.error(`no device ${wanted} — run: termcrab devices`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        if (machine) emitJson('devices', { revoked: { id: gone.id, name: gone.name } });
+        else console.log(`🔒 Revoked ${gone.name} (${gone.id}) — its token stops working immediately.`);
+        return;
+      }
+      const devices = listDevices();
+      const codes = liveCodes();
+      if (machine) {
+        emitJson('devices', {
+          count: devices.length,
+          devices: devices.map((d) => ({
+            id: d.id,
+            name: d.name,
+            createdAt: new Date(d.createdAt).toISOString(),
+            lastSeenAt: d.lastSeenAt ? new Date(d.lastSeenAt).toISOString() : null,
+            seenAgoMs: d.seenAgoMs,
+            seenCount: d.seenCount,
+          })),
+          pendingCodes: codes.map((c) => ({ code: c.code, expiresAt: new Date(c.expiresAt).toISOString() })),
+        });
+        return;
+      }
+      console.log('');
+      if (!devices.length) console.log('  no paired devices yet — run: termcrab pair');
+      else {
+        console.log(`  🔑 ${devices.length} paired device(s):`);
+        for (const d of devices) console.log(`     ${formatDevice(d)}`);
+      }
+      if (codes.length) console.log(`  ⏳ ${codes.length} unused pairing code(s) still live (first: ${codes[0]!.code})`);
+      console.log('     revoke one: termcrab devices revoke <id|name>   (the master password keeps working)');
+      console.log('');
+      return;
     }
 
     case 'disk': {

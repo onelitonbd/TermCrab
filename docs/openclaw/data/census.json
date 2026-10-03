@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-03T14:51:05.875Z",
+ "measured": "2026-10-03T14:59:46.695Z",
  "tally": {
-  "WORKING": 61,
+  "WORKING": 65,
   "BETTER": 14,
-  "PARTIAL": 44,
+  "PARTIAL": 43,
   "BROKEN": 0,
-  "ABSENT": 31
+  "ABSENT": 28
  },
- "coverage": 63,
- "effortLeft": 363,
+ "coverage": 66,
+ "effortLeft": 351,
  "areas": [
   "agent",
   "automation",
@@ -42,7 +42,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:964"
+    "detail": "1 match(es): src/gateway/server.ts:1081"
    }
   },
   {
@@ -59,24 +59,25 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:966"
+    "detail": "1 match(es): src/gateway/server.ts:1083"
    }
   },
   {
    "area": "gateway",
    "capability": "Request authentication",
    "openclaw": "token + device pairing + nonces",
-   "verdict": "PARTIAL",
-   "evidence": "src/gateway/server.ts:731 every /api/* route requires checkToken(config, extractAuth(req)); 401 + www-authenticate; ui/index.html asks for the password (#pwGate). No device pairing/nonces yet (separate row)",
+   "verdict": "WORKING",
+   "evidence": "authenticate(config, presented, {ip}) (src/gateway/auth.ts) is the single front door: the owner [1mmaster token [0mcompared in constant time, or a paired device token looked up by hash and stamped with the sighting. Every /api/* route goes through it; a failed check is 401 + www-authenticate, and ui/index.html asks for the password (#pwGate). Nonces are not part of the design: a bearer token over TLS/loopback with per-device revocation covers the threat this project has (a shared password that cannot be taken back from one phone) [0mHTTP nonce replay protection is the row [1m\"Remote access story [0maddresses. test/tier2i.test.ts 20.1/20.4",
    "probe": {
-    "pattern": "checkToken(config, extractAuth(req))",
+    "file": "src/gateway/auth.ts",
+    "pattern": "export function authenticate",
     "expect": "present"
    },
    "effort": 0,
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:922"
+    "detail": "1 match(es): src/gateway/auth.ts:90"
    }
   },
   {
@@ -93,41 +94,43 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:279"
+    "detail": "1 match(es): src/gateway/server.ts:290"
    }
   },
   {
    "area": "gateway",
    "capability": "Pairing / device identity",
    "openclaw": "device challenge + approval + store",
-   "verdict": "ABSENT",
-   "evidence": "no device pairing in src/ (the only \"pairing\" is WhatsApp QR login in src/channels/whatsapp.ts:14)",
+   "verdict": "WORKING",
+   "evidence": "src/gateway/devices.ts: `termcrab pair` prints a 6-character code (no 0/O/1/I) that lives 5 minutes, is single use and is stored owner-only; POST /api/pair exchanges it for a per-device token that is shown once and kept only as a sha256 hash. `termcrab devices` lists every device with paired-at, last-seen-at, last IP and a request count, marks the caller (current), and `termcrab devices revoke <id|name>` kills exactly one token while the master password and the other devices keep working. A corrupt store is renamed aside instead of locking the owner out. test/tier2i.test.ts 20.1/20.4",
    "probe": {
-    "pattern": {},
-    "expect": "absent"
+    "file": "src/gateway/devices.ts",
+    "pattern": "export function redeemCode",
+    "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/gateway/devices.ts:132"
    }
   },
   {
    "area": "gateway",
    "capability": "Typed wire protocol + idempotency",
    "openclaw": "TypeBox schemas, req/res/event frames",
-   "verdict": "ABSENT",
-   "evidence": "plain HTTP JSON, no schema layer",
+   "verdict": "WORKING",
+   "evidence": "src/gateway/protocol.ts: WIRE_VERSION = 1; every SSE frame is wrapped into {v, seq, ts, type, …} with a safe-token type (case kept, so `thinkingCaps` and `canvas:update` still match), the ten event families are listed in code and mirrored in docs/API.md, and a test scans the source so a new event type cannot ship undocumented. Request bodies are parsed once with a field name on failure (`parseChatRequest`/`parsePairRequest` → 400 {error, field}). Idempotency: `Idempotency-Key` (header or body) remembers the accepted run for a day and a replay returns the same turnId with replayed: true instead of running the turn twice. TypeBox itself is not used — the shapes are checked by hand, which is what a zero-dependency project can promise",
    "probe": {
-    "pattern": "TypeBox|typebox",
-    "expect": "absent"
+    "file": "src/gateway/protocol.ts",
+    "pattern": "export function wrapEvent",
+    "expect": "present"
    },
-   "effort": 6,
+   "effort": 0,
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/gateway/protocol.ts:74"
    }
   },
   {
@@ -144,7 +147,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:263"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:269"
    }
   },
   {
@@ -161,7 +164,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1805"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:1954"
    }
   },
   {
@@ -178,7 +181,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:881"
+    "detail": "4 match(es): src/gateway/server.ts:903"
    }
   },
   {
@@ -212,7 +215,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "34 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/server.ts:89"
+    "detail": "40 match(es): src/agent/toolbox.ts:9, src/gateway/canvas.ts:5, src/gateway/protocol.ts:44"
    }
   },
   {
@@ -263,7 +266,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:279"
+    "detail": "1 match(es): src/gateway/server.ts:290"
    }
   },
   {
@@ -280,7 +283,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "9 match(es): src/agent/loop.ts:381, src/cli.ts:991, src/command-help.ts:168"
+    "detail": "9 match(es): src/agent/loop.ts:381, src/cli.ts:994, src/command-help.ts:168"
    }
   },
   {
@@ -314,7 +317,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:26, src/cli.ts:191"
+    "detail": "6 match(es): src/agent/loop.ts:26, src/cli.ts:194, src/gateway/protocol.ts:39"
    }
   },
   {
@@ -331,7 +334,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:28, src/cli.ts:181"
+    "detail": "5 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:28, src/cli.ts:184"
    }
   },
   {
@@ -382,7 +385,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:133"
+    "detail": "1 match(es): src/cli.ts:136"
    }
   },
   {
@@ -467,7 +470,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): src/agent/loop.ts:27, src/agent/sessions.ts:16, src/gateway/server.ts:340"
+    "detail": "93 match(es): src/agent/loop.ts:27, src/agent/sessions.ts:16, src/gateway/protocol.ts:42"
    }
   },
   {
@@ -501,7 +504,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1091, src/gateway/server.ts:1080"
+    "detail": "3 match(es): src/agent/sessions.ts:1190, src/cli.ts:1094, src/gateway/server.ts:1229"
    }
   },
   {
@@ -552,7 +555,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:47"
+    "detail": "2 match(es): src/agent/loop.ts:47, src/gateway/protocol.ts:39"
    }
   },
   {
@@ -569,7 +572,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "457 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
+    "detail": "478 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/heartbeat.ts:58"
    }
   },
   {
@@ -688,7 +691,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:540, src/command-help.ts:111"
+    "detail": "7 match(es): src/agent/heartbeat.ts:53, src/cli.ts:543, src/command-help.ts:111"
    }
   },
   {
@@ -739,7 +742,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:297, src/agent/sessions.ts:747, src/cli.ts:1502"
+    "detail": "4 match(es): src/agent/loop.ts:297, src/agent/sessions.ts:747, src/cli.ts:1582"
    }
   },
   {
@@ -757,7 +760,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/context.ts:65"
+    "detail": "1 match(es): src/agent/context.ts:53"
    }
   },
   {
@@ -775,7 +778,7 @@
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/context.ts:91"
+    "detail": "1 match(es): src/agent/context.ts:79"
    }
   },
   {
@@ -793,7 +796,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/context.ts:131"
+    "detail": "1 match(es): src/agent/context.ts:119"
    }
   },
   {
@@ -829,7 +832,7 @@
    "lane": "core",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/context.ts:143, src/agent/memory.ts:186, src/agent/prompt.ts:197"
+    "detail": "7 match(es): src/agent/context.ts:131, src/agent/memory.ts:186, src/agent/prompt.ts:197"
    }
   },
   {
@@ -846,7 +849,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:178, src/agent/memory.ts:227"
+    "detail": "3 match(es): src/agent/context.ts:166, src/agent/memory.ts:227"
    }
   },
   {
@@ -881,7 +884,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:375, src/agent/tools.ts:374, src/cli.ts:1440"
+    "detail": "5 match(es): src/agent/memory.ts:375, src/agent/tools.ts:374, src/cli.ts:1520"
    }
   },
   {
@@ -898,7 +901,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:186"
+    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:192"
    }
   },
   {
@@ -915,7 +918,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "89 match(es): src/agent/dream.ts:3, src/agent/loop.ts:59, src/agent/prompt.ts:19"
+    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:59, src/agent/prompt.ts:19"
    }
   },
   {
@@ -932,7 +935,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:178, src/agent/memory.ts:227"
+    "detail": "3 match(es): src/agent/context.ts:166, src/agent/memory.ts:227"
    }
   },
   {
@@ -966,7 +969,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/context.ts:55, src/agent/toolbox.ts:634"
+    "detail": "2 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:634"
    }
   },
   {
@@ -983,7 +986,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:54, src/agent/toolbox.ts:68"
+    "detail": "3 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:68"
    }
   },
   {
@@ -1105,7 +1108,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "83 match(es): src/agent/context.ts:105, src/agent/prompt.ts:148, src/agent/toolbox.ts:248"
+    "detail": "83 match(es): src/agent/context.ts:93, src/agent/prompt.ts:148, src/agent/toolbox.ts:248"
    }
   },
   {
@@ -1345,7 +1348,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:504, src/mobile/doctor.ts:383"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:519, src/mobile/doctor.ts:383"
    }
   },
   {
@@ -1481,7 +1484,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:116"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:122"
    }
   },
   {
@@ -1498,7 +1501,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:620"
+    "detail": "1 match(es): src/gateway/server.ts:635"
    }
   },
   {
@@ -1687,7 +1690,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:65, src/agent/tools.ts:43, src/gateway/server.ts:372"
+    "detail": "8 match(es): src/agent/loop.ts:65, src/agent/tools.ts:43, src/gateway/server.ts:387"
    }
   },
   {
@@ -1704,7 +1707,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "94 match(es): src/agent/loop.ts:208, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
+    "detail": "95 match(es): src/agent/loop.ts:208, src/agent/prompt.ts:19, src/agent/sessions.ts:254"
    }
   },
   {
@@ -1875,7 +1878,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "70 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:181"
+    "detail": "72 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:184"
    }
   },
   {
@@ -1909,7 +1912,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "29 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "32 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -1926,7 +1929,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:297, src/command-help.ts:360"
+    "detail": "2 match(es): src/cli.ts:300, src/command-help.ts:376"
    }
   },
   {
@@ -1960,7 +1963,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "58 match(es): src/agent/loop.ts:208, src/cli.ts:39, src/command-help.ts:224"
+    "detail": "60 match(es): src/agent/loop.ts:208, src/cli.ts:39, src/command-help.ts:224"
    }
   },
   {
@@ -2011,7 +2014,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/core/config.ts:55, src/gateway/auth.ts:19, src/gateway/server.ts:279"
+    "detail": "5 match(es): src/core/config.ts:55, src/gateway/auth.ts:20, src/gateway/server.ts:290"
    }
   },
   {
@@ -2019,16 +2022,16 @@
    "capability": "Token enforcement",
    "openclaw": "token + pairing required",
    "verdict": "WORKING",
-   "evidence": "one guard in front of every /api/* route (src/gateway/server.ts:731); empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401",
+   "evidence": "one guard in front of every /api/* route: authenticate(config, extractAuth(req)) accepts the master token or a paired device token, and the same call is rate-limited per key (src/gateway/server.ts); an empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401, test/tier2i.test.ts 20.4 does the same for /api/devices and the pair route",
    "probe": {
-    "pattern": "checkToken(config, extractAuth(req))",
+    "pattern": "export function authenticate",
     "expect": "present"
    },
    "effort": 0,
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es): src/gateway/server.ts:922"
+    "detail": "1 match(es): src/gateway/auth.ts:90"
    }
   },
   {
@@ -2114,24 +2117,25 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
+    "detail": "26 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
    }
   },
   {
    "area": "security",
    "capability": "Rate limiting / loop protection",
    "openclaw": "bot-loop protection, caps",
-   "verdict": "ABSENT",
-   "evidence": "none",
+   "verdict": "WORKING",
+   "evidence": "src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4",
    "probe": {
-    "pattern": "rateLimit|rate_limit",
-    "expect": "absent"
+    "file": "src/gateway/ratelimit.ts",
+    "pattern": "export class RateLimiter",
+    "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "later",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/gateway/ratelimit.ts:34"
    }
   },
   {
@@ -2182,7 +2186,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "577 match(es): src/agent/ask.ts:14, src/agent/context.ts:27, src/agent/dream.ts:31"
+    "detail": "617 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
    }
   },
   {
@@ -2199,7 +2203,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "136 match(es): src/agent/goals.ts:13, src/agent/memory.ts:286, src/agent/progress.ts:11"
+    "detail": "146 match(es): src/agent/goals.ts:13, src/agent/memory.ts:286, src/agent/progress.ts:11"
    }
   },
   {
@@ -2267,7 +2271,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2194"
+    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2343"
    }
   },
   {
@@ -2284,7 +2288,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:288, src/gateway/server.ts:83"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:304, src/gateway/server.ts:83"
    }
   },
   {
@@ -2335,7 +2339,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
+    "detail": "26 match(es): src/agent/embed-setup.ts:3, src/agent/status.ts:191, src/agent/tools.ts:607"
    }
   },
   {
@@ -2369,7 +2373,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "25 match(es): src/channels/inbox.ts:113, src/channels/intake.ts:21, src/channels/telegram.ts:43"
+    "detail": "26 match(es): src/channels/inbox.ts:113, src/channels/intake.ts:21, src/channels/telegram.ts:43"
    }
   },
   {
@@ -2549,7 +2553,7 @@
    "lane": "parity",
    "probeResult": {
     "state": "ok",
-    "detail": "68 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "69 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

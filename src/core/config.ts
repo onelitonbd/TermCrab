@@ -54,6 +54,12 @@ export interface Config {
     port: number;
     /** Bearer token for HTTP/SSE API. Empty only allowed on loopback. */
     token: string;
+    /**
+     * Per-key token bucket for the HTTP surface and channel messages (20.3):
+     * `perMinute` is the sustained rate, `burst` how many may arrive at once.
+     * Omitted = 60/minute with a burst of 10.
+     */
+    rateLimit?: { perMinute: number; burst: number };
   };
   agent: {
     name: string;

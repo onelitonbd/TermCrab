@@ -48,6 +48,9 @@ keeps working: `0` done · `1` failed · `124` timed out · `130` stopped.
 | `termcrab memory search <q> --json` | `{query, count, hits:[{file, line, score, snippet, origin, when, source, semantic}]}` — ranked (BM25 + exact phrase + 30-day recency), and every hit says where it came from |
 | `termcrab memory user [line] --json` | `{file, text}` (or `{file, added, result}` when a line was added) |
 | `termcrab context [session] --json` | `{engine, sections:[{section, bytes, note}], totalBytes, tools:{count, schemaBytes}, history:{messages, bytes, pruned}, memory:{facts, totalFacts, budget, userBytes}, skills:{count, bytes}, notes}` |
+| `termcrab pair --json` | `{code, expiresAt, ttlMs, name, howTo}` |
+| `termcrab devices --json` | `{count, devices:[{id, name, createdAt, lastSeenAt, seenAgoMs, seenCount}], pendingCodes}` |
+| `termcrab devices revoke <id\|name> --json` | `{revoked:{id, name}}` |
 | `termcrab memory compact <session> --json` | `{session, compacted, coveredTurns, by, model, note, file}` |
 | `termcrab approvals --json` | `{count, approvals:[{id, tool, args, sessionId, createdAt}]}` |
 | `termcrab approvals approve\|deny <id> --json` | `{id, decision, by, ok}` |

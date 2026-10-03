@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৬৩%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬১টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৪টা আধা (PARTIAL), ৩১টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২০৯ দিন, later ~১৫৪ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৬৬%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৬৫টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৪৩টা আধা (PARTIAL), ২৮টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৪টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২০৯ দিন, later ~১৪২ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
@@ -51,21 +51,21 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 61 | wired and observable |
+| ✅ WORKING | 65 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 44 | exists, narrower than theirs |
+| 🟡 PARTIAL | 43 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 31 | nothing in the tree |
+| ⚪ ABSENT | 28 | nothing in the tree |
 | | **150** | tracked capabilities |
 
-**Capability score 63%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
+**Capability score 66%** (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0).
 
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 14 | ~0d | must exist for TermCrab to be a credible agent at all |
 | **parity** | 108 | ~209d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 28 | ~154d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 150 | ~363d | |
+| **later** | 28 | ~142d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 150 | ~351d | |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -138,16 +138,16 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
 
-### gateway — 61% (16 checks)
+### gateway — 77% (16 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | HTTP API + event stream | typed WS protocol on :18789 | ✅ WORKING | src/gateway/server.ts:251 startGateway, 77 route handlers | parity | — |
 | SSE live event feed | WS push + replay | ✅ WORKING | src/gateway/server.ts:713 GET /api/events (text/event-stream) | parity | — |
-| Request authentication | token + device pairing + nonces | 🟡 PARTIAL | src/gateway/server.ts:731 every /api/* route requires checkToken(config, extractAuth(req)); 401 + www-authenticate; ui/index.html asks for the password (#pwGate). No device pairing/nonces yet (separate row) | core | — |
+| Request authentication | token + device pairing + nonces | ✅ WORKING | authenticate(config, presented, {ip}) (src/gateway/auth.ts) is the single front door: the owner [1mmaster token [0mcompared in constant time, or a paired device token looked up by hash and stamped with the sighting. Every /api/* route goes through it; a failed check is 401 + www-authenticate, and ui/index.html asks for the password (#pwGate). Nonces are not part of the design: a bearer token over TLS/loopback with per-device revocation covers the threat this project has (a shared password that cannot be taken back from one phone) [0mHTTP nonce replay protection is the row [1m"Remote access story [0maddresses. test/tier2i.test.ts 20.1/20.4 | core | — |
 | Bind-time safety guard | loopback-first defaults | ✅ WORKING | src/gateway/server.ts:257 refuses non-loopback without token | parity | — |
-| Pairing / device identity | device challenge + approval + store | ⚪ ABSENT | no device pairing in src/ (the only "pairing" is WhatsApp QR login in src/channels/whatsapp.ts:14) | later | 4 |
-| Typed wire protocol + idempotency | TypeBox schemas, req/res/event frames | ⚪ ABSENT | plain HTTP JSON, no schema layer | later | 6 |
+| Pairing / device identity | device challenge + approval + store | ✅ WORKING | src/gateway/devices.ts: `termcrab pair` prints a 6-character code (no 0/O/1/I) that lives 5 minutes, is single use and is stored owner-only; POST /api/pair exchanges it for a per-device token that is shown once and kept only as a sha256 hash. `termcrab devices` lists every device with paired-at, last-seen-at, last IP and a request count, marks the caller (current), and `termcrab devices revoke <id|name>` kills exactly one token while the master password and the other devices keep working. A corrupt store is renamed aside instead of locking the owner out. test/tier2i.test.ts 20.1/20.4 | later | — |
+| Typed wire protocol + idempotency | TypeBox schemas, req/res/event frames | ✅ WORKING | src/gateway/protocol.ts: WIRE_VERSION = 1; every SSE frame is wrapped into {v, seq, ts, type, …} with a safe-token type (case kept, so `thinkingCaps` and `canvas:update` still match), the ten event families are listed in code and mirrored in docs/API.md, and a test scans the source so a new event type cannot ship undocumented. Request bodies are parsed once with a field name on failure (`parseChatRequest`/`parsePairRequest` → 400 {error, field}). Idempotency: `Idempotency-Key` (header or body) remembers the accepted run for a day and a replay returns the same turnId with replayed: true instead of running the turn twice. TypeBox itself is not used — the shapes are checked by hand, which is what a zero-dependency project can promise | later | — |
 | Config hot-reload | watch + validate + apply | ✅ WORKING | fs.watch + debounce + merge + provider re-resolve (src/gateway/server.ts:302,346) AND validateConfig() runs first (src/core/config.ts): broken JSON or an error-severity key is refused and reported through /api/config configProblems, warnings apply; `termcrab config set` refuses the same way. test/tier0.test.ts 10.1 | parity | — |
 | Health / status endpoint | health + presence + doctor | ✅ WORKING | src/gateway/server.ts /api/health, /api/status, /api/doctor | parity | — |
 | Inbound webhooks | authenticated agent hooks | ✅ WORKING | POST /api/hooks/:id requires the per-hook token via x-hook-token or ?token= (src/gateway/server.ts:698), compared in constant time (src/gateway/auth.ts constantTimeEqual); unknown hook stays 404. Covered by test/auth.test.ts | core | — |
@@ -214,18 +214,18 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Auth profiles / credential store | many keys, rotation, SecretRef | ⚪ ABSENT | single key per provider in config.json | later | 4 |
 | MCP as tool source | MCP + ACP | ✅ WORKING | src/providers/mcp.ts wired at server.ts:345 | parity | — |
 
-### security — 61% (8 checks)
+### security — 74% (8 checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Loopback-first bind | loopback + trusted proxy modes | ✅ WORKING | src/gateway/server.ts:257 | parity | — |
-| Token enforcement | token + pairing required | ✅ WORKING | one guard in front of every /api/* route (src/gateway/server.ts:731); empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401 | parity | — |
+| Token enforcement | token + pairing required | ✅ WORKING | one guard in front of every /api/* route: authenticate(config, extractAuth(req)) accepts the master token or a paired device token, and the same call is rate-limited per key (src/gateway/server.ts); an empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401, test/tier2i.test.ts 20.4 does the same for /api/devices and the pair route | parity | — |
 | Sandboxing | sandbox modes, workspace roots, install policy | ⚪ ABSENT | exec is allow/deny only; the single "sandbox" is the Node vm used by code_exec (src/agent/tools.ts:509). No filesystem/network isolation for a run | later | 8 |
 | Secrets management | vault, SecretRef, 1Password, audit | 🟡 PARTIAL | src/agent/secrets.ts + config.json plaintext | parity | 4 |
 | Skill supply chain | signed manifests after ClawHavoc | 🏅 BETTER | no registry exists to poison; skills are local files | parity | — |
 | Dependency surface | large dependency tree, 1,142 advisories in 5 months | 🏅 BETTER | zero runtime dependencies — package.json has no "dependencies" key at all | parity | — |
 | Security audits / doctor | openclaw security audit, policy CLI | 🟡 PARTIAL | src/mobile/doctor.ts checks Termux-specific hazards, not policy | parity | 3 |
-| Rate limiting / loop protection | bot-loop protection, caps | ⚪ ABSENT | none | later | 2 |
+| Rate limiting / loop protection | bot-loop protection, caps | ✅ WORKING | src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4 | later | — |
 
 ### sessions — 42% (8 checks)
 

@@ -3,7 +3,11 @@
 Base URL: `http://127.0.0.1:7788` (config: `gateway.host` / `gateway.port`)
 
 Auth: `Authorization: Bearer <gateway.token>` — or `?token=` for EventSource/SSE.
-Get the token: `termcrab config get gateway.token`
+Get the token: `termcrab config get gateway.token`.
+A paired device may send its **own** token instead (`termcrab pair` prints a
+5-minute code; `POST /api/pair` exchanges it for a token shown once and stored
+only as a hash). Revoke one device without touching the others:
+`termcrab devices revoke <id|name>`.
 
 ## Endpoints
 
@@ -13,19 +17,67 @@ Get the token: `termcrab config get gateway.token`
 ```
 
 ### `GET /api/events` (SSE)
-Server-sent events for live UIs. Query token required.
-Events: `run:start`, `delta`, `tool:start`, `tool:end`, `run:end`, `error` (agent shapes),
-plus `heartbeat`-related log lines. Comment pings every 25s keep proxies alive.
+Server-sent events for live UIs. Query token required. Comment pings every 25s
+keep proxies alive.
+
+**Wire version `v: 1`.** Every frame is the event object plus `v` and a
+monotonic `seq`, and its `type` is a safe token (letters, digits, `._:-`):
+
+```json
+{ "v": 1, "seq": 42, "ts": 1759500000000, "type": "tool:start", "name": "read_file", "args": { "path": "notes.md" } }
+```
+
+The families a client can rely on:
+
+| Family | Types | When | Payload |
+|---|---|---|---|
+| `turn` | `delta`, `draft`, `error`, `approval`, `steer`, `stop` | a turn streams, wants a yes/no, or is stopped | text, or approval `{id, tool, args}` |
+| `tool` | `tool:start`, `tool:end` | one tool call begins and finishes | `name`, `args`, `toolCallId`, `ok`, `result` (trimmed to 200 chars on the wire) |
+| `run` | `run:start`, `run:end` | a run starts and ends | `runId`, `sessionId`, `text`, `iterations`, `usage`, `costUsd` |
+| `thinking` | `thinking:delta`, `thinkingCaps` | the model thinks out loud, or the model list changes | text, or per-model caps |
+| `voice` | `wake`, `tts:chunk`, `stt:result` | the wake loop hears, speaks or transcribes | text, reason |
+| `canvas` | `canvas:update`, `canvas:remove` | a canvas document changes | canvas id, patch |
+| `channel` | `discord:message`, `matrix:message`, `signal:message`, `slack:message`, `sms:message` | a message arrives on a channel | channel, chat, userId, text |
+| `schedule` | `cron` | a scheduled job fires or is edited | job id, name, next run |
+| `memory` | `dream` | memory is consolidated | file, count, by |
+| `panel` | `update`, `tasks`, `ask` | the panel reloads config, suggests a task, or asks a question | section, suggestions, question |
+
+Unknown *types* may appear later and a client must ignore what it does not
+know; an unknown `v` may not be ignored — refuse it rather than mis-read it.
+A test walks the source, so a new event type cannot ship undocumented.
 
 ```bash
 curl -N "http://127.0.0.1:7788/api/events?token=$TOKEN"
 ```
 
+### `POST /api/pair` (no token needed)
+```json
+{ "code": "K7M2QX", "name": "pixel" }
+```
+→ `200 { "ok": true, "v": 1, "device": { "id": "9f3a1c02", "name": "pixel" }, "token": "tc_dev_…" }`
+The code is printed by `termcrab pair`, lives 5 minutes and is single use.
+Wrong or expired codes answer `401` with a reason (`expired` / `unknown`), and
+the route is rate limited per IP, so a code cannot be brute-forced.
+
+### `GET /api/devices`
+```json
+{ "ok": true, "v": 1, "count": 1, "devices": [ { "id": "9f3a1c02", "name": "pixel", "createdAt": "…", "lastSeenAt": "…", "seenCount": 12, "current": true } ] }
+```
+Token hashes are never returned. `POST /api/devices/revoke {id|name}` removes
+one device; its token stops working on the next request.
+
 ### `POST /api/chat`
 ```json
 { "message": "list files in my workspace", "sessionId": "web:main" }
 ```
-→ `200 { "text": "<final reply>", "sessionId": "web:main" }` (runs the full agent loop)
+Headers: `authorization: Bearer <token>`, optional `idempotency-key: <any string>`.
+→ `202 { "turnId": "…", "sessionId": "web:main", "status": "queued" }` (runs the full agent loop)
+Retrying with the same `idempotency-key` (day-long memory) returns the same run
+with `"replayed": true` instead of starting a second turn — a phone that loses
+the answer must not pay for the question twice.
+A bad body answers `400 { "error": "message required", "field": "message" }`;
+too many requests answer `429 { "error": "Too many messages at once — try again in 4s.", "retryAfterMs": 3600, "limit": { "perMinute": 60, "burst": 10 } }`
+with a `retry-after` header.
 
 ### `GET /api/sessions`
 → `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000, "bytes": 4096 } ] }`
@@ -74,7 +126,16 @@ SSE also emits a `cron` event when a scheduled job fires.
 
 ## Errors
 
-Non-2xx responses: `{ "error": "message" }`. `401` = missing/invalid token.
+Non-2xx responses: `{ "error": "message" }` (plus `field` when a body was wrong).
+`401` = missing/invalid token (or a bad pairing code), `404` = unknown id,
+`429` = rate limited (`retryAfterMs` says when to try again).
+
+## Rate limits
+
+Every key — a device token, the master token, or a peer address — has a token
+bucket (`gateway.rateLimit = { perMinute, burst }`, default 60/minute with a
+burst of 10). Chat submissions, webhooks and each channel chat share the same
+rule; a full bucket answers immediately instead of queueing more turns.
 
 ## Example session
 

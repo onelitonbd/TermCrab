@@ -273,6 +273,22 @@ export const COMMANDS: CommandDoc[] = [
     json: 'show → {text, facts, totalFacts, bytes, budget, stats, files} · search → {query, count, hits{file,line,score,snippet,origin,when,source}} · user → {file, text} · compact → {session, compacted, coveredTurns, by, model, note, file}',
   },
   {
+    cmd: 'pair',
+    usage: 'pair [--name <label>]',
+    summary: 'print a short-lived code so a phone or tablet can get its own token',
+    flags: ['--name <label>  name this device (shown in `termcrab devices`)', '--json          the code, its expiry and how to redeem it'],
+    example: 'termcrab pair --name pixel',
+    json: '{code, expiresAt, ttlMs, name, howTo}',
+  },
+  {
+    cmd: 'devices',
+    usage: 'devices [list|revoke <id|name>]',
+    summary: 'the devices this gateway trusts, and how to take one back',
+    flags: ['list              who is paired, when they were last seen (default)', 'revoke <id|name>  kill one device token immediately', '--json            devices plus any unused pairing codes'],
+    example: 'termcrab devices revoke pixel',
+    json: '{count, devices:[{id, name, createdAt, lastSeenAt, seenAgoMs, seenCount}], pendingCodes}',
+  },
+  {
     cmd: 'context',
     usage: 'context [session] [--json]',
     summary: 'what the model is really sent: prompt sections, tool schemas, hot transcript',

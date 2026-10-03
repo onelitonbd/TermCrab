@@ -94,7 +94,18 @@ import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
 import { Approval, listApprovals, resolveApproval } from '../core/approvals.js';
-import { checkToken, constantTimeEqual, extractAuth } from './auth.js';
+import { authKey, authenticate, constantTimeEqual, extractAuth } from './auth.js';
+import { CODE_TTL_MS, formatDevice, listDevices, pairCode, redeemCode, revokeDevice } from './devices.js';
+import { RateLimiter, limiterFromConfig, rateLimitHint } from './ratelimit.js';
+import {
+  WIRE_VERSION,
+  checkWireEvent,
+  parseChatRequest,
+  parsePairRequest,
+  recallIdempotent,
+  rememberIdempotent,
+  wrapEvent,
+} from './protocol.js';
 
 export interface GatewayHandle {
   server: http.Server;
@@ -314,6 +325,10 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     }
   }
   const agentQueue = new SessionQueue();
+  // Limiters live with the process: one for the HTTP surface, one for channel
+  // messages, both re-keyed per device/session (20.3).
+  const httpLimiter = limiterFromConfig(config);
+  const channelLimiter = limiterFromConfig(config);
   let continuousStt: import('../mobile/tts-stream.js').ContinuousStt | null = null;
 
   // ---- Config hot-reload: watch config.json for external changes ----
@@ -701,6 +716,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       return arg ? modelSelect(config, arg, fetched) : modelMenu(config, fetched);
     }
 
+    // A group chat (or a misbehaving bot) should get one sentence, not a
+    // queue full of turns (20.3).
+    const chanBudget = channelLimiter.allow(`chan:${channel}:${chatId}`);
+    if (!chanBudget.ok) {
+      log.warn(`rate limited ${channel}:${chatId} (${Math.ceil(chanBudget.retryAfterMs / 1000)}s)`);
+      return rateLimitHint(chanBudget.retryAfterMs);
+    }
     const routed = parseAgentPrefix(text, listAgents());
     const result = await runQueuedTurn(agent, {
       sessionId: baseSession,
@@ -889,6 +911,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           });
           return;
         }
+        // A webhook loop is a runaway agent trigger, so it is limited too.
+        const hookBudget = httpLimiter.allow(`hook:${hookId}`);
+        if (!hookBudget.ok) {
+          res.setHeader('retry-after', String(Math.ceil(hookBudget.retryAfterMs / 1000)));
+          json(res, 429, { error: rateLimitHint(hookBudget.retryAfterMs), retryAfterMs: hookBudget.retryAfterMs });
+          return;
+        }
         // Read the webhook payload
         const raw = await readBody(req);
         const payload = raw ? JSON.parse(raw) : {};
@@ -915,17 +944,105 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
+      /**
+       * Pairing (20.1). Deliberately outside the token gate — the whole point
+       * is that the phone does not have the token yet — and therefore guarded
+       * by its own rule: a 5-minute single-use code that only the owner's
+       * terminal can print, plus a rate limit so codes cannot be brute-forced.
+       */
+      if (req.method === 'POST' && pathname === '/api/pair') {
+        const peer = req.socket?.remoteAddress ?? null;
+        const budget = httpLimiter.allow(`pair:${peer ?? 'unknown'}`);
+        if (!budget.ok) {
+          res.setHeader('retry-after', String(Math.ceil(budget.retryAfterMs / 1000)));
+          json(res, 429, { error: rateLimitHint(budget.retryAfterMs), retryAfterMs: budget.retryAfterMs });
+          return;
+        }
+        const raw = await readBody(req);
+        let body: unknown = {};
+        try {
+          body = raw ? JSON.parse(raw) : {};
+        } catch {
+          json(res, 400, { error: 'body must be valid JSON', field: 'body' });
+          return;
+        }
+        const parsed = parsePairRequest(body);
+        if (!parsed.ok) {
+          json(res, 400, { error: parsed.error, field: parsed.field });
+          return;
+        }
+        const redeemed = redeemCode(parsed.value.code, parsed.value.name, { ip: peer });
+        if (!redeemed.ok) {
+          const why =
+            redeemed.reason === 'expired'
+              ? 'That pairing code has expired — run `termcrab pair` again for a fresh one.'
+              : 'Unknown pairing code — codes are single use, so check for a typo or print a new one with `termcrab pair`.';
+          json(res, 401, { ok: false, error: why, reason: redeemed.reason });
+          return;
+        }
+        log.info(`paired device ${redeemed.device.name} (${redeemed.device.id}) from ${peer ?? 'unknown'}`);
+        json(res, 200, {
+          ok: true,
+          v: WIRE_VERSION,
+          device: { id: redeemed.device.id, name: redeemed.device.name },
+          token: redeemed.token,
+          note: 'Store this token now — it is shown once and kept only as a hash.',
+        });
+        return;
+      }
+
       // Everything else under /api requires the panel token — but only when one
       // is configured. An empty token (the default) means loopback-only, which
       // the bind guard at the top of this function enforces.
       if (pathname.startsWith('/api/')) {
-        if (!checkToken(config, extractAuth(req))) {
+        const presented = extractAuth(req);
+        const peer = req.socket?.remoteAddress ?? null;
+        const auth = authenticate(config, presented, { ip: peer });
+        if (!auth.ok) {
           res.setHeader('www-authenticate', 'Bearer realm="TermCrab"');
           json(res, 401, {
             error: 'Panel password needed. Send Authorization: Bearer <gateway.token>, or open the panel and paste it.',
           });
           return;
         }
+      /**
+       * The devices this gateway trusts (20.1). `current: true` marks the row
+       * whose token made this request, so `termcrab devices` can answer "which
+       * of these is this phone?".
+       */
+      if (req.method === 'GET' && pathname === '/api/devices') {
+        const rows = listDevices().map((d) => ({
+          ...d,
+          tokenHash: undefined,
+          current: auth.ok && auth.kind === 'device' ? auth.device.id === d.id : false,
+        }));
+        json(res, 200, { ok: true, v: WIRE_VERSION, count: rows.length, devices: rows });
+        return;
+      }
+      if (req.method === 'POST' && pathname === '/api/devices/revoke') {
+        const raw = await readBody(req);
+        let body: { id?: string; name?: string } = {};
+        try {
+          body = raw ? (JSON.parse(raw) as { id?: string; name?: string }) : {};
+        } catch {
+          json(res, 400, { error: 'body must be valid JSON', field: 'body' });
+          return;
+        }
+        const wanted = (body.id || body.name || '').trim();
+        if (!wanted) {
+          json(res, 400, { error: 'id or name required', field: 'id' });
+          return;
+        }
+        const gone = revokeDevice(wanted);
+        if (!gone) {
+          json(res, 404, { error: `no device ${wanted}` });
+          return;
+        }
+        log.info(`revoked device ${gone.name} (${gone.id})`);
+        json(res, 200, { ok: true, revoked: { id: gone.id, name: gone.name } });
+        return;
+      }
+
       // Work tracker: the panel renders WORKLOG.md so "what is being built right
       // now" lives on the same screen you test from. It also reports whether the
       // file still points at HEAD, so a stale tracker is visible, not silent.
@@ -968,8 +1085,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             connection: 'keep-alive',
           });
           res.write(': connected\n\n');
+          // Every frame carries the wire version and a sequence number, and
+          // its type is a safe token, so a client can say "I speak v1" and
+          // notice a gap instead of guessing (20.2).
           const unsubscribe = bus.subscribe((ev) => {
-            res.write(`event: ${ev.type}\ndata: ${JSON.stringify(ev)}\n\n`);
+            const frame = wrapEvent(ev as Record<string, unknown>);
+            res.write(`event: ${frame.type}\ndata: ${JSON.stringify(frame)}\n\n`);
           });
           const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
           ping.unref();
@@ -982,19 +1103,45 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         if (req.method === 'POST' && pathname === '/api/chat') {
           const raw = await readBody(req);
-          const body = raw
-            ? (JSON.parse(raw) as { message?: string; sessionId?: string; agent?: string; thinkingLevel?: string })
-            : {};
-          const message = (body.message || '').trim();
-          if (!message) {
-            json(res, 400, { error: 'message required' });
+          let body: unknown = {};
+          try {
+            body = raw ? JSON.parse(raw) : {};
+          } catch {
+            json(res, 400, { error: 'body must be valid JSON', field: 'body' });
             return;
           }
-          const sessionId = body.sessionId || 'web:main';
-          const agentName = body.agent ? sanitizeAgentName(body.agent) ?? undefined : undefined;
+          const idemHeader = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : null;
+          const parsed = parseChatRequest(body, idemHeader);
+          if (!parsed.ok) {
+            json(res, 400, { error: parsed.error, field: parsed.field });
+            return;
+          }
+          // A retried submission (phone network dropped the answer) must not
+          // run the turn twice: the same key returns the same run (20.2).
+          if (parsed.value.idempotencyKey) {
+            const seen = recallIdempotent(parsed.value.idempotencyKey);
+            if (seen) {
+              json(res, 200, { ...(seen as Record<string, unknown>), replayed: true });
+              return;
+            }
+          }
+          const limitKey = `chat:${authKey(auth, presented, peer)}`;
+          const budget = httpLimiter.allow(limitKey);
+          if (!budget.ok) {
+            res.setHeader('retry-after', String(Math.ceil(budget.retryAfterMs / 1000)));
+            json(res, 429, {
+              error: rateLimitHint(budget.retryAfterMs),
+              retryAfterMs: budget.retryAfterMs,
+              limit: httpLimiter.config,
+            });
+            return;
+          }
+          const message = parsed.value.message;
+          const sessionId = parsed.value.sessionId;
+          const agentName = parsed.value.agent ? sanitizeAgentName(parsed.value.agent) ?? undefined : undefined;
           // Only the six known levels; anything else is treated as "auto" so a
           // stray value can never reach a provider request.
-          const thinkingLevel = normalizeThinkingLevel(body.thinkingLevel);
+          const thinkingLevel = normalizeThinkingLevel(parsed.value.thinkingLevel);
 
           // Submit through the queue: it serializes turns per session, applies
           // the configured queue mode (followup / steer / collect / interrupt)
@@ -1016,13 +1163,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             throw err;
           }
 
-          json(res, 202, {
+          const accepted = {
             turnId: submitted.turn.id,
             sessionId: agentName ? `${agentName}:${sessionId}` : sessionId,
             // 'queued' means "accepted, poll the turn"; 'steering' means the
             // message joined the running turn (same turnId).
             status: submitted.steered ? 'steering' : 'queued',
-          });
+          };
+          if (parsed.value.idempotencyKey) rememberIdempotent(parsed.value.idempotencyKey, accepted);
+          json(res, 202, accepted);
           return;
         }
 
