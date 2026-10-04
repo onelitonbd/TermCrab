@@ -2310,6 +2310,7 @@
   </div>
   <nav class="nav" aria-label="Sections">
     <button data-goto="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Status</button>
+    <button data-goto="board"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Board</button>
     <button data-goto="providers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="19" height="7" x="2.5" y="2.5" rx="1.5"/><rect width="19" height="7" x="2.5" y="14" rx="1.5"/><path d="M6 6h.01M6 17.5h.01"/></svg>Providers</button>
     <button data-goto="models"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Models</button>
     <button data-goto="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="5" y="5" rx="1.5"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2.5v2M15 19.5v2M2.5 15h2M19.5 15h2M2.5 9h2M19.5 9h2M9 2.5v2M9 19.5v2"/></svg>Memory</button>
@@ -2752,6 +2753,24 @@
     </div>
     <p class="pageNote">What the agent is building right now: the current batch, what proves it, and what comes next — read straight from <code>WORKLOG.md</code> in the project.</p>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
+  </section>
+
+  <section class="view" id="view-board" hidden>
+    <div class="pageHead">
+      <h2>Board</h2>
+      <span class="pNote" id="boardNote"></span>
+      <button class="iconBtn" id="boardReload" type="button" title="Reload" aria-label="Reload">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+    </div>
+    <p class="pageNote">Everything in flight in one list — live turns, background tasks, cron jobs and the things the agent suggested — with one status vocabulary, read from <code>GET /api/board</code>. It only reads: nothing here can start or stop anything.</p>
+    <div id="boardBody"><div class="nx">loading…</div></div>
+    <div class="pageHead" style="margin-top:18px"><h2 class="memTitle">Devices</h2><span class="pNote" id="devNote"></span></div>
+    <p class="pageNote">Who can reach this agent: the phone you are holding and anything you have paired. A paired device carries its own token and can be revoked here without touching the others.</p>
+    <div id="devBody"><div class="nx">loading…</div></div>
+    <div class="pageHead" style="margin-top:18px"><h2 class="memTitle">System</h2><span class="pNote" id="sysNote"></span></div>
+    <p class="pageNote">The rest of what "how is it going?" means: live turns with a verdict, background tasks, how much space the state is using, who can reach the agent, and any skill the agent proposed but you have not decided on.</p>
+    <div id="sysBody"><div class="nx">loading…</div></div>
   </section>
 
   <section class="view" id="view-settings" hidden>
@@ -6802,7 +6821,7 @@
 
   
   // ---- Tab shell (mobile) ----
-  const VIEWS = ['chat', 'status', 'providers', 'models', 'memory', 'tools', 'logs', 'debug', 'work', 'settings'];
+  const VIEWS = ['chat', 'status', 'board', 'providers', 'models', 'memory', 'tools', 'logs', 'debug', 'work', 'settings'];
   // ---- Approvals ----
   let currentApproval = null;
   // ---- Debug / Stream inspector ----
@@ -7042,6 +7061,217 @@
   }
   $('workReload').onclick = () => refreshWork();
 
+  // ==== board view (zero-dependency, phone-first) ====
+  // Two pure functions do the thinking (boardGroups, boardSummary) so the tests
+  // can run them in Node; the DOM part below is deliberately thin.
+  const BOARD_ORDER = ['running', 'queued', 'scheduling', 'failed', 'done', 'suggested'];
+  const BOARD_LABEL = {
+    running: 'Running now',
+    queued: 'Queued',
+    scheduling: 'Scheduled',
+    failed: 'Needs attention',
+    done: 'Done',
+    suggested: 'Suggested',
+  };
+  function boardEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function boardGroups(board) {
+    const cards = (board && board.cards) || [];
+    const out = [];
+    for (const status of BOARD_ORDER) {
+      const mine = cards.filter((c) => c.status === status);
+      if (mine.length) out.push({ status: status, label: BOARD_LABEL[status] || status, count: mine.length, cards: mine });
+    }
+    const rest = cards.filter((c) => BOARD_ORDER.indexOf(c.status) < 0);
+    if (rest.length) out.push({ status: 'other', label: 'Other', count: rest.length, cards: rest });
+    return out;
+  }
+  function boardSummary(board) {
+    const counts = (board && board.counts) || {};
+    const bits = BOARD_ORDER.filter((s) => counts[s]).map((s) => counts[s] + ' ' + s);
+    return bits.length ? bits.join(' · ') : 'nothing in flight';
+  }
+  function boardCardLines(card) {
+    const where = [card.from, card.agent, card.source].filter(Boolean).join(' · ');
+    return { title: card.title || card.id || '(untitled)', where: where, detail: card.detail || '' };
+  }
+  function devicesRows(payload) {
+    const list = (payload && payload.devices) || [];
+    return list.map((d) => ({
+      id: d.id,
+      name: d.name || d.id,
+      kind: d.current ? 'this device' : 'paired',
+      lastSeen: d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString() : 'never used',
+    }));
+  }
+  function bytesText(n) {
+    if (typeof n !== 'number' || !isFinite(n) || n < 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+  function housekeepingRows(data) {
+    const runs = (data && data.runs && data.runs.runs) || [];
+    const tasks = (data && data.subagents) || {};
+    const disk = (data && data.disk) || {};
+    const presence = (data && data.presence) || {};
+    const proposals = (data && data.proposals && data.proposals.proposals) || [];
+    const worst = runs
+      .map(function (r) { return r.verdict; })
+      .filter(function (v) { return v && v !== 'working'; });
+    const areas = Object.keys(disk.byArea || {}).sort(function (a, b) { return disk.byArea[b] - disk.byArea[a]; });
+    const biggest = areas.length ? areas[0] + ' ' + bytesText(disk.byArea[areas[0]]) : '';
+    return [
+      {
+        label: 'Live turns',
+        value: runs.length ? runs.length + ' running' : 'none running',
+        note: worst.length ? 'needs a look: ' + worst.join(', ') : runs.length ? 'all working' : '',
+      },
+      {
+        label: 'Background tasks',
+        value: (tasks.count || 0) + ' total' + (tasks.running ? ', ' + tasks.running + ' running' : ''),
+        note: (tasks.scratch || []).length ? (tasks.scratch || []).length + ' scratch folder(s)' : '',
+      },
+      {
+        label: 'State on disk',
+        value: bytesText(disk.totalBytes || 0) + (disk.files ? ' in ' + disk.files + ' files' : ''),
+        note: disk.overBudget
+          ? 'over the ' + bytesText(disk.budgetBytes || 0) + ' budget'
+          : biggest
+            ? 'largest: ' + biggest
+            : '',
+      },
+      {
+        label: 'Reachable from',
+        value: presence.summary || 'nobody right now',
+        note: presence.count ? presence.count + ' entr' + (presence.count === 1 ? 'y' : 'ies') : '',
+      },
+      {
+        label: 'Skill proposals',
+        value: proposals.length ? proposals.length + ' waiting for a decision' : 'none waiting',
+        note: proposals.length ? proposals.map(function (p) { return p.name; }).join(', ') : '',
+      },
+    ];
+  }
+  // ==== end board view ====
+
+  async function refreshBoard() {
+    const box = $('boardBody');
+    if (!box) return;
+    try {
+      const board = await api('/api/board');
+      const note = $('boardNote');
+      if (note) note.textContent = boardSummary(board);
+      const groups = boardGroups(board);
+      box.innerHTML = groups.length
+        ? groups
+            .map(function (g) {
+              const cards = g.cards
+                .map(function (c) {
+                  const line = boardCardLines(c);
+                  return (
+                    '<div class="setCard" style="margin:0 0 8px">' +
+                    '<div style="font-weight:600">' + boardEsc(line.title) + '</div>' +
+                    (line.where ? '<div class="pNote">' + boardEsc(line.where) + '</div>' : '') +
+                    (line.detail ? '<div class="pNote">' + boardEsc(line.detail) + '</div>' : '') +
+                    '</div>'
+                  );
+                })
+                .join('');
+              return (
+                '<div style="margin:0 0 14px"><div class="sideLabel" style="padding-left:0">' +
+                boardEsc(g.label) + ' · ' + g.count +
+                '</div>' + cards + '</div>'
+              );
+            })
+            .join('')
+        : '<div class="nx">nothing is running, queued or scheduled</div>';
+    } catch (e) {
+      box.textContent = 'could not load the board: ' + e.message;
+    }
+    refreshDevices();
+    refreshSystem();
+  }
+
+  async function refreshDevices() {
+    const box = $('devBody');
+    if (!box) return;
+    try {
+      const payload = await api('/api/devices');
+      const rows = devicesRows(payload);
+      const note = $('devNote');
+      if (note) note.textContent = rows.length + (rows.length === 1 ? ' device' : ' devices');
+      box.innerHTML = rows.length
+        ? rows
+            .map(function (d) {
+              return (
+                '<div class="setCard" style="margin:0 0 8px;display:flex;align-items:center;gap:10px">' +
+                '<div style="flex:1"><div style="font-weight:600">' + boardEsc(d.name) + '</div>' +
+                '<div class="pNote">' + boardEsc(d.kind) + ' · last seen ' + boardEsc(d.lastSeen) + '</div></div>' +
+                (d.kind === 'this device'
+                  ? ''
+                  : '<button class="ghost" data-revoke="' + boardEsc(d.id) + '">Revoke</button>') +
+                '</div>'
+              );
+            })
+            .join('')
+        : '<div class="nx">no paired devices</div>';
+      box.querySelectorAll('[data-revoke]').forEach(function (btn) {
+        btn.onclick = async function () {
+          btn.disabled = true;
+          try {
+            await api('/api/devices/revoke', 'POST', { id: btn.dataset.revoke });
+            refreshDevices();
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'could not revoke';
+            btn.title = e.message;
+          }
+        };
+      });
+    } catch (e) {
+      box.textContent = 'could not load devices: ' + e.message;
+    }
+  }
+  async function refreshSystem() {
+    const box = $('sysBody');
+    if (!box) return;
+    const grab = function (path) {
+      return api(path).catch(function (e) { return { __error: e.message }; });
+    };
+    const parts = await Promise.all([
+      grab('/api/runs/health'),
+      grab('/api/subagents'),
+      grab('/api/disk'),
+      grab('/api/presence'),
+      grab('/api/skills/proposals'),
+    ]);
+    const data = {
+      runs: parts[0], subagents: parts[1], disk: parts[2], presence: parts[3], proposals: parts[4],
+    };
+    const rows = housekeepingRows(data);
+    const note = $('sysNote');
+    if (note) note.textContent = rows.filter(function (r) { return r.note; }).length + ' with a note';
+    box.innerHTML = rows
+      .map(function (r) {
+        return (
+          '<div class="setCard" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:baseline">' +
+          '<div class="pNote" style="min-width:120px">' + boardEsc(r.label) + '</div>' +
+          '<div style="flex:1"><div style="font-weight:600">' + boardEsc(r.value) + '</div>' +
+          (r.note ? '<div class="pNote">' + boardEsc(r.note) + '</div>' : '') +
+          '</div></div></div>'
+        );
+      })
+      .join('');
+  }
+
+  const boardReloadBtn = $('boardReload');
+  if (boardReloadBtn) boardReloadBtn.onclick = function () { refreshBoard(); };
+
   function switchView(name) {
     if (!VIEWS.includes(name)) name = 'chat';
     if (name === 'providers' && state.lastView !== 'providers') state.provFrom = state.lastView || 'status';
@@ -7063,6 +7293,7 @@
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'tools') refreshTools();
+    if (name === 'board') refreshBoard();
     if (name === 'work') refreshWork();
     if (name === 'settings') { refreshSettings(); refreshAgents(); }
     if (name === 'logs') { refreshLogs(); startLogAuto(); } else { stopLogAuto(); }
@@ -7075,7 +7306,7 @@
   document.querySelectorAll('.nav [data-goto]').forEach((b) => {
     b.onclick = () => switchView(b.dataset.goto);
   });
-  // ---- Page routes: /status /providers /memory /tools /settings /chat/<id> ----
+  // ---- Page routes: every view in VIEWS (/status /board /providers …) plus /chat/<id> ----
   let applyingRoute = false;
   function pathForView(name) {
     if (name !== 'chat') return '/' + name;

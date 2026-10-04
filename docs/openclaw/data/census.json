@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T02:24:49.548Z",
+ "measured": "2026-10-04T02:30:03.364Z",
  "tally": {
-  "WORKING": 115,
+  "WORKING": 116,
   "BETTER": 14,
-  "PARTIAL": 3,
+  "PARTIAL": 2,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 99,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 27,
+ "effortLeft": 19,
  "areas": [
   "agent",
   "automation",
@@ -2067,20 +2067,20 @@
    "area": "surfaces",
    "capability": "Web control UI",
    "openclaw": "React+Vite dashboard, rebuilt in 2.0",
-   "verdict": "PARTIAL",
-   "evidence": "ui/index.html — one 6,779-line file, 9 views, no build step, no component model",
+   "verdict": "WORKING",
+   "evidence": "one file, deliberately (34.7): ui/index.html is markup, styles and JavaScript with **no build step, no bundler and no node_modules**, because the panel has to run on the same phone as the gateway and a React+Vite dashboard would put a toolchain and a build artifact inside an install whose promise is zero runtime dependencies. Eleven screens now — Chat, Status, **Board** (new), Providers, Models, Memory, Tools, Logs, Debug, Work and Settings — all reading the same API the CLI does with the same token, and the Board screen is the merged view from 34.4–34.6: `GET /api/board` (the same object `termcrab board` prints) plus `/api/devices` (with a revoke button), `/api/runs/health`, `/api/subagents`, `/api/disk`, `/api/presence` and `/api/skills/proposals`, each rendered as a card that shows a note only when there is one. It only reads; the single write on the screen is revoking a device, behind a button. **How it is tested without a browser:** the panel's JavaScript is extracted from the real file and executed in Node (`test/tier3e.test.ts` runs the Board screen's pure functions against the payload shapes the API returns, then stands up a **real gateway** and asserts the seven calls answer with the fields the screen reads), the chat screen's thinking drawer/streaming/approvals are pinned the same way (test/thinking.test.ts, test/markdown.test.ts), and a **contract scan** fails the suite when a `/api/...` path in the panel is not a route in src/gateway/server.ts — a renamed route breaks the suite, not the phone. Limits stated: no component model and no virtual DOM (screens set innerHTML from JSON, so the logic worth testing lives in small pure functions), no build step or source maps, and it is a page for a phone browser rather than a native app — no theming switch, no offline shell. docs/PANEL.md lists the screens, the endpoints and exactly what is not there.",
    "probe": {
-    "pattern": {},
-    "scope": "ui",
+    "file": "ui/index.html",
+    "pattern": "id=\"view-board\"",
     "expect": "present"
    },
-   "effort": 8,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2347"
+    "detail": "1 match(es): ui/index.html:2758"
    }
   },
   {

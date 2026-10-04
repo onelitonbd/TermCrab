@@ -1,0 +1,63 @@
+# The web panel
+
+One file, served by the gateway at `/` when `gateway.host` is reachable:
+`ui/index.html` — markup, styles and JavaScript in one document, **no build step, no bundler, no
+`node_modules`**. That is a decision, not an accident: the panel has to work on a phone that runs
+the gateway, and a React+Vite dashboard would mean a toolchain, a lockfile and a build artifact in
+an install whose whole promise is *zero runtime dependencies*. The cost is real and stated below.
+
+## The screens
+
+The menu on the left is the list of things you can look at, and every one of them reads the same
+API the CLI does (`docs/API.md`), with the same token:
+
+| Screen | What it answers |
+|---|---|
+| **Chat** | talk to the agent, watch a turn stream in, see tool cards, approvals and progress |
+| **Status** | is it up: gateway, provider, channels, memory, disk |
+| **Board** | *what is going on right now* — every live turn with a run-health verdict, queued and scheduled work, background tasks, the paired devices, storage, who can reach the agent, and any skill the agent proposed but you have not decided on |
+| **Providers** | which model answers, keys, the offline demo |
+| **Models** | the catalog the endpoint reports, per-model capability |
+| **Memory** | what it remembers, search, the daily notes |
+| **Tools** | the tools it has, and what each one is allowed to do |
+| **Logs / Debug** | the structured log tail and the live event stream |
+| **Work** | `WORKLOG.md` itself, with a stale/fresh verdict |
+| **Settings** | plain words for the config, plus agents |
+
+The **Board** screen is the merged view from batch 34.4–34.6: it reads `GET /api/board` (the same
+object `termcrab board` prints), plus `/api/devices` (with a revoke button), `/api/runs/health`,
+`/api/subagents`, `/api/disk`, `/api/presence` and `/api/skills/proposals` — seven endpoints, each
+one rendered as a card with a note only when there is something to note. It **only reads**: nothing
+on that screen can start, stop or schedule anything, and the single write on it (revoking a device)
+is a deliberate button press.
+
+## How it is tested (there is no browser in the build)
+
+The panel's JavaScript is *extracted from the real file and executed in Node*, so the tests run the
+exact code the browser runs:
+
+- `test/markdown.test.ts` — the zero-dependency markdown renderer (including its XSS rules).
+- `test/tier3e.test.ts` — the Board screen's pure functions (`boardGroups`, `boardSummary`,
+  `boardCardLines`, `devicesRows`, `housekeepingRows`, `bytesText`) fed real payload shapes, and a
+  live gateway serving the seven endpoints the screen calls, so a panel that reads a field the API
+  does not send fails the suite.
+- `test/tier2d.test.ts` and friends — the chat screen's behaviours (thinking drawer, streaming,
+  approvals) asserted the same way.
+
+The other guard is a **contract scan**: every `/api/...` path mentioned in `ui/index.html` must
+exist as a route in `src/gateway/server.ts` (exact match, or a prefix for a dynamic path). A panel
+button pointing at a route that was renamed fails the suite instead of showing a red toast on your
+phone.
+
+## What this is *not*
+
+- **No component model and no virtual DOM.** Screens are functions that set `innerHTML` from the
+  API's JSON. That is why each screen's *logic* lives in a small pure function — the part worth
+  testing — and the rendering is deliberately thin.
+- **No build step and no source maps.** The file is served as written. A syntax error is caught by
+  the four test files that extract and run its code, not by a compiler.
+- **Not a mobile app.** It is a page that works in a phone browser, with a drawer instead of a
+  sidebar and touch targets sized for a thumb (`layout`, `chat` and the drawer are all in the same
+  CSS as the desktop rules). After the Board screen the remaining gaps are cosmetic, not
+  structural — no dark/light theming switch, no offline shell, and no per-screen deep links beyond
+  the ones already routed (`/chat`, `/status`, `/board`, `/settings`, …).

@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৯৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১১৫টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৩টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~২৪ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১১৬টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১৬ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,9 +52,9 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 115 | wired and observable |
+| ✅ WORKING | 116 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 3 | exists, narrower than theirs |
+| 🟡 PARTIAL | 2 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~24d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~16d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~27d | in-scope only |
+| **total** | 132 | ~19d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -284,11 +284,11 @@ Out of scope, and why:
 | Atomic updates + rollback | guarded upgrades, versioned state | ✅ WORKING | `termcrab update` checks and never auto-applies; `update --apply` is now reversible: it snapshots the build into state/builds/<release>-<stamp>/ (dist/ without the test build, ui/, skills/, package.json), pulls + installs + builds, then verifies by starting the new build (the CLI must answer --version and read its own state schema — a build that compiles but cannot boot is exactly what rollback is for), and on failure copies the snapshot back and reports how many files it put back. `update --rollback` restores the newest snapshot by hand and the panel update button takes the same verified path. The snapshot is honest: a copy that fails is reported and returns nothing rather than pretending to be a rollback point. Schema versioning (31.1) versions the state too, and a newer state refuses to be half-understood. Pinned by test/tier2t.test.ts 31.3 | parity | — |
 | Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4 | parity | — |
 
-### surfaces — 94% (9 in-scope checks, 2 out of scope)
+### surfaces — 100% (9 in-scope checks, 2 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Web control UI | React+Vite dashboard, rebuilt in 2.0 | 🟡 PARTIAL | ui/index.html — one 6,779-line file, 9 views, no build step, no component model | parity | 8 |
+| Web control UI | React+Vite dashboard, rebuilt in 2.0 | ✅ WORKING | one file, deliberately (34.7): ui/index.html is markup, styles and JavaScript with **no build step, no bundler and no node_modules**, because the panel has to run on the same phone as the gateway and a React+Vite dashboard would put a toolchain and a build artifact inside an install whose promise is zero runtime dependencies. Eleven screens now — Chat, Status, **Board** (new), Providers, Models, Memory, Tools, Logs, Debug, Work and Settings — all reading the same API the CLI does with the same token, and the Board screen is the merged view from 34.4–34.6: `GET /api/board` (the same object `termcrab board` prints) plus `/api/devices` (with a revoke button), `/api/runs/health`, `/api/subagents`, `/api/disk`, `/api/presence` and `/api/skills/proposals`, each rendered as a card that shows a note only when there is one. It only reads; the single write on the screen is revoking a device, behind a button. **How it is tested without a browser:** the panel's JavaScript is extracted from the real file and executed in Node (`test/tier3e.test.ts` runs the Board screen's pure functions against the payload shapes the API returns, then stands up a **real gateway** and asserts the seven calls answer with the fields the screen reads), the chat screen's thinking drawer/streaming/approvals are pinned the same way (test/thinking.test.ts, test/markdown.test.ts), and a **contract scan** fails the suite when a `/api/...` path in the panel is not a route in src/gateway/server.ts — a renamed route breaks the suite, not the phone. Limits stated: no component model and no virtual DOM (screens set innerHTML from JSON, so the logic worth testing lives in small pure functions), no build step or source maps, and it is a page for a phone browser rather than a native app — no theming switch, no offline shell. docs/PANEL.md lists the screens, the endpoints and exactly what is not there. | parity | — |
 | Full-screen TUI | openclaw tui / chat / terminal | ✅ WORKING | src/tui/*: `termcrab tui` drives a real screen — the alternate buffer with bracketed paste, entered and left on every exit path (quit, Ctrl-C, EOF, a crash in a turn), raw keys decoded with partial escape sequences and split code points kept for the next read, and a frame that is exactly rows x cols cells (wide characters counted as two). The transcript streams deltas as they arrive, a tool call is one line with its duration, thinking is dimmed, the input box edits with history (Up/Down), Ctrl-U/K/A/E, backspace and a cursor that slides instead of overflowing; /sessions opens an arrow-select picker over every conversation on disk, /new, /status, /history, /dir and /help answer in the transcript, and a resize redraws to the new size. When a gateway is running the screen attaches to the same session (28.2) so a turn from the panel or the phone appears here while it happens, with the surface it came from; opening the screen before the gateway is up retries instead of failing. A pipe or a file is told to use the line REPL rather than drawn into. Pinned by test/tier2r.test.ts 29.1-29.3 | parity | — |
 | Interactive REPL | TUI --local | ✅ WORKING | Two ways into the same agent from a terminal: `termcrab agent` is the readline REPL (one-shot message, /as <name>, /agents, /new, exit) and `termcrab tui` is the full screen above — both talk in the rolling main session by default, both honour --as and --tier local, and the REPL prints events as they happen. OpenClaw's TUI is richer still in layout (side panels, per-pane scrolling, mouse); ours is one screen that fits a phone | parity | — |
 | CLI command coverage | ~90 commands, 101 doc pages | ✅ WORKING | the surface is measured now, not estimated (34.6): `switch (cmd)` in src/cli.ts can dispatch 52 commands, and the suite is recorded running **44 of them end-to-end** through the built binary — src/cli.ts appends every dispatched command to `$TCRAB_CLI_COVERAGE`, `npm run test:cli` runs the whole suite with that variable set, and docs/CLI-COVERAGE.md is generated from the recording (per-command line number and how many times it ran). The 8 that a test cannot sensibly drive (tui needs a TTY, wake needs termux-api, import needs a Telegram export, pair/devices need a second device, supervisor is a loop, boot is Termux-only, onboard is interactive, dream is a long pass) are listed **with a reason and the test that covers the behaviour instead**; `node scripts/cli-coverage.mjs --check` fails when a command is added that is neither run nor listed, and also when a listed command becomes run, so the list cannot rot in either direction. Limits stated: still fewer words than their ~90 (52 commands, and no 101 doc pages — docs/CLI.md is one table plus `termcrab help <command>`, while test/skills.test.ts greps every `termcrab <cmd>` inside every bundled skill against src/cli.ts so documentation cannot name a command that does not exist). test/tier3d.test.ts 34.6 | parity | — |
