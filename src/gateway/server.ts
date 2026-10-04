@@ -95,6 +95,7 @@ import { formatRoomHistory } from '../channels/rooms.js';
 import { buildBoard } from '../agent/board.js';
 import { docsSiteFreshness, ensureDocsSite } from '../docs/site.js';
 import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/telegram-runs.js';
+import { perfStatus } from '../core/perf.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -1377,6 +1378,14 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       // Work tracker: the panel renders WORKLOG.md so "what is being built right
       // now" lives on the same screen you test from. It also reports whether the
       // file still points at HEAD, so a stale tracker is visible, not silent.
+      if (req.method === 'GET' && pathname === '/api/perf') {
+        // 38.2: the last performance measurement (written by `termcrab perf`,
+        // 38.1). Reads state/perf.json; it never measures anything, because a
+        // measurement boots a gateway and runs a turn.
+        json(res, 200, perfStatus());
+        return;
+      }
+
       if (req.method === 'GET' && pathname === '/api/telegram-runs') {
         // 37.4: the recorded live runs, newest first. Evidence, not state: the
         // Work page shows it so "we tested it on a real bot" is a fact with a

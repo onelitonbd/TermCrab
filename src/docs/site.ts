@@ -18,6 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT, stateDir, ensureLayout } from '../core/paths.js';
+import { humanAgeMs } from '../core/format.js';
 
 const RENDERER_START = '  // ==== markdown renderer (zero-dependency, mobile-first) ====';
 const RENDERER_END = '  // ==== end markdown renderer ====';
@@ -578,16 +579,9 @@ export interface DocsFreshness extends SiteStamp {
   url: string;
 }
 
-/** `12 min ago` — the shortest honest phrasing of an age. */
+/** `12 min ago` — the shortest honest phrasing of an age (one implementation, 38.2). */
 export function humanAge(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return 'unknown';
-  const s = Math.round(ms / 1000);
-  if (s < 45) return 'just now';
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 36) return `${h} h ago`;
-  return `${Math.round(h / 24)} d ago`;
+  return humanAgeMs(ms);
 }
 
 /**

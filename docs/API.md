@@ -77,6 +77,16 @@ describes an older release than `package.json`.
 Forces a build, keeps a per-release copy (`docs-site-<release>.html`, newest five — 36.3), and answers
 with the same freshness object (`rebuilt: true`).
 
+### `GET /api/perf` — the last performance measurement (38.2)
+```json
+{ "exists": true, "file": "/…/state/perf.json", "at": "2026-10-04T04:51:06.608Z",
+  "ageMs": 69049, "age": "1 min ago",
+  "worst": { "key": "idleRssMb", "value": 72, "max": 130, "pct": 55 },
+  "over": [], "skipped": ["firstRunMs", "rebuildMs"], "measured": 5, "total": 7,
+  "machine": { "node": "v22.22.3", "platform": "linux", "arch": "x64", "cpus": 2, "totalMemMb": 3940 } }
+```
+Reads `state/perf.json`, written by `termcrab perf` (38.1); it **never measures anything** (a measurement boots a gateway and runs a turn). `worst` is the metric furthest along its ceiling, so the panel can say what to watch. No snapshot yet → `exists: false` and `age: "never measured"`.
+
 ### `GET /api/telegram-runs` — the recorded live runs (37.4)
 ```json
 { "file": "docs/openclaw/data/telegram-runs.jsonl", "exists": true, "limit": 20,

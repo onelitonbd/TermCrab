@@ -122,6 +122,7 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab approvals --json` | `{count, approvals:[{id, tool, args, sessionId, createdAt}]}` |
 | `termcrab approvals approve\|deny <id> --json` | `{id, decision, by, ok}` |
 | `termcrab usage --json` | `{day, turns, calls, promptTokens, completionTokens, totalTokens, costUsd, priced, byModel, pricingAsOf, priceConfigured}` |
+| `termcrab perf --json` | `{at, source, bench, machine:{node,platform,arch,cpus,totalMemMb}, metrics, ceilings, over, skipped, file}` — the fast half of the performance budget (cold start, gateway boot + idle RSS, restart, one mock turn), each number printed next to its ceiling, the snapshot written to `state/perf.json` for the panel, and **exit 1 when anything is over** — `--full` adds the slow halves (npm install and a first-run compile). It runs `scripts/bench.mjs`, the same measurements the suite's gate runs |
 | `termcrab disk --json` | `{before:{root, totalBytes, files, byArea}, budgetBytes, keepDays, trim, overBudget}` |
 | `termcrab backup [file.tar] --json` | `{file, format, formatVersion, createdAt, release, schemaVersion, files, bytes, platform, node}` |
 | `termcrab restore <file.tar> --json` | `{restored, bytes, movedTo, from, schema:{from,to,migrated}}` · `--dry-run` → `{dryRun, manifest, files:[{rel,bytes,exists}], tooNew}` |

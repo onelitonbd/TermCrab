@@ -474,3 +474,157 @@ test('37.4 the panel can read the record, through the gateway', async () => {
     restoreEnv(previous);
   }
 });
+
+// ------------------------------------------------------------------- 38.1
+
+test('38.1 termcrab perf measures this machine, writes the snapshot, and exits 1 when over', async () => {
+  const home = tmpHome('t381perf-');
+  const cli = path.join(ROOT, 'dist/src/bin/termcrab.js');
+  const env = { TCRAB_HOME: home, NO_COLOR: '1' };
+
+  const json = await runNodeAsync([cli, 'perf', '--json'], 300_000, env);
+  assert.equal(json.code, 0, `perf exits 0 inside the budget: ${json.stderr}`);
+  const envelope = JSON.parse(json.stdout) as {
+    ok: boolean;
+    command: string;
+    data: {
+      metrics: Record<string, number>;
+      ceilings: Record<string, { max: number }>;
+      over: string[];
+      skipped: string[];
+      machine: { node: string; platform: string; cpus: number; totalMemMb: number };
+      file: string;
+      source: string;
+    };
+  };
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.command, 'perf');
+  assert.equal(envelope.data.source, 'checkout', 'the snapshot says where the numbers came from');
+  assert.equal(Object.keys(envelope.data.ceilings).length, 7, 'all seven ceilings travel with the snapshot');
+  assert.ok(Object.keys(envelope.data.metrics).length >= 5, 'and the fast half was measured');
+  assert.deepEqual(envelope.data.over, [], 'nothing is over on this machine');
+  assert.deepEqual(envelope.data.skipped, ['firstRunMs', 'rebuildMs'], 'the slow halves are named as not measured');
+  for (const [key, value] of Object.entries(envelope.data.metrics)) {
+    assert.ok(value >= 0 && value <= envelope.data.ceilings[key]!.max, `${key} ${value} is inside its ceiling`);
+  }
+  assert.ok(envelope.data.machine.cpus >= 1 && envelope.data.machine.totalMemMb > 100, 'the machine is recorded');
+  assert.match(envelope.data.machine.node, /^v\d+/);
+
+  const written = JSON.parse(fs.readFileSync(envelope.data.file, 'utf8')) as typeof envelope.data;
+  assert.equal(written.file, undefined, 'the snapshot file itself carries no file pointer');
+  assert.deepEqual(written.over, []);
+  assert.equal(path.basename(envelope.data.file), 'perf.json');
+  assert.equal(path.dirname(envelope.data.file), path.join(home, 'state'), 'the panel reads it from state/');
+
+  const human = await runNodeAsync([cli, 'perf'], 300_000, env);
+  assert.equal(human.code, 0, `the human view exits 0: ${human.stderr}`);
+  assert.match(human.stdout, /performance budget — 5 of 7 metrics measured/);
+  for (const key of Object.keys(written.ceilings)) {
+    assert.ok(human.stdout.includes(key), `the table names ${key}`);
+  }
+  assert.match(human.stdout, /coldStartMs\s+\d+ ms of 1500 ms\s+ok/);
+  assert.match(human.stdout, /inside every ceiling it measured/);
+  assert.match(human.stdout, /snapshot: .*state\/perf\.json/);
+
+  // The alarm has to fire through the command, not just inside the bench: a
+  // fake bench script (the documented test hook) returns a number past its line.
+  const fakeBench = path.join(home, 'fake-bench.mjs');
+  fs.writeFileSync(
+    fakeBench,
+    `console.log(JSON.stringify({ installMs: 10, coldStartMs: 999999, idleRssMb: 5, restartMs: 5, turnMs: 5 }));\n`,
+  );
+  const over = await runNodeAsync([cli, 'perf', '--json'], 60_000, { ...env, TCRAB_PERF_BENCH: fakeBench });
+  assert.equal(over.code, 1, 'exit 1 when a measured number is over its ceiling');
+  const overEnvelope = JSON.parse(over.stdout) as { ok: boolean; data: { over: string[] } };
+  assert.deepEqual(overEnvelope.data.over, ['coldStartMs'], 'and the metric is named');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(home, 'state', 'perf.json'), 'utf8')).over[0], 'coldStartMs', 'the snapshot keeps the failure');
+
+  const overHuman = await runNodeAsync([cli, 'perf'], 60_000, { ...env, TCRAB_PERF_BENCH: fakeBench });
+  assert.equal(overHuman.code, 1);
+  assert.match(overHuman.stdout, /OVER/, 'the table marks it');
+  assert.match(overHuman.stdout, /over budget: coldStartMs/);
+
+  // A checkout without the bench script gets one sentence, not a stack trace.
+  const missing = await runNodeAsync([cli, 'perf'], 60_000, { ...env, TCRAB_PERF_BENCH: path.join(home, 'nope.mjs') });
+  assert.equal(missing.code, 1);
+  assert.match(missing.stderr, /no bench script at .*nope\.mjs/);
+  assert.match(missing.stderr, /does not ship it/);
+});
+
+// ------------------------------------------------------------------- 38.2
+
+test('38.2 the panel reads the last measurement — and says so when there is none', async () => {
+  const home = tmpHome('t382api-');
+  const previous = { home: process.env.TCRAB_HOME, runs: process.env.TCRAB_TELEGRAM_RUNS };
+  process.env.TCRAB_HOME = home;
+  try {
+    const { perfStatus, PERF_CEILINGS } = await import('../src/core/perf.js');
+    const before = perfStatus();
+    assert.equal(before.exists, false, 'a home with no measurement');
+    assert.equal(before.age, 'never measured');
+    assert.equal(before.worst, null);
+    assert.equal(before.total, Object.keys(PERF_CEILINGS).length, 'the total is the declared ceilings');
+    assert.equal(before.measured, 0);
+
+    const { defaults } = await import('../src/core/config.js');
+    const { startGateway } = await import('../src/gateway/server.js');
+    const port = await freePort();
+    const cfg = defaults();
+    cfg.gateway = { host: '127.0.0.1', port, token: 'test-token-382' };
+    const handle = await startGateway({ config: cfg, host: '127.0.0.1', port });
+    try {
+      const auth = { authorization: 'Bearer test-token-382' };
+      const none = (await (await fetch(`http://127.0.0.1:${port}/api/perf`, { headers: auth })).json()) as {
+        exists: boolean;
+        age: string;
+      };
+      assert.equal(none.exists, false, 'the route agrees with the function');
+      assert.equal(none.age, 'never measured');
+
+      // A snapshot on disk — as `termcrab perf` writes it — is what the panel reads.
+      const snapshot = {
+        at: new Date(Date.now() - 65_000).toISOString(),
+        source: 'checkout',
+        bench: 'scripts/bench.mjs',
+        machine: { node: 'v22.0.0', platform: 'linux', arch: 'arm64', cpus: 8, totalMemMb: 4096 },
+        metrics: { coldStartMs: 120, idleRssMb: 70, restartMs: 140, turnMs: 90, installMs: 300 },
+        ceilings: Object.fromEntries(Object.entries(PERF_CEILINGS).map(([k, c]) => [k, { max: c.max, unit: c.unit }])),
+        over: [],
+        skipped: ['firstRunMs', 'rebuildMs'],
+      };
+      fs.writeFileSync(path.join(home, 'state', 'perf.json'), JSON.stringify(snapshot));
+
+      const now = (await (await fetch(`http://127.0.0.1:${port}/api/perf`, { headers: auth })).json()) as {
+        exists: boolean;
+        age: string;
+        measured: number;
+        total: number;
+        over: string[];
+        machine: { arch: string };
+        worst: { key: string; pct: number };
+      };
+      assert.equal(now.exists, true);
+      assert.equal(now.age, '1 min ago', 'the age is in words');
+      assert.equal(now.measured, 5);
+      assert.equal(now.total, 7);
+      assert.deepEqual(now.over, []);
+      assert.equal(now.machine.arch, 'arm64', 'the machine travels with the number');
+      assert.equal(now.worst.key, 'idleRssMb', '54% of 130 is the furthest along');
+      assert.ok(now.worst.pct >= 50 && now.worst.pct <= 60);
+
+      const ui = fs.readFileSync(path.join(ROOT, 'ui/index.html'), 'utf8');
+      assert.match(ui, /id="perfNote"/, 'the Work page has a place for it');
+      assert.match(ui, /api\('\/api\/perf'\)/, 'and asks the gateway for it');
+      assert.match(ui, /not measured yet — termcrab perf/, 'and says so when there is nothing to show');
+      const panelDocs = fs.readFileSync(path.join(ROOT, 'docs/PANEL.md'), 'utf8');
+      assert.match(panelDocs, /GET \/api\/perf/, 'the panel docs name the route');
+    } finally {
+      await handle.stop();
+    }
+  } finally {
+    if (previous.home === undefined) delete process.env.TCRAB_HOME;
+    else process.env.TCRAB_HOME = previous.home;
+    if (previous.runs === undefined) delete process.env.TCRAB_TELEGRAM_RUNS;
+    else process.env.TCRAB_TELEGRAM_RUNS = previous.runs;
+  }
+});

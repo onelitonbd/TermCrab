@@ -2761,6 +2761,9 @@
     <p class="pageNote">Live Telegram runs, recorded by <code>npm run smoke:telegram -- --record</code>:
       <span class="pNote" id="tgRuns"></span>
     </p>
+    <p class="pageNote">Performance budget, measured by <code>termcrab perf</code> (exit 1 when over):
+      <span class="pNote" id="perfNote"></span>
+    </p>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
   </section>
 
@@ -7120,6 +7123,29 @@
     }
   }
 
+  // ---- The performance budget (38.2): the last measurement, and how close ----
+  async function loadPerf() {
+    const note = document.getElementById('perfNote');
+    if (!note) return;
+    try {
+      const p = await api('/api/perf');
+      if (!p || !p.exists) {
+        note.textContent = '(not measured yet — termcrab perf)';
+        note.className = 'pNote';
+        return;
+      }
+      const worst = p.worst ? 'worst ' + p.worst.key + ' ' + Math.round(p.worst.value) + '/' + p.worst.max + ' (' + p.worst.pct + '%)' : 'nothing to compare';
+      const host = p.machine ? p.machine.platform + '/' + p.machine.arch + ', node ' + p.machine.node : 'machine unknown';
+      const bad = (p.over || []).length > 0;
+      const extra = bad ? ' — OVER: ' + p.over.join(', ') : '';
+      note.textContent = '(' + p.measured + '/' + p.total + ' metrics · ' + host + ' · ' + p.age + ' · ' + worst + extra + ')';
+      note.className = bad ? 'pNote err' : 'pNote';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+    }
+  }
+
   // ---- Work tracker (WORKLOG.md, served by /api/worklog) ----
   async function refreshWork() {
     const box = $('workBody');
@@ -7127,6 +7153,7 @@
     try {
       void loadDocsSite();
       void loadTelegramRuns();
+      void loadPerf();
       const w = await api('/api/worklog');
       const note = $('workFresh');
       if (note) {

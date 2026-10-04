@@ -145,11 +145,13 @@ users' runtime.
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |
 | `src/core/disk.ts` | The disk budget (10.6) |
+| `src/core/format.ts` | Small shared formatters |
 | `src/core/friendly.ts` | Turn raw failures into sentences a non-coder can act on |
 | `src/core/frontmatter.ts` | dependency-free YAML-ish frontmatter parser |
 | `src/core/json-out.ts` | One machine-readable envelope (batch 14) |
 | `src/core/logger.ts` | leveled logger |
 | `src/core/paths.ts` | TCRAB_HOME resolution, package root discovery, layout |
+| `src/core/perf.ts` | The performance budget as a command: measure this machine, compare every number to its ceiling, and write the snapshot the panel reads (38.1) |
 | `src/core/pricing.ts` | Approximate list prices, per 1,000,000 tokens |
 | `src/core/schema.ts` | State schema version, ordered migrations, atomic stamps (31) |
 | `src/core/structured-log.ts` | A log worth reading on a phone (23.2, 23.3) |

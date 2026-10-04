@@ -55,6 +55,22 @@ sees (where a cold build is a minute or two and the rebuild is what you pay
 between pulls). `./termcrab` now also prints `built in NNNN ms`, so the wait is
 never silent.
 
+## Run it on the phone (38.1)
+
+```bash
+termcrab perf            # the fast half: cold start, boot + idle RSS, restart, one mock turn
+termcrab perf --full     # also npm install and a first-run compile (~6 s on a dev box)
+termcrab perf --json     # the snapshot that was written to state/perf.json
+```
+
+It runs `scripts/bench.mjs` — the same measurements the suite's gate runs, not a second
+implementation — prints every number next to its ceiling, **exits 1 when one is over**, and writes
+`state/perf.json` so the panel can show the last measurement without re-measuring anything.
+
+The snapshot records the machine it came from (`node`, `platform`, `arch`, `cpus`, `totalMemMb`),
+because a number from a laptop is not a number from a phone. `skipped` names the ceilings that run did
+not measure — an honest "not measured" instead of a zero that looks fast.
+
 ## When a ceiling trips
 
 1. `node scripts/bench.mjs` (3 samples) — is it the code or a busy machine? Two

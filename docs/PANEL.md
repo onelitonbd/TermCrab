@@ -57,6 +57,16 @@ whether a reply came back, and how long it took. It comes from `GET /api/telegra
 file is `docs/openclaw/data/telegram-runs.jsonl` — committed evidence, with a token *fingerprint*
 instead of a token. No runs yet means the line says so; it never invents one.
 
+## The performance budget on the Work page (38.2)
+
+Under the docs and Telegram lines the Work page shows the last measurement: how many of the seven metrics
+this machine measured, on what (`linux/x64, node v22.22.3`), how long ago, and the metric furthest along
+its ceiling — `(5/7 metrics · linux/x64, node v22.22.3 · 1 min ago · worst idleRssMb 72/130 (55%))`. When
+anything crossed a ceiling the line turns red and names it. It comes from `GET /api/perf`, which reads
+`state/perf.json` that `termcrab perf` wrote; the panel never measures anything itself (that would boot a
+gateway and run a turn on every refresh). Nothing measured yet says `(not measured yet — termcrab perf)`
+rather than showing zeros.
+
 ## How it is tested (there is no browser in the build)
 
 The panel's JavaScript is *extracted from the real file and executed in Node*, so the tests run the

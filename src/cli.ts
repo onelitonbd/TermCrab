@@ -2190,6 +2190,45 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       return;
     }
 
+    case 'perf': {
+      // 38.1: the performance budget as a command. It runs the *same*
+      // measurements the suite's gate runs (scripts/bench.mjs — one
+      // implementation), keeps the numbers where the panel can read them, and
+      // exits 1 when anything is over its ceiling.
+      const { PERF_CEILINGS, describePerf, measurePerf, perfPath, writePerfSnapshot } = await import('./core/perf.js');
+      const asJson = rest.includes('--json');
+      const everything = rest.includes('--full');
+      let measured: ReturnType<typeof measurePerf>;
+      try {
+        measured = measurePerf({ full: everything, everything });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (asJson) failJson('perf', message);
+        else console.error(`perf: ${message}`);
+        process.exitCode = 1;
+        return;
+      }
+      const { snapshot } = measured;
+      const file = writePerfSnapshot(snapshot);
+      if (asJson) {
+        emitJson('perf', { ...snapshot, file });
+        if (snapshot.over.length) process.exitCode = 1;
+        return;
+      }
+      console.log('');
+      console.log(`  ⏱️  performance budget — ${Object.keys(snapshot.metrics).length} of ${Object.keys(PERF_CEILINGS).length} metrics measured on ${snapshot.machine.platform}/${snapshot.machine.arch}, node ${snapshot.machine.node}`);
+      for (const line of describePerf(snapshot)) console.log(`     ${line}`);
+      if (snapshot.skipped.length) console.log(`     not in this run: ${snapshot.skipped.join(', ')} — add --full (install + a first-run compile)`);
+      console.log(`     snapshot: ${file}`);
+      if (snapshot.over.length) {
+        console.log(`     ⚠️ over budget: ${snapshot.over.join(', ')} — see docs/PERFORMANCE.md (fix the cause, never the ceiling)`);
+        process.exitCode = 1;
+      } else {
+        console.log('     inside every ceiling it measured');
+      }
+      return;
+    }
+
     case 'disk': {
       const config = loadConfig();
       const asJson = rest.includes('--json');

@@ -277,6 +277,16 @@ export const COMMANDS: CommandDoc[] = [
     json: '{count, stopped:[runId], sessions:[…]}',
   },
   {
+    cmd: 'perf',
+    usage: 'perf [--full] [--json]',
+    summary: 'measure this machine against the performance budget (exit 1 when over)',
+    flags: [
+      '--full  also measure the slow halves: npm install, and a first-run compile',
+      '--json  the snapshot that was written to state/perf.json',
+    ],
+    json: '{at, source, bench, machine, metrics, ceilings, over, skipped, file}',
+  },
+  {
     cmd: 'disk',
     usage: 'disk [--trim] [--max-mb <n>] [--keep-days <n>] [--json]',
     summary: 'how much space the agent uses',

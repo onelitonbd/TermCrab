@@ -5,7 +5,7 @@ actually runs it through the built binary. The number below is a recording, not 
 `src/cli.ts` appends its command to `$TCRAB_CLI_COVERAGE` on every dispatch, and
 `node scripts/cli-coverage.mjs --run` runs the whole suite with that variable set.
 
-**Measured:** 2026-10-04 · **45 of 53** commands executed end-to-end by `npm test` (85%).
+**Measured:** 2026-10-04 · **46 of 54** commands executed end-to-end by `npm test` (85%).
 
 ## Run by the suite
 
@@ -13,8 +13,8 @@ actually runs it through the built binary. The number below is a recording, not 
 |---|---|---|
 | `termcrab help` | line 409 | 16 |
 | `termcrab completion` | line 429 | 3 |
-| `termcrab version` | line 446 | 5 |
-| `termcrab gateway` | line 485 | 5 |
+| `termcrab version` | line 446 | 7 |
+| `termcrab gateway` | line 485 | 9 |
 | `termcrab doctor` | line 526 | 3 |
 | `termcrab update` | line 562 | 3 |
 | `termcrab say` | line 623 | 1 |
@@ -40,22 +40,23 @@ actually runs it through the built binary. The number below is a recording, not 
 | `termcrab service` | line 2116 | 1 |
 | `termcrab bootstrap` | line 2139 | 3 |
 | `termcrab schema` | line 2171 | 3 |
-| `termcrab disk` | line 2193 | 4 |
-| `termcrab status` | line 2232 | 3 |
-| `termcrab wake` | line 2272 | 1 |
-| `termcrab sessions` | line 2310 | 13 |
-| `termcrab subagents` | line 2515 | 3 |
-| `termcrab agents` | line 2576 | 6 |
-| `termcrab docs` | line 2659 | 8 |
-| `termcrab security` | line 2696 | 4 |
-| `termcrab board` | line 2719 | 2 |
-| `termcrab rooms` | line 2734 | 4 |
-| `termcrab browser` | line 2814 | 5 |
-| `termcrab transcribe` | line 2881 | 1 |
-| `termcrab embeddings` | line 2915 | 6 |
-| `termcrab context` | line 2975 | 1 |
-| `termcrab memory` | line 2995 | 6 |
-| `termcrab config` | line 3131 | 5 |
+| `termcrab perf` | line 2193 | 5 |
+| `termcrab disk` | line 2232 | 4 |
+| `termcrab status` | line 2271 | 3 |
+| `termcrab wake` | line 2311 | 1 |
+| `termcrab sessions` | line 2349 | 13 |
+| `termcrab subagents` | line 2554 | 3 |
+| `termcrab agents` | line 2615 | 6 |
+| `termcrab docs` | line 2698 | 8 |
+| `termcrab security` | line 2735 | 4 |
+| `termcrab board` | line 2758 | 2 |
+| `termcrab rooms` | line 2773 | 4 |
+| `termcrab browser` | line 2853 | 5 |
+| `termcrab transcribe` | line 2920 | 1 |
+| `termcrab embeddings` | line 2954 | 6 |
+| `termcrab context` | line 3014 | 1 |
+| `termcrab memory` | line 3034 | 6 |
+| `termcrab config` | line 3170 | 5 |
 
 ## Not run by the suite — and what covers it instead
 

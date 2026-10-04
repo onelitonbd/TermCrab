@@ -32,6 +32,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// One declaration, two callers: the ceilings live in src/core/perf.ts (38.1) and
+// `termcrab perf` reads the same object, so the alarm in the suite and the alarm
+// on the phone cannot disagree. dist is already required for the binary below.
+const perf = await import('../dist/src/core/perf.js').catch(() => {
+  console.error('bench: dist/src/core/perf.js is missing — run: npm run build');
+  process.exit(1);
+});
+
 const ROOT = path.resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
 const QUICK = args.includes('--quick');
@@ -55,15 +63,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * can spike on a shared machine) so the alarm fires on a *regression*, not on
  * jitter - see docs/PERFORMANCE.md for what to do when one trips.
  */
-export const BUDGETS = {
-  installMs: { max: 20_000, why: 'zero runtime deps: npm has nothing to fetch, so this is npm overhead plus a phone' },
-  coldStartMs: { max: 1_500, why: 'every CLI call pays it - the docs page and the whole agent must stay lazy' },
-  idleRssMb: { max: 130, why: 'a 2 GB phone kills hogs; 71 MB here means the ceiling catches a leak, not a sample' },
-  restartMs: { max: 2_500, why: 'the supervisor restarts after a crash - it has to be invisible to the person holding the phone' },
-  turnMs: { max: 5_000, why: 'the whole message-to-answer loop offline; a provider call is the user\u2019s own network' },
-  firstRunMs: { max: 30_000, why: 'the launcher compiles on first run; 5 s here is a minute on a phone, and the ceiling is the alarm for a build that got heavier' },
-  rebuildMs: { max: 8_000, why: 'git pull, then run: incremental tsc must stay a fraction of a full build' },
-};
+/** The ceilings, straight from src/core/perf.ts (the single declaration). */
+export const BUDGETS = Object.fromEntries(
+  Object.entries(perf.PERF_CEILINGS).map(([key, c]) => [key, { max: c.max, why: c.why }]),
+);
 
 /** Which ceilings a measured run misses. Exported so the suite can test it. */
 export function checkBudgets(bench) {
