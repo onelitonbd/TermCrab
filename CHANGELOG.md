@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.77.0 - 2026-10-04
+
+**Three surfaces, one product — measured first.** The owner's rule for this cycle: CLI, Telegram and the web
+panel are the product, every capability has to be reachable from each of them, and the map has to be honest
+*before* any parity code is written. This release is that map, plus the test that keeps it from rotting.
+
+- **The audit is a measurement, not a claim.** `scripts/surface-audit.mjs` holds **71 capabilities × 3
+  surfaces**, and each verdict is a regex probe over the file that would have to contain the feature
+  (`src/cli.ts`, `src/command-help.ts`, `src/tui/app.ts`, `src/gateway/server.ts`,
+  `src/channels/telegram.ts`, `ui/index.html`). `--gaps` prints only the rows with a missing cell, `--json`
+  is machine-readable, `--markdown` is the report table, and `--check` exits 1 the day a probe stops
+  matching, naming the file and the pattern.
+- **The first honest scoreboard:** CLI **49 ✅ / 0 missing** (15 reachable through a narrower door),
+  Telegram **24 ✅ / 28 missing**, web panel **41 ✅ / 9 missing**; 33 of 71 rows carry at least one missing
+  cell. Telegram's whole command surface is the 14 slash commands the shared channel handler knows — no
+  inline keyboard, no approvals, no `setMyCommands`, no logs/config/doctor/cron/devices — while OpenClaw
+  ships all of those in its Telegram channel. The panel is rich but has holes of its own: no session
+  search, no identity editor, no backup/restore, no security/auth views, no transcribe upload, and its chat
+  does not run the shared command handler (typing `/status` there goes to the model; only the palette
+  intercepts).
+- **The report the owner asked for.** `docs/SURFACES.md`: what each surface is today, the full matrix, a
+  **gap register** naming how each gap gets built (files, mechanism, rough size), what OpenClaw puts on
+  each surface (their `/controlui` mini app is the same idea as the panel-in-Telegram gap), and the batch
+  order 46–52 that closes them — Telegram first, because it holds 28 of the 38 missing cells.
+- **The audit cannot rot.** `test/surface-audit.test.ts` (3 cases): every probe still matches; every
+  capability carries a verdict for all three surfaces and every ❌/◐ must say why; and the scoreboard table
+  in `docs/SURFACES.md` must equal what the script prints — a report that drifts from the scanner fails
+  the suite instead of being read as true.
+- **The tracker's end-state rule grew a second branch.** Batch 42 could assume the queue was closed
+  forever; the owner has now asked for parity work, so §3 may hold exactly one batch — the one after the
+  current one, with real steps — and `status.mjs` says how much is queued instead of pretending to be
+  finished. `docs/OWNER.md` was updated the same way: the two owner actions no longer wait for any batch.
+- Tests: **1040 cases over 103 files · 1037 pass · 0 fail · 3 skip**; census **100%** of 164 in-scope checks
+  (WORKING 117 · **BETTER 46** · PARTIAL 1 — the CI push), drift 0; coverage **87.33%** of `src/` lines
+  (floor 80, fingerprint `fe3c7162f9761392`; the re-record moved lines 87.43 → 87.33 while branches and
+  functions rose — same source, same fingerprint, the metric's weighting across a single-process coverage
+  run); the suite clock records **103 files · 1040 cases · 161.5 s** (budget 240 s); the docs site is now
+  **62 docs · 337 sections**. Release **0.77.0**, following `v0.76.2`.
+
 ## 0.76.2 - 2026-10-04
 
 **The audit's second pass: two more real defects, both in the test infrastructure — and both the kind that teach people to shrug.**

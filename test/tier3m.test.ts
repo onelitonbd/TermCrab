@@ -153,7 +153,7 @@ test('42.2 the owner handover is declared once: help, JSON and docs/OWNER.md agr
     }
     assert.match(ownerdoc, anchors[a.id]!, `${a.id}: the page says what it closes`);
   }
-  assert.match(ownerdoc, /declared queue is empty/i, 'the page states the end state');
+  assert.match(ownerdoc, /do not wait for any batch/i, 'the page says these actions do not depend on the queue');
 
   // ownerReport() is the JSON shape the CLI prints, and it is a copy.
   const report = ownerReport();
@@ -167,28 +167,51 @@ test('42.2 the owner handover is declared once: help, JSON and docs/OWNER.md agr
   assert.deepEqual(others.map((c) => c.cmd), [], 'one declared handover, one command');
 });
 
-test('42.3 the tracker can end: queue empty, declared, and nothing stranded', async () => {
+test('42.3 the tracker can end, and can be reopened deliberately', async () => {
+  // Batch 42 closed the queue and this test pinned the end state. Batch 45 was a
+  // batch the *owner asked for* (the three-surface parity work), which reopens
+  // §3 — so the rule is now: either the queue is empty and says so, or it holds
+  // exactly one batch, the one after the current one, with real steps in it.
+  // What must never happen is a stranded row or a §3 that disagrees with the tool.
   const text = fs.readFileSync(path.join(ROOT, 'WORKLOG.md'), 'utf8');
   const { parseWorklog } = await script<{ parseWorklog: (s: string) => { stepLines: { id: string; state: string }[]; nextSteps: { id: string; state: string }[] } }>(
     'worklog-parse.mjs',
   );
   const parsed = parseWorklog(text);
-  assert.equal(parsed.nextSteps.length, 0, '§3 carries no unqueued batch');
-  assert.match(text, /\*\*Queue empty\.\*\*/, 'the declaration is a sentence somebody reads');
-  const stranded = parsed.stepLines.filter((r) => r.state.startsWith('☐'));
-  assert.deepEqual(stranded.map((r) => r.id), [], 'no row sits at ☐ todo with an empty queue');
+  const batchOf = (id: string): number => Number(id.split('.')[0]);
 
   const json = await runNodeAsync(['scripts/status.mjs', '--json'], 60_000);
   assert.equal(json.code, 0, json.stderr);
   const report = JSON.parse(json.stdout) as { queueEmpty: boolean; queueDeclared: boolean; nextSteps: unknown[] };
-  assert.equal(report.queueEmpty, true);
-  assert.equal(report.queueDeclared, true);
-  assert.deepEqual(report.nextSteps, []);
 
-  const human = await runNodeAsync(['scripts/status.mjs'], 60_000);
-  assert.equal(human.code, 0, human.stderr);
-  assert.match(human.stdout, /queue empty/, 'the tracker prints the words, not "0 queued"');
-  assert.doesNotMatch(human.stdout, /0 step\(s\) queued/);
+  if (parsed.nextSteps.length === 0) {
+    assert.match(text, /\*\*Queue empty\.\*\*/, 'the declaration is a sentence somebody reads');
+    const stranded = parsed.stepLines.filter((r) => r.state.startsWith('☐'));
+    assert.deepEqual(stranded.map((r) => r.id), [], 'no row sits at ☐ todo with an empty queue');
+    assert.equal(report.queueEmpty, true);
+    assert.equal(report.queueDeclared, true);
+    assert.deepEqual(report.nextSteps, []);
+    const human = await runNodeAsync(['scripts/status.mjs'], 60_000);
+    assert.equal(human.code, 0, human.stderr);
+    assert.match(human.stdout, /queue empty/, 'the tracker prints the words, not "0 queued"');
+    assert.doesNotMatch(human.stdout, /0 step\(s\) queued/);
+  } else {
+    const now = [...new Set(parsed.stepLines.map((r) => batchOf(r.id)))];
+    assert.equal(now.length, 1, 'the Now table is one batch');
+    const nextBatches = new Set(parsed.nextSteps.map((r) => batchOf(r.id)));
+    assert.equal(nextBatches.size, 1, '§3 queues exactly one batch');
+    assert.equal([...nextBatches][0], now[0]! + 1, 'and it is the batch after the current one');
+    assert.ok(parsed.nextSteps.length >= 4, 'a queued batch carries real steps');
+    assert.equal(report.queueEmpty, false, 'the tool agrees the queue is not empty');
+    assert.deepEqual(
+      (report.nextSteps as { id: string }[]).map((s) => s.id),
+      parsed.nextSteps.map((s) => s.id),
+      'status.mjs and the tracker read the same table',
+    );
+    const human = await runNodeAsync(['scripts/status.mjs'], 60_000);
+    assert.equal(human.code, 0, human.stderr);
+    assert.match(human.stdout, /step\(s\) queued/, 'the tracker says how much is queued');
+  }
 });
 
 test('42.5 termcrab owner prints the declared handover, for the phone', async () => {

@@ -1,7 +1,7 @@
 # Everything added to TermCrab — start to finish
 
-One inventory of what was built, from the first commit (2026-09-29) to `v0.76.2` (2026-10-04).
-Ordered by the project's own record, not by memory: **110 commits · 91 releases · 44 batches**.
+One inventory of what was built, from the first commit (2026-09-29) to `v0.77.0` (2026-10-04).
+Ordered by the project's own record, not by memory: **111 commits · 92 releases · 45 batches**.
 
 **How to verify any line below** — every claim here has a source you can open:
 
@@ -104,6 +104,7 @@ This is where every change starts carrying a proof: a commit, a test, and a numb
 | 42 | `57865d3` | **The closing batch**: the tracker's numbers are read back from `docs/openclaw/data/*.json` (`final-numbers.mjs --check`); the owner's two actions declared once (`src/core/owner.ts` → `termcrab owner`) and kept equal across help and `docs/OWNER.md`; the queue can end (declaration + tracker rule + `status.mjs` prints `queue empty`); `v0.76.0`. |
 | 43 | `c21aed5` | **A defect the closing audit found**: `startContinuousStt` delivered a phrase *after* `stop()` (reproduced 3/3 by probe, 0/3 after the fix; regression test fails 100% against the unfixed build); `listenOnce`'s timeout stopped claiming a hard-coded 30 s; the flaking test stopped using a stopwatch. `v0.76.1`. |
 | 44 | `109e7e7` | **The audit's second pass**: a test that let the machine's load decide its verdict is pinned; `scripts/test-files.mjs` declares one deadline per group (heavy measurement files 600 s, everything else 60 s) after proving node's flag **overrides** a test's own deadline — the trap that made two heavy files look flaky. `v0.76.2`. |
+| 45 | (this commit) | **Three surfaces, one product — the audit first**: `scripts/surface-audit.mjs` measures 71 capabilities × 3 surfaces with source probes (`--check` fails the day one stops matching); `test/surface-audit.test.ts` keeps the report honest (every verdict carries a reason, and the scoreboard in `docs/SURFACES.md` must equal the scanner's JSON); the first honest scoreboard — CLI 49 ✅ / 0 missing, Telegram 24 ✅ / **28 missing**, web 41 ✅ / 9 missing — and the gap register + batch order 46–52 that closes them. No feature code: the owner asked for the map before the parity work. |
 
 ## 5. Cross-cutting guarantees (the invisible work)
 

@@ -4,11 +4,13 @@ Everything else in this repository runs and proves itself. This page is the shor
 **only the person holding the phone can do** — each one a copy-paste command, what it should print, and
 the evidence it leaves behind.
 
-**The declared queue is empty.** After the closing batch, two actions remain, and both are on this
-page: **§1 turns CI on** (that is the last open census row — the CI matrix, `PARTIAL` until a run
-exists) and **§2 records one real Telegram message** (that is `37.4`'s first real line). Everything
-else this project claims is asserted by the suite on every run. `termcrab owner` prints just those two,
-from the same words this page is checked against.
+**These two actions do not wait for any batch.** The product queue is whatever the owner asked for —
+today the three-surface parity batches in `WORKLOG.md` §3 — but these two need a GitHub push and a
+Telegram token that no batch can supply, so they stay on this page until they are done: **§1 turns CI
+on** (that is the last open census row — the CI matrix, `PARTIAL` until a run exists) and **§2 records
+one real Telegram message** (that is `37.4`'s first real line). Everything else this project claims is
+asserted by the suite on every run. `termcrab owner` prints just those two, from the same words this
+page is checked against.
 
 Everything here is optional. Nothing below is required for TermCrab to work; each item turns a claim
 somebody could doubt into a fact with a timestamp. The first two are the closing handover, the last two

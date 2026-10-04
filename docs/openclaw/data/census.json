@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T11:53:08.741Z",
+ "measured": "2026-10-04T12:12:59.761Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 44,
+  "BETTER": 46,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 162,
+ "inScope": 164,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -3350,6 +3350,46 @@
   },
   {
    "area": "ops",
+   "capability": "Three surfaces, one product (45.1)",
+   "openclaw": "the backend is not a surface",
+   "verdict": "BETTER",
+   "evidence": "The owner's rule is that every capability must be reachable from the CLI, Telegram and the web panel — not merely from the API behind them. scripts/surface-audit.mjs measures that with 71 capabilities × 3 surfaces, each cell a regex probe over the file that would have to contain the feature, and prints the verdicts plus `--gaps`; `--check` exits 1 the day a probe stops matching, and test/surface-audit.test.ts also refuses a report (docs/SURFACES.md) whose scoreboard no longer matches the script. First honest measurement: CLI 49 direct / 0 missing, Telegram 24 / **28 missing**, web 41 / 9 missing.",
+   "probe": {
+    "file": "scripts/surface-audit.mjs",
+    "pattern": "export const CAPABILITIES",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): scripts/surface-audit.mjs:42"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The audit cannot rot (45.2)",
+   "openclaw": "a report written once and never true again",
+   "verdict": "BETTER",
+   "evidence": "The audit is checked twice: `--check` re-runs every probe against the source (a moved command fails the suite with the file and pattern), and the same test parses the JSON and compares it with the scoreboard table in docs/SURFACES.md, so the numbers cannot drift from what the scanner sees. Row shape is enforced too: every capability carries a verdict for all three surfaces, and every ❌ or ◐ must say why.",
+   "probe": {
+    "file": "test/surface-audit.test.ts",
+    "pattern": "45.3",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): test/surface-audit.test.ts:73"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "The closing numbers, read back (42.1)",
    "openclaw": "n/a",
    "verdict": "BETTER",
@@ -3536,7 +3576,7 @@
    "capability": "Documentation site",
    "openclaw": "full docs site, thousands of pages",
    "verdict": "WORKING",
-   "evidence": "termcrab docs builds docs/ into ONE self-contained HTML page (61 docs, 329 sections, ~2.8 MB, ~80 ms) that opens offline from the phone file manager and is served at GET /docs; search hits every ## section, and the markdown is rendered by the panel's own renderer sliced verbatim out of ui/index.html (byte-identity asserted), so there is no second implementation to drift. Not thousands of separate pages, and no per-version archive: one file, rebuilt when a source changes (mtime stamp), with generated crawl data excluded by path - reported in the page's nav, not dropped silently",
+   "evidence": "termcrab docs builds docs/ into ONE self-contained HTML page (62 docs, 337 sections, ~2.9 MB, ~80 ms) that opens offline from the phone file manager and is served at GET /docs; search hits every ## section, and the markdown is rendered by the panel's own renderer sliced verbatim out of ui/index.html (byte-identity asserted), so there is no second implementation to drift. Not thousands of separate pages, and no per-version archive: one file, rebuilt when a source changes (mtime stamp), with generated crawl data excluded by path - reported in the page's nav, not dropped silently",
    "probe": {
     "paths": [
      "src/docs/site.ts",
