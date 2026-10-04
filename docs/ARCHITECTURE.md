@@ -150,6 +150,7 @@ users' runtime.
 | `src/core/frontmatter.ts` | dependency-free YAML-ish frontmatter parser |
 | `src/core/json-out.ts` | One machine-readable envelope (batch 14) |
 | `src/core/logger.ts` | leveled logger |
+| `src/core/owner.ts` | The owner's remaining actions, in one declared place (42.2, 42.5) |
 | `src/core/paths.ts` | TCRAB_HOME resolution, package root discovery, layout |
 | `src/core/perf.ts` | The performance budget as a command: measure this machine, compare every number to its ceiling, and write the snapshot the panel reads (38.1) |
 | `src/core/pricing.ts` | Approximate list prices, per 1,000,000 tokens |

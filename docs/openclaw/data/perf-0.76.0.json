@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-04T10:14:50.569Z",
+  "at": "2026-10-04T10:15:01.558Z",
   "source": "checkout",
   "bench": "/home/user/claw/scripts/bench.mjs",
   "machine": {
@@ -10,22 +10,22 @@
     "totalMemMb": 3940
   },
   "metrics": {
-    "installMs": 326,
-    "coldStartMs": 149,
-    "idleRssMb": 74,
-    "restartMs": 188,
-    "turnMs": 97,
+    "installMs": 262,
+    "coldStartMs": 145,
+    "idleRssMb": 71,
+    "restartMs": 162,
+    "turnMs": 105,
     "panelKb": 320,
-    "panelMs": 3.6,
-    "roomWriteMs": 29,
-    "outboxDrainMs": 378,
-    "telegramPollMs": 83,
-    "docsMs": 56.9,
+    "panelMs": 3.9,
+    "roomWriteMs": 28,
+    "outboxDrainMs": 273,
+    "telegramPollMs": 82,
+    "docsMs": 53.5,
     "docsKb": 2790,
-    "searchMs": 8,
-    "queueDrainMs": 56,
-    "queueWakeMs": 1,
-    "subagentFanoutMs": 42
+    "searchMs": 7.5,
+    "queueDrainMs": 54,
+    "queueWakeMs": 0,
+    "subagentFanoutMs": 41
   },
   "ceilings": {
     "installMs": {
@@ -117,11 +117,11 @@
     "rebuildMs"
   ],
   "load": {
-    "load1": 1.09,
+    "load1": 1.01,
     "cpus": 2,
-    "perCpu": 0.55
+    "perCpu": 0.51
   },
   "suspect": false,
-  "release": "0.75.0",
+  "release": "0.76.0",
   "__note": "measured on the machine in `machine`; the ceilings and their reasons live in docs/PERFORMANCE.md"
 }

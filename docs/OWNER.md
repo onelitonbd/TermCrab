@@ -1,14 +1,20 @@
 # The owner's two minutes — everything only you can do
 
-Everything else in this repository runs and proves itself: 1008 test cases, a coverage floor, a
-performance budget with an alarm, an offline docs page that says how fresh it is. This page is the
-short list of things **only the person holding the phone can do** — each one a copy-paste command, what
-it should print, and the evidence it leaves behind. Two minutes, in order, whenever you feel like it.
+Everything else in this repository runs and proves itself. This page is the short list of things
+**only the person holding the phone can do** — each one a copy-paste command, what it should print, and
+the evidence it leaves behind.
+
+**The declared queue is empty.** After the closing batch, two actions remain, and both are on this
+page: **§1 turns CI on** (that is the last open census row — the CI matrix, `PARTIAL` until a run
+exists) and **§2 records one real Telegram message** (that is `37.4`'s first real line). Everything
+else this project claims is asserted by the suite on every run. `termcrab owner` prints just those two,
+from the same words this page is checked against.
 
 Everything here is optional. Nothing below is required for TermCrab to work; each item turns a claim
-somebody could doubt into a fact with a timestamp.
+somebody could doubt into a fact with a timestamp. The first two are the closing handover, the last two
+are the normal way to use the thing.
 
-## 1. Start the CI workflow (once, ~20 seconds)
+## 1. Start the CI workflow (once, ~20 seconds) — **closes the last open census row**
 
 GitHub refuses a workflow file from the integration that built this repository, so the one push that
 turns CI on is yours. `ci/ci.yml` is versioned, every line is asserted by the suite, and
@@ -26,7 +32,7 @@ git push
 which is `PARTIAL` today and becomes `WORKING` the moment that run exists. Nothing else in this
 project is waiting on you except this.
 
-## 2. Let the bot answer a real Telegram message (once, ~1 minute)
+## 2. Let the bot answer a real Telegram message (once, ~1 minute) — **closes 37.4**
 
 The suite's Telegram tests talk to a fake Bot API on purpose; `npm run smoke:telegram` is the half that
 can only be true on your phone. You need a token from [@BotFather](https://t.me/BotFather) — `/newbot`,
@@ -87,4 +93,7 @@ performance budget's last measurement.
   measures and what it does not.
 
 _Kept honest by `test/tier3i.test.ts` (38.5): every `termcrab <command>` named on this page is checked
-to exist in the CLI, so this page cannot rot into instructions that no longer run._
+to exist in the CLI, so this page cannot rot into instructions that no longer run. And by
+`test/tier3m.test.ts` (42.2): the two closing actions' exact commands are declared once in
+`src/core/owner.ts`, printed by `termcrab owner`, and checked to still appear **on this page** — so the
+handover cannot say one thing on the phone and another in the docs._

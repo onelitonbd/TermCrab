@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T09:08:27.920Z",
+ "measured": "2026-10-04T09:50:13.934Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 38,
+  "BETTER": 42,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 156,
+ "inScope": 160,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:723, src/core/config.ts:700"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:733, src/core/config.ts:700"
    }
   },
   {
@@ -318,7 +318,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1418, src/command-help.ts:249"
+    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1428, src/command-help.ts:257"
    }
   },
   {
@@ -530,7 +530,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:497"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:505"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1673"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1673"
    }
   },
   {
@@ -843,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3197"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3207"
    }
   },
   {
@@ -1001,7 +1001,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3135"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3145"
    }
   },
   {
@@ -2200,7 +2200,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/cli.ts:2136"
+    "detail": "4 match(es): src/cli.ts:2146"
    }
   },
   {
@@ -2319,7 +2319,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "82 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "83 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2338,7 +2338,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:635"
+    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:643"
    }
   },
   {
@@ -2726,7 +2726,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/cli.ts:28, src/command-help.ts:70, src/core/perf.ts:452"
+    "detail": "21 match(es): src/cli.ts:28, src/command-help.ts:78, src/core/perf.ts:452"
    }
   },
   {
@@ -2745,7 +2745,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/cli.ts:30, src/command-help.ts:122, src/gateway/server.ts:89"
+    "detail": "7 match(es): src/cli.ts:30, src/command-help.ts:130, src/gateway/server.ts:89"
    }
   },
   {
@@ -3103,7 +3103,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): docs/OWNER.md:15"
+    "detail": "2 match(es): docs/OWNER.md:21"
    }
   },
   {
@@ -3306,6 +3306,87 @@
    "probeResult": {
     "state": "ok",
     "detail": "2 match(es) (min 2): ui/index.html:7077"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The closing numbers, read back (42.1)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "Every number the tracker quotes — the census score, the suite counts, the coverage floor and fingerprint, the CLI command coverage, the suite clock, the performance budget — is *produced* in docs/openclaw/data/*.json. scripts/final-numbers.mjs loads those files, prints each number with the file it came from, and `--check` (and test/tier3m.test.ts 42.1) refuses when WORKLOG.md's numbers line no longer quotes them, in the Bengali digits the tracker is written in. A quoted number that nobody re-derives is a number that will one day be wrong",
+   "probe": {
+    "file": "scripts/final-numbers.mjs",
+    "pattern": "export function checkTrackerNumbers",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): scripts/final-numbers.mjs:190"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The owner handover, declared once (42.2)",
+   "openclaw": "an issue tracker with nobody assigned",
+   "verdict": "BETTER",
+   "evidence": "After the closing batch exactly two actions need a token or a push, and they live in ONE place: src/core/owner.ts declares each action's commands, what it closes, what to expect and where the proof lands; `termcrab owner` prints them, `docs/OWNER.md` is the long version, and test/tier3m.test.ts 42.2 asserts every declared command still appears on the page under its own heading. The handover cannot say one thing on the phone and another in the docs",
+   "probe": {
+    "file": "src/core/owner.ts",
+    "pattern": "export const OWNER_ACTIONS",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/owner.ts:27"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The queue can end (42.3)",
+   "openclaw": "a roadmap that only grows",
+   "verdict": "BETTER",
+   "evidence": "WORKLOG.md §3 can now be the sentence **Queue empty.** instead of another batch, and the tracker test accepts that only when every row is finished or in progress and none is stranded at a todo nobody will start; scripts/status.mjs prints `queue empty…` instead of a count of zero, and test/tier3m.test.ts 42.3 asserts both the human line and the --json flags. New batches are written when the owner asks for one or something real breaks — not because the table looks empty",
+   "probe": {
+    "file": "scripts/status.mjs",
+    "pattern": "queue empty",
+    "expect": "present",
+    "min": 3
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "5 match(es) (min 3): scripts/status.mjs:53"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The handover on the phone (42.5)",
+   "openclaw": "a runbook in a wiki",
+   "verdict": "BETTER",
+   "evidence": "`termcrab owner` prints the two remaining actions from the declared source — the exact commands, what each closes, what to expect, where the proof lands — and `termcrab owner --json` returns {count, doc, actions:[…]} in the standard envelope, so a script or the panel can poll what is left without a shell in the repository. test/tier3m.test.ts 42.5 asserts the CLI output equals the declared text, that no human prose leaks into the JSON run, and that the help entry exists",
+   "probe": {
+    "file": "src/cli.ts",
+    "pattern": "case 'owner'",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/cli.ts:452"
    }
   },
   {

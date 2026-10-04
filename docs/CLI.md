@@ -63,6 +63,7 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 
 | Command | `data` |
 |---|---|
+| `termcrab owner --json` | `{count, doc, actions:[{id, title, closes, commands, expect, evidence}]}` — the two actions left that only the owner can take (the CI push and one real Telegram smoke), declared once in `src/core/owner.ts` and checked against `docs/OWNER.md`; after the closing batch the declared queue is empty, so this is the whole of what is left |
 | `termcrab status --json` | `{name, brain, localBrain, panel, queue, channels, memory, heartbeat, cron, dream, agents, configProblems}` |
 | `termcrab sessions ls --json` | `{count, main, rolling, sessions:[{id, messages, bytes, modified}]}` — the human list marks the shared `main` session |
 | `termcrab sessions export <id> --json` | `{id, file, bytes}` |

@@ -449,6 +449,16 @@ export async function main(argv: string[]): Promise<void> {
       console.log(`termcrab ${version()} (node ${process.version})`);
       return;
 
+    case 'owner': {
+      const { describeOwnerActions, ownerReport } = await import('./core/owner.js');
+      if (machine) {
+        emitJson('owner', ownerReport());
+        return;
+      }
+      console.log(describeOwnerActions());
+      return;
+    }
+
     case 'onboard': {
       const { values } = parseArgs({
         args: rest,

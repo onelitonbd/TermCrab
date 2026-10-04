@@ -31,8 +31,31 @@ function gitHead() {
   }
 }
 
+function readWorklogText() {
+  try {
+    return fs.readFileSync(WORKLOG, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
 function readWorklog() {
-  return parseWorklog(fs.readFileSync(WORKLOG, 'utf8'));
+  return parseWorklog(readWorklogText());
+}
+
+/**
+ * 42.3 — the closing batch. When §3 carries no rows the queue is done, and the
+ * only acceptable shape after that is the declaration itself: every row in the
+ * current batch finished, one sentence in §3 saying the queue is empty. Anything
+ * else is a tracker pretending to be busy.
+ */
+function queueState(text, log) {
+  if (log.nextSteps.length) return { empty: false, declared: /queue is empty|queue empty/i.test(text), done: false };
+  return {
+    empty: true,
+    declared: /queue is empty|queue empty/i.test(text),
+    done: log.stepLines.length > 0 && log.stepLines.every((s) => s.state.startsWith('✔')),
+  };
 }
 
 /**
@@ -91,13 +114,15 @@ function runTests() {
 }
 
 const head = gitHead();
-const log = readWorklog();
+const worklogText = readWorklogText();
+const log = parseWorklog(worklogText);
+const queue = queueState(worklogText, log);
 const age = trackerAge();
 const fresh = age.behind === 0;
 const census = censusSummary();
 const tests = wantTests ? runTests() : null;
 
-const report = { head, trackerUpdatedIn: age.last, commitsSinceTracker: age.behind, note: age.note, fresh, updated: log.updated, stepLines: log.stepLines, nextSteps: log.nextSteps, census, tests };
+const report = { head, trackerUpdatedIn: age.last, commitsSinceTracker: age.behind, note: age.note, fresh, updated: log.updated, stepLines: log.stepLines, nextSteps: log.nextSteps, queueEmpty: queue.empty, queueDeclared: queue.declared, census, tests };
 if (asJson) {
   console.log(JSON.stringify(report, null, 2));
 } else {
@@ -119,7 +144,14 @@ if (asJson) {
     for (const s of log.stepLines) line(`    ${icon(s.state)} ${s.id}  ${s.step}`);
     line('');
   }
-  if (log.nextSteps.length) {
+  if (queue.empty) {
+    line(
+      queue.declared
+        ? '  Next        queue empty — every declared batch is done; only the owner\'s two actions remain (termcrab owner)'
+        : '  Next        queue empty, but WORKLOG.md §3 does not say so — add the declaration',
+    );
+    line('');
+  } else {
     line(`  Next (${log.nextSteps.filter((s) => s.state.startsWith('☐')).length} step(s) queued)`);
     for (const s of log.nextSteps.slice(0, 4)) line(`    ${icon(s.state)} ${s.id}  ${s.step}`);
     if (log.nextSteps.length > 4) line(`    … +${log.nextSteps.length - 4} more in WORKLOG.md §3`);
@@ -141,7 +173,11 @@ if (asJson) {
     line('  Tests        not run (add --tests)');
     line('');
   }
-  line(`  ${log.stepLines.filter((s) => s.state.startsWith('✔')).length} step(s) done here · ${log.nextSteps.filter((s) => s.state.startsWith('☐')).length} queued for next`);
+  line(
+    queue.empty
+      ? `  ${log.stepLines.filter((s) => s.state.startsWith('✔')).length} step(s) done here · queue empty`
+      : `  ${log.stepLines.filter((s) => s.state.startsWith('✔')).length} step(s) done here · ${log.nextSteps.filter((s) => s.state.startsWith('☐')).length} queued for next`,
+  );
   line('');
 }
 

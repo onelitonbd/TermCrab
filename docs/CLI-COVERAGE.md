@@ -5,58 +5,59 @@ actually runs it through the built binary. The number below is a recording, not 
 `src/cli.ts` appends its command to `$TCRAB_CLI_COVERAGE` on every dispatch, and
 `node scripts/cli-coverage.mjs --run` runs the whole suite with that variable set.
 
-**Measured:** 2026-10-04 · **46 of 54** commands executed end-to-end by `npm test` (85%).
+**Measured:** 2026-10-04 · **47 of 55** commands executed end-to-end by `npm test` (85%).
 
 ## Run by the suite
 
 | Command | In `src/cli.ts` | Times run |
 |---|---|---|
-| `termcrab help` | line 409 | 18 |
+| `termcrab help` | line 409 | 19 |
 | `termcrab completion` | line 429 | 3 |
 | `termcrab version` | line 446 | 15 |
-| `termcrab gateway` | line 485 | 15 |
-| `termcrab doctor` | line 526 | 3 |
-| `termcrab update` | line 562 | 3 |
-| `termcrab say` | line 623 | 1 |
-| `termcrab agent` | line 697 | 1 |
-| `termcrab heartbeat` | line 803 | 2 |
-| `termcrab skills` | line 810 | 6 |
-| `termcrab cron` | line 1042 | 13 |
-| `termcrab approvals` | line 1321 | 3 |
-| `termcrab usage` | line 1399 | 4 |
-| `termcrab run` | line 1445 | 4 |
-| `termcrab wait` | line 1446 | 1 |
-| `termcrab stop` | line 1512 | 2 |
-| `termcrab runs` | line 1545 | 3 |
-| `termcrab presence` | line 1582 | 3 |
-| `termcrab events` | line 1626 | 3 |
-| `termcrab image` | line 1666 | 1 |
-| `termcrab models` | line 1710 | 1 |
-| `termcrab auth` | line 1750 | 4 |
-| `termcrab orders` | line 1855 | 5 |
-| `termcrab logs` | line 1920 | 3 |
-| `termcrab backup` | line 2030 | 2 |
-| `termcrab restore` | line 2048 | 3 |
-| `termcrab service` | line 2116 | 1 |
-| `termcrab bootstrap` | line 2139 | 3 |
-| `termcrab schema` | line 2171 | 3 |
-| `termcrab perf` | line 2193 | 7 |
-| `termcrab disk` | line 2242 | 4 |
-| `termcrab status` | line 2281 | 3 |
-| `termcrab wake` | line 2321 | 1 |
-| `termcrab sessions` | line 2359 | 13 |
-| `termcrab subagents` | line 2564 | 3 |
-| `termcrab agents` | line 2625 | 6 |
-| `termcrab docs` | line 2708 | 14 |
-| `termcrab security` | line 2774 | 4 |
-| `termcrab board` | line 2797 | 2 |
-| `termcrab rooms` | line 2812 | 4 |
-| `termcrab browser` | line 2892 | 5 |
-| `termcrab transcribe` | line 2959 | 1 |
-| `termcrab embeddings` | line 2993 | 6 |
-| `termcrab context` | line 3053 | 1 |
-| `termcrab memory` | line 3073 | 6 |
-| `termcrab config` | line 3209 | 5 |
+| `termcrab owner` | line 452 | 2 |
+| `termcrab gateway` | line 495 | 15 |
+| `termcrab doctor` | line 536 | 9 |
+| `termcrab update` | line 572 | 3 |
+| `termcrab say` | line 633 | 1 |
+| `termcrab agent` | line 707 | 1 |
+| `termcrab heartbeat` | line 813 | 2 |
+| `termcrab skills` | line 820 | 6 |
+| `termcrab cron` | line 1052 | 13 |
+| `termcrab approvals` | line 1331 | 3 |
+| `termcrab usage` | line 1409 | 4 |
+| `termcrab run` | line 1455 | 4 |
+| `termcrab wait` | line 1456 | 1 |
+| `termcrab stop` | line 1522 | 2 |
+| `termcrab runs` | line 1555 | 3 |
+| `termcrab presence` | line 1592 | 3 |
+| `termcrab events` | line 1636 | 3 |
+| `termcrab image` | line 1676 | 1 |
+| `termcrab models` | line 1720 | 1 |
+| `termcrab auth` | line 1760 | 4 |
+| `termcrab orders` | line 1865 | 5 |
+| `termcrab logs` | line 1930 | 3 |
+| `termcrab backup` | line 2040 | 2 |
+| `termcrab restore` | line 2058 | 3 |
+| `termcrab service` | line 2126 | 1 |
+| `termcrab bootstrap` | line 2149 | 3 |
+| `termcrab schema` | line 2181 | 3 |
+| `termcrab perf` | line 2203 | 18 |
+| `termcrab disk` | line 2301 | 4 |
+| `termcrab status` | line 2340 | 3 |
+| `termcrab wake` | line 2380 | 1 |
+| `termcrab sessions` | line 2418 | 13 |
+| `termcrab subagents` | line 2623 | 3 |
+| `termcrab agents` | line 2684 | 6 |
+| `termcrab docs` | line 2767 | 17 |
+| `termcrab security` | line 2833 | 4 |
+| `termcrab board` | line 2856 | 2 |
+| `termcrab rooms` | line 2871 | 4 |
+| `termcrab browser` | line 2951 | 5 |
+| `termcrab transcribe` | line 3018 | 1 |
+| `termcrab embeddings` | line 3052 | 6 |
+| `termcrab context` | line 3112 | 1 |
+| `termcrab memory` | line 3132 | 6 |
+| `termcrab config` | line 3268 | 7 |
 
 ## Not run by the suite — and what covers it instead
 

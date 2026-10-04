@@ -70,17 +70,32 @@ test('work tracker: fresh, reachable, and on the panel', async (t) => {
     // it, and every row in each table belongs to that single batch.
     const { parseWorklog: parse } = (await import(
       pathToFileURL(path.join(root, 'scripts', 'worklog-parse.mjs')).href
-    )) as { parseWorklog: (s: string) => { stepLines: { id: string }[]; nextSteps: { id: string }[] } };
+    )) as {
+      parseWorklog: (s: string) => {
+        stepLines: { id: string; state: string }[];
+        nextSteps: { id: string; state: string }[];
+      };
+    };
     const ids = parse(text);
     const batchOf = (id: string): number => Number(id.split('.')[0]);
     const nowBatches = new Set(ids.stepLines.map((r) => batchOf(r.id)));
     const nextBatches = new Set(ids.nextSteps.map((r) => batchOf(r.id)));
     assert.equal(nowBatches.size, 1, 'the Now table is one batch');
-    assert.equal(nextBatches.size, 1, 'the Next table is one batch');
+    if (ids.nextSteps.length) assert.equal(nextBatches.size, 1, 'the Next table is one batch');
     const now = [...nowBatches][0]!;
-    const next = [...nextBatches][0]!;
-    assert.equal(next, now + 1, `Next is the batch after Now (now ${now}, next ${next})`);
-    assert.ok(ids.nextSteps.length >= 4, 'the next batch is queued with steps');
+    if (ids.nextSteps.length === 0) {
+      // 42.3 — the closing batch. A finished tracker says so in one sentence, and
+      // it is only "finished" when nothing is still sitting at ☐ todo: work in
+      // progress (▶) and finished work (✔) are both real states, an unqueued
+      // todo is a row nobody is ever going to start.
+      assert.match(text, /\*\*Queue empty\.\*\*|queue is empty/i, 'a finished tracker declares the queue empty');
+      const stranded = ids.stepLines.filter((r) => r.state.startsWith('☐'));
+      assert.deepEqual(stranded.map((r) => r.id), [], 'with an empty queue no step may sit at ☐ todo');
+    } else {
+      const next = [...nextBatches][0]!;
+      assert.equal(next, now + 1, `Next is the batch after Now (now ${now}, next ${next})`);
+      assert.ok(ids.nextSteps.length >= 4, 'the next batch is queued with steps');
+    }
     assert.match(text, /fails? the suite|npm test/i, 'the rules say a stale tracker fails the suite');
   });
 
@@ -118,12 +133,18 @@ test('work tracker: fresh, reachable, and on the panel', async (t) => {
       head: string;
       stepLines: { id: string; state: string }[];
       nextSteps: { id: string; state: string }[];
+      queueEmpty: boolean;
+      queueDeclared: boolean;
       census: { checks: number; broken: number } | null;
     };
     assert.equal(parsed.fresh, true, 'status must report fresh');
     assert.equal(parsed.commitsSinceTracker, 0);
     assert.ok(parsed.stepLines.length >= 4, 'the current batch has steps');
-    assert.ok(parsed.nextSteps.length >= 4, 'the next batch is queued with steps');
+    assert.ok(
+      parsed.nextSteps.length >= 4 || parsed.queueEmpty,
+      'the next batch is queued with steps, or the queue is declared empty',
+    );
+    if (parsed.queueEmpty) assert.equal(parsed.queueDeclared, true, 'an empty queue is declared, not implied');
     assert.ok(parsed.census && parsed.census.checks > 100, 'census summary present');
   });
 });

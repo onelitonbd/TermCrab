@@ -39,6 +39,14 @@ export const COMMANDS: CommandDoc[] = [
     flags: [],
   },
   {
+    cmd: 'owner',
+    usage: 'owner',
+    summary: 'the two actions left in the closing handover (docs/OWNER.md)',
+    flags: [],
+    example: 'termcrab owner',
+    json: '{ count, doc, actions: [{ id, title, closes, commands, expect, evidence }] }',
+  },
+  {
     cmd: 'onboard',
     usage: 'onboard [flags]',
     summary: 'first-time setup wizard (writes config.json)',

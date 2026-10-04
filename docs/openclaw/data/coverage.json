@@ -1,16 +1,16 @@
 {
   "measuredAt": "2026-10-04",
-  "fingerprint": "d0bff45b6fd36c95",
+  "fingerprint": "cb48cf3341df7120",
   "floor": 80,
-  "tests": 1030,
-  "pass": 1025,
+  "tests": 1034,
+  "pass": 1028,
   "fail": 0,
   "skipped": 5,
-  "testFiles": 100,
+  "testFiles": 101,
   "source": {
-    "lines": 87.24,
-    "branches": 77.41,
-    "functions": 87.03
+    "lines": 87.34,
+    "branches": 77.58,
+    "functions": 87.13
   },
   "all": {
     "lines": 0,
@@ -71,7 +71,7 @@
     {
       "dir": "channels",
       "file": "cli.ts",
-      "lines": 60.26
+      "lines": 60.36
     },
     {
       "dir": "mobile",

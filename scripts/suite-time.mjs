@@ -54,10 +54,15 @@ export function summarizeEvents(events) {
   for (const ev of events) {
     const file = typeof ev.file === 'string' ? ev.file : '';
     if (!file) continue;
-    const row = byFile.get(file) ?? { file: path.basename(file), ms: 0, cases: 0, topTests: 0, fail: 0, slowest: { name: '', ms: 0 } };
+    const row = byFile.get(file) ?? { file: path.basename(file), ms: 0, cases: 0, passed: 0, skipped: 0, topTests: 0, fail: 0, slowest: { name: '', ms: 0 } };
     // Every pass/fail event is a test case (subtests included) — the same thing
-    // the coverage report counts.
+    // the coverage report counts. A skipped test arrives as test:pass with
+    // skip:true (42.1: the tracker quotes pass/fail/skip from the record, so the
+    // record has to carry them, not just the total).
     row.cases += 1;
+    if (ev.status === 'fail') row.failed = (row.failed ?? 0) + 1;
+    else if (ev.skipped) row.skipped += 1;
+    else row.passed += 1;
     if (Number(ev.nesting) === 0) {
       // Within a file the top-level tests run one after another, so their
       // durations add up to the file's test time; a nested test's duration is
@@ -101,6 +106,9 @@ export function buildRecord({ wallMs, events, node = process.version }) {
   for (const f of files) if (f.ms > SUITE_BUDGETS.fileMs.max) over.push(f.file);
   const totalTests = files.reduce((n, f) => n + f.cases, 0);
   const totalTop = files.reduce((n, f) => n + f.topTests, 0);
+  const totalPass = files.reduce((n, f) => n + f.passed, 0);
+  const totalSkipped = files.reduce((n, f) => n + f.skipped, 0);
+  const totalFail = totalTests - totalPass - totalSkipped;
   return {
     at: new Date().toISOString(),
     node,
@@ -108,11 +116,16 @@ export function buildRecord({ wallMs, events, node = process.version }) {
     totalFiles: files.length,
     totalTests,
     totalTopTests: totalTop,
+    totalPass,
+    totalFail,
+    totalSkipped,
     slowest: files.slice(0, 5).map((f) => ({ file: f.file, ms: Math.round(f.ms) })),
     files: files.map((f) => ({
       file: f.file,
       ms: Math.round(f.ms),
       cases: f.cases,
+      passed: f.passed,
+      skipped: f.skipped,
       topTests: f.topTests,
       fail: f.fail,
       slowest: { name: f.slowest.name, ms: Math.round(f.slowest.ms) },
@@ -176,6 +189,7 @@ export default async function* suiteReporter(source) {
         nesting: data.nesting,
         ms: data.details?.duration_ms ?? 0,
         status: ev.type === 'test:fail' ? 'fail' : 'pass',
+        skipped: Boolean(data.skip ?? data.todo),
       })}\n`,
     );
   }
