@@ -12,6 +12,7 @@ import { home, configPath, pidPath, PACKAGE_ROOT } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
 import { embedderPlan } from '../agent/embed-provider.js';
+import { bootstrapStatus } from '../core/bootstrap.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -467,6 +468,22 @@ export async function runDoctor(): Promise<Check[]> {
       : `${plan.note}${vectors ? ` · ${vectors} vector(s) indexed` : ''}`,
     fix: plan.blocker,
   });
+
+  // 32.3: the file set a new home gets, and whether the first run is done.
+  try {
+    const st = bootstrapStatus();
+    checks.push({
+      id: 'bootstrap',
+      label: 'home file set (SOUL, IDENTITY, AGENTS, USER, MEMORY)',
+      status: st.complete ? 'ok' : 'warn',
+      detail: st.complete
+        ? `${st.present.length} file(s) present${st.stage === 'first-run' ? ' · first run not done yet' : ''}`
+        : `missing: ${st.missing.join(', ')}`,
+      fix: st.complete ? undefined : 'termcrab bootstrap --write',
+    });
+  } catch {
+    /* a home that cannot be read is reported by the other checks */
+  }
 
   // Voice / TTS
   try {

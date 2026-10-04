@@ -117,6 +117,18 @@ export const COMMANDS: CommandDoc[] = [
     json: '{restored, bytes, movedTo, from, schema:{from,to,migrated}}',
   },
   {
+    cmd: 'bootstrap',
+    usage: 'bootstrap [--write | --force] [--json]',
+    summary: 'the files a new home gets (SOUL, IDENTITY, AGENTS, USER, MEMORY) and whether anything is missing',
+    flags: [
+      '--write   write only what is missing; an existing file is never touched',
+      '--force   rewrite the templates even where files already exist — this overwrites your words, so it is deliberately not the default',
+      '--json    the file set as data',
+    ],
+    example: 'termcrab bootstrap',
+    json: '{home, complete, missing:[rel], present:[{rel,bytes,why}], stage, nextStep}',
+  },
+  {
     cmd: 'schema',
     usage: 'schema [--dry-run] [--json]',
     summary: 'the state schema version, and which migrations have run',

@@ -313,7 +313,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       embeddingIndex = new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder);
       log.info(`memory: hybrid search enabled — ${plan.note}`);
     } else if (config.memory?.embeddings !== false) {
-      log.info(`memory: lexical search only — ${plan.note}${error ? ` (${error})` : ''}`);
+      log.info(`memory: ${plan.note}${error ? ` (${error})` : ''}`);
     }
   } catch (err) {
     log.info(`memory: embeddings unavailable, lexical only (${err instanceof Error ? err.message : String(err)})`);

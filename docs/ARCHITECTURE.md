@@ -130,10 +130,11 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/backup.ts` | One-tar backup/restore of a home, manifest inside (31) |
+| `src/core/bootstrap.ts` | The file set a brand-new home gets — SOUL, IDENTITY, AGENTS, USER, MEMORY, BOOTSTRAP — written once and never overwritten (32.3) |
 | `src/core/color.ts` | When ANSI colour is written at all: NO_COLOR · TTY-only · TCRAB_COLOR override (13.2) |
 | `src/core/config.ts` | config.json load/save/merge, dotted get/set |
 | `src/core/disk.ts` | The disk budget (10.6) |

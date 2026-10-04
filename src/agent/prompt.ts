@@ -9,6 +9,7 @@ import { readDigest } from './sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { listIntents } from './intents.js';
 import { listGoals } from './goals.js';
+import { readBootstrapNote, readIdentity } from '../core/bootstrap.js';
 
 export interface PromptCtx {
   config: Config;
@@ -168,8 +169,8 @@ export function promptSectionSizes(ctx: {
   const parts: { section: string; text: string; note: string }[] = [
     {
       section: 'identity + rules',
-      text: `You are ${displayName}.\n${soul}\n${channelGuide(ctx.channel)}`,
-      note: 'who the agent is and how it must behave',
+      text: `You are ${displayName}.\n${soul}${readIdentity() ? `\n${readIdentity()}` : ''}${readBootstrapNote() ? `\n${readBootstrapNote()}` : ''}\n${channelGuide(ctx.channel)}`,
+      note: 'who the agent is and how it must behave (plus the first-run note, while it exists)',
     },
     { section: 'memory', text: `# Long-term memory\n${ctx.memoryBlock}`, note: 'facts injected newest-first within the budget' },
     { section: 'skills index', text: ctx.skills.promptIndex(), note: 'skill names + one line each (full text loads on demand)' },
@@ -229,6 +230,16 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   const goalsBlurb = openGoals.length
     ? `\n# Active goals\n${openGoals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n')}\n`
     : '';
+  // 32.3: the first-run note is injected while it exists (and the agent is told
+  // to delete it), and IDENTITY.md — the owner's settings for the agent — rides
+  // with SOUL.md.
+  const firstRun = readBootstrapNote();
+  const firstRunBlurb = firstRun
+    ? `\n# First run (workspace/BOOTSTRAP.md)\nThis is a **new home**: nobody has talked to you yet.\n${firstRun}\n` +
+      `(Do the four steps above, briefly, in the owner's language — then delete workspace/BOOTSTRAP.md so the next turn is normal.)\n`
+    : '';
+  const identity = readIdentity();
+  const identityBlurb = identity ? `\n# The owner's settings for you (workspace/IDENTITY.md)\n${identity}\n` : '';
   const roster = extras ? readAgentsRoster() : '';
   const rosterBlurb = roster
     ? `\n# Agent roster\n${roster}\n`
@@ -241,7 +252,7 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   return `You are ${displayName}, a proactive personal AI agent running on the user's own device (TermCrab).
 You are action-oriented: use tools to actually do things, then answer concisely.
 ${agentNote}${channelGuide(ctx.channel)}# Identity
-${soul || `You are ${displayName}, friendly, practical, and concise.`}
+${soul || `You are ${displayName}, friendly, practical, and concise.`}${identityBlurb}${firstRunBlurb}
 
 # Long-term memory
 ${memory || '(empty - use the remember tool to record durable facts)'}${digestBlurb}

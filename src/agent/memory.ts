@@ -221,6 +221,10 @@ export class MemoryStore {
         headerLines.push(line);
       }
     }
+    // The lines above the first fact are the file's own head, injected as-is:
+    // people edit this file by hand (and a plain bullet line is not a stamped
+    // fact, but it is still something they wanted the agent to see). Keep your
+    // own head lines short — this block rides in every turn.
     const header = headerLines.join('\n').trim();
     // USER.md is the owner's own file: small, always injected, and never
     // trimmed by the fact budget (the agent must know who it is talking to).

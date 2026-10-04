@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T00:05:01.824Z",
+ "measured": "2026-10-04T00:22:06.055Z",
  "tally": {
-  "WORKING": 96,
+  "WORKING": 97,
   "BETTER": 14,
-  "PARTIAL": 22,
+  "PARTIAL": 21,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 91,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 101,
+ "effortLeft": 99,
  "areas": [
   "agent",
   "automation",
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "15 match(es): src/agent/prompt.ts:92, src/agent/status.ts:11, src/cli.ts:34"
+    "detail": "15 match(es): src/agent/prompt.ts:93, src/agent/status.ts:11, src/cli.ts:34"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1191, src/command-help.ts:219"
+    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1206, src/command-help.ts:231"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:264, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:266, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:254"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:256"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:168, src/gateway/server.ts:1556, src/mobile/doctor.ts:538"
+    "detail": "5 match(es): src/cli.ts:170, src/gateway/server.ts:1556, src/mobile/doctor.ts:555"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:359"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:379"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1291, src/gateway/server.ts:1592"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1306, src/gateway/server.ts:1592"
    }
   },
   {
@@ -644,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "615 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:17"
+    "detail": "617 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:18"
    }
   },
   {
@@ -841,7 +841,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2429"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2476"
    }
   },
   {
@@ -941,7 +941,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/context.ts:131, src/agent/memory.ts:186, src/agent/prompt.ts:203"
+    "detail": "7 match(es): src/agent/context.ts:131, src/agent/memory.ts:186, src/agent/prompt.ts:204"
    }
   },
   {
@@ -960,7 +960,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:166, src/agent/memory.ts:227"
+    "detail": "3 match(es): src/agent/context.ts:166, src/agent/memory.ts:231"
    }
   },
   {
@@ -999,7 +999,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:417, src/cli.ts:2367"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:417, src/cli.ts:2414"
    }
   },
   {
@@ -1038,26 +1038,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:65, src/agent/prompt.ts:19"
+    "detail": "90 match(es): src/agent/dream.ts:3, src/agent/loop.ts:65, src/agent/prompt.ts:20"
    }
   },
   {
    "area": "context",
    "capability": "Bootstrap file set",
    "openclaw": "AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY",
-   "verdict": "PARTIAL",
-   "evidence": "SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose",
+   "verdict": "WORKING",
+   "evidence": "All six names are real files now (32.3). The first command that touches a new home writes workspace/SOUL.md, workspace/IDENTITY.md (pure settings, injected every turn), workspace/AGENTS.md (the surface -> agent table), workspace/BOOTSTRAP.md (the first-run note, injected into the prompt only while it exists, with the agent told to walk the owner through the two questions that matter and then delete it), memory/MEMORY.md and memory/USER.md - and only the missing ones: an existing file is never overwritten, `--force` is the documented exception. `termcrab bootstrap` shows the set and what is missing, the doctor reports it with the one-line fix, and the whole set travels in a backup. Pinned by test/tier2v.test.ts (6 cases, including a real first turn from an empty directory with no setup command)",
    "probe": {
-    "pattern": "readUserBlock",
+    "file": "src/core/bootstrap.ts",
+    "pattern": "export function runBootstrap",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:166, src/agent/memory.ts:227"
+    "detail": "1 match(es): src/core/bootstrap.ts:159"
    }
   },
   {
@@ -1134,7 +1135,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:541"
+    "detail": "22 match(es): src/agent/prompt.ts:39, src/agent/toolbox.ts:1518, src/agent/tools.ts:541"
    }
   },
   {
@@ -1314,7 +1315,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/prompt.ts:249, src/agent/tools.ts:210"
+    "detail": "3 match(es): src/agent/prompt.ts:260, src/agent/tools.ts:210"
    }
   },
   {
@@ -1525,7 +1526,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:550, src/mobile/doctor.ts:406"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:550, src/mobile/doctor.ts:407"
    }
   },
   {
@@ -1933,7 +1934,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "103 match(es): src/agent/loop.ts:226, src/agent/prompt.ts:19, src/agent/rolling.ts:5"
+    "detail": "104 match(es): src/agent/loop.ts:226, src/agent/prompt.ts:20, src/agent/rolling.ts:5"
    }
   },
   {
@@ -1952,7 +1953,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "86 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:210"
+    "detail": "87 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:210"
    }
   },
   {
@@ -2030,7 +2031,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/heartbeat.ts:25, src/agent/prompt.ts:19, src/channels/picker.ts:10"
+    "detail": "21 match(es): src/agent/heartbeat.ts:25, src/agent/prompt.ts:20, src/channels/picker.ts:10"
    }
   },
   {
@@ -2129,7 +2130,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "101 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:251"
+    "detail": "102 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:253"
    }
   },
   {
@@ -2167,7 +2168,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "55 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "57 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2186,7 +2187,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:392, src/command-help.ts:497"
+    "detail": "2 match(es): src/cli.ts:407, src/command-help.ts:517"
    }
   },
   {
@@ -2224,7 +2225,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:40, src/command-help.ts:275"
+    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:40, src/command-help.ts:287"
    }
   },
   {
@@ -2339,7 +2340,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "13 match(es): src/agent/prompt.ts:254, src/agent/secrets.ts:16, src/agent/toolbox.ts:43"
+    "detail": "14 match(es): src/agent/prompt.ts:265, src/agent/secrets.ts:16, src/agent/toolbox.ts:43"
    }
   },
   {
@@ -2397,7 +2398,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "32 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
+    "detail": "33 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
    }
   },
   {
@@ -2456,7 +2457,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/schema.ts:309"
+    "detail": "1 match(es): src/core/schema.ts:322"
    }
   },
   {
@@ -2553,7 +2554,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:271"
+    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:272"
    }
   },
   {
@@ -2591,7 +2592,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:425, src/gateway/server.ts:85"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:445, src/gateway/server.ts:85"
    }
   },
   {
@@ -2648,7 +2649,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "32 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
+    "detail": "33 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
    }
   },
   {
@@ -2887,7 +2888,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "83 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "84 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

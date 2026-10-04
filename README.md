@@ -85,6 +85,12 @@ Or with the one-command installer (re-run the same command later to upgrade; `TC
 curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/arena/01a0ec99-claw/install.sh | bash
 ```
 
+The first command on a brand-new install writes the six files that make the agent an agent —
+`workspace/SOUL.md`, `IDENTITY.md`, `AGENTS.md`, `BOOTSTRAP.md`, `memory/MEMORY.md` and
+`memory/USER.md` — and says so in one line. Nothing you have written is ever overwritten, and
+`workspace/BOOTSTRAP.md` tells the agent to introduce itself, ask what to call you and in which
+language, then delete itself. See what is there with `termcrab bootstrap`.
+
 ### Anywhere (macOS / Linux / CI)
 
 ```bash
@@ -109,6 +115,7 @@ termcrab supervisor     run the gateway with auto-restart watchdog
 termcrab agent [msg] [--as <name>] [--tier local]
                            chat one-shot or interactive REPL (/as <name>, /agents inside)
 termcrab tui            full-screen terminal: live transcript, tool cards, shared main session
+termcrab bootstrap      the files a new home gets (SOUL, IDENTITY, AGENTS, USER, MEMORY)
 termcrab backup [file]   one tar of everything that matters (config, chats, memory, skills, state)
 termcrab restore <file>  verify it, then put it back — nothing is overwritten in place
 termcrab schema          the state schema version, and which migrations have run

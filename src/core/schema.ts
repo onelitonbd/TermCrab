@@ -116,13 +116,26 @@ export function editJson(file: string, edit: (data: Record<string, unknown>) => 
   return true;
 }
 
+function hasFiles(dir: string): boolean {
+  try {
+    // Files, not folders: the layout pre-creates empty directories (workspace/
+    // outbox, memory/daily), and those must not make a new home look used.
+    return fs.readdirSync(dir, { withFileTypes: true }).some((e) => e.isFile() && !e.name.startsWith('.'));
+  } catch {
+    return false;
+  }
+}
+
 function isFresh(root: string): boolean {
-  // A home is fresh when there is nothing to carry forward: no config, no
-  // sessions, no memory. A stamp alone does not make it non-fresh.
+  // Fresh means "nothing to carry forward": no config, and no content files in
+  // the places a version change touches. Empty directories do not count — the
+  // layout creates those on the very first command, and a home that is nothing
+  // but folders is still a home nobody has used.
   return (
     !fs.existsSync(path.join(root, 'config.json')) &&
-    !fs.existsSync(path.join(root, 'sessions')) &&
-    !fs.existsSync(path.join(root, 'memory'))
+    !hasFiles(path.join(root, 'sessions')) &&
+    !hasFiles(path.join(root, 'memory')) &&
+    !hasFiles(path.join(root, 'workspace'))
   );
 }
 

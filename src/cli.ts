@@ -70,6 +70,7 @@ import { applyReset } from './agent/session-policy.js';
 import { rollingLine, rollingSessionKey } from './agent/rolling.js';
 import { runTui } from './tui/app.js';
 import { MIGRATIONS, SCHEMA_VERSION, ensureSchema, readStamp, runMigrations } from './core/schema.js';
+import { bootstrapStatus, runBootstrap } from './core/bootstrap.js';
 import { planRestore, restoreBackup, writeBackup } from './core/backup.js';
 import { applyVerified, latestBuildSnapshot, repoRoot, restoreBuildSnapshot, verifyBuild } from './core/updater.js';
 import { formatSessionView, sessionView } from './agent/session-view.js';
@@ -108,6 +109,7 @@ Everyday extras:
   termcrab backup [file]             one tar with config, chats, memory and skills (move to a new phone)
   termcrab restore <file>            put a backup back — existing files are moved aside, never overwritten
   termcrab schema [--dry-run]        the state schema version and the migrations that have run
+  termcrab bootstrap [--write]       the files a new home gets (SOUL, IDENTITY, AGENTS, USER, MEMORY)
   termcrab doctor --share            copy-paste report for asking help (passwords stripped)
   termcrab boot [install|status]     start automatically when the phone boots
   termcrab approvals [list]          dangerous tools waiting for your yes/no (panel card answers too)
@@ -349,7 +351,10 @@ export async function main(argv: string[]): Promise<void> {
   // 31.1: before any command reads the home, carry it forward. A home that
   // does not exist yet is left alone (the command creates what it needs), and
   // a restore replaces the stamp wholesale — its own check runs after.
-  if (!['help', '--help', '-h', 'version', '--version', '-v', 'completion', 'restore'].includes(cmd) && fs.existsSync(home())) {
+  if (!['help', '--help', '-h', 'version', '--version', '-v', 'completion', 'restore'].includes(cmd)) {
+    // The layout first: a home that does not exist yet is created here so the
+    // two hooks below have something to inspect (32.3).
+    ensureLayout();
     const schema = ensureSchema({ release: version(), quiet: true });
     if (schema?.refused) {
       console.error(`✗ ${schema.refused}`);
@@ -357,7 +362,17 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
     if (schema && schema.applied.length && !machine) {
-      console.error(`(state schema ${schema.from} → ${schema.to}: ${schema.applied.length} migration(s) ran; a snapshot is in state/backups/)`);
+      if (schema.adopted) console.error(`(state schema: a new home, stamped at ${schema.to})`);
+      else console.error(`(state schema ${schema.from} → ${schema.to}: ${schema.applied.length} migration(s) ran; a snapshot is in state/backups/)`);
+    }
+    // 32.3: a home that has never seen TermCrab gets the files that make an
+    // agent an agent before the first command reads it — and only the missing
+    // ones, so anything the owner has written is never touched.
+    if (cmd !== 'bootstrap') {
+      const boot = runBootstrap({ name: loadConfig().agent.name });
+      if (boot.created.length && !machine) {
+        console.error(`(first run: created ${boot.created.length} file(s) in ${home()} — the agent will introduce itself; see workspace/BOOTSTRAP.md)`);
+      }
     }
   }
 
@@ -1876,6 +1891,38 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'bootstrap': {
+      // The file set a new home gets (32.3). Visible on purpose: `--json`
+      // answers "is my home complete", and running it twice changes nothing.
+      if (rest.includes('--write') || rest.includes('--force')) {
+        const r = runBootstrap({ force: rest.includes('--force'), name: loadConfig().agent.name });
+        if (machine) {
+          emitJson('bootstrap', { ...r, wrote: r.created.length });
+          return;
+        }
+        console.log(r.created.length ? `✅ wrote ${r.created.length} file(s):` : '✅ nothing to write — every file is already there');
+        for (const f of r.created) console.log(`   + ${f}`);
+        for (const f of r.kept) console.log(`   · ${f} (kept as-is)`);
+        return;
+      }
+      const st = bootstrapStatus();
+      if (machine) {
+        emitJson('bootstrap', st);
+        return;
+      }
+      console.log(`🪺 home ${st.home}`);
+      for (const f of st.present) console.log(`   ✔ ${f.rel}  ${f.bytes} B  — ${f.why}`);
+      for (const f of st.missing) console.log(`   ✗ ${f}  (missing — termcrab bootstrap --write)`);
+      console.log(
+        st.stage === 'empty'
+          ? '   · nothing written yet'
+          : st.stage === 'first-run'
+            ? '   · first run: the agent will introduce itself and delete BOOTSTRAP.md'
+            : '   · past first run',
+      );
+      console.log(`   next: ${st.nextStep}`);
+      return;
+    }
     case 'schema': {
       const stamp = readStamp();
       const dry = rest.includes('--dry-run');

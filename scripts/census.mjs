@@ -265,9 +265,9 @@ check('context', 'Embedding providers', 'OpenAI, Voyage, Gemini, Ollama, local G
   { file: 'src/agent/embed-provider.ts', pattern: 'export async function resolveEmbedder', expect: 'present' }, 0);
 check('context', 'Dreaming / idle consolidation', 'idle-cycle log → memory distillation', 'WORKING',
   'src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength', { pattern: 'dream', expect: 'present' }, 0);
-check('context', 'Bootstrap file set', 'AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY', 'PARTIAL',
-  'SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent\'s identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose',
-  { pattern: 'readUserBlock', expect: 'present' }, 2);
+check('context', 'Bootstrap file set', 'AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY', 'WORKING',
+  'All six names are real files now (32.3). The first command that touches a new home writes workspace/SOUL.md, workspace/IDENTITY.md (pure settings, injected every turn), workspace/AGENTS.md (the surface -> agent table), workspace/BOOTSTRAP.md (the first-run note, injected into the prompt only while it exists, with the agent told to walk the owner through the two questions that matter and then delete it), memory/MEMORY.md and memory/USER.md - and only the missing ones: an existing file is never overwritten, `--force` is the documented exception. `termcrab bootstrap` shows the set and what is missing, the doctor reports it with the one-line fix, and the whole set travels in a backup. Pinned by test/tier2v.test.ts (6 cases, including a real first turn from an empty directory with no setup command)',
+  { file: 'src/core/bootstrap.ts', pattern: 'export function runBootstrap', expect: 'present' }, 0);
 
 // ------------------------------------------------------------------ 5. tools
 check('tools', 'Shell execution', 'exec with policy + approvals', 'WORKING',

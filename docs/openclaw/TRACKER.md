@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৯১%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯৬টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২২টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৯৮ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯১%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯৭টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৯৬ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,9 +52,9 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 96 | wired and observable |
+| ✅ WORKING | 97 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 22 | exists, narrower than theirs |
+| 🟡 PARTIAL | 21 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~98d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~96d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~101d | in-scope only |
+| **total** | 132 | ~99d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -143,7 +143,7 @@ Out of scope, and why:
 | Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
 | Media send/receive | images, audio, documents | ✅ WORKING | inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2 | parity | 3 |
 
-### context — 96% (13 in-scope checks)
+### context — 100% (13 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -159,7 +159,7 @@ Out of scope, and why:
 | Memory search quality | hybrid vector+BM25, decay, MMR, trigger injection | ✅ WORKING | searchDetailed(): BM25 with document frequency over MEMORY.md/USER.md/daily/compacted, an all-terms bonus and a 2.2x exact-phrase boost, a 30-day recency half-life from each fact's own stamp, untrusted facts ranked lower but never hidden, snippets with the matched terms marked, and the optional embedding index added as explicitly-labelled semantic hits on top (never required). CLI `memory search --json` carries score/snippet/provenance, the chat has /memory search, and the agent has search_memory (18.1). test/tier2g.test.ts | parity | — |
 | Embedding providers | OpenAI, Voyage, Gemini, Ollama, local GGUF, FTS-only | ✅ WORKING | Three routes, chosen in one place (src/agent/embed-provider.ts) and reported by `termcrab embeddings status` with the model and its price: the local transformers.js model when its package is installed (offline, no key), any OpenAI-compatible /embeddings endpoint (OpenAI, OpenRouter, and the self-hosted ones a Termux user actually has - Ollama, llama.cpp, LM Studio, which need no key at all), or Gemini batchEmbedContents with the key in a header. `memory.embedProvider = auto|local|openai|gemini` plus `embedModel`/`embedBaseUrl`; auto prefers the local model and otherwise uses the chat provider the user already configured, so smart search is one config value away instead of a 23 MB download. Errors name the host and the status and redact the key, a broken endpoint falls back to lexical search with the reason logged, and `termcrab embeddings test <text>` embeds a string end to end and prints the dimension. Voyage and GGUF files are not implemented; an OpenAI-compatible GGUF server (llama.cpp) is covered by the openai route. Pinned by test/tier2u.test.ts (10 cases, incl. a real local HTTP endpoint and a semantic hit no word match could find) | parity | — |
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
-| Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | 🟡 PARTIAL | SOUL.md + AGENTS.md roster + the memory head now includes USER.md (18.4); IDENTITY.md and BOOTSTRAP.md are still not part of the set - the agent's identity lives in SOUL.md/config and setup is onboarding, so those two names stay unmatched on purpose | parity | 2 |
+| Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | ✅ WORKING | All six names are real files now (32.3). The first command that touches a new home writes workspace/SOUL.md, workspace/IDENTITY.md (pure settings, injected every turn), workspace/AGENTS.md (the surface -> agent table), workspace/BOOTSTRAP.md (the first-run note, injected into the prompt only while it exists, with the agent told to walk the owner through the two questions that matter and then delete it), memory/MEMORY.md and memory/USER.md - and only the missing ones: an existing file is never overwritten, `--force` is the documented exception. `termcrab bootstrap` shows the set and what is missing, the doctor reports it with the one-line fix, and the whole set travels in a backup. Pinned by test/tier2v.test.ts (6 cases, including a real first turn from an empty directory with no setup command) | parity | — |
 
 ### gateway — 93% (16 in-scope checks)
 
