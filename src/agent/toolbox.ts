@@ -17,6 +17,7 @@ import {
 import { parseCron, CronParseError, nextRun } from '../cron/parser.js';
 import { saveConfig } from '../core/config.js';
 import { parseFrontmatter } from '../core/frontmatter.js';
+import { formatRoomHistory, listRooms, parseRoomKey } from '../channels/rooms.js';
 import { channelsWithDocuments, sendDocumentTo } from '../channels/conversations.js';
 import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
 import { acceptIncoming } from '../channels/media.js';
@@ -1159,6 +1160,53 @@ export function extraTools(env: ToolEnv): Tool[] {
         note: typeof args.note === 'string' ? args.note : undefined,
       });
       return `goal ${g.id} -> ${g.status} ${g.progress}%`;
+    },
+  });
+
+  // ---- ambient room history (34.3) ----
+  tools.push({
+    def: {
+      name: 'room_history',
+      description:
+        'Read the recent messages of a chat/group room, including the ones the bot was not addressed in and therefore never got a turn for. Use it to answer "what did I miss?" or to see what was said before you were called in.',
+      schema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'how many messages back (default 12, max 50)' },
+          room: { type: 'string', description: 'channel:chat, e.g. telegram:-100123 (default: this room)' },
+        },
+      },
+    },
+    async execute(args) {
+      const limitRaw = typeof args.limit === 'number' && Number.isFinite(args.limit) ? Math.floor(args.limit) : 12;
+      const limit = Math.min(50, Math.max(1, limitRaw));
+      const asked = argStr(args, 'room', false).trim();
+      let channel = env.channel ?? '';
+      let room = env.chatId ?? '';
+      if (asked) {
+        const parsed = parseRoomKey(asked);
+        if (parsed) {
+          channel = parsed.channel;
+          room = parsed.room;
+        } else {
+          // A bare room id is how a person thinks about it; only trust it if
+          // exactly one channel could mean.
+          const candidates = listRooms().filter((r) => r.room === asked);
+          if (candidates.length === 1) {
+            channel = candidates[0]!.channel;
+            room = candidates[0]!.room;
+          } else {
+            return `could not read "${asked}" — use channel:chat (for example telegram:-100123).`;
+          }
+        }
+      }
+      if (!channel || !room) {
+        const rooms = listRooms().slice(0, 10);
+        return rooms.length
+          ? `no room context in this turn — rooms with history: ${rooms.map((r) => r.key).join(', ')}`
+          : 'no room context in this turn, and no room has any history yet.';
+      }
+      return formatRoomHistory(channel, room, { limit });
     },
   });
 

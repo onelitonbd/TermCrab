@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TelegramApi } from './api.js';
 import { log } from '../core/logger.js';
+import { recordRoomMessage } from './rooms.js';
 import { outboxAck, outboxFail, outboxMarkSending, outboxPending, outboxPush } from '../mobile/outbox.js';
 import { escapeHtml, mdToTelegramHtml } from './markdown.js';
 import type { ArrivalInfo } from './intake.js';
@@ -252,6 +253,17 @@ export class TelegramChannel {
       // A reply to one of our own messages counts as addressing us, and then
       // there is nothing to strip — hence a boolean, not a match.
       const addressed = Boolean(mention) || this.isReplyToSelf(msg);
+      // 34.3: the group is a room even when the mention policy keeps us out of
+      // the conversation — record what was said, and whether it was for us, so
+      // "what did I miss?" has an answer instead of an apology.
+      recordRoomMessage({
+        channel: 'telegram',
+        room: String(chatId),
+        from: name,
+        ...(userId ? { fromId: String(userId) } : {}),
+        text,
+        addressed: policy === 'all' || addressed,
+      });
       if (policy !== 'all' && !addressed) return;
       const stripped = mention ? text.replace(mention, ' ').trim() : text;
       let reply: string;

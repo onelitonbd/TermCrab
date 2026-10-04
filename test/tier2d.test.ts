@@ -392,7 +392,10 @@ test('15.5 the channel rules are written down, and the census says so', async (t
     const slash = census.rows.find((r) => r.capability === 'Slash commands in chat');
     assert.ok(media && groups && slash);
     assert.equal(media!.verdict, 'WORKING');
-    assert.equal(groups!.verdict, 'PARTIAL');
+    // 34.3 moved this row to WORKING; the assertion moves with it, and the
+    // evidence must still state the structural limit rather than pretend.
+    assert.equal(groups!.verdict, 'WORKING');
+    assert.match(groups!.evidence, /cannot fetch messages the bot never received/);
     assert.equal(slash!.verdict, 'WORKING');
     for (const row of [media!, groups!, slash!]) {
       assert.match(row.evidence, /15\.\d/, `${row.capability} cites the batch`);

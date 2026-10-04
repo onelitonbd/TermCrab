@@ -354,6 +354,21 @@ export const COMMANDS: CommandDoc[] = [
     example: 'termcrab agents routes set telegram crabby',
   },
   {
+    cmd: 'rooms',
+    usage: 'rooms [list | show <channel:chat> [--limit <n>] | clear <channel:chat> | clear --all] [--json]',
+    summary: 'ambient room history: what was said in a chat while the bot was not addressed (and is stored locally, bounded)',
+    flags: [
+      'list                    every room with history, the message count and how many arrived since you were last addressed',
+      'show <channel:chat>     the last messages of one room, oldest first (telegram:-100123)',
+      'clear <channel:chat>    forget one room\'s history',
+      'clear --all             forget every room\'s history',
+      '--limit <n>             show: how many messages back (default 20)',
+      '--json                  the same as data',
+    ],
+    example: 'termcrab rooms show telegram:-100123',
+    json: 'list → {count, rooms:[{key, channel, room, messages, sinceAddressed, lastAt, bytes}]} · show → {room, count, messages:[{ts, from, fromId?, text, addressed}]} · clear → {cleared, dropped, room?}',
+  },
+  {
     cmd: 'browser',
     usage: 'browser [status | open <url> | text | shot] [--json]',
     summary: 'drive the browser you already have (Chrome/Chromium with a debug port) — read a page, click, fill, screenshot',

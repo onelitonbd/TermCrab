@@ -101,6 +101,12 @@ export interface RunOpts {
    * you that" has an answer when more than one person can talk to the agent.
    */
   user?: string;
+  /**
+   * 34.3: the room this turn came from (a chat id, an address). The agent can
+   * read that room's ambient history with `room_history` without being told
+   * which room is "here".
+   */
+  room?: string;
   /** Wait this long for a busy session before refusing (0 = refuse now). */
   waitMs?: number;
 }
@@ -374,6 +380,8 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     skills: ctx.skills,
     sessions: ctx.sessions,
     sessionId,
+    ...(opts.channel ? { channel: opts.channel } : {}),
+    ...(opts.room ? { chatId: opts.room } : {}),
     memoryOrigin,
     runSource: `${opts.channel ?? 'cli'}${opts.user ? ` u:${opts.user}` : ''} · session:${opts.sessionId} · run:${sessionId}`,
     providerLabel: providerLabel(ctx.config),

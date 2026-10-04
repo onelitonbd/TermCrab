@@ -49,6 +49,12 @@ export interface ToolEnv {
   ) => import('./tasks.js').Task;
   /** MCP clients keyed by server name (wired by the agent loop). */
   mcpClients?: Map<string, McpClient>;
+  /**
+   * 34.3: the room this turn came from (`channel` + chat id), when it came from
+   * a chat surface. `room_history` uses it to mean "here" without asking.
+   */
+  channel?: string;
+  chatId?: string;
 }
 
 export interface Tool {

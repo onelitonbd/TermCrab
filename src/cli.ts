@@ -56,6 +56,7 @@ import { approveProposal, getProposal, listProposals, listRejected, rejectPropos
 import { embeddingsStatus, embeddingsSetup, embeddingsTest } from './agent/embed-setup.js';
 import { transcribeFile } from './mobile/whisper.js';
 import { browserStatus, CdpBrowser } from './agent/cdp.js';
+import { clearRoom, formatRoomHistory, listRooms, parseRoomKey, readRoom } from './channels/rooms.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
@@ -106,8 +107,10 @@ Everyday extras:
   termcrab agents new <name> --template brief|teacher|researcher   starter personality
   termcrab embeddings [status|setup|test] smart memory search (local or via your provider)
   termcrab transcribe <file>          turn a voice recording into text (offline, needs whisper.cpp)
+  termcrab browser [status|open|text|shot]  read a page with the browser you already have (debug port)
   termcrab import openclaw [--apply] bring your old OpenClaw setup over (preview first!)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
+  termcrab rooms [list|show|clear]   what was said in a group while you were not addressed
   termcrab heartbeat                 run one self-check right now
   termcrab update                    check if a newer TermCrab exists (and how to get it)
   termcrab update --apply            pull, install and build — verified, rolled back if it will not start
@@ -2561,6 +2564,86 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         return;
       }
       console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
+      process.exitCode = 1;
+      return;
+    }
+
+    case 'rooms': {
+      // 34.3: the ambient history the channels keep — what was said in a room
+      // even when the bot was never addressed, and how much of it is unseen.
+      // `--json` belongs to the envelope, not to the subcommand (a subcommand
+      // parser shown the raw rest treats it as a usage error — 33.4's lesson).
+      const rArgs = rest.filter((a) => a !== '--json');
+      const [sub = 'list', arg = ''] = rArgs;
+      const asData = (data: unknown): void => emitJson('rooms', data);
+      if (sub === 'list') {
+        const rooms = listRooms();
+        if (machine) {
+          asData({ count: rooms.length, rooms });
+          return;
+        }
+        if (!rooms.length) {
+          console.log('🏠 No room history yet — it starts with the first message a channel sees.');
+          return;
+        }
+        for (const r of rooms) {
+          const when = r.lastAt ? new Date(r.lastAt).toLocaleString() : 'never';
+          console.log(
+            `🏠 ${r.key.padEnd(28)} ${String(r.messages).padStart(4)} message(s)` +
+              `${r.sinceAddressed ? `, ${r.sinceAddressed} since you were addressed` : ''} · last ${when}`,
+          );
+        }
+        return;
+      }
+      if (sub === 'show') {
+        const parsed = parseRoomKey(arg);
+        if (!parsed) {
+          console.error('usage: termcrab rooms show <channel:chat>   (see: termcrab rooms)');
+          process.exitCode = 1;
+          return;
+        }
+        const limitIdx = rArgs.indexOf('--limit');
+        const limit = limitIdx >= 0 ? Number(rArgs[limitIdx + 1]) || 20 : 20;
+        const messages = readRoom(parsed.channel, parsed.room, limit);
+        if (!messages.length) {
+          console.error(`no history for ${arg} — see: termcrab rooms`);
+          process.exitCode = 1;
+          return;
+        }
+        if (machine) {
+          asData({ room: arg, count: messages.length, messages });
+          return;
+        }
+        console.log(formatRoomHistory(parsed.channel, parsed.room, { limit: limit, lineChars: 200 }));
+        return;
+      }
+      if (sub === 'clear') {
+        if (arg === '--all') {
+          const rooms = listRooms();
+          let dropped = 0;
+          for (const r of rooms) dropped += clearRoom(r.channel, r.room);
+          if (machine) {
+            asData({ cleared: rooms.length, dropped });
+            return;
+          }
+          console.log(`🧹 Cleared ${rooms.length} room(s), ${dropped} message(s).`);
+          return;
+        }
+        const parsed = parseRoomKey(arg);
+        if (!parsed) {
+          console.error('usage: termcrab rooms clear <channel:chat> | clear --all');
+          process.exitCode = 1;
+          return;
+        }
+        const dropped = clearRoom(parsed.channel, parsed.room);
+        if (machine) {
+          asData({ cleared: 1, room: arg, dropped });
+          return;
+        }
+        console.log(`🧹 Cleared ${arg} (${dropped} message(s)).`);
+        return;
+      }
+      console.error('usage: termcrab rooms [list | show <channel:chat> | clear <channel:chat> | clear --all] [--json]');
       process.exitCode = 1;
       return;
     }

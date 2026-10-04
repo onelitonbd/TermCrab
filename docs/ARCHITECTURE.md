@@ -84,6 +84,7 @@ users' runtime.
 | file | what it does |
 |---|---|
 | `src/agent/ask.ts` | ask_user: the agent poses a question, the operator answers from the UI |
+| `src/agent/cdp.ts` | Chrome DevTools Protocol client for the `browser` tool: WebSocket session, navigate/evaluate/click/fill/screenshot (34.1) |
 | `src/agent/context.ts` | The context a turn really sends, and what to do about its size (19.1-19.4) |
 | `src/agent/dream.ts` | Dream pass: replays recent sessions and distils durable facts into memory |
 | `src/agent/embed-provider.ts` | Which embedder is live, and why (32.1) |
@@ -94,7 +95,6 @@ users' runtime.
 | `src/agent/goals.ts` | Goal tracking: open goals with progress, surfaced in the system prompt |
 | `src/agent/heartbeat.ts` | proactive tick: power check -> checklist -> run |
 | `src/agent/intents.ts` | Standing intents: durable directives injected into every system prompt |
-| `src/agent/cdp.ts` | Chrome DevTools Protocol client for the `browser` tool: WebSocket session, navigate/evaluate/click/fill/screenshot (34.1) |
 | `src/agent/loop.ts` | the agent run: prompt -> model -> tools -> repeat |
 | `src/agent/memory.ts` | MEMORY.md + daily logs + lexical search + compacted digests |
 | `src/agent/progress.ts` | Per-session progress card the agent maintains and the UI shows |
@@ -126,6 +126,7 @@ users' runtime.
 | `src/channels/matrix.ts` | Matrix (optional, matrix-js-sdk) |
 | `src/channels/media.ts` | What a chat may hand the agent and the agent may send back: size/extension rules, inbox paths (15.1/15.2) |
 | `src/channels/picker.ts` | Telegram provider/model picker (v0.29.0) |
+| `src/channels/rooms.ts` | 34.3 — ambient room history |
 | `src/channels/signal.ts` | Signal (optional, signal-cli) |
 | `src/channels/slack.ts` | Slack (optional, @slack/bolt) |
 | `src/channels/sms.ts` | SMS/MMS (optional, Twilio) |

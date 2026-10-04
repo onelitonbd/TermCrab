@@ -91,6 +91,7 @@ import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
 import { listConversations, registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
+import { formatRoomHistory } from '../channels/rooms.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -875,6 +876,14 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         ? `👥 Named agents:\n${agents.map((a) => `• @${a} <message>`).join('\n')}\nUsage: start your message with @name`
         : 'No named agents yet. Create workspace/agents/<name>/SOUL.md';
     }
+    // 34.3: what was said in this room, including the messages the mention
+    // policy kept out of the conversation.
+    if (text === '/history' || text.startsWith('/history ')) {
+      const arg = text.slice('/history'.length).trim();
+      const n = Number(arg);
+      const limit = Number.isFinite(n) && n > 0 ? Math.min(30, Math.floor(n)) : 12;
+      return formatRoomHistory(channel, String(chatId), { limit, lineChars: 120 });
+    }
     if (text === '/status') {
       // 21.3: the reset policy is part of "is everything running", because a
       // fresh-looking chat that silently keeps an old thread is worse than one
@@ -897,6 +906,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         '  /inbox      files people sent you (and /inbox <name> to read one)',
         '  /orders     your standing orders (/orders add … , /orders remove <id>)',
         '  /agents     named personalities (@name <message>)',
+        '  /history    what was said here while you were not addressed (/history 20)',
         '  /providers  pick the model',
         '  /heartbeat  run a self-check now',
         'Anything else is a message for the agent.',
@@ -1018,6 +1028,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       userMessage: prefixed.text,
       channel,
       user: userId ? String(userId) : undefined,
+      room: String(chatId),
       agent: routedAgent,
       onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
     });

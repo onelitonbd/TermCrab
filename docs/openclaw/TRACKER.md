@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৯৫%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১০৭টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৫৭ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯৬%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১০৮টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১০টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৫৪ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 107 | wired and observable |
+| ✅ WORKING | 108 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 11 | exists, narrower than theirs |
+| 🟡 PARTIAL | 10 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 95%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 96%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~57d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~54d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~60d | in-scope only |
+| **total** | 132 | ~57d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -125,7 +125,7 @@ Out of scope, and why:
 | Scheduled delivery to channels | deliver cron output to a chat | ✅ WORKING | a job now says where its result goes: cron add --deliver telegram|panel|none (unset = every configured surface, which is what happened before), `cron ls` shows it and the choice is stored in crons.json. The scheduler does not know which surfaces exist — it decides when and hands the target to the gateway, which sends to the paired Telegram chat, emits cron-output on the bus for the panel, or does neither; deliver:none still records the run, the transcript and a daily-log line saying it went nowhere. The same tick resolves which agent runs the job (job.agent, then agents.routes.cron, then main) and logs the reason when a route names an agent that does not exist. test/tier2x.test.ts 33.4 drives all five cases through cronTick with a spy deliver and asserts the transcripts (helper:cron:<id> vs cron:<id>) and the CLI round-trip, including the refusal of a nonsense target and an unknown agent | parity | — |
 | Gmail / IMAP watchers | PubSub + IMAP integrations | 🚫 OUT OF SCOPE | no mail integration — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### channels — 89% (5 in-scope checks, 8 out of scope)
+### channels — 100% (5 in-scope checks, 8 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -138,7 +138,7 @@ Out of scope, and why:
 | Matrix | official plugin | 🚫 OUT OF SCOPE | src/channels/matrix.ts ignores its own messages and other rooms, routes to the agent and sends via sendTextMessage/sendMessage; matrix-js-sdk stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | iMessage / Teams / Google Chat / LINE / Feishu / IRC… | 25+ further channels | 🚫 OUT OF SCOPE | no further adapters — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | Channel routing rules | per-room routing, access groups, broadcast groups | 🚫 OUT OF SCOPE | what is here: a chat-id allowlist + an @agent prefix (src/channels/telegram.ts parseAgentPrefix) — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | parity | — |
-| Group / ambient events | history reads, mention policy | 🟡 PARTIAL | groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3 | parity | 3 |
+| Group / ambient events | history reads, mention policy | ✅ WORKING | two halves, both real. The mention policy (15.3): in a group the bot answers only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy="all" opts into every message. The ambient history (34.3): every group message a channel adapter receives is now written down whether or not it was addressed — state/rooms/<channel>-<room>.jsonl, one JSON line per message (time, who, text, whether it ran a turn), bounded to the last 200 messages and 64 KB per room and trimmed oldest-first, torn lines skipped, local only. The agent reads it with the room_history tool (no arguments means this room, because the gateway hands the turn its channel and chat id), a person reads it with /history [n] or `termcrab rooms [list|show|clear]`, and roomInfo() reports what arrived since the bot was last addressed so "what did I miss?" has an answer. Limits stated: this is what the bot saw, not what was said — the Bot API cannot fetch messages the bot never received, so with group privacy mode on only mentions land in the log; per-room routing rules stay out of scope (the three surfaces are Telegram, the panel and the terminal, and agents.routes already picks the agent). test/tier3a.test.ts 34.3 (the bounded store incl. a torn tail, the adapter recording an unanswered message and marking an answered one, policy all, the tool with and without room context, the CLI round trip, the /history wiring, the docs) | parity | — |
 | Slash commands in chat | 30+ TUI / channel commands | ✅ WORKING | every text channel shares the same commands: /new, /status, /usage (the real meter), /sessions (the real store), /memory (the real memory files), /agents, /providers, /heartbeat, /help (15.4, src/gateway/server.ts handleChannelMessage); the web panel has its own /api/slash set. Fewer words than their 30+, but each one answers from live data — pinned by test/tier2d.test.ts 15.4 | parity | — |
 | Typing indicators | per-channel, on enqueue | ✅ WORKING | src/channels/telegram.ts sends sendChatAction(chatId, typing) before the agent turn, refreshes it every 4s (Telegram forgets after ~5s) and clears it with the answer; a failing indicator never costs a reply and a rejected user gets none. test/tier2b.test.ts 13.1 | parity | — |
 | Media send/receive | images, audio, documents | ✅ WORKING | inbound files land in workspace/inbox and the agent is told the path: photos, documents and voice notes through getFile, with a size limit (channels.telegram.maxFileMb, default 20 MB), an extension allow-list and a hard refusal of executables (.apk/.dex/.exe/.sh/…); outbound is the send_file tool through a registered document sender, and a failed send keeps the file in the offline outbox (15.1/15.2, src/channels/media.ts + src/channels/api.ts sendDocument). Telegram only; the other adapters stay text. test/tier2d.test.ts 15.1/15.2 | parity | 3 |

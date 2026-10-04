@@ -130,6 +130,43 @@ them between chats. Facts remember who said them (28.3): the run records the
 person, and memory entries carry that as their source, so "who told you that"
 has an answer.
 
+## Ambient history: what was said while you were not addressed (34.3)
+
+In a group the bot answers only when it is mentioned — and until 34.3 that also
+meant it *forgot* everything else. A room where four people plan a meeting and
+only mention the bot at the end left the agent with one sentence and no context.
+
+Now every message a channel adapter receives in a room is written down, whether
+or not it was addressed to the bot:
+
+- `state/rooms/<channel>-<room>.jsonl` — one JSON line per message: time, who,
+  the text, and whether it ran a turn.
+- **Bounded twice**: the last 200 messages, capped at 64 KB per room;
+  `state/rooms` is trimmed oldest-first, so a busy group cannot fill the phone.
+- **Local and plain**: no database, and nothing is sent anywhere. It is a file
+  you can read, grep or delete, like the rest of the home.
+- **A torn line is skipped**, not fatal.
+
+The agent reads it with the `room_history` tool — with no arguments it means
+*this* room, so "what did I miss?" is a question it can actually answer — and a
+person reads it in the chat with `/history` (`/history 20` for more). From a
+terminal:
+
+```bash
+termcrab rooms                      # every room with history, and how much is unseen
+termcrab rooms show telegram:-100123
+termcrab rooms clear telegram:-100123   # or: rooms clear --all
+```
+
+**The limit, stated plainly:** this is what the bot *saw*, not what was said.
+The Telegram Bot API cannot fetch messages the bot never received, so a bot
+with privacy mode on (the default for group bots) will see only the messages
+that mention it — there is no way around that from inside the Bot API. With
+privacy mode off, the room log holds the conversation, which is exactly the
+case this was built for. Per-room routing rules (which of several agents answers
+in which room) stay out of scope: the three surfaces are Telegram, the panel and
+the terminal, and `agents.routes.telegram` already decides the agent.
+
 ## Config worth knowing
 
 ```bash

@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T01:38:34.727Z",
+ "measured": "2026-10-04T01:44:13.077Z",
  "tally": {
-  "WORKING": 107,
+  "WORKING": 108,
   "BETTER": 14,
-  "PARTIAL": 11,
+  "PARTIAL": 10,
   "BROKEN": 0,
   "ABSENT": 0
  },
- "coverage": 95,
+ "coverage": 96,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 60,
+ "effortLeft": 57,
  "areas": [
   "agent",
   "automation",
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1382"
+    "detail": "1 match(es): src/gateway/server.ts:1393"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1384"
+    "detail": "2 match(es): src/gateway/server.ts:1395"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:306"
+    "detail": "1 match(es): src/gateway/server.ts:307"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2451"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2462"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1203"
+    "detail": "4 match(es): src/gateway/server.ts:1214"
    }
   },
   {
@@ -220,7 +220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:737, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:745, src/core/approvals.ts:135"
    }
   },
   {
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:695, src/core/config.ts:700"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:698, src/core/config.ts:700"
    }
   },
   {
@@ -298,7 +298,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:306"
+    "detail": "1 match(es): src/gateway/server.ts:307"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:475, src/cli.ts:1337, src/command-help.ts:248"
+    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1340, src/command-help.ts:248"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:273, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:276, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:263"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:266"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:177, src/gateway/server.ts:1576, src/mobile/doctor.ts:555"
+    "detail": "5 match(es): src/cli.ts:180, src/gateway/server.ts:1587, src/mobile/doctor.ts:555"
    }
   },
   {
@@ -452,7 +452,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:686"
+    "detail": "1 match(es): src/agent/loop.ts:694"
    }
   },
   {
@@ -472,7 +472,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:566"
+    "detail": "2 match(es): src/agent/loop.ts:574"
    }
   },
   {
@@ -491,7 +491,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:433"
+    "detail": "5 match(es): src/agent/loop.ts:441"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:431"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:446"
    }
   },
   {
@@ -548,7 +548,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:549, src/agent/sessions.ts:1190"
+    "detail": "2 match(es): src/agent/loop.ts:557, src/agent/sessions.ts:1190"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1437, src/gateway/server.ts:1612"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1440, src/gateway/server.ts:1623"
    }
   },
   {
@@ -645,7 +645,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "693 match(es): src/agent/cdp.ts:53, src/agent/dream.ts:151, src/agent/embed-provider.ts:139"
+    "detail": "698 match(es): src/agent/cdp.ts:53, src/agent/dream.ts:151, src/agent/embed-provider.ts:139"
    }
   },
   {
@@ -763,7 +763,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:759, src/agent/tools.ts:216"
+    "detail": "2 match(es): src/agent/toolbox.ts:760, src/agent/tools.ts:222"
    }
   },
   {
@@ -804,7 +804,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:667"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:668"
    }
   },
   {
@@ -842,7 +842,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2818"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:2901"
    }
   },
   {
@@ -1000,7 +1000,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:429, src/cli.ts:2756"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:2839"
    }
   },
   {
@@ -1098,7 +1098,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:664, src/agent/tools.ts:217"
+    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:665, src/agent/tools.ts:223"
    }
   },
   {
@@ -1117,7 +1117,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:72, src/agent/tools.ts:214"
+    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:73, src/agent/tools.ts:220"
    }
   },
   {
@@ -1258,7 +1258,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "45 match(es) (min 45): src/agent/toolbox.ts:251"
+    "detail": "46 match(es) (min 45): src/agent/toolbox.ts:252"
    }
   },
   {
@@ -1318,7 +1318,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/tools.ts:375"
+    "detail": "1 match(es): src/agent/tools.ts:381"
    }
   },
   {
@@ -1513,7 +1513,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:34, src/channels/matrix.ts:34, src/channels/telegram.ts:36"
+    "detail": "4 match(es): src/channels/api.ts:34, src/channels/matrix.ts:34, src/channels/telegram.ts:37"
    }
   },
   {
@@ -1532,7 +1532,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:554, src/mobile/doctor.ts:407"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:555, src/mobile/doctor.ts:407"
    }
   },
   {
@@ -1672,19 +1672,19 @@
    "area": "channels",
    "capability": "Group / ambient events",
    "openclaw": "history reads, mention policy",
-   "verdict": "PARTIAL",
-   "evidence": "groups are first-class now: by default the bot answers in a group only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy=\"all\" opts into everything (15.3). Still absent: reading room history it was not addressed in, and per-room routing rules. test/tier2d.test.ts 15.3",
+   "verdict": "WORKING",
+   "evidence": "two halves, both real. The mention policy (15.3): in a group the bot answers only when it is mentioned or replied to, the mention is stripped before the agent sees the text, and channels.telegram.groupPolicy=\"all\" opts into every message. The ambient history (34.3): every group message a channel adapter receives is now written down whether or not it was addressed — state/rooms/<channel>-<room>.jsonl, one JSON line per message (time, who, text, whether it ran a turn), bounded to the last 200 messages and 64 KB per room and trimmed oldest-first, torn lines skipped, local only. The agent reads it with the room_history tool (no arguments means this room, because the gateway hands the turn its channel and chat id), a person reads it with /history [n] or `termcrab rooms [list|show|clear]`, and roomInfo() reports what arrived since the bot was last addressed so \"what did I miss?\" has an answer. Limits stated: this is what the bot saw, not what was said — the Bot API cannot fetch messages the bot never received, so with group privacy mode on only mentions land in the log; per-room routing rules stay out of scope (the three surfaces are Telegram, the panel and the terminal, and agents.routes already picks the agent). test/tier3a.test.ts 34.3 (the bounded store incl. a torn tail, the adapter recording an unanswered message and marking an answered one, policy all, the tool with and without room context, the CLI round trip, the /history wiring, the docs)",
    "probe": {
     "pattern": {},
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:211"
+    "detail": "2 match(es): src/channels/rooms.ts:121, src/channels/telegram.ts:5"
    }
   },
   {
@@ -1703,7 +1703,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:905"
+    "detail": "1 match(es): src/gateway/server.ts:915"
    }
   },
   {
@@ -1722,7 +1722,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:46, src/channels/telegram.ts:37"
+    "detail": "4 match(es): src/channels/api.ts:46, src/channels/telegram.ts:38"
    }
   },
   {
@@ -1741,7 +1741,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "10 match(es): src/agent/toolbox.ts:20, src/channels/api.ts:68, src/channels/conversations.ts:92"
+    "detail": "10 match(es): src/agent/toolbox.ts:21, src/channels/api.ts:68, src/channels/conversations.ts:92"
    }
   },
   {
@@ -1842,7 +1842,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "23340 match(es): src/agent/loop.ts:341"
+    "detail": "23516 match(es): src/agent/loop.ts:347"
    }
   },
   {
@@ -1921,7 +1921,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:410"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:411"
    }
   },
   {
@@ -1940,7 +1940,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "117 match(es): src/agent/loop.ts:226, src/agent/prompt.ts:20, src/agent/rolling.ts:5"
+    "detail": "117 match(es): src/agent/loop.ts:232, src/agent/prompt.ts:20, src/agent/rolling.ts:5"
    }
   },
   {
@@ -1959,7 +1959,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:210"
+    "detail": "87 match(es): src/agent/dream.ts:119, src/agent/heartbeat.ts:32, src/agent/loop.ts:216"
    }
   },
   {
@@ -2018,7 +2018,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1040"
+    "detail": "1 match(es): src/agent/toolbox.ts:1041"
    }
   },
   {
@@ -2137,7 +2137,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "105 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:260"
+    "detail": "106 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:263"
    }
   },
   {
@@ -2156,7 +2156,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:62"
+    "detail": "1 match(es): src/cli.ts:63"
    }
   },
   {
@@ -2175,7 +2175,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "72 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "73 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2194,7 +2194,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:414, src/command-help.ts:569"
+    "detail": "2 match(es): src/cli.ts:417, src/command-help.ts:584"
    }
   },
   {
@@ -2232,7 +2232,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "69 match(es): src/agent/loop.ts:226, src/agent/routing.ts:22, src/cli.ts:43"
+    "detail": "69 match(es): src/agent/loop.ts:232, src/agent/routing.ts:22, src/cli.ts:43"
    }
   },
   {
@@ -2289,7 +2289,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:72, src/gateway/auth.ts:20, src/gateway/server.ts:306"
+    "detail": "5 match(es): src/core/config.ts:72, src/gateway/auth.ts:20, src/gateway/server.ts:307"
    }
   },
   {
@@ -2347,7 +2347,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "14 match(es): src/agent/prompt.ts:265, src/agent/secrets.ts:16, src/agent/toolbox.ts:45"
+    "detail": "14 match(es): src/agent/prompt.ts:265, src/agent/secrets.ts:16, src/agent/toolbox.ts:46"
    }
   },
   {
@@ -2366,7 +2366,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "33 match(es): src/agent/toolbox.ts:1169, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "33 match(es): src/agent/toolbox.ts:1217, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2580,7 +2580,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2880"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2891"
    }
   },
   {
@@ -2897,7 +2897,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "88 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "89 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {
