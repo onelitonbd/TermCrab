@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.82.0 - 2026-10-04
+
+**Every surface can decide, inspect and take its own copy.** Batch 52 went after the audit's honest
+middle — the ◐ cells where a capability was real but only one or two of the three surfaces could reach
+it. Ten of them are gone: the register now reads **CLI 51 ✅ / 14 ◐** (6 n/a), **Telegram 54 ✅ / 12 ◐**
+(5 n/a), **Web 58 ✅ / 8 ◐** (5 n/a), 34 named cells left where there were 44.
+
+- **The panel stops being the only door, and stops keeping its own copies.** The Work view reads the
+  server's inbox and rooms (`/api/inbox`, `/api/rooms`) instead of a list the page remembered; Tools
+  carries the three tool switches (`/api/tools/toggle`) and watcher add/remove (`/api/watchers`);
+  Settings shows the security audit's findings with their fix lines, and the *names* of the secrets on
+  the device — never the values (`/api/secrets`); the chats rail can rename, export and delete a chat;
+  and the composer's **Speak** turns the last reply into an OGG file (`/api/voice`, with the install
+  hint when there is no engine).
+- **Telegram can decide, not just watch.** `/skills approve <name>` — with an inline **Approve**
+  button and a callback that carries the decision — plus `/skills reject|show|import`, and
+  `/cron add "<schedule>" <prompt> [--name x] [--deliver …]`, all on the shared dispatcher the CLI
+  and the panel already call.
+- **The phone terminal can read the reports.** `termcrab suite-time [--json]` (the tests' own clock:
+  wall, cases, files, the slowest five, the budget) and `termcrab work [--full|--json]` (the tracker's
+  Now and Next, or the whole file) — the two views the panel had and the CLI did not.
+- **A real catch, kept in the notes.** `test/p1.test.ts` proved that `/api/sessions/:id/rename` and
+  `/export` had existed since v0.5 — the audit's "no rename/export" note was stale, and the first
+  attempt at this batch added a *second* copy of both routes. The duplicate is gone (rename answers
+  **409** when the new name is taken, 400 for a bad one), the chats rail is wired to the real route,
+  and Export downloads the markdown the route returns. The correction is written down in
+  `docs/SURFACES.md` §4.0b rather than quietly patched.
+
+**Proof:** `test/tier3u.test.ts` — 5 tests, 15 subtests, all green: the inbox path refuses traversal,
+rooms list real history, watchers add and remove through the config, the three switches flip, the
+security and secret views leak no values, a skill proposal really lands in `<home>/skills`, the two new
+CLI verbs answer (and `--json` parses), and rename/export/voice answer 200 or the documented 422.
+`test/p1.test.ts` 24 pass on the corrected routes; `api` 30 pass. Full suite **1098 pass · 0 fail ·
+3 skip · 110 files · 1101 cases** (189.8 s of a 240 s budget), coverage **87.24 / 77.56 / 86.91** on
+fingerprint `31871c3760fbb06c`, CLI coverage 49/57 commands run by the suite with 8 listed and
+**0 uncovered**, census 100% of 171 in-scope checks. The audit's three-surface matrix is regenerated
+from the probes (`--check` green) — `0 of 71 rows have at least one ❌`.
+
 ## 0.81.0 - 2026-10-04
 
 **The ❌ register is empty.** Batch 51 closed the last seven cells in the three-surface audit — every one
@@ -34,8 +72,6 @@ Telegram row moves to **52 ✅ / 14 ◐ / 0 ❌** (`CLI 50 / Telegram 52 / Web 5
 budget), coverage 87.08 / 77.55 / 86.85 on fingerprint `0dfc3a3707d6ecfb`, census 100% of 170 in-scope
 checks.
 
-
-- TODO: what changed, and why it matters to somebody on a phone.
 
 ## 0.80.0 - 2026-10-04
 

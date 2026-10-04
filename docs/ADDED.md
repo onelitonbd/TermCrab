@@ -1,7 +1,9 @@
 # Everything added to TermCrab — start to finish
 
-One inventory of what was built, from the first commit (2026-09-29) to `v0.78.0` (2026-10-04).
-Ordered by the project's own record, not by memory: **118 commits · 99 releases · 52 batches**.
+One inventory of what was built, from the first commit (2026-09-29) to `v0.82.0` (2026-10-04).
+Ordered by the project's own record, not by memory: **119 commits · 97 releases · 52 batches** — a
+number you can re-derive instead of trusting: `git rev-list --count HEAD`, `grep -c '^## ' CHANGELOG.md`,
+and one row per batch in `WORKLOG.md` §4.
 
 **How to verify any line below** — every claim here has a source you can open:
 
@@ -104,13 +106,13 @@ This is where every change starts carrying a proof: a commit, a test, and a numb
 | 42 | `57865d3` | **The closing batch**: the tracker's numbers are read back from `docs/openclaw/data/*.json` (`final-numbers.mjs --check`); the owner's two actions declared once (`src/core/owner.ts` → `termcrab owner`) and kept equal across help and `docs/OWNER.md`; the queue can end (declaration + tracker rule + `status.mjs` prints `queue empty`); `v0.76.0`. |
 | 43 | `c21aed5` | **A defect the closing audit found**: `startContinuousStt` delivered a phrase *after* `stop()` (reproduced 3/3 by probe, 0/3 after the fix; regression test fails 100% against the unfixed build); `listenOnce`'s timeout stopped claiming a hard-coded 30 s; the flaking test stopped using a stopwatch. `v0.76.1`. |
 | 44 | `109e7e7` | **The audit's second pass**: a test that let the machine's load decide its verdict is pinned; `scripts/test-files.mjs` declares one deadline per group (heavy measurement files 600 s, everything else 60 s) after proving node's flag **overrides** a test's own deadline — the trap that made two heavy files look flaky. `v0.76.2`. |
-| 46 | (this commit) | **The read-only command layer**: `src/gateway/chat-reports.ts` — 16 report functions + `/help`, clamped to 24 lines, secrets redacted by name; one `CHAT_COMMANDS` list (27) serves `/help`, `GET /api/slash` and the registered Telegram Bot menu; `/config set` limited to a whitelist; `/new`//`clear` from a chat resets the real session |
-| 47 | (this commit) | **The control half, one dispatcher**: `src/gateway/chat-control.ts` — `/stop` (this session only), `/steer`, `/queue` (four modes, saves `agent.queueMode`), `/sessions rename|purge`, `/update` (check in chat, apply names the terminal), `/backup` (`tar.gz` + document), `/watch add|list|rm`; `runSharedCommand()` is what both `handleChannelMessage` and `POST /api/slash` call; the panel chat intercepts `/…` |
-| 52 | (this commit) | **The named ◐ cells**: panel inbox/rooms/watchers/tool switches, security scan + named secret names, session rename/export, a downloaded spoken reply; Telegram proposal decisions and `cron add`; CLI `suite-time` / `work`; register **CLI 51 · Telegram 54 · Web 58 ✅, 0 ❌, 34 named ◐** |
-| 51 | (this commit) | **Telegram's tail, and the end of the ❌ register**: `/suite-time`, `/work [full]` (the tracker as a document), `/say` (a real voice note through `speakToFile` → ffmpeg → `sendVoice`), voice replies (`channels.telegram.voiceReplies`), `/embeddings setup` behind an inline confirm, `/controlui` as a `web_app` button from `gateway.publicUrl`, and forum topics keyed `telegram:<chatId>:<threadId>`; audit **CLI 50 / Telegram 52 / Web 51, missing cells 0 of 71** |
-| 50 | (this commit) | **The web panel's builder half**: `GET/PUT /api/bootstrap` (SOUL/IDENTITY/USER by name, paths pinned, 32 KB cap), `POST /api/backup` + `GET /api/backups` + `POST /api/restore` (dry-run, then the archive name typed back), `GET /api/service` (read-only card with the exact command), `POST /api/transcribe` (same whisper path as the CLI); audit **CLI 50 / Telegram 45 / Web 51, gaps 7** — the web row has no ❌ left |
-| 49 | (this commit) | **The web panel's quick gaps**: `GET /api/sessions?q=` (the CLI's ranked chat search, snippets included) + a search box on the Chats tab; `GET /api/context` serving the prompt-section report into the Debug view; `GET/POST /api/embeddings` — the provider picker writes `memory.embedProvider` and the offline-model install runs behind `confirm:true`; `/api/queue` + `/api/steer` delegating to the shared verbs, with a composer mode chip and a steer box that appears while a turn runs; the audit moves to **CLI 50 / Telegram 45 / Web 48, gaps 11** |
-| 48 | (this commit) | **The Telegram interaction layer**: `sendMessage(…, buttons?)` → `reply_markup.inline_keyboard`, `answerCallbackQuery`, `editMessageReplyMarkup`, `setMyCommands`, `sendVoice`, `callback_query` in `allowed_updates`; approvals arrive in the chat with `✅ Allow` / `🚫 Deny` calling the same `resolveApproval()` as the panel and CLI and emitting `approval:decided`; the audit re-measured **CLI 50 / Telegram 45 / Web 42, gaps 12** |
+| 46 | `6cd6f93` | **The read-only command layer**: `src/gateway/chat-reports.ts` — 16 report functions + `/help`, clamped to 24 lines, secrets redacted by name; one `CHAT_COMMANDS` list (27) serves `/help`, `GET /api/slash` and the registered Telegram Bot menu; `/config set` limited to a whitelist; `/new`//`clear` from a chat resets the real session |
+| 47 | `6cd6f93` | **The control half, one dispatcher**: `src/gateway/chat-control.ts` — `/stop` (this session only), `/steer`, `/queue` (four modes, saves `agent.queueMode`), `/sessions rename|purge`, `/update` (check in chat, apply names the terminal), `/backup` (`tar.gz` + document), `/watch add|list|rm`; `runSharedCommand()` is what both `handleChannelMessage` and `POST /api/slash` call; the panel chat intercepts `/…` |
+| 52 | `cdcb2b1` | **The named ◐ cells**: panel inbox/rooms/watchers/tool switches, security scan + named secret names, session rename/export, a downloaded spoken reply; Telegram proposal decisions and `cron add`; CLI `suite-time` / `work`; register **CLI 51 · Telegram 54 · Web 58 ✅, 0 ❌, 34 named ◐** |
+| 51 | `e31df9c` | **Telegram's tail, and the end of the ❌ register**: `/suite-time`, `/work [full]` (the tracker as a document), `/say` (a real voice note through `speakToFile` → ffmpeg → `sendVoice`), voice replies (`channels.telegram.voiceReplies`), `/embeddings setup` behind an inline confirm, `/controlui` as a `web_app` button from `gateway.publicUrl`, and forum topics keyed `telegram:<chatId>:<threadId>`; audit **CLI 50 / Telegram 52 / Web 51, missing cells 0 of 71** |
+| 50 | `1e204d2` | **The web panel's builder half**: `GET/PUT /api/bootstrap` (SOUL/IDENTITY/USER by name, paths pinned, 32 KB cap), `POST /api/backup` + `GET /api/backups` + `POST /api/restore` (dry-run, then the archive name typed back), `GET /api/service` (read-only card with the exact command), `POST /api/transcribe` (same whisper path as the CLI); audit **CLI 50 / Telegram 45 / Web 51, gaps 7** — the web row has no ❌ left |
+| 49 | `1af92aa` | **The web panel's quick gaps**: `GET /api/sessions?q=` (the CLI's ranked chat search, snippets included) + a search box on the Chats tab; `GET /api/context` serving the prompt-section report into the Debug view; `GET/POST /api/embeddings` — the provider picker writes `memory.embedProvider` and the offline-model install runs behind `confirm:true`; `/api/queue` + `/api/steer` delegating to the shared verbs, with a composer mode chip and a steer box that appears while a turn runs; the audit moves to **CLI 50 / Telegram 45 / Web 48, gaps 11** |
+| 48 | `6cd6f93` | **The Telegram interaction layer**: `sendMessage(…, buttons?)` → `reply_markup.inline_keyboard`, `answerCallbackQuery`, `editMessageReplyMarkup`, `setMyCommands`, `sendVoice`, `callback_query` in `allowed_updates`; approvals arrive in the chat with `✅ Allow` / `🚫 Deny` calling the same `resolveApproval()` as the panel and CLI and emitting `approval:decided`; the audit re-measured **CLI 50 / Telegram 45 / Web 42, gaps 12** |
 | 45 | (this commit) | **Three surfaces, one product — the audit first**: `scripts/surface-audit.mjs` measures 71 capabilities × 3 surfaces with source probes (`--check` fails the day one stops matching); `test/surface-audit.test.ts` keeps the report honest (every verdict carries a reason, and the scoreboard in `docs/SURFACES.md` must equal the scanner's JSON); the first honest scoreboard — CLI 49 ✅ / 0 missing, Telegram 24 ✅ / **28 missing**, web 41 ✅ / 9 missing — and the gap register + batch order 46–52 that closes them. No feature code: the owner asked for the map before the parity work. |
 
 ## 5. Cross-cutting guarantees (the invisible work)
@@ -151,24 +153,21 @@ The question *"is the front end good enough to capture every point?"* — answer
 | **Web panel** (11 views: chat · status · board · providers · models · memory · tools · logs · debug · work · settings) | Chat with streaming/drafts/tool cards, approvals as cards, board, run health, presence, models/providers, memory search/remember/dream, skills, cron, sessions, subagents, agents, tools catalog, disk, logs + stream inspector, tracker, docs, perf + suite clock + Telegram runs, config/setup/wake/say/listen/update/devices, and the chat palette (`/new`, `/clear`, `/model`, `/status`, `/orders`, `/help`) |
 | **Terminal UI** (`termcrab tui`) | The same chat + tool cards + streaming, with `/sessions`, `/new`, `/status`, `/history`, `/dir`, `/help`, `/quit` |
 | **Telegram** | Chat, files in and out, voice notes, typing indicator, markdown, room history, the same chat commands |
-| **CLI** (55 commands, 47 driven by the suite) | Everything, including the terminal-native pieces |
+| **CLI** (57 commands, 49 driven by the suite) | Everything, including the terminal-native pieces; `termcrab suite-time` and `termcrab work` since batch 52 |
 
 **From the panel chat, everything the chat dispatcher knows.** Since batches 46–48 the panel's own chat
 box intercepts a leading `/` and runs the shared dispatcher — so `/logs /config /board /disk /perf
 /doctor /security /auth /devices /embeddings /dream /docs /skills /cron` plus the control verbs are
-reachable by typing, not only by a dedicated view. **What has no panel view of its own** (measured: these
-words/routes are absent from `ui/index.html`, and `docs/SURFACES.md` §4.2 tracks them as the web cells
-still open):
-
-- `rooms` — ambient room history (the agent tool runs in chat; no view)
-- `transcribe` — turning a voice *file* into text (dictation and TTS are on the panel)
-- `security audit` / `auth audit` — the text arrives in chat; no view with the fix buttons
-- `backup` / `restore` — the archive can be made from chat; restore has no panel flow
-- `context` — the prompt-section report (batch 49 adds the view)
-- `embeddings setup` — switching the provider (status is shown; batch 49 adds the picker)
-- `browser` / `image` — tools the agent uses in chat; no dedicated panel control
-- `orders` — editable from the panel chat; no orders *view*
-- `schema` — migration status (rarely needed; the panel refuses a bad home anyway)
+reachable by typing, not only by a dedicated view. Batches 49–52 then closed every web cell the audit
+had flagged: conversations search and the context report (49), the embedding-provider picker (49),
+identity files, backup/restore and the service card (50), the inbox, rooms, watchers, the tool
+switches, the security findings and the secret *names*, session rename/export and a downloadable
+spoken reply (52). What is left in the web column is eight ◐ cells, and each is ◐ because the act
+itself is conversational or device-bound rather than because a door is missing — run identity and
+"wait for a run", shell/files/web tools in a turn, browser automation, image generation, sending a
+file *back* into a chat, PDF/DOCX intake, installing a service, and the phone-app media loop. Every
+one of them is named, with its reason and its batch, in `docs/SURFACES.md` §4.2 — and batch 53 walks
+the ones that are half-doors (tools catalog, canvas, live runs, memory writes, media intake).
 
 Terminal-native by nature (correctly not on the panel): `gateway`, `supervisor`, `tui`, `wait`.
 

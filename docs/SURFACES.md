@@ -242,29 +242,52 @@ door is named): `/update apply` (terminal on purpose until an inline confirm
 exists), `/skills` approve (terminal keeps the write), `/cron` add (panel or
 terminal), tool-output visibility, drafts.
 
-### 4.2 Web panel: nothing is missing
+### 4.2 Web panel: nothing is missing — the 8 cells that stay ◐
 
-The web row has **no ❌ left**. The remaining ◐ cells are named doors, not holes:
-native dictation vs the wake loop, tool toggles (a batch-52 CLI promotion), the
-security/secrets text that already arrives in the panel chat, and `rooms` /
-`schema` (rarely needed, and both answer from chat).
+Read back out of the probes (`--json`), not from memory: the web column has
+**no ❌ left**, and exactly these eight cells are ◐, each because the *thing
+itself* is a conversational or device-bound act rather than a missing door:
 
-### 4.3 CLI: the 15 ◐ cells (nothing is missing)
+| # | ◐ cell | why ◐, and what the panel does have |
+|---|---|---|
+| W19 | run identity + wait for a run | the run's id and "wait for it to finish" are terminal verbs; the panel shows run health and the live stream instead |
+| W20 | shell / files / web tools in conversation | the agent runs them inside a chat turn; the panel renders the tool cards, the switches and the results — it does not offer a raw shell |
+| W21 | browser automation | same shape: the tool card and the `allowBrowser` switch are in the panel; driving a browser by hand is not a chat-side act |
+| W22 | image generation | the agent's `image` tool runs in a turn; a generate-my-own-image button arrives with batch 53.5 |
+| W23 | sending a file back to a chat | the direction the *agent* takes (attachment out); the panel downloads what arrives |
+| W24 | document extraction (PDF/DOCX/XLSX in) | batch 53.5 puts the upload in the panel; today the CLI and the chat intake do it |
+| W25 | installing as a service | `GET /api/service` serves the status and the exact command; the panel never installs anything on your machine by itself |
+| W26 | media in / out (photos, voice, files) | the panel's own upload/download is there (transcribe, backup, voice, attachments); what is missing is the *chat*-shaped media loop of a phone app — batch 53.5 |
 
-Terminal-native ◐s that should stay as they are: `service`, `boot`,
-`supervisor`, `gateway`, `tui`, `wait`, shell/file tools, "attachments from a
-chat". The ones worth promoting to direct controls, because they are the
-*authoring* side of features the other surfaces can already use:
+Two names that used to sit on this list (`schema`, `orders`) are not cells at
+all any more: both answer from the panel chat through the shared dispatcher,
+and the audit scores "can a person reach it from this surface" — typing
+`/schema` counts.
 
-| # | ◐ cell | promotion | batch |
+### 4.3 CLI: the 14 ◐ cells, and what batch 53 does about them
+
+Same read-back, same source. Three of these are terminal-native and should
+stay ◐ — `tui`, `supervisor`/`gateway`/`wait`, and "send a file back to a
+chat" (the CLI has no chat to send into; `/say` and Telegram's document path
+are the real doors). The other eleven are the *authoring* side of capabilities
+the panel and Telegram already reach, and they are batch 53's queue:
+
+| # | ◐ cell | what batch 53 writes | step |
 |---|---|---|---|
-| C1 | Tool catalog + toggles | `termcrab tools` (list, names grouped, `--enable <name>`, `--disable <name>`) writing the same config keys the panel toggles | 52 |
-| C2 | Canvas | `termcrab canvas [--clear]` so A2UI widgets can be inspected from the terminal too | 52 |
-| C3 | Watchers | `termcrab watch add|list|rm` (same store `/watch` writes in Telegram, same config the gateway loads) | 52 |
-| C4 | Queue mode + steering | `termcrab queue` to show/switch mode, and `/steer` in the TUI while a turn runs | 52 |
-| C5 | Embeddings setup | already a command; add the status block to `termcrab status` so the number is visible without hunting | 52 |
-| C6 | Memory write | `termcrab memory add <text>` (today `memory user` writes USER.md only); keep the distinction, make it explicit in help | 52 |
-| C7 | Suite clock / worklog | `termcrab status` should print the suite clock and the worklog "now" line — the same two numbers the panel shows | 52 |
+| C1 | tool catalog | `termcrab tools` lists the catalog grouped by class (`--json`), so what the panel shows is readable on a phone terminal | 53.1 |
+| C2 | tool toggles | `termcrab tools --enable <name>` / `--disable <name>` writing `agent.allowExec` / `allowBrowser` / `allowCodeExec` — the same keys the panel's checkboxes write | 53.1 |
+| C3 | watchers | `termcrab watch add|list|rm` on the same `config.watchers` store `/watch` and the panel's Tools card use | 53.1 |
+| C4 | canvas / A2UI | `termcrab canvas [--clear]` renders the current widget tree as text | 53.2 |
+| C5 | queue modes | `termcrab queue [steer|followup|collect|interrupt]` shows/switches the mode the panel's picker and `/queue` write | 53.3 |
+| C6 | steering a live run | `termcrab steer <text>` against the running gateway session | 53.3 |
+| C7 | progress drafts | `--drafts` on the CLI chat shows partial answers the way the panel already renders them | 53.3 |
+| C8 | inbox | `termcrab inbox [<name>]` reads `$TCRAB_HOME/inbox` — the same store the panel's Work view lists | 53.5 |
+| C9 | memory: write a fact | `termcrab memory add <text>` (today `memory user` writes USER.md only; the distinction stays, and help says so) | 53.4 |
+| C10 | document extraction | `termcrab extract <file.pdf|.docx|.xlsx>` printing the text the intake path already computes | 53.5 |
+| C11 | embeddings setup | the status block joins `termcrab status`, so the number is visible without hunting | 53.4 |
+
+Telegram's twelve ◐ cells get the same treatment in the same batch, one row
+per cell in `WORKLOG.md` §3 — the register and the queue are the same list.
 
 ## 5. What OpenClaw puts on each surface (from our crawl), and our call
 
