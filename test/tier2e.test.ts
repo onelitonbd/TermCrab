@@ -523,8 +523,12 @@ test('16.5 the rules are written down and the census moved', async (t) => {
     assert.match(doc.evidence, /16\.1/);
     assert.match(doc.evidence, /16\.2/);
     const transcription = census.rows.find((r) => r.capability === 'Transcription')!;
-    assert.equal(transcription.verdict, 'PARTIAL', 'realtime transcription is still not ours');
-    assert.match(transcription.evidence, /16\.3/);
+    // 33.5 re-judged this row: transcription is proven end to end against real
+    // engines (test/tier2y.test.ts), and the one thing not attempted — partial
+    // hypotheses while you are still speaking — has to stay written down.
+    assert.equal(transcription.verdict, 'WORKING');
+    assert.match(transcription.evidence, /partial-hypothesis/);
+    assert.match(transcription.evidence, /continuous listening|phrase-by-phrase/);
     const media = census.rows.find((r) => r.capability === 'Media send/receive')!;
     assert.equal(media.verdict, 'WORKING');
   });
