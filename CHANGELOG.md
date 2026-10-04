@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.78.0 - 2026-10-04
+
+**One dispatcher, three doors — Telegram and the panel chat grow up.** The audit in v0.77.0 said Telegram was
+missing 28 of 71 capabilities and the panel's chat sent `/status` to the model. This release closes both
+halves: a shared command layer both chats call, and the Telegram interaction layer (inline buttons,
+callbacks, a registered Bot menu) that makes approvals decidable from inside a chat.
+
+- **Batches 46–48 in one release, and the scoreboard says so.** The audit moves from **CLI 49 / Telegram 24 /
+  Web 41, 38 rows with a hole** to **CLI 50 / Telegram 45 / Web 42, 12 rows with a hole** — measured by
+  `node scripts/surface-audit.mjs`, with `--check` still green, so every one of those ✅ is a source probe,
+  not a sentence.
+- **One dispatcher, not two implementations.** `src/gateway/chat-reports.ts` holds 16 reports plus `/help`
+  and the single `CHAT_COMMANDS` list (27 entries); `src/gateway/chat-control.ts` holds the verbs that
+  change something (`/stop /steer /queue /sessions rename|purge /update /backup /watch`);
+  `runSharedCommand(text, channel, chatId, sessionId)` in `src/gateway/server.ts` is what Telegram's
+  `handleChannelMessage` **and** the panel's `POST /api/slash` call. A command cannot work in one chat and
+  be a prompt in the other.
+- **Telegram learns to answer questions.** `/logs /config (+set, whitelisted) /board /disk /perf /doctor
+  /security /auth /devices /embeddings /dream /docs /skills /cron` render the same numbers the CLI and the
+  panel show, clamped to 24 lines, secrets redacted by name and never printed.
+- **Telegram learns to change things safely.** `/stop` interrupts only the turn of the chat that asked;
+  `/queue` prints the four modes and saves `agent.queueMode`; `/sessions rename|purge` writes the same store
+  the terminal does (purge needs days ≥ 1 and reports what it removed); `/backup` writes
+  `$TCRAB_HOME/backups/backup-<ts>.tar.gz` and sends it as a document; `/watch add|list|rm` persists
+  `config.watchers`; `/update` checks from chat and names the terminal for `apply`.
+- **Inline buttons and callbacks (Bot API).** `TelegramApi.sendMessage(…, buttons?)` builds
+  `reply_markup.inline_keyboard`; `answerCallbackQuery`, `editMessageReplyMarkup`, `setMyCommands` and
+  `sendVoice` exist; `getUpdates` asks for `callback_query` too.
+- **Approvals are decidable inside Telegram.** A pending approval whose session starts `telegram:<chatId>`
+  arrives as `🔐 <tool> wants to run` with `✅ Allow` / `🚫 Deny` buttons carrying `approve:<id>` /
+  `deny:<id>`; pressing one calls the same `resolveApproval(id, …, 'telegram')` the panel button and
+  `termcrab approvals approve|deny <id>` call, answers the callback, drops the buttons, replies, and emits
+  `approval:decided`.
+- **The Bot menu is registered at start.** `setMyCommands(CHAT_COMMANDS)` runs after the channel starts and
+  a refusal from the Bot API is tolerated (logged, never thrown) — the chat still works, the menu is just
+  text instead.
+- **Two real defects found by the audit and fixed at the source.** The slash path regressed in batch 47 —
+  `POST /api/slash` only called the report half, so `/stop` and friends answered `400`; both callers now go
+  through `runSharedCommand`, and `/orders` moved into the shared dispatcher (`test/tier2n.test.ts` 26.1
+  caught it). And `scripts/surface-audit.mjs` died at module load because new probes referenced a constant
+  nobody had declared — `node --check` cannot see a `ReferenceError`, so the audit now declares its source
+  constants before first use, which is the exact mistake the file's own comment warns about.
+
+**Proof:** `test/tier3o.test.ts` (46, 11 cases) + `test/tier3p.test.ts` (47) → **20 pass / 0 fail** together;
+`test/tier3q.test.ts` (48) → **3 pass / 0 fail** driving a fake Bot API through a real decision, the button
+drop, the allowlist and a tolerated `setMyCommands` failure; `test/surface-audit.test.ts` → 3 pass with the
+doc's scoreboard equal to the script's; `test/tier2n.test.ts` 26.1 green again; `tsc --noEmit` clean on both
+configs; the full suite **1060 pass · 0 fail · 3 skip · 106 files · 1063 cases** (170.2 s of a 240 s budget).
+
+
+- TODO: what changed, and why it matters to somebody on a phone.
+
 ## 0.77.0 - 2026-10-04
 
 **Three surfaces, one product — measured first.** The owner's rule for this cycle: CLI, Telegram and the web

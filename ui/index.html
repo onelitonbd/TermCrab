@@ -4678,6 +4678,19 @@
   async function send() {
     const text = $('input').value.trim();
     if (!text) return;
+    // 46.3: a slash command is a command here too. One handler answers it, so
+    // /logs, /doctor, /board … mean the same thing in the panel chat as in
+    // Telegram and the terminal.
+    if (text.startsWith('/')) {
+      const sp = text.indexOf(' ');
+      const name = sp === -1 ? text : text.slice(0, sp);
+      const args = sp === -1 ? '' : text.slice(sp + 1).trim();
+      $('input').value = '';
+      growInput();
+      addMsg('user', text);
+      await executeSlash(name, args, { fromChat: true });
+      return;
+    }
     // A message while the agent is working is not a mistake: the queue either
     // steers it into the running turn or holds it until the lane is free.
     if (state.busy) { await sendWhileBusy(text); return; }
@@ -6885,9 +6898,13 @@
     }
   }
   function hideSlashMenu() { toggleSlashMenu(false); }
-  async function executeSlash(name, args) {
+  async function executeSlash(name, args, opts) {
+    const fromChat = !!(opts && opts.fromChat);
     try {
-      const r = await api('/api/slash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ command: name, args }) });
+      const r = await api('/api/slash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ command: name, args, ui: !fromChat }) });
+      // 46.3: the shared dispatcher answers with text — the same words Telegram
+      // gets, from the same data. Show it as the agent's reply.
+      if (r.message) addMsg('bot', r.message);
       if (r.action === 'new') { $('input').value = ''; }
       else if (r.action === 'clear') { if (confirm('Clear this chat?')) { await api('/api/sessions/' + encodeURIComponent(currentSession()), { method: 'DELETE' }); refreshSessions(); } }
       else if (r.action === 'model') { switchView('models'); }

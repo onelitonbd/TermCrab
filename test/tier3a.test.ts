@@ -291,8 +291,11 @@ test('34.3 the surfaces and the census agree', async (t) => {
   });
 
   await t.test('/history is documented for a person in the chat', () => {
+    // Batch 46 moved /help into the shared dispatcher; the entry moved with it.
+    const reports = fs.readFileSync(path.join(ROOT, 'src', 'gateway', 'chat-reports.ts'), 'utf8');
+    assert.match(reports, /\{ cmd: '\/history'[^}]*description: '[^']*[Rr]oom history/);
     const src = fs.readFileSync(path.join(ROOT, 'src', 'gateway', 'server.ts'), 'utf8');
-    assert.match(src, /\/history\s+what was said here/);
+    assert.match(src, /\/history/);
     const help = fs.readFileSync(path.join(ROOT, 'src', 'command-help.ts'), 'utf8');
     assert.match(help, /cmd: 'rooms'/);
     const docs = fs.readFileSync(path.join(ROOT, 'docs', 'CHANNELS.md'), 'utf8');

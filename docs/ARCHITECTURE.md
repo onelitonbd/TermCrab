@@ -166,6 +166,8 @@ users' runtime.
 | `src/docs/site.ts` | 34.8 — the documentation site: one self-contained HTML file, offline |
 | `src/gateway/auth.ts` | constant-time token checks (header or query) |
 | `src/gateway/canvas.ts` | Canvas / A2UI: agent-driven visual widgets served by the gateway |
+| `src/gateway/chat-control.ts` | the verbs a chat can run — /stop, /steer, /queue, /sessions rename|purge, /update, /backup, /watch — one implementation for every surface, and the refusals that name the terminal |
+| `src/gateway/chat-reports.ts` | the read-only reports and /help: /logs /config /board /disk /perf /doctor /security /auth /devices /embeddings /dream /docs /skills /cron — the shared dispatcher Telegram, the panel chat and the palette all call |
 | `src/gateway/client.ts` | The one place that knows how to talk to the local gateway: host resolution (0.0.0.0/:: mean "this machine"), the bearer token, and a short timeout |
 | `src/gateway/devices.ts` | Paired devices: a phone (or any client) proves it is allowed on this gateway once, with a short code, and then carries its own token (20.1) |
 | `src/gateway/events.ts` | in-process bus -> SSE subscribers |

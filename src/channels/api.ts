@@ -43,13 +43,73 @@ export class TelegramApi {
   getUpdates(offset: number, timeoutSec: number): Promise<import('./telegram.js').TelegramUpdate[]> {
     return this.call(
       'getUpdates',
-      { offset, timeout: timeoutSec, allowed_updates: ['message'] },
+      // 48.1 — button presses arrive as their own update type; without this
+      // they are silently dropped by Telegram.
+      { offset, timeout: timeoutSec, allowed_updates: ['message', 'callback_query'] },
       (timeoutSec + 15) * 1000,
     );
   }
 
-  sendMessage(chatId: number, html: string): Promise<unknown> {
-    return this.call('sendMessage', { chat_id: chatId, text: html, parse_mode: 'HTML', disable_web_page_preview: true }, 20_000);
+  /**
+   * 48.1 — the same call, with an optional inline keyboard. Buttons are how a
+   * chat can answer a question safely (an approval, a confirm) instead of
+   * making a person type a command that deletes something.
+   */
+  sendMessage(
+    chatId: number,
+    html: string,
+    buttons?: { text: string; data: string }[][],
+  ): Promise<unknown> {
+    const payload: Record<string, unknown> = {
+      chat_id: chatId,
+      text: html,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    };
+    if (buttons?.length) payload.reply_markup = { inline_keyboard: buttons };
+    return this.call('sendMessage', payload, 20_000);
+  }
+
+  /** Acknowledge a button press, so the client stops its spinner. */
+  answerCallbackQuery(callbackQueryId: string, text?: string): Promise<unknown> {
+    return this.call(
+      'answerCallbackQuery',
+      { callback_query_id: callbackQueryId, ...(text ? { text: text.slice(0, 200) } : {}) },
+      10_000,
+    );
+  }
+
+  /**
+   * Replace the buttons under a message (or drop them) once it has been
+   * answered — a decided approval must not still look pressable.
+   */
+  editMessageReplyMarkup(chatId: number, messageId: number, buttons: { text: string; data: string }[][] = []): Promise<unknown> {
+    return this.call(
+      'editMessageReplyMarkup',
+      { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: buttons } },
+      10_000,
+    );
+  }
+
+  /**
+   * 48.2 — teach Telegram the command menu, so typing `/` shows the list the
+   * bot actually understands. Best-effort by design: an old Bot API server that
+   * does not know the method must not stop this one from starting.
+   */
+  setMyCommands(commands: { command: string; description: string }[]): Promise<unknown> {
+    return this.call('setMyCommands', { commands }, 10_000);
+  }
+
+  /** 51.1 — a spoken reply. OGG/Opus is what Telegram wants for a voice note. */
+  async sendVoice(chatId: number, filename: string, bytes: Buffer, caption?: string): Promise<unknown> {
+    const form = new FormData();
+    form.set('chat_id', String(chatId));
+    if (caption) form.set('caption', caption.slice(0, 1024));
+    form.set('voice', new Blob([new Uint8Array(bytes)]), filename);
+    const res = await fetch(this.url('sendVoice'), { method: 'POST', body: form });
+    const data = (await res.json()) as { ok: boolean; result?: unknown; description?: string };
+    if (!data.ok) throw new Error(`telegram sendVoice: ${data.description || res.status}`);
+    return data.result;
   }
 
   sendChatAction(chatId: number, action = 'typing'): Promise<unknown> {

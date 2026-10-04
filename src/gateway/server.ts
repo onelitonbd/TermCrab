@@ -58,7 +58,7 @@ import { lastDigestSummary, QueueFullError, QueuedTurn, SessionQueue, SessionSto
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
-import { TelegramChannel } from '../channels/telegram.js';
+import { escapeHtml, TelegramChannel } from '../channels/telegram.js';
 import { makeIntake } from '../channels/intake.js';
 import { contextReport, renderContext } from '../agent/context.js';
 import { toProviderMessages } from '../agent/loop.js';
@@ -98,13 +98,15 @@ import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/teleg
 import { perfStatus, suiteTimeStatus } from '../core/perf.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
+import { CHAT_COMMANDS, runReportCommand } from './chat-reports.js';
+import { runControlCommand, sessionsPurgeCommand, sessionsRenameCommand, type ControlDeps } from './chat-control.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
 import { listAsks, answer as answerAsk } from '../agent/ask.js';
 import { getProgress } from '../agent/progress.js';
 import { startCronScheduler, cronTick } from '../cron/scheduler.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from '../cron/store.js';
 import { nextRun, parseCron, CronParseError } from '../cron/parser.js';
-import { Approval, listApprovals, resolveApproval } from '../core/approvals.js';
+import { Approval, getApproval, listApprovals, resolveApproval } from '../core/approvals.js';
 import { authKey, authenticate, constantTimeEqual, extractAuth } from './auth.js';
 import { formatSessionHits, searchSessions } from '../agent/session-search.js';
 import { healthLine, runHealth } from '../agent/run-health.js';
@@ -549,8 +551,28 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
         return handleChannelMessage('telegram', chatId, text, _userId, displayName);
       },
+      // 48.3 — an approval answered from the chat. The same resolveApproval()
+      // the panel and the CLI call, so all three doors end in one decision.
+      onCallback: async (_userId, chatId, data, queryId) => {
+        const [action, id] = data.split(':');
+        if ((action !== 'approve' && action !== 'deny') || !id) {
+          return 'that button is no longer attached to anything';
+        }
+        const approval = getApproval(id);
+        if (!approval) return 'that approval has already expired';
+        const decided = resolveApproval(id, action === 'approve', 'telegram');
+        void queryId;
+        if (!decided) return 'that approval was already decided';
+        bus.emit({ type: 'approval:decided', approval: { id, status: action === 'approve' ? 'approved' : 'denied', decidedBy: 'telegram' } } as unknown as BusEvent);
+        return action === 'approve'
+          ? `✅ approved ${approval.tool} — it is running`
+          : `🚫 denied ${approval.tool} — nothing ran`;
+      },
     });
     telegram.start();
+    // 48.2 — teach Telegram the menu the bot actually understands (best effort;
+    // an old API server or a network blip must not stop the gateway).
+    void telegram.registerCommands(CHAT_COMMANDS).catch(() => undefined);
     log.info('telegram channel started (allowlist:', tgCfg.allowedUserIds.join(', '), ')');
   } else if (tgCfg?.token) {
     log.warn('telegram token set but allowlist empty - channel NOT started (secure default). Run: termcrab config set channels.telegram.allowedUserIds [123]');
@@ -594,6 +616,34 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     const tg = telegram;
     registerDocumentSender('telegram', async (address, filePath, caption) => {
       await tg.sendDocument(Number(address), filePath, caption);
+    });
+    // 48.3 — human-in-the-loop, in the chat where the work was asked for.
+    // OpenClaw approves exec from Telegram (`channels.telegram.execApprovals.*`);
+    // the audit counted that as a missing cell, and this closes it: the approval
+    // the panel shows as a card also arrives as a message with two buttons.
+    const chatOf = (sessionId?: string): number | null => {
+      const m = /^telegram:(-?\d+)/.exec(sessionId ?? '');
+      return m ? Number(m[1]) : null;
+    };
+    bus.subscribe((ev) => {
+      if (ev.type !== 'approval') return;
+      const approval = (ev as unknown as { approval?: Approval }).approval;
+      if (!approval || approval.status !== 'pending') return;
+      const chatId = chatOf(approval.sessionId);
+      if (chatId === null) return; // came from the panel or the terminal
+      const args = JSON.stringify(approval.args ?? {}).slice(0, 300);
+      void tg
+        .sendButtons(
+          chatId,
+          `🔐 ${approval.tool} wants to run\n<pre>${escapeHtml(args)}</pre>\n\nApprove it?`,
+          [
+            [
+              { text: '✅ Allow', data: `approve:${approval.id}` },
+              { text: '🚫 Deny', data: `deny:${approval.id}` },
+            ],
+          ],
+        )
+        .catch(() => undefined);
     });
   }
   if (discord) {
@@ -828,6 +878,34 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   announcePresence('started');
 
   /** Shared inbound handler for text channels (telegram/whatsapp). */
+  /**
+   * 46/47 — the single place a surface's text becomes an answer from the *shared*
+   * layer. Telegram, the panel's chat, the command palette and (through the same
+   * handler) every other channel call this, so a command has one implementation
+   * and one set of words no matter where it was typed.
+   */
+  const controlDepsFor = (sessionId: string, channel: string, chatId: string | number): ControlDeps => ({
+    sessionId,
+    channel,
+    chatId: String(chatId),
+    config,
+    saveConfig,
+    sessions,
+    queue: agentQueue,
+    currentVersion: version(),
+  });
+
+  async function runSharedCommand(
+    text: string,
+    channel: string,
+    chatId: string | number,
+    sessionId: string,
+  ): Promise<{ ok: true; text: string } | { ok: false; error: string } | null> {
+    const control = await runControlCommand(text, controlDepsFor(sessionId, channel, chatId));
+    if (control) return control;
+    return runReportCommand(text, { agent, skills, proposals: () => listProposals() });
+  }
+
   async function handleChannelMessage(
     channel: ChannelName,
     chatId: string | number,
@@ -898,23 +976,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       return `🦀 TermCrab online\nmodel: ${providerLabel(config)}\nexec: ${config.agent.allowExec ? 'on' : 'off'}\nagents: ${listAgents().join(', ') || '(default)'}\nheartbeat: ${config.heartbeat.enabled ? `every ${config.heartbeat.minutes}m` : 'off'}\n${runs}\n${here}\n${policy}`;
     }
     // 15.4: the same facts the CLI reports with --json, available in the chat.
-    if (text === '/help' || text === '/?') {
-      return [
-        '🦀 What I understand here:',
-        '  /new        start a fresh conversation',
-        '  /status     is everything running',
-        '  /usage      tokens and cost today',
-        '  /sessions   your recent conversations (/sessions search <words>, /sessions show <id>)',
-        '  /memory     what I have remembered (search: /memory search <words>)',
-        '  /context    what the model is actually sent (sizes per section)',
-        '  /inbox      files people sent you (and /inbox <name> to read one)',
-        '  /orders     your standing orders (/orders add … , /orders remove <id>)',
-        '  /agents     named personalities (@name <message>)',
-        '  /history    what was said here while you were not addressed (/history 20)',
-        '  /providers  pick the model',
-        '  /heartbeat  run a self-check now',
-        'Anything else is a message for the agent.',
-      ].join('\n');
+    // Batches 46 + 47: the chat verbs and the read-only reports live in one
+    // shared dispatcher, so Telegram, the panel's chat and the palette answer
+    // with the same words (and the CLI's own data). /help moved there too — one
+    // list means the Bot menu and this text cannot drift apart.
+    {
+      const shared = await runSharedCommand(text, channel, chatId, baseSession);
+      if (shared) return shared.ok ? shared.text : `⚠️ ${shared.error}`;
     }
     if (text === '/usage') {
       const day = usageForDay();
@@ -937,6 +1005,17 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         const id = arg.slice('show '.length).trim();
         if (!id) return '💬 Usage: /sessions show <id>';
         return formatSessionView(sessionView(id, { store: sessions, memory, resetPolicy: config.agent.sessionReset }));
+      }
+      // 47.1: the two verbs the CLI had and the chat did not. Purge needs a
+      // number on purpose — "delete stuff" is not a thing a stray tap may do.
+      if (arg.startsWith('rename ')) {
+        const [from, to] = arg.slice('rename '.length).trim().split(/\s+/);
+        const r = sessionsRenameCommand(controlDepsFor(baseSession, channel, chatId), from ?? '', to ?? '');
+        return r.ok ? r.text : `⚠️ ${r.error}`;
+      }
+      if (arg.startsWith('purge')) {
+        const r = sessionsPurgeCommand(controlDepsFor(baseSession, channel, chatId), arg.slice('purge'.length).trim());
+        return r.ok ? r.text : `⚠️ ${r.error}`;
       }
       const list = sessions.list().slice(0, 8);
       if (!list.length) return 'No conversations yet.';
@@ -2034,14 +2113,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/slash') {
+          // 46.2: one command list. The panel's palette and Telegram's Bot menu
+          // both read CHAT_COMMANDS, so a command added to the shared handler
+          // appears on every surface without a second edit.
           json(res, 200, {
             commands: [
-              { name: '/new', description: 'Start a new chat', args: '' },
-              { name: '/clear', description: 'Clear the current chat', args: '' },
+              ...CHAT_COMMANDS.map((c) => ({ name: c.cmd, description: c.description, args: c.args })),
+              // The four the panel does itself (they move the UI, not the data).
+              { name: '/clear', description: 'Clear this chat view', args: '' },
               { name: '/model', description: 'Pick a model', args: '[model-name]' },
-              { name: '/status', description: 'Show agent status', args: '' },
-              { name: '/orders', description: 'Standing orders (list, add, remove)', args: '[add <text>|remove <id>]' },
-              { name: '/help', description: 'Show available commands', args: '' },
             ],
           });
           return;
@@ -2052,7 +2132,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           const body = raw ? (JSON.parse(raw) as { command?: string; args?: string }) : {};
           const cmd = (body.command || '').trim();
           const args = (body.args || '').trim();
-          switch (cmd) {
+          // `ui: true` is the palette asking for a view shortcut (it wants to
+          // move the interface, not print text). The chat input sends no flag,
+          // so it lands in the shared dispatcher below — exactly like Telegram.
+          const wantUi = (body as { ui?: unknown }).ui === true;
+          if (!wantUi && (cmd === '/new' || cmd === '/clear')) {
+            // 46.3: /new means the same thing on every surface — a fresh thread.
+            const sid = rollingSessionKey(config, { fallback: 'web:main', channel: 'web', chatId: 'main' });
+            sessions.reset(sid);
+            for (const s of sessions.list()) if (s.id.endsWith(`:${sid}`)) sessions.reset(s.id);
+            json(res, 200, { ok: true, action: 'new', message: '🧹 Session reset. Fresh start!' });
+            return;
+          }
+          if (wantUi) switch (cmd) {
             case '/orders': {
               // 26.1: the same standing orders the prompt injects, editable
               // from the web panel's command palette.
@@ -2089,10 +2181,30 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             case '/help':
               json(res, 200, { ok: true, action: 'help' });
               return;
-            default:
-              json(res, 400, { error: 'unknown command: ' + cmd });
-              return;
           }
+          // 46.3/47.3: everything else is the *shared* dispatcher — the same
+          // function Telegram calls, so the panel's chat and a Telegram message
+          // get the same words from the same data. This is what makes
+          // "reachable on all three surfaces" a fact instead of a promise.
+          const webSession = rollingSessionKey(config, { fallback: 'web:main', channel: 'web', chatId: 'main' });
+          const report = await runSharedCommand(`${cmd} ${args}`.trim(), 'web', 'main', webSession);
+          if (report) {
+            if (report.ok) {
+              // The palette reads the array too, so the shared answer carries it.
+              const extra = cmd === '/orders' ? { orders: listIntents() } : {};
+              json(res, 200, { ok: true, message: report.text, ...extra });
+            } else {
+              const missingOrder = cmd === '/orders' && report.error.startsWith('no standing order');
+              json(res, missingOrder ? 404 : 400, {
+                ok: false,
+                error: report.error,
+                ...(cmd === '/orders' ? { orders: listIntents() } : {}),
+              });
+            }
+            return;
+          }
+          json(res, 400, { error: 'unknown command: ' + cmd });
+          return;
         }
 
         if (req.method === 'GET' && pathname === '/api/providers/detect') {

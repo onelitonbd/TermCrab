@@ -1,7 +1,7 @@
 # Everything added to TermCrab — start to finish
 
-One inventory of what was built, from the first commit (2026-09-29) to `v0.77.0` (2026-10-04).
-Ordered by the project's own record, not by memory: **111 commits · 92 releases · 45 batches**.
+One inventory of what was built, from the first commit (2026-09-29) to `v0.78.0` (2026-10-04).
+Ordered by the project's own record, not by memory: **112 commits · 93 releases · 48 batches**.
 
 **How to verify any line below** — every claim here has a source you can open:
 
@@ -54,7 +54,7 @@ Roughly fifteen releases of front-end work, all against the same single-file, de
 - `0.17.0` composer + providers · `0.18.0` providers stay in sync · `0.19.0` black theme, icon sidebar, smarter composer · `0.20.0`/`0.20.1` models page + composer model picker, current provider shows your own name · `0.21.0`–`0.21.2` save button, visible model icon, saving actually reaches the backend.
 - `0.22.0` memory page redesign · `0.23.0` homepage becomes the agent's home · `0.23.1` no more silent empty replies · `0.24.0` tools page redesign · `0.25.0`/`0.25.1` tools catalog tab + toggle fix · `0.26.0` every catalog tool became real.
 
-## 4. The batch era — batches `1` → `44`
+## 4. The batch era — batches `1` → `48`
 
 This is where every change starts carrying a proof: a commit, a test, and a number. One line per batch.
 
@@ -104,6 +104,9 @@ This is where every change starts carrying a proof: a commit, a test, and a numb
 | 42 | `57865d3` | **The closing batch**: the tracker's numbers are read back from `docs/openclaw/data/*.json` (`final-numbers.mjs --check`); the owner's two actions declared once (`src/core/owner.ts` → `termcrab owner`) and kept equal across help and `docs/OWNER.md`; the queue can end (declaration + tracker rule + `status.mjs` prints `queue empty`); `v0.76.0`. |
 | 43 | `c21aed5` | **A defect the closing audit found**: `startContinuousStt` delivered a phrase *after* `stop()` (reproduced 3/3 by probe, 0/3 after the fix; regression test fails 100% against the unfixed build); `listenOnce`'s timeout stopped claiming a hard-coded 30 s; the flaking test stopped using a stopwatch. `v0.76.1`. |
 | 44 | `109e7e7` | **The audit's second pass**: a test that let the machine's load decide its verdict is pinned; `scripts/test-files.mjs` declares one deadline per group (heavy measurement files 600 s, everything else 60 s) after proving node's flag **overrides** a test's own deadline — the trap that made two heavy files look flaky. `v0.76.2`. |
+| 46 | (this commit) | **The read-only command layer**: `src/gateway/chat-reports.ts` — 16 report functions + `/help`, clamped to 24 lines, secrets redacted by name; one `CHAT_COMMANDS` list (27) serves `/help`, `GET /api/slash` and the registered Telegram Bot menu; `/config set` limited to a whitelist; `/new`//`clear` from a chat resets the real session |
+| 47 | (this commit) | **The control half, one dispatcher**: `src/gateway/chat-control.ts` — `/stop` (this session only), `/steer`, `/queue` (four modes, saves `agent.queueMode`), `/sessions rename|purge`, `/update` (check in chat, apply names the terminal), `/backup` (`tar.gz` + document), `/watch add|list|rm`; `runSharedCommand()` is what both `handleChannelMessage` and `POST /api/slash` call; the panel chat intercepts `/…` |
+| 48 | (this commit) | **The Telegram interaction layer**: `sendMessage(…, buttons?)` → `reply_markup.inline_keyboard`, `answerCallbackQuery`, `editMessageReplyMarkup`, `setMyCommands`, `sendVoice`, `callback_query` in `allowed_updates`; approvals arrive in the chat with `✅ Allow` / `🚫 Deny` calling the same `resolveApproval()` as the panel and CLI and emitting `approval:decided`; the audit re-measured **CLI 50 / Telegram 45 / Web 42, gaps 12** |
 | 45 | (this commit) | **Three surfaces, one product — the audit first**: `scripts/surface-audit.mjs` measures 71 capabilities × 3 surfaces with source probes (`--check` fails the day one stops matching); `test/surface-audit.test.ts` keeps the report honest (every verdict carries a reason, and the scoreboard in `docs/SURFACES.md` must equal the scanner's JSON); the first honest scoreboard — CLI 49 ✅ / 0 missing, Telegram 24 ✅ / **28 missing**, web 41 ✅ / 9 missing — and the gap register + batch order 46–52 that closes them. No feature code: the owner asked for the map before the parity work. |
 
 ## 5. Cross-cutting guarantees (the invisible work)
@@ -146,21 +149,26 @@ The question *"is the front end good enough to capture every point?"* — answer
 | **Telegram** | Chat, files in and out, voice notes, typing indicator, markdown, room history, the same chat commands |
 | **CLI** (55 commands, 47 driven by the suite) | Everything, including the terminal-native pieces |
 
-**Genuinely not on the panel yet** (measured: these words/routes are absent from `ui/index.html`):
+**From the panel chat, everything the chat dispatcher knows.** Since batches 46–48 the panel's own chat
+box intercepts a leading `/` and runs the shared dispatcher — so `/logs /config /board /disk /perf
+/doctor /security /auth /devices /embeddings /dream /docs /skills /cron` plus the control verbs are
+reachable by typing, not only by a dedicated view. **What has no panel view of its own** (measured: these
+words/routes are absent from `ui/index.html`, and `docs/SURFACES.md` §4.2 tracks them as the web cells
+still open):
 
-- `rooms` — ambient room history (CLI + agent tool today)
+- `rooms` — ambient room history (the agent tool runs in chat; no view)
 - `transcribe` — turning a voice *file* into text (dictation and TTS are on the panel)
-- `auth audit` / `security audit` — the secrets and hardening reports
-- `backup` / `restore` — home backup and restore
-- `context` — the prompt-section report (agent-side, useful for debugging)
-- `embeddings setup` — switching the embedding provider (status is shown)
-- `browser` / `image` — the CDP browser controls and image generation exist as tools the agent uses in chat, but have no dedicated panel control
-- `orders` — editable from the panel chat palette, but there is no orders *view*
+- `security audit` / `auth audit` — the text arrives in chat; no view with the fix buttons
+- `backup` / `restore` — the archive can be made from chat; restore has no panel flow
+- `context` — the prompt-section report (batch 49 adds the view)
+- `embeddings setup` — switching the provider (status is shown; batch 49 adds the picker)
+- `browser` / `image` — tools the agent uses in chat; no dedicated panel control
+- `orders` — editable from the panel chat; no orders *view*
 - `schema` — migration status (rarely needed; the panel refuses a bad home anyway)
 
 Terminal-native by nature (correctly not on the panel): `gateway`, `supervisor`, `tui`, `wait`.
 
 So the honest answer in one line: **the backend is complete for the three-surface scope, and the panel
-carries every everyday loop — the nine gaps above are real, small, and closable one at a time if they
-matter to you.** Nothing is hidden behind a claim: each is either measured as present or listed here as
+carries every everyday loop — the gaps above are real, small, named per surface in `docs/SURFACES.md`,
+and closable one batch at a time (49–52 are queued).** Nothing is hidden behind a claim: each is either measured as present or listed here as
 missing.

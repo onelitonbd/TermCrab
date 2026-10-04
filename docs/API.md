@@ -31,7 +31,7 @@ The families a client can rely on:
 
 | Family | Types | When | Payload |
 |---|---|---|---|
-| `turn` | `delta`, `draft`, `error`, `approval`, `steer`, `stop` | a turn streams, wants a yes/no, or is stopped | text, or approval `{id, tool, args}` |
+| `turn` | `delta`, `draft`, `error`, `approval`, `approval:decided`, `steer`, `stop` | a turn streams, wants a yes/no, is decided, or is stopped | text, or approval `{id, tool, args}` |
 | `tool` | `tool:start`, `tool:end` | one tool call begins and finishes | `name`, `args`, `toolCallId`, `ok`, `result` (trimmed to 200 chars on the wire) |
 | `run` | `run:start`, `run:end` | a run starts and ends | `runId`, `sessionId`, `text`, `iterations`, `usage`, `costUsd` |
 | `thinking` | `thinking:delta`, `thinkingCaps` | the model thinks out loud, or the model list changes | text, or per-model caps |
@@ -146,7 +146,8 @@ The web panel's command palette lists `/orders`; `POST /api/slash` with `{comman
 A gated tool (any name in `security.approvals.tools`) pauses the turn *before*
 it runs and emits an `approval` event over SSE (`{id, tool, args, sessionId,
 createdAt, timeoutSec}`). Answer it with `POST /api/approvals/:id/approve` (or `.../deny`) — the panel
-button and `termcrab approvals approve|deny <id>` both call it, and `termcrab
+button, a Telegram inline button (which emits `approval:decided` with
+`{id, status, decidedBy}`), and `termcrab approvals approve|deny <id>` all call it, and `termcrab
 agent` asks `y/N` right in the terminal when that is the surface in front of
 you (a non-interactive run is told which command to use instead). Nobody answering means the configured
 `security.approvals.onTimeout` default (deny), and the decision is written into

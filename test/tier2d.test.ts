@@ -348,8 +348,18 @@ test('15.3 in a group the bot answers only when addressed', async (t) => {
 test('15.4 the chat commands answer from the same data the CLI reports', async (t) => {
   await t.test('the slash commands are real in the gateway source', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'src/gateway/server.ts'), 'utf8');
-    for (const cmd of ['/help', '/usage', '/sessions', '/memory']) {
+    // Batch 46 moved /help and the report commands into the shared dispatcher
+    // (src/gateway/chat-reports.ts) so Telegram and the panel's chat answer with
+    // the same words; the legacy commands stayed in the handler, and the
+    // dispatcher call is what proves the moved ones are reachable.
+    for (const cmd of ['/usage', '/sessions', '/memory']) {
       assert.ok(src.includes(`text === '${cmd}'`), `${cmd} is handled`);
+    }
+    assert.match(src, /runReportCommand\(/, 'the shared chat dispatcher is called');
+    const reports = fs.readFileSync(path.join(process.cwd(), 'src', 'gateway', 'chat-reports.ts'), 'utf8');
+    assert.match(reports, /case '\/help':/, '/help is handled by the dispatcher');
+    for (const cmd of ['/logs', '/config', '/board', '/disk', '/perf', '/doctor', '/security', '/auth', '/devices', '/embeddings', '/dream', '/docs', '/skills', '/cron']) {
+      assert.ok(reports.includes(`case '${cmd}':`), `${cmd} is handled by the shared dispatcher`);
     }
     assert.match(src, /usageForDay\(\)/, '/usage reads the real meter');
     assert.match(src, /sessions\.list\(\)/, '/sessions reads the real session store');

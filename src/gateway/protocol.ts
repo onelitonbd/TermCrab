@@ -28,7 +28,7 @@ export interface WireEvent {
  * docs/API.md does not name a family (so the promise is visible to clients).
  */
 export const EVENT_FAMILIES: Array<{ family: string; types: string[]; when: string; payload: string }> = [
-  { family: 'turn', types: ['delta', 'draft', 'error', 'approval', 'steer', 'stop'], when: 'a turn streams, wants a yes/no, or is stopped', payload: 'text / tool previews / approval {id, tool, args}' },
+  { family: 'turn', types: ['delta', 'draft', 'error', 'approval', 'approval:decided', 'steer', 'stop'], when: 'a turn streams, wants a yes/no, or is stopped', payload: 'text / tool previews / approval {id, tool, args}' },
   { family: 'tool', types: ['tool:start', 'tool:end'], when: 'one tool call begins and finishes', payload: 'name, args, toolCallId, ok, result (trimmed to 200 chars on the wire)' },
   { family: 'run', types: ['run:start', 'run:end'], when: 'a run starts and ends', payload: 'runId, sessionId, text, iterations, usage, costUsd' },
   { family: 'thinking', types: ['thinking:delta', 'thinkingCaps'], when: 'the model thinks out loud, or the model list changes', payload: 'text / per-model caps' },

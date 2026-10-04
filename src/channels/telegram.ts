@@ -31,11 +31,30 @@ export interface TelegramCfg {
 export interface TelegramDeps {
   cfg: TelegramCfg;
   onMessage: (userId: number, chatId: number, text: string, displayName: string) => Promise<string>;
+  /**
+   * 48.1 — a button press. Same allowlist as a message, and the answer is sent
+   * back through the same send path; returning the text to show keeps the
+   * callback handling in one place (the gateway).
+   */
+  onCallback?: (userId: number, chatId: number, data: string, queryId: string) => Promise<string>;
   getOffset: () => number;
   setOffset: (n: number) => void;
   /** Test seam: the real API client is built from cfg.token. */
   api?: Pick<TelegramApi, 'sendMessage' | 'getUpdates' | 'getMe'> &
-    Partial<Pick<TelegramApi, 'sendChatAction' | 'getFile' | 'downloadFile' | 'sendDocument'>>;
+    Partial<
+      Pick<
+        TelegramApi,
+        | 'sendChatAction'
+        | 'getFile'
+        | 'downloadFile'
+        | 'sendDocument'
+        | 'sendMessage'
+        | 'answerCallbackQuery'
+        | 'editMessageReplyMarkup'
+        | 'setMyCommands'
+        | 'sendVoice'
+      >
+    >;
   /** Test seam: where an incoming file lands (default: workspace/inbox). */
   saveFile?: (file: IncomingFile) => Promise<SavedFile> | SavedFile;
   /**
@@ -211,7 +230,90 @@ export class TelegramChannel {
     }
   }
 
+  /**
+   * 48.1 — a button press: same allowlist as a message, answered so the client
+   * stops its spinner, and the text the handler returns is sent as a short
+   * confirmation. When the buttons belonged to a question that has now been
+   * answered, they are dropped from the message so it cannot be pressed twice.
+   */
+  private async handleCallback(q: NonNullable<TelegramUpdate['callback_query']>): Promise<void> {
+    const userId = q.from?.id ?? 0;
+    const chatId = q.message?.chat.id ?? 0;
+    const messageId = q.message?.message_id;
+    const ack = (this.api as Partial<TelegramApi>).answerCallbackQuery;
+    if (this.deps.cfg.allowedUserIds.length > 0 && !this.deps.cfg.allowedUserIds.includes(userId)) {
+      log.warn(`telegram: rejected button press from non-allowlisted user ${userId}`);
+      if (typeof ack === 'function') await ack.call(this.api, q.id, 'not authorized').catch(() => undefined);
+      return;
+    }
+    let reply = '';
+    try {
+      reply = (await this.deps.onCallback?.(userId, chatId, q.data ?? '', q.id)) ?? '';
+    } catch (err) {
+      reply = `⚠️ ${err instanceof Error ? err.message : String(err)}`;
+    }
+    if (typeof ack === 'function') {
+      await Promise.resolve(ack.call(this.api, q.id, reply ? reply.slice(0, 200) : undefined)).catch(() => undefined);
+    }
+    // Answered questions lose their buttons: a decided approval must not look
+    // pressable, and on a phone a stale button is a trap.
+    const edit = (this.api as Partial<TelegramApi>).editMessageReplyMarkup;
+    if (messageId && typeof edit === 'function') {
+      await Promise.resolve(edit.call(this.api, chatId, messageId, [])).catch(() => undefined);
+    }
+    if (reply) await this.send(chatId, reply);
+  }
+
+  /** 48.1 — send with inline buttons (the gateway's approval cards use this). */
+  async sendButtons(
+    chatId: number,
+    text: string,
+    buttons: { text: string; data: string }[][],
+  ): Promise<boolean> {
+    try {
+      await this.api.sendMessage(chatId, mdToTelegramHtml(text), buttons);
+      return true;
+    } catch (err) {
+      log.warn('telegram button send failed:', err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
+
+  /**
+   * 48.2 — register the command menu. Best-effort: a Bot API server that does
+   * not know setMyCommands (or a network hiccup) must not stop the gateway.
+   */
+  async registerCommands(commands: { cmd: string; description: string }[]): Promise<boolean> {
+    const set = (this.api as Partial<TelegramApi>).setMyCommands;
+    if (typeof set !== 'function') return false;
+    try {
+      await set.call(
+        this.api,
+        commands.map((c) => ({ command: c.cmd.replace(/^\//, ''), description: c.description.slice(0, 256) })),
+      );
+      log.info(`telegram: registered ${commands.length} command(s) with the Bot menu`);
+      return true;
+    } catch (err) {
+      log.debug('telegram setMyCommands failed:', err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
+
+  /** 51.1 — a voice note reply, so /say and the wake loop can answer out loud. */
+  async sendVoice(chatId: number, filePath: string, caption?: string): Promise<void> {
+    const send = (this.api as Partial<TelegramApi>).sendVoice;
+    if (typeof send !== 'function') throw new Error('this telegram client cannot send voice');
+    const bytes = fs.readFileSync(filePath);
+    await send.call(this.api, chatId, safeFileName(path.basename(filePath), 'voice.ogg'), bytes, caption);
+  }
+
   private async handleUpdate(update: TelegramUpdate): Promise<void> {
+    // 48.1 — a button press is not a message: it carries the chat, the presser
+    // and the data the button was created with (an approval id, a confirm).
+    if (update.callback_query) {
+      await this.handleCallback(update.callback_query);
+      return;
+    }
     const msg = update.message;
     if (!msg) return;
     const userId = msg.from?.id ?? 0;
@@ -368,6 +470,13 @@ export class TelegramChannel {
 
 export interface TelegramUpdate {
   update_id: number;
+  /** 48.1 — an inline button was pressed. */
+  callback_query?: {
+    id: string;
+    data?: string;
+    from?: { id: number; username?: string; first_name?: string };
+    message?: { message_id: number; chat: { id: number; type?: string } };
+  };
   message?: {
     text?: string;
     caption?: string;

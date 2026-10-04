@@ -10,10 +10,10 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ১০০%।** ১৮২টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ৪৬টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **এখনকার স্কোর: ১০০%।** ১৮৫টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ৪৯টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
 - **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
-- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৮২টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
+- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৮৫টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
 - **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি জিনিসগুলো consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
@@ -53,12 +53,12 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Verdict | Count | Meaning |
 |---|---:|---|
 | ✅ WORKING | 117 | wired and observable |
-| 🏅 BETTER | 46 | TermCrab is ahead of OpenClaw here |
+| 🏅 BETTER | 49 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 1 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
-| | **164** | in-scope capabilities (182 measured in total) |
+| | **167** | in-scope capabilities (185 measured in total) |
 
 **Capability score 100%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 135 | ~10d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 138 | ~10d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 164 | ~13d | in-scope only |
+| **total** | 167 | ~13d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -201,7 +201,7 @@ Out of scope, and why:
 | Transcription | realtime transcription service | ✅ WORKING | offline transcription of any audio file through whisper.cpp: findWhisperBin looks on PATH (whisper-cli, whisper) then in the usual checkout builds, findWhisperModel prefers tiny > base > small > large and honours --model and WHISPER_MODEL, transcribeFile spawns the documented argv (-m <model> -f <file> -np [-l lang]), never throws, and answers a missing engine or model with the exact install/download sentence. Voice notes arriving on a channel are transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone (src/channels/intake.ts), and `termcrab transcribe <file> --json` is the same path on the command line with an envelope (it used to print a friendly line instead). Realtime here means phrase-by-phrase: continuous listening emits each phrase as the recognizer returns it (stt:result over SSE) and restarts immediately after it; what is not attempted is partial-hypothesis streaming ASR (words appearing while you are still speaking). test/tier2y.test.ts drives a fake whisper-cli end to end (happy path, argv, CLI JSON, the transcript reaching the agent prompt, missing model, engine failure, deadline) | parity | — |
 | Native GUI / foreground service | desktop apps + node apps | 🚫 OUT OF SCOPE | no companion app; a persistent notification is the closest — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### ops — 98% (35 in-scope checks, 1 out of scope)
+### ops — 99% (38 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -230,6 +230,9 @@ Out of scope, and why:
 | One deadline per group (44.2) | a suite that re-runs until it is green | 🏅 BETTER | node cancels a test at `--test-timeout` and **the CLI flag overrides the test's own `{ timeout }`** — so the two measuring files (`tier3i`: the real bench; `tier3j`: a real npm install) were cancelled on a loaded machine while their children were still working, and came back `not ok` with zero failing assertions. scripts/test-files.mjs declares the split once (heavy: 600 s with the reason; fast: 60 s so a hung test still fails quickly), `npm test`, the coverage recording, the CLI recording and the suite clock all read it, and test/tier3n.test.ts asserts the override against a throwaway file — so the reason the split exists cannot quietly stop being true | parity | — |
 | Three surfaces, one product (45.1) | the backend is not a surface | 🏅 BETTER | The owner's rule is that every capability must be reachable from the CLI, Telegram and the web panel — not merely from the API behind them. scripts/surface-audit.mjs measures that with 71 capabilities × 3 surfaces, each cell a regex probe over the file that would have to contain the feature, and prints the verdicts plus `--gaps`; `--check` exits 1 the day a probe stops matching, and test/surface-audit.test.ts also refuses a report (docs/SURFACES.md) whose scoreboard no longer matches the script. First honest measurement: CLI 49 direct / 0 missing, Telegram 24 / **28 missing**, web 41 / 9 missing. | parity | — |
 | The audit cannot rot (45.2) | a report written once and never true again | 🏅 BETTER | The audit is checked twice: `--check` re-runs every probe against the source (a moved command fails the suite with the file and pattern), and the same test parses the JSON and compares it with the scoreboard table in docs/SURFACES.md, so the numbers cannot drift from what the scanner sees. Row shape is enforced too: every capability carries a verdict for all three surfaces, and every ❌ or ◐ must say why. | parity | — |
+| The reports a chat can run (46.1) | the CLI is the only place the numbers appear | 🏅 BETTER | Sixteen reports and /help live in src/gateway/chat-reports.ts, clamped to 24 lines and with secrets redacted by name; one CHAT_COMMANDS list (27 entries) is what /help prints, what GET /api/slash serves and what setMyCommands registers as the Telegram Bot menu — so a report is written once and reaches every surface. | parity | — |
+| One dispatcher, every surface (47.2) | two implementations that drift apart | 🏅 BETTER | runSharedCommand(text, channel, chatId, sessionId) in src/gateway/server.ts is called by both Telegram's handleChannelMessage and the panel's POST /api/slash — a command cannot work in one chat and be a prompt in the other. The control verbs (/stop /steer /queue /sessions rename|purge /update /backup /watch) live in src/gateway/chat-control.ts, and the panel chat box intercepts a leading slash and posts it to the same dispatcher. | parity | — |
+| Approvals decidable inside Telegram (48.3) | the panel is the only place a yes/no can be given | 🏅 BETTER | A pending approval whose session starts telegram:<chatId> is delivered with reply_markup.inline_keyboard carrying approve:<id> / deny:<id>; the callback calls the same resolveApproval(id, …, 'telegram') the panel button and the CLI call, answers the callback, drops the buttons and emits approval:decided. setMyCommands(CHAT_COMMANDS) registers the menu at start and a refusal is tolerated. | parity | — |
 | The closing numbers, read back (42.1) | n/a | 🏅 BETTER | Every number the tracker quotes — the census score, the suite counts, the coverage floor and fingerprint, the CLI command coverage, the suite clock, the performance budget — is *produced* in docs/openclaw/data/*.json. scripts/final-numbers.mjs loads those files, prints each number with the file it came from, and `--check` (and test/tier3m.test.ts 42.1) refuses when WORKLOG.md's numbers line no longer quotes them, in the Bengali digits the tracker is written in. A quoted number that nobody re-derives is a number that will one day be wrong | parity | — |
 | The owner handover, declared once (42.2) | an issue tracker with nobody assigned | 🏅 BETTER | After the closing batch exactly two actions need a token or a push, and they live in ONE place: src/core/owner.ts declares each action's commands, what it closes, what to expect and where the proof lands; `termcrab owner` prints them, `docs/OWNER.md` is the long version, and test/tier3m.test.ts 42.2 asserts every declared command still appears on the page under its own heading. The handover cannot say one thing on the phone and another in the docs | parity | — |
 | The queue can end (42.3) | a roadmap that only grows | 🏅 BETTER | WORKLOG.md §3 can now be the sentence **Queue empty.** instead of another batch, and the tracker test accepts that only when every row is finished or in progress and none is stranded at a todo nobody will start; scripts/status.mjs prints `queue empty…` instead of a count of zero, and test/tier3m.test.ts 42.3 asserts both the human line and the --json flags. New batches are written when the owner asks for one or something real breaks — not because the table looks empty | parity | — |
