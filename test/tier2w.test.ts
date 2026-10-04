@@ -164,6 +164,7 @@ test('32.4 the CI workflow is versioned, verified, and one command from running'
   assert.match(wf, /termcrab\.js agent "ping"/, 'and the offline brain answers in CI');
   assert.match(wf, /status\.mjs/, 'the work tracker is checked for staleness');
   assert.match(wf, /census\.mjs/, 'and the census for drift');
+  assert.match(wf, /check:measure/, 'and the coverage/CLI-coverage recordings are pinned to the source they measured');
   assert.match(wf, /install-ci\.mjs --check/, 'the installed copy is checked against this source from inside CI');
   assert.match(wf, /bash install\.sh --check/, 'the installer plan is exercised');
   assert.match(wf, /too old/, 'including its refusal of an unsupported Node');

@@ -41,6 +41,8 @@ jobs:
         run: node scripts/status.mjs
       - name: Census must not drift
         run: node scripts/census.mjs
+      - name: The measurements are pinned to this source
+        run: npm run check:measure
 
   installer:
     name: installer plan (no writes)

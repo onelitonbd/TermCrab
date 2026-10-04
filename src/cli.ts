@@ -389,6 +389,20 @@ export async function main(argv: string[]): Promise<void> {
     }
   }
 
+  // 34.6 — which commands does the test suite actually exercise? `npm run
+  // test:cli` sets TCRAB_CLI_COVERAGE to a file, runs the suite, and every
+  // dispatch appends its command name here. It is the only way to measure CLI
+  // coverage without a mocking framework: the suite spawns the real binary.
+  // Unset (the normal case) this costs nothing; a failure to write never breaks
+  // a command, because coverage must not be able to cause an outage.
+  if (process.env.TCRAB_CLI_COVERAGE) {
+    try {
+      fs.appendFileSync(process.env.TCRAB_CLI_COVERAGE, `${cmd}\n`);
+    } catch {
+      /* ignore */
+    }
+  }
+
   switch (cmd) {
     case 'help':
     case '--help':
@@ -566,6 +580,12 @@ export async function main(argv: string[]): Promise<void> {
       }
       if (rest.includes('--check') || !rest.includes('--apply')) {
         const info = await checkForUpdate(version());
+        if (machine) {
+          // 34.6: the check was the one path with no envelope, which is why it
+          // could not be asserted like every other command.
+          emitJson('update', info);
+          return;
+        }
         console.log(renderUpdate(info));
         console.log('\n  update it in place:  termcrab update --apply   (keeps a snapshot; rolls back if the new build will not start)');
         console.log('  take one back:       termcrab update --rollback');

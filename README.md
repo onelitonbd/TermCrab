@@ -353,6 +353,8 @@ Telegram / Web UI / CLI ──► Gateway (127.0.0.1:7788, token auth, SSE event
 
 Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
 Gateway API: [docs/API.md](docs/API.md) ·
+Testing and coverage: [docs/TESTING.md](docs/TESTING.md) ·
+CLI command coverage: [docs/CLI-COVERAGE.md](docs/CLI-COVERAGE.md) ·
 Termux guide: [docs/TERMUX.md](docs/TERMUX.md) ·
 Product plan: [PRODUCT.md](PRODUCT.md) ·
 OpenClaw research that inspired it: [OPENCLAW_REPORT.md](OPENCLAW_REPORT.md)

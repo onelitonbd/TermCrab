@@ -4,6 +4,10 @@ Scripts should never have to scrape the pretty output. Every command that prints
 structured data takes `--json`, and then **stdout carries exactly one JSON
 document and nothing else** — logs, warnings and progress lines move to stderr.
 
+Which commands exist, and which of them the test suite actually runs, is measured
+rather than claimed: [docs/CLI-COVERAGE.md](CLI-COVERAGE.md) is generated from a recording of a
+full suite run (`src/cli.ts` appends every dispatched command to `$TCRAB_CLI_COVERAGE`).
+
 ## The envelope
 
 Success:
@@ -118,6 +122,7 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab disk --json` | `{before:{root, totalBytes, files, byArea}, budgetBytes, keepDays, trim, overBudget}` |
 | `termcrab backup [file.tar] --json` | `{file, format, formatVersion, createdAt, release, schemaVersion, files, bytes, platform, node}` |
 | `termcrab restore <file.tar> --json` | `{restored, bytes, movedTo, from, schema:{from,to,migrated}}` · `--dry-run` → `{dryRun, manifest, files:[{rel,bytes,exists}], tooNew}` |
+| `termcrab update --check --json` | `{ok, current, latest?, updateAvailable?, url?, error?}` — the same check the panel's update button uses; the API base is overridable with `TCRAB_UPDATE_API` (a GitHub mirror, and how the suite tests this path) |
 | `termcrab schema --json` | `{current, home, stamp:{version,updatedAt,applied,release}, from, to, applied, adopted, backupDir}` · `--dry-run` lists steps without writing |
 | `termcrab service status --json` | `{ok, platform:'systemd'\|'launchd'\|'termux', file, installed, action, steps}` · `install` writes the unit (or the Termux:Boot script), `--dry-run` prints it and writes nothing |
 | `termcrab bootstrap --json` | `{home, complete, missing:[rel], present:[{rel,bytes,why}], stage:'empty'\|'first-run'\|'done', nextStep}` · `--write` writes only what is missing, `--force` rewrites the templates |

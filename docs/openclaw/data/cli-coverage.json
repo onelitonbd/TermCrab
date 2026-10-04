@@ -1,0 +1,378 @@
+{
+  "measuredAt": "2026-10-04",
+  "commands": [
+    "help",
+    "completion",
+    "version",
+    "onboard",
+    "gateway",
+    "supervisor",
+    "doctor",
+    "update",
+    "say",
+    "tui",
+    "agent",
+    "heartbeat",
+    "skills",
+    "cron",
+    "import",
+    "approvals",
+    "usage",
+    "run",
+    "wait",
+    "stop",
+    "runs",
+    "presence",
+    "events",
+    "image",
+    "models",
+    "auth",
+    "orders",
+    "logs",
+    "pair",
+    "devices",
+    "backup",
+    "restore",
+    "service",
+    "bootstrap",
+    "schema",
+    "disk",
+    "status",
+    "dream",
+    "wake",
+    "sessions",
+    "subagents",
+    "agents",
+    "security",
+    "board",
+    "rooms",
+    "browser",
+    "transcribe",
+    "embeddings",
+    "context",
+    "memory",
+    "boot",
+    "config"
+  ],
+  "covered": [
+    {
+      "command": "help",
+      "line": 407,
+      "runs": 15
+    },
+    {
+      "command": "completion",
+      "line": 427,
+      "runs": 3
+    },
+    {
+      "command": "version",
+      "line": 444,
+      "runs": 2
+    },
+    {
+      "command": "gateway",
+      "line": 483,
+      "runs": 2
+    },
+    {
+      "command": "doctor",
+      "line": 524,
+      "runs": 3
+    },
+    {
+      "command": "update",
+      "line": 560,
+      "runs": 3
+    },
+    {
+      "command": "say",
+      "line": 621,
+      "runs": 1
+    },
+    {
+      "command": "agent",
+      "line": 695,
+      "runs": 1
+    },
+    {
+      "command": "heartbeat",
+      "line": 801,
+      "runs": 2
+    },
+    {
+      "command": "skills",
+      "line": 808,
+      "runs": 6
+    },
+    {
+      "command": "cron",
+      "line": 1040,
+      "runs": 13
+    },
+    {
+      "command": "approvals",
+      "line": 1319,
+      "runs": 3
+    },
+    {
+      "command": "usage",
+      "line": 1397,
+      "runs": 4
+    },
+    {
+      "command": "run",
+      "line": 1443,
+      "runs": 4
+    },
+    {
+      "command": "wait",
+      "line": 1444,
+      "runs": 1
+    },
+    {
+      "command": "stop",
+      "line": 1510,
+      "runs": 2
+    },
+    {
+      "command": "runs",
+      "line": 1543,
+      "runs": 3
+    },
+    {
+      "command": "presence",
+      "line": 1580,
+      "runs": 3
+    },
+    {
+      "command": "events",
+      "line": 1624,
+      "runs": 3
+    },
+    {
+      "command": "image",
+      "line": 1664,
+      "runs": 1
+    },
+    {
+      "command": "models",
+      "line": 1708,
+      "runs": 1
+    },
+    {
+      "command": "auth",
+      "line": 1748,
+      "runs": 4
+    },
+    {
+      "command": "orders",
+      "line": 1853,
+      "runs": 5
+    },
+    {
+      "command": "logs",
+      "line": 1918,
+      "runs": 3
+    },
+    {
+      "command": "backup",
+      "line": 2028,
+      "runs": 2
+    },
+    {
+      "command": "restore",
+      "line": 2046,
+      "runs": 3
+    },
+    {
+      "command": "service",
+      "line": 2114,
+      "runs": 1
+    },
+    {
+      "command": "bootstrap",
+      "line": 2137,
+      "runs": 3
+    },
+    {
+      "command": "schema",
+      "line": 2169,
+      "runs": 3
+    },
+    {
+      "command": "disk",
+      "line": 2191,
+      "runs": 4
+    },
+    {
+      "command": "status",
+      "line": 2230,
+      "runs": 3
+    },
+    {
+      "command": "wake",
+      "line": 2270,
+      "runs": 1
+    },
+    {
+      "command": "sessions",
+      "line": 2308,
+      "runs": 13
+    },
+    {
+      "command": "subagents",
+      "line": 2513,
+      "runs": 3
+    },
+    {
+      "command": "agents",
+      "line": 2574,
+      "runs": 6
+    },
+    {
+      "command": "security",
+      "line": 2657,
+      "runs": 4
+    },
+    {
+      "command": "board",
+      "line": 2680,
+      "runs": 2
+    },
+    {
+      "command": "rooms",
+      "line": 2695,
+      "runs": 4
+    },
+    {
+      "command": "browser",
+      "line": 2775,
+      "runs": 5
+    },
+    {
+      "command": "transcribe",
+      "line": 2842,
+      "runs": 1
+    },
+    {
+      "command": "embeddings",
+      "line": 2876,
+      "runs": 4
+    },
+    {
+      "command": "context",
+      "line": 2930,
+      "runs": 1
+    },
+    {
+      "command": "memory",
+      "line": 2950,
+      "runs": 6
+    },
+    {
+      "command": "config",
+      "line": 3086,
+      "runs": 2
+    }
+  ],
+  "untested": [
+    {
+      "command": "onboard",
+      "line": 450,
+      "why": "an interactive question-and-answer wizard on stdin; the prompts are asserted directly",
+      "instead": "test/tier.test.ts"
+    },
+    {
+      "command": "supervisor",
+      "line": 520,
+      "why": "supervise-and-restart is a loop with no exit condition — spawning it would hang the suite",
+      "instead": "test/tier2s.test.ts"
+    },
+    {
+      "command": "tui",
+      "line": 644,
+      "why": "needs a real TTY (alternate screen + raw keys); the suite drives it through a fake TTY instead",
+      "instead": "test/tier2r.test.ts"
+    },
+    {
+      "command": "import",
+      "line": 1250,
+      "why": "reads a Telegram desktop export; the suite builds the same files and imports them through the library",
+      "instead": "test/import.test.ts"
+    },
+    {
+      "command": "pair",
+      "line": 1951,
+      "why": "the pairing code is printed for a device that has to answer — the HTTP flow is tested live instead",
+      "instead": "test/tier2i.test.ts"
+    },
+    {
+      "command": "devices",
+      "line": 1975,
+      "why": "same flow: the paired-device list and revocation are asserted over a real socket",
+      "instead": "test/tier2i.test.ts"
+    },
+    {
+      "command": "dream",
+      "line": 2241,
+      "why": "a long background consolidation pass; the same store is exercised by the library tests",
+      "instead": "test/dream.test.ts"
+    },
+    {
+      "command": "boot",
+      "line": 3072,
+      "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
+      "instead": "test/tier2w.test.ts"
+    }
+  ],
+  "unknown": [],
+  "runCounts": {
+    "approvals": 3,
+    "memory": 6,
+    "config": 2,
+    "--version": 2,
+    "run": 4,
+    "wait": 1,
+    "stop": 2,
+    "version": 2,
+    "gateway": 2,
+    "help": 15,
+    "not-a-command": 3,
+    "completion": 3,
+    "status": 3,
+    "sessions": 13,
+    "skills": 6,
+    "cron": 13,
+    "disk": 4,
+    "doctor": 3,
+    "usage": 4,
+    "context": 1,
+    "logs": 3,
+    "runs": 3,
+    "presence": 3,
+    "events": 3,
+    "orders": 5,
+    "image": 1,
+    "models": 1,
+    "auth": 4,
+    "backup": 2,
+    "restore": 3,
+    "schema": 3,
+    "embeddings": 4,
+    "bootstrap": 3,
+    "service": 1,
+    "subagents": 3,
+    "agents": 6,
+    "say": 1,
+    "transcribe": 1,
+    "browser": 5,
+    "rooms": 4,
+    "board": 2,
+    "security": 4,
+    "update": 3,
+    "agent": 1,
+    "heartbeat": 2,
+    "wake": 1
+  }
+}

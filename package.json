@@ -43,7 +43,10 @@
     "start": "node dist/src/bin/termcrab.js",
     "prepack": "npm run build",
     "release": "node scripts/release.mjs",
-    "ci:install": "node scripts/install-ci.mjs"
+    "ci:install": "node scripts/install-ci.mjs",
+    "test:coverage": "node scripts/coverage.mjs --run",
+    "test:cli": "node scripts/cli-coverage.mjs --run",
+    "check:measure": "node scripts/coverage.mjs --check && node scripts/cli-coverage.mjs --check"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

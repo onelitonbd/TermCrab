@@ -1,0 +1,113 @@
+{
+  "measuredAt": "2026-10-04",
+  "fingerprint": "f4380a4ef4ff084c",
+  "floor": 80,
+  "tests": 918,
+  "pass": 913,
+  "fail": 0,
+  "skipped": 5,
+  "testFiles": 92,
+  "source": {
+    "lines": 86.82,
+    "branches": 77.29,
+    "functions": 86.51
+  },
+  "all": {
+    "lines": 0,
+    "branches": 0,
+    "functions": 0
+  },
+  "worst": [
+    {
+      "dir": "mobile",
+      "file": "supervisor.js",
+      "lines": 18.06,
+      "branches": 100,
+      "functions": 0
+    },
+    {
+      "dir": "providers",
+      "file": "types.js",
+      "lines": 33.33,
+      "branches": 50,
+      "functions": 33.33
+    },
+    {
+      "dir": "channels",
+      "file": "discord.js",
+      "lines": 41.67,
+      "branches": 60.87,
+      "functions": 55.56
+    },
+    {
+      "dir": "channels",
+      "file": "slack.js",
+      "lines": 47.12,
+      "branches": 54.55,
+      "functions": 62.5
+    },
+    {
+      "dir": "channels",
+      "file": "matrix.js",
+      "lines": 48.21,
+      "branches": 70.37,
+      "functions": 62.5
+    },
+    {
+      "dir": "bin",
+      "file": "termcrab.js",
+      "lines": 50,
+      "branches": 100,
+      "functions": 0
+    },
+    {
+      "dir": "channels",
+      "file": "signal.js",
+      "lines": 51.54,
+      "branches": 75.86,
+      "functions": 60
+    },
+    {
+      "dir": "mobile",
+      "file": "notify.js",
+      "lines": 55.17,
+      "branches": 66.67,
+      "functions": 80
+    },
+    {
+      "dir": "mobile",
+      "file": "boot.js",
+      "lines": 55.56,
+      "branches": 100,
+      "functions": 75
+    },
+    {
+      "dir": "channels",
+      "file": "cli.js",
+      "lines": 56.98,
+      "branches": 22.13,
+      "functions": 63.29
+    },
+    {
+      "dir": "channels",
+      "file": "api.js",
+      "lines": 58.11,
+      "branches": 80,
+      "functions": 41.67
+    },
+    {
+      "dir": "core",
+      "file": "friendly.js",
+      "lines": 58.59,
+      "branches": 52.27,
+      "functions": 100
+    }
+  ],
+  "best": [
+    "ask.js",
+    "embed-remote.js",
+    "exec-guard.js",
+    "intents.js",
+    "rolling.js"
+  ]
+}
