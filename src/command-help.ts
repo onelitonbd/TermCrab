@@ -85,9 +85,47 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'update',
-    usage: 'update',
-    summary: 'check whether a newer TermCrab exists',
-    flags: [],
+    usage: 'update [--check | --apply | --rollback]',
+    summary: 'check whether a newer TermCrab exists — and take an update back if it will not start',
+    flags: [
+      '--check      ask now and print what it finds (the default)',
+      '--apply      pull, install and build, then verify the new build starts — rolled back automatically if it does not',
+      '--rollback   put the newest build snapshot back by hand',
+    ],
+    example: 'termcrab update --apply',
+    json: '{current, latest, updateAvailable, applied, target, snapshot?, rolledBack?, files?}',
+  },
+  {
+    cmd: 'backup',
+    usage: 'backup [file.tar] [--json]',
+    summary: 'one tar with config, chats, memory, skills and state — move the whole agent to a new phone',
+    flags: [
+      '--json   file, format, counts and platform as data',
+    ],
+    example: 'termcrab backup',
+    json: '{file, format, formatVersion, createdAt, release, schemaVersion, files, bytes, platform, node}',
+  },
+  {
+    cmd: 'restore',
+    usage: 'restore <file.tar> [--dry-run | --force] [--json]',
+    summary: 'put a backup back — existing files are moved aside into state/restore-<time>, never overwritten',
+    flags: [
+      '--dry-run   verify and list what would happen, writing nothing',
+      '--force     accept an archive written by a newer release than this build',
+    ],
+    example: 'termcrab restore termcrab-backup-2026-10-04.tar',
+    json: '{restored, bytes, movedTo, from, schema:{from,to,migrated}}',
+  },
+  {
+    cmd: 'schema',
+    usage: 'schema [--dry-run] [--json]',
+    summary: 'the state schema version, and which migrations have run',
+    flags: [
+      '--dry-run   list the steps the next start would run, writing nothing',
+      '--json      current + stamp as data',
+    ],
+    example: 'termcrab schema --dry-run',
+    json: '{current, home, stamp:{version,updatedAt,applied,release}, from, to, applied, adopted, backupDir}',
   },
   {
     cmd: 'say',

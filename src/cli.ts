@@ -68,6 +68,9 @@ import { formatSessionHits, searchSessions } from './agent/session-search.js';
 import { applyReset } from './agent/session-policy.js';
 import { rollingLine, rollingSessionKey } from './agent/rolling.js';
 import { runTui } from './tui/app.js';
+import { MIGRATIONS, SCHEMA_VERSION, ensureSchema, readStamp, runMigrations } from './core/schema.js';
+import { planRestore, restoreBackup, writeBackup } from './core/backup.js';
+import { applyVerified, latestBuildSnapshot, repoRoot, restoreBuildSnapshot, verifyBuild } from './core/updater.js';
 import { formatSessionView, sessionView } from './agent/session-view.js';
 import { ANSI, paint } from './core/color.js';
 
@@ -99,6 +102,11 @@ Everyday extras:
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
   termcrab heartbeat                 run one self-check right now
   termcrab update                    check if a newer TermCrab exists (and how to get it)
+  termcrab update --apply            pull, install and build — verified, rolled back if it will not start
+  termcrab update --rollback         put the newest build snapshot back
+  termcrab backup [file]             one tar with config, chats, memory and skills (move to a new phone)
+  termcrab restore <file>            put a backup back — existing files are moved aside, never overwritten
+  termcrab schema [--dry-run]        the state schema version and the migrations that have run
   termcrab doctor --share            copy-paste report for asking help (passwords stripped)
   termcrab boot [install|status]     start automatically when the phone boots
   termcrab approvals [list]          dangerous tools waiting for your yes/no (panel card answers too)
@@ -341,6 +349,21 @@ export async function main(argv: string[]): Promise<void> {
     }
   }
 
+  // 31.1: before any command reads the home, carry it forward. A home that
+  // does not exist yet is left alone (the command creates what it needs), and
+  // a restore replaces the stamp wholesale — its own check runs after.
+  if (!['help', '--help', '-h', 'version', '--version', '-v', 'completion', 'restore'].includes(cmd) && fs.existsSync(home())) {
+    const schema = ensureSchema({ release: version(), quiet: true });
+    if (schema?.refused) {
+      console.error(`✗ ${schema.refused}`);
+      process.exitCode = 1;
+      return;
+    }
+    if (schema && schema.applied.length && !machine) {
+      console.error(`(state schema ${schema.from} → ${schema.to}: ${schema.applied.length} migration(s) ran; a snapshot is in state/backups/)`);
+    }
+  }
+
   switch (cmd) {
     case 'help':
     case '--help':
@@ -496,8 +519,57 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     case 'update': {
+      // 31.3: the update path is now three-mode and reversible.
+      if (rest.includes('--rollback')) {
+        const snap = latestBuildSnapshot(home());
+        if (!snap) {
+          if (machine) failJson('update', 'no build snapshot to roll back to', 'one is written by termcrab update --apply');
+          else {
+            console.error('no build snapshot to roll back to — one is taken automatically by `termcrab update --apply`');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const root = repoRoot() ?? process.cwd();
+        const written = restoreBuildSnapshot(snap, root);
+        if (machine) {
+          emitJson('update', { rolledBack: true, from: snap, files: written });
+          return;
+        }
+        console.log(`⏪ put ${written} file(s) back from ${path.basename(snap)} — restart the gateway to use them`);
+        return;
+      }
+      if (rest.includes('--check') || !rest.includes('--apply')) {
+        const info = await checkForUpdate(version());
+        console.log(renderUpdate(info));
+        console.log('\n  update it in place:  termcrab update --apply   (keeps a snapshot; rolls back if the new build will not start)');
+        console.log('  take one back:       termcrab update --rollback');
+        return;
+      }
+
       const info = await checkForUpdate(version());
       console.log(renderUpdate(info));
+      console.log('');
+      const result = await applyVerified({
+        homeRoot: home(),
+        release: info.latest || version(),
+        onPhase: (phase) => console.error(`  · ${phase === 'pull' ? 'downloading the new code' : phase === 'install' ? 'installing' : 'building'}…`),
+        verify: async (root) => verifyBuild(root),
+      });
+      if (machine) {
+        emitJson('update', { ...result, applied: rest.includes('--apply'), target: info.latest ?? null });
+        if (!result.ok) process.exitCode = 1;
+        return;
+      }
+      if (!result.ok) {
+        console.error(`✗ ${result.error}`);
+        if (result.snapshot) console.error(`   the previous build is kept at ${result.snapshot}`);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(`✅ updated to ${info.latest ?? version()} — verified by starting it: ${result.verified}`);
+      console.log(`   restart the gateway (or the supervisor will) to run the new code`);
+      if (result.snapshot) console.log(`   to take it back: termcrab update --rollback`);
       return;
     }
 
@@ -1717,6 +1789,114 @@ export async function main(argv: string[]): Promise<void> {
       }
       if (codes.length) console.log(`  ⏳ ${codes.length} unused pairing code(s) still live (first: ${codes[0]!.code})`);
       console.log('     revoke one: termcrab devices revoke <id|name>   (the master password keeps working)');
+      console.log('');
+      return;
+    }
+
+    case 'backup': {
+      const target = rest.find((a) => !a.startsWith('-'));
+      const file = target ?? path.join(process.cwd(), `termcrab-backup-${new Date().toISOString().slice(0, 10)}.tar`);
+      const result = writeBackup(file, { release: version() });
+      if (machine) {
+        emitJson('backup', { file: result.file, ...result.manifest });
+        return;
+      }
+      const kb = Math.max(1, Math.round(result.manifest.bytes / 1024));
+      console.log('');
+      console.log(`  📦 ${result.file}`);
+      console.log(`     ${result.manifest.files} file(s) · ${kb} KB · schema ${result.manifest.schemaVersion} · release ${result.manifest.release || 'unknown'}`);
+      console.log(`     what is inside is listed in the archive's own manifest.json`);
+      console.log(`     restore it with: termcrab restore ${path.basename(result.file)}`);
+      console.log('');
+      return;
+    }
+
+    case 'restore': {
+      const file = rest.find((a) => !a.startsWith('-'));
+      if (!file) {
+        if (machine) failJson('restore', 'missing archive', 'usage: termcrab restore <file.tar> [--dry-run] [--force]');
+        else {
+          console.error('usage: termcrab restore <file.tar> [--dry-run] [--force]');
+          process.exitCode = 1;
+        }
+        return;
+      }
+      if (!fs.existsSync(file)) {
+        if (machine) failJson('restore', `no such file: ${file}`, 'termcrab backup <file> makes one');
+        else {
+          console.error(`no such file: ${file}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      let plan;
+      try {
+        plan = planRestore(file);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (machine) failJson('restore', msg, 'a TermCrab backup is a .tar with manifest.json inside');
+        else {
+          console.error(`✗ ${msg}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+      const force = rest.includes('--force');
+      if (rest.includes('--dry-run')) {
+        if (machine) {
+          emitJson('restore', { dryRun: true, ...plan });
+          return;
+        }
+        console.log('');
+        console.log(`  🧾 ${file} — ${plan.manifest.files} file(s), schema ${plan.manifest.schemaVersion}, written ${plan.manifest.createdAt}`);
+        console.log(`     ${plan.files.length} file(s) would be written · ${plan.files.filter((f) => f.exists).length} would replace something (moved to state/restore-…)`);
+        if (plan.tooNew) console.log(`     ⚠️ this backup is from a newer release — restoring needs --force`);
+        console.log('');
+        return;
+      }
+      try {
+        const result = restoreBackup(file, { force });
+        // The restored files carry their own schema stamp; carry it forward
+        // now, so the home the owner is about to use is current.
+        const after = runMigrations(home(), { release: version() });
+        if (machine) {
+          emitJson('restore', { restored: result.restored, bytes: result.bytes, movedTo: result.movedTo, from: file, schema: { from: after.from, to: after.to, migrated: after.applied.length } });
+          return;
+        }
+        console.log('');
+        console.log(`  ✅ restored ${result.restored} file(s) (${Math.max(1, Math.round(result.bytes / 1024))} KB) from ${file}`);
+        if (result.movedTo) console.log(`     the files that were here are in ${result.movedTo} — nothing was lost`);
+        console.log(`     schema: ${readStamp().version} of ${SCHEMA_VERSION}${after.applied.length ? ` (upgraded ${after.from} → ${after.to})` : ''}`);
+        console.log('');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (machine) failJson('restore', msg, 'update the app, or pass --force');
+        else {
+          console.error(`✗ ${msg}`);
+          process.exitCode = 1;
+        }
+      }
+      return;
+    }
+
+    case 'schema': {
+      const stamp = readStamp();
+      const dry = rest.includes('--dry-run');
+      const outcome = runMigrations(home(), { release: version(), dryRun: dry });
+      if (machine) {
+        emitJson('schema', { current: SCHEMA_VERSION, home: home(), stamp, ...outcome });
+        return;
+      }
+      console.log('');
+      console.log(`  🧬 state schema ${outcome.to} (this build) · home is at ${outcome.from}`);
+      if (outcome.refused) console.log(`     ✗ ${outcome.refused}`);
+      for (const step of MIGRATIONS) {
+        const done = stamp.applied.find((a) => a.id === step.id);
+        const pending = Number(step.id.slice(0, 4)) > outcome.from;
+        console.log(`     ${done ? '✔' : pending ? '→' : '·'} ${step.id}  ${step.what}${done ? `  (${done.changed} change(s), ${done.at.slice(0, 10)})` : pending ? (dry ? '  (would run)' : '') : ''}`);
+      }
+      if (outcome.backupDir) console.log(`     snapshot before migrating: ${outcome.backupDir}`);
+      if (!outcome.refused && outcome.from < outcome.to && !dry) console.log(`     upgraded ${outcome.from} → ${outcome.to}`);
       console.log('');
       return;
     }

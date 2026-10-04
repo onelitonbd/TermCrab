@@ -109,6 +109,9 @@ termcrab supervisor     run the gateway with auto-restart watchdog
 termcrab agent [msg] [--as <name>] [--tier local]
                            chat one-shot or interactive REPL (/as <name>, /agents inside)
 termcrab tui            full-screen terminal: live transcript, tool cards, shared main session
+termcrab backup [file]   one tar of everything that matters (config, chats, memory, skills, state)
+termcrab restore <file>  verify it, then put it back — nothing is overwritten in place
+termcrab schema          the state schema version, and which migrations have run
 termcrab say <text>        speak text aloud (termux-tts-speak / espeak / say ...)
 termcrab doctor [--json|--share]  diagnose the installation (--share = safe paste for help)
 termcrab heartbeat      run one proactive tick now
@@ -130,6 +133,24 @@ termcrab completion sh  bash | zsh | fish completion script (`termcrab completio
 termcrab status --json   every structured command takes --json: one document on stdout
                          (`{ok, command, data}` / `{ok:false, …, error}`) — see docs/CLI.md
 ```
+
+## Moving to a new phone
+
+Everything TermCrab is lives in one directory, and one command copies it:
+
+```bash
+termcrab backup                # → termcrab-backup-2026-10-04.tar in this folder
+termcrab restore that.tar      # on the new phone, after installing
+```
+
+The archive is a plain tar with a `manifest.json` inside (`tar -xOf it.tar manifest.json` tells
+you what it is without TermCrab), it holds config, chats, memory, skills and state but never pid
+files or old snapshots, and restoring **never overwrites in place**: files that already exist are
+moved into `state/restore-<time>/` first, so a wrong archive is itself recoverable. The state
+carries a schema version (`termcrab schema`), every release's shape changes ship as a numbered
+migration that runs once, atomically, with a snapshot taken first — and a home written by a
+*newer* TermCrab is refused rather than half-read. Updates are reversible the same way
+(`termcrab update --apply` verifies the new build starts and rolls back if it does not).
 
 ## The terminal, full screen
 

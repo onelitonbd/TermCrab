@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৮৯%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯২টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৫টা আধা (PARTIAL), ১টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০৯ দিন, later ~১১ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯০%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯৫টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২৩টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০২ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-03 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 92 | wired and observable |
+| ✅ WORKING | 95 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 25 | exists, narrower than theirs |
+| 🟡 PARTIAL | 23 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
-| ⚪ ABSENT | 1 | nothing in the tree |
+| ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 89%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 90%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~109d | needed to compete on the axes the phone-first bet depends on |
-| **later** | 14 | ~11d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~120d | in-scope only |
+| **parity** | 103 | ~102d | needed to compete on the axes the phone-first bet depends on |
+| **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
+| **total** | 132 | ~105d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -274,14 +274,14 @@ Out of scope, and why:
 | Skill registry / distribution | ClawHub + signed manifests | 🚫 OUT OF SCOPE | no registry by design; termcrab import openclaw is the only path — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 | OpenClaw compatibility | n/a | 🏅 BETTER | termcrab import openclaw reads their SKILL.md folders and workspace files unchanged (src/migrate/openclaw.ts, 558 lines) | parity | — |
 
-### storage — 58% (5 in-scope checks)
+### storage — 100% (5 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | State layout | config JSON + Markdown brain + SQLite state + JSONL | ✅ WORKING | src/core/paths.ts is the single layout and everything derives from TCRAB_HOME: config.json, workspace/ (SOUL.md, USER.md, skills/, inbox/, agents/), sessions/<id>.jsonl (+ .archive.jsonl + .digest.md), state/ (crons, tasks, intents, approvals, conversations, tracing, outbox), logs/termcrab.jsonl, memory/ (facts.md + index). File-based on purpose (zero deps, greppable on a phone) where they use SQLite + Markdown; documented in docs/ARCHITECTURE.md and pinned by the paths tests | parity | — |
-| Database + migrations | SQLite with schema migrations | ⚪ ABSENT | flat files throughout | later | 8 |
-| Backup / restore | openclaw backup | 🟡 PARTIAL | sessions export + manual copying; no backup command | parity | 3 |
-| Atomic updates + rollback | guarded upgrades, versioned state | 🟡 PARTIAL | src/core/updat{er,e}.ts check-only update path (never auto-applies) | parity | 4 |
+| Database + migrations | SQLite with schema migrations | ✅ WORKING | No database, on purpose — the state stays files a person can read, grep and copy. src/core/schema.ts gives the same contract a migration tool gives, without SQLite: state/schema.json carries {version, updatedAt, applied[], release}; SCHEMA_VERSION is bumped when a step is added; three shipped steps carry a real home forward (snake_case config keys renamed in place with the old key deleted, second-precision session timestamps converted to milliseconds, workspace/outbox.json moved to state/outbox.json); every command migrates before it reads (announced on stderr, so --json stdout stays machine-readable) and a fresh home is *adopted* at the current version rather than pretend-migrated. Safety rules: a step either completes or the version stays where it was (stamps are written through a temp file + rename, a failure is reported and retried next start), a non-fresh home is snapshotted into state/backups/<stamp>/ first, --dry-run writes nothing, and a home written by a *newer* release is refused with a sentence instead of being half-understood. `termcrab schema [--json] [--dry-run]` prints every step and whether it ran. Pinned by test/tier2t.test.ts 31.1 (including a step that throws on purpose) | later | — |
+| Backup / restore | openclaw backup | ✅ WORKING | `termcrab backup [file.tar]` writes one plain tar of the parts that matter (config.json, workspace/, sessions/, memory/, skills/, state/, logs/, config-backups/) with a manifest.json inside it: format tag, creation time, release, the schema version of the content, file and byte counts. Plain tar on purpose — no dependency, and `tar -xOf home.tar manifest.json` answers what it is without this program. `termcrab restore <file.tar> [--dry-run] [--force]` verifies the manifest first, refuses an archive from a newer release unless forced, and **never overwrites in place**: files that already exist are moved into state/restore-<stamp>/ before anything is written, then the restored home is carried forward to the current schema (31.1). Junk answers a sentence (not a stack trace): a non-tar file, a tar with no manifest, a truncated archive. Pid/lock/tmp files and previous snapshots are skipped, so a backup of a backup cannot grow without bound. Pinned by test/tier2t.test.ts 31.2 (a home round-trips through the archive; the same round trip through the real CLI) | parity | — |
+| Atomic updates + rollback | guarded upgrades, versioned state | ✅ WORKING | `termcrab update` checks and never auto-applies; `update --apply` is now reversible: it snapshots the build into state/builds/<release>-<stamp>/ (dist/ without the test build, ui/, skills/, package.json), pulls + installs + builds, then verifies by starting the new build (the CLI must answer --version and read its own state schema — a build that compiles but cannot boot is exactly what rollback is for), and on failure copies the snapshot back and reports how many files it put back. `update --rollback` restores the newest snapshot by hand and the panel update button takes the same verified path. The snapshot is honest: a copy that fails is reported and returns nothing rather than pretending to be a rollback point. Schema versioning (31.1) versions the state too, and a newer state refuses to be half-understood. Pinned by test/tier2t.test.ts 31.3 | parity | — |
 | Disk budget + pruning | usage caps, retention | ✅ WORKING | src/core/disk.ts measures the state dir per area and enforceDiskBudget(maxBytes, keepDays) trims oldest-first (never config/memory/skills/workspace, never a file being written), reporting freed bytes; storage.maxMb/keepDays/autoTrim, `termcrab disk [--trim]`, /api/disk, and a check at gateway start. workspace/inbox is its own area and is trimmable (16.4), while the small .inbox-index.json stays protected so a trimmed arrival can still explain itself (17.4). test/tier0.test.ts 10.6, test/tier2e.test.ts 16.4, test/tier2f.test.ts 17.4 | parity | — |
 
 ### surfaces — 88% (9 in-scope checks, 2 out of scope)

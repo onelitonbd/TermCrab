@@ -39,7 +39,7 @@ import { countMemoryFacts } from '../agent/status.js';
 import { formatTokens, usageForDay } from '../core/usage.js';
 import { PRICING_AS_OF } from '../core/pricing.js';
 import { checkForUpdate } from '../core/update.js';
-import { applyUpdate, ApplyPhase } from '../core/updater.js';
+import { applyVerified, verifyBuild, ApplyPhase } from '../core/updater.js';
 import { resolveProvider } from '../providers/index.js';
 import { getModelCapabilities, normalizeThinkingLevel } from '../providers/capabilities.js';
 import { getCachedCaps, modelCapsKey, probeModel, probeModels } from '../providers/probe.js';
@@ -2856,8 +2856,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         install: 'installing…',
         build: 'preparing the update…',
       };
-      const r = await applyUpdate({
+      // 31.3: the panel button takes the same reversible path the CLI does —
+      // snapshot, apply, verify by starting the new build, roll back on failure.
+      const r = await applyVerified({
+        homeRoot: home(),
+        release: target,
         onPhase: (phase) => bus.emit({ type: 'update', phase, message: phaseMsg[phase], target }),
+        verify: (root) => verifyBuild(root),
       });
       if (!r.ok) {
         bus.emit({ type: 'update', phase: 'error', message: r.error, target });

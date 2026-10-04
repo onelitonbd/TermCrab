@@ -87,6 +87,26 @@ termcrab help gateway      # one command in detail (same as: termcrab gateway --
 termcrab completion bash   # tab-completion for your shell (bash | zsh | fish)
 ```
 
+## Moving the agent to a new phone
+
+Everything the agent knows is one directory, and one command copies it out:
+
+```bash
+termcrab backup                 # → termcrab-backup-<date>.tar in this folder
+termcrab backup /sdcard/tc.tar  # or straight to shared storage
+termcrab restore <file> --dry-run   # see what an archive would do, writing nothing
+termcrab restore <file>             # on the new phone, after installing
+```
+
+The archive is a plain `tar` — no compression to unpack, no dependency — with a `manifest.json`
+inside it (`tar -xOf termcrab-backup.tar manifest.json` tells you the release and the state
+schema it holds without TermCrab). It carries config, chats, memory, skills, state and logs, and
+skips pid/lock files and old snapshots. **Restoring never overwrites in place**: files that
+already exist are moved into `state/restore-<time>/` first, so a wrong archive is itself
+recoverable. The state carries a version (`termcrab schema`), so an archive from an older build
+is carried forward on the next start, and an archive from a *newer* build is refused with a
+sentence instead of being half-read. A backup holds your API key — treat the file like a password.
+
 ## Keep it up for weeks
 
 ```bash

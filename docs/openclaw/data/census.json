@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T23:48:20.554Z",
+ "measured": "2026-10-03T23:55:23.079Z",
  "tally": {
-  "WORKING": 92,
+  "WORKING": 95,
   "BETTER": 14,
-  "PARTIAL": 25,
+  "PARTIAL": 23,
   "BROKEN": 0,
-  "ABSENT": 1
+  "ABSENT": 0
  },
- "coverage": 89,
+ "coverage": 90,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 120,
+ "effortLeft": 105,
  "areas": [
   "agent",
   "automation",
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1122, src/command-help.ts:181"
+    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1189, src/command-help.ts:181"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:255, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:258, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:245"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:248"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:159, src/gateway/server.ts:1553, src/mobile/doctor.ts:545"
+    "detail": "5 match(es): src/cli.ts:162, src/gateway/server.ts:1553, src/mobile/doctor.ts:545"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1222, src/gateway/server.ts:1589"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1289, src/gateway/server.ts:1589"
    }
   },
   {
@@ -644,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "574 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:178"
+    "detail": "595 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:178"
    }
   },
   {
@@ -841,7 +841,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2226"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2401"
    }
   },
   {
@@ -999,7 +999,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:417, src/cli.ts:2164"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:417, src/cli.ts:2339"
    }
   },
   {
@@ -1133,7 +1133,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:541"
+    "detail": "22 match(es): src/agent/prompt.ts:38, src/agent/toolbox.ts:1518, src/agent/tools.ts:541"
    }
   },
   {
@@ -2128,7 +2128,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "98 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:242"
+    "detail": "101 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:245"
    }
   },
   {
@@ -2166,7 +2166,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "47 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "53 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2185,7 +2185,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:372, src/command-help.ts:459"
+    "detail": "2 match(es): src/cli.ts:390, src/command-help.ts:459"
    }
   },
   {
@@ -2442,57 +2442,60 @@
    "area": "storage",
    "capability": "Database + migrations",
    "openclaw": "SQLite with schema migrations",
-   "verdict": "ABSENT",
-   "evidence": "flat files throughout",
+   "verdict": "WORKING",
+   "evidence": "No database, on purpose — the state stays files a person can read, grep and copy. src/core/schema.ts gives the same contract a migration tool gives, without SQLite: state/schema.json carries {version, updatedAt, applied[], release}; SCHEMA_VERSION is bumped when a step is added; three shipped steps carry a real home forward (snake_case config keys renamed in place with the old key deleted, second-precision session timestamps converted to milliseconds, workspace/outbox.json moved to state/outbox.json); every command migrates before it reads (announced on stderr, so --json stdout stays machine-readable) and a fresh home is *adopted* at the current version rather than pretend-migrated. Safety rules: a step either completes or the version stays where it was (stamps are written through a temp file + rename, a failure is reported and retried next start), a non-fresh home is snapshotted into state/backups/<stamp>/ first, --dry-run writes nothing, and a home written by a *newer* release is refused with a sentence instead of being half-understood. `termcrab schema [--json] [--dry-run]` prints every step and whether it ran. Pinned by test/tier2t.test.ts 31.1 (including a step that throws on purpose)",
    "probe": {
-    "pattern": "better-sqlite|node:sqlite",
-    "expect": "absent"
+    "file": "src/core/schema.ts",
+    "pattern": "export function runMigrations",
+    "expect": "present"
    },
-   "effort": 8,
+   "effort": 0,
    "lane": "later",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "0 match(es)"
+    "detail": "1 match(es): src/core/schema.ts:298"
    }
   },
   {
    "area": "storage",
    "capability": "Backup / restore",
    "openclaw": "openclaw backup",
-   "verdict": "PARTIAL",
-   "evidence": "sessions export + manual copying; no backup command",
+   "verdict": "WORKING",
+   "evidence": "`termcrab backup [file.tar]` writes one plain tar of the parts that matter (config.json, workspace/, sessions/, memory/, skills/, state/, logs/, config-backups/) with a manifest.json inside it: format tag, creation time, release, the schema version of the content, file and byte counts. Plain tar on purpose — no dependency, and `tar -xOf home.tar manifest.json` answers what it is without this program. `termcrab restore <file.tar> [--dry-run] [--force]` verifies the manifest first, refuses an archive from a newer release unless forced, and **never overwrites in place**: files that already exist are moved into state/restore-<stamp>/ before anything is written, then the restored home is carried forward to the current schema (31.1). Junk answers a sentence (not a stack trace): a non-tar file, a tar with no manifest, a truncated archive. Pid/lock/tmp files and previous snapshots are skipped, so a backup of a backup cannot grow without bound. Pinned by test/tier2t.test.ts 31.2 (a home round-trips through the archive; the same round trip through the real CLI)",
    "probe": {
-    "pattern": "export",
+    "file": "src/core/backup.ts",
+    "pattern": "export function restoreBackup",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "774 match(es): src/agent/ask.ts:14, src/agent/context.ts:15, src/agent/dream.ts:31"
+    "detail": "1 match(es): src/core/backup.ts:244"
    }
   },
   {
    "area": "storage",
    "capability": "Atomic updates + rollback",
    "openclaw": "guarded upgrades, versioned state",
-   "verdict": "PARTIAL",
-   "evidence": "src/core/updat{er,e}.ts check-only update path (never auto-applies)",
+   "verdict": "WORKING",
+   "evidence": "`termcrab update` checks and never auto-applies; `update --apply` is now reversible: it snapshots the build into state/builds/<release>-<stamp>/ (dist/ without the test build, ui/, skills/, package.json), pulls + installs + builds, then verifies by starting the new build (the CLI must answer --version and read its own state schema — a build that compiles but cannot boot is exactly what rollback is for), and on failure copies the snapshot back and reports how many files it put back. `update --rollback` restores the newest snapshot by hand and the panel update button takes the same verified path. The snapshot is honest: a copy that fails is reported and returns nothing rather than pretending to be a rollback point. Schema versioning (31.1) versions the state too, and a newer state refuses to be half-understood. Pinned by test/tier2t.test.ts 31.3",
    "probe": {
-    "pattern": "update",
+    "file": "src/core/updater.ts",
+    "pattern": "export async function applyVerified",
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "150 match(es): src/agent/goals.ts:13, src/agent/memory.ts:286, src/agent/progress.ts:11"
+    "detail": "1 match(es): src/core/updater.ts:241"
    }
   },
   {
@@ -2568,7 +2571,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "19 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2798"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2798"
    }
   },
   {
@@ -2883,7 +2886,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "81 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "82 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {
