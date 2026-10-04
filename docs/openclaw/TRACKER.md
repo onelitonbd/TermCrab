@@ -10,10 +10,10 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ১০০%।** ১৬৯টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ৩৩টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **এখনকার স্কোর: ১০০%।** ১৭৪টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ৩৮টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
 - **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
-- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৬৯টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
+- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৭৪টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
 - **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি জিনিসগুলো consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
@@ -53,12 +53,12 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Verdict | Count | Meaning |
 |---|---:|---|
 | ✅ WORKING | 117 | wired and observable |
-| 🏅 BETTER | 33 | TermCrab is ahead of OpenClaw here |
+| 🏅 BETTER | 38 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 1 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
-| | **151** | in-scope capabilities (169 measured in total) |
+| | **156** | in-scope capabilities (174 measured in total) |
 
 **Capability score 100%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 122 | ~10d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 127 | ~10d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 151 | ~13d | in-scope only |
+| **total** | 156 | ~13d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -201,7 +201,7 @@ Out of scope, and why:
 | Transcription | realtime transcription service | ✅ WORKING | offline transcription of any audio file through whisper.cpp: findWhisperBin looks on PATH (whisper-cli, whisper) then in the usual checkout builds, findWhisperModel prefers tiny > base > small > large and honours --model and WHISPER_MODEL, transcribeFile spawns the documented argv (-m <model> -f <file> -np [-l lang]), never throws, and answers a missing engine or model with the exact install/download sentence. Voice notes arriving on a channel are transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone (src/channels/intake.ts), and `termcrab transcribe <file> --json` is the same path on the command line with an envelope (it used to print a friendly line instead). Realtime here means phrase-by-phrase: continuous listening emits each phrase as the recognizer returns it (stt:result over SSE) and restarts immediately after it; what is not attempted is partial-hypothesis streaming ASR (words appearing while you are still speaking). test/tier2y.test.ts drives a fake whisper-cli end to end (happy path, argv, CLI JSON, the transcript reaching the agent prompt, missing model, engine failure, deadline) | parity | — |
 | Native GUI / foreground service | desktop apps + node apps | 🚫 OUT OF SCOPE | no companion app; a persistent notification is the closest — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### ops — 98% (22 in-scope checks, 1 out of scope)
+### ops — 98% (27 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -221,6 +221,11 @@ Out of scope, and why:
 | The doctor reads the measurement (40.2) | a health check with no numbers | 🏅 BETTER | `termcrab doctor` now includes one line about the budget, read from state/perf.json: never measured ("not measured on this home yet" + fix: termcrab perf), aging (info, "measured 33 d ago … this measurement is a month old"), or over (a ⚠️ naming the OVER metrics and pointing at docs/PERFORMANCE.md). The detail carries age, host, the worst metric as a % of its ceiling and how many were skipped. It never measures anything itself — measuring boots a gateway and runs a turn, and a health check has to be cheap. Pinned by test/tier3k.test.ts 40.2 (three states, the text and the JSON envelope) | parity | — |
 | The docs page's footer, on every surface (40.3) | n/a | 🏅 BETTER | The built offline docs page carries a real footer: the release, the build time in UTC, "60 docs, 317 sections" (the same counts the header claims) and "generated by termcrab docs" — so the copy on the phone says what it is. It survives a rebuild, and `docs status`/the panel report the same release from the same stamp. Pinned by test/tier3k.test.ts 40.3, which rebuilds and re-reads the markup | parity | — |
 | A release measurement, checked in (40.4) | n/a | 🏅 BETTER | `termcrab perf --save` writes the snapshot to docs/openclaw/data/perf-<release>.json — one file per release, checked in — with the release, the machine and a note pointing at docs/PERFORMANCE.md, and says which happened (written or replaced). "How fast was 0.73?" is now answerable offline, from the repository, on any machine; perf-0.73.0.json is the first. Pinned by test/tier3k.test.ts 40.4 (a stand-in bench for speed, written then replaced, the committed files re-validated against the ceilings they were judged by) | parity | — |
+| Every ceiling has a fix line (41.1) | a dashboard with numbers and no guidance | 🏅 BETTER | PERF_ADVICE in src/core/perf.ts declares one "where to look" sentence per ceiling; `termcrab perf` prints it under an over-budget line, perfStatus() carries worstAdvice/overAdvice so the panel shows it next to the worst metric (over, or past 80% of its ceiling), and docs/PERFORMANCE.md's "when a ceiling trips" list is the human copy checked against the code by test/tier3l.test.ts — the fix a phone shows cannot drift from the document | parity | — |
+| perf --compare against a release (41.2) | n/a | 🏅 BETTER | `termcrab perf --compare [release]` measures now and puts the result next to the checked-in docs/openclaw/data/perf-<release>.json (default: the newest other release): every metric both runs measured, one line each, with its ceiling and the largest movement named. Metrics the saved run skipped are listed as not compared rather than invented as unchanged, under-3% moves read as steady, the release comes from the file's own field or its name, and a machine with nothing saved gets one sentence instead of a crash. test/tier3l.test.ts 41.2 drives the real command against a fabricated 0.73.0 file | parity | — |
+| The suite's clock on the phone (41.3) | CI dashboards on a web service | 🏅 BETTER | GET /api/suite-time serves the last recorded suite run (docs/openclaw/data/suite-time.json, written by npm run test:time): wall clock, file and case counts, the five slowest files, the budgets and whether the run was over — read-only and cheap, because it reads a recording and never runs the suite. The panel's Work page prints `(99 files · 1024 cases · 165.5 s of 240.0 s · slowest tier3j 40.4 s · recorded 7 min ago)`, so "the tests got slow" is a visible fact on the phone. Pinned by test/tier3l.test.ts 41.3 (fabricated record, over-budget flag, the repository's own record, a real gateway) | parity | — |
+| A bad measurement is refused (41.4) | n/a | 🏅 BETTER | Every snapshot records what the machine was carrying (`load: {load1, cpus, perCpu}`, `suspect`); above 1 per CPU every timing is an upper bound, not a measurement of the code. `termcrab perf` prints it, perfStatus() carries it, the doctor repeats it with a fix line, and `--save` **refuses** — a misleading number committed to the repository outlives the machine that made it; `--trust` overrides and the file records the load. TCRAB_PERF_LOAD exists so the rule itself is tested without making a machine busy (test/tier3l.test.ts 41.4: the boundary at exactly 1.0, the refusal writing nothing, the trusted save carrying suspect + perCpu, the doctor's line) | parity | — |
+| The docs budget where the docs line is (41.5) | n/a | 🏅 BETTER | The panel's docs note (release, doc/section counts, size, freshness) now also quotes the docs page's own budget from the /api/perf snapshot: `build 43 ms of 1500 · 2777 KB of 4000 KB`, read once and shared, so the two places a person looks quote one measurement. perfStatus() carries metrics and budget for every ceiling, and the test asserts the panel reads those exact fields (test/tier3l.test.ts 41.5) | parity | — |
 | The queue's numbers (40.5) | n/a | 🏅 BETTER | The parts that make a phone feel slow while the agent is busy now have ceilings: queueDrainMs (500 ms; 24 turns through one real SessionQueue lane measured at 53 ms, 48 of it the runner sleeping), queueWakeMs (120 ms; the worst gap between one queued turn finishing and the next starting, measured at 1 ms) and subagentFanoutMs (600 ms; four 40 ms sleepers measured at 41 ms, which is the proof the four slots are parallel and not a polite queue). All three are in FAST_METRICS. Writing the test found a real defect — waitForTasks left its deadline timer running when an answer arrived first, holding a one-shot process alive for a full minute — and it is fixed. Pinned by test/tier3k.test.ts 40.5 (a real lane of twelve turns, a real four-task fan-out, the doc and the committed snapshot) | parity | — |
 | Cold checkout timed from nothing (39.5) | n/a | 🏅 BETTER | The bench measures the first contact a new person pays, with no shortcuts: a copy of the tree with no dist/ and no node_modules, an isolated npm cache (so it cannot freeload), `npm install` and `./termcrab version` which compiles. Measured here: install 735 ms, end to end 6.35 s. Ceilings: coldInstallMs 60 000, coldCheckoutMs 90 000 — the install half is network (mobile data), the compile half is CPU (the phone), and the --first-run flag is what measures them. Pinned by test/tier3j.test.ts 39.5, which runs the real cold path (empty cache, real npm, the launcher) and asserts both numbers and both ceilings | parity | — |
 | Performance budget with an alarm (37.1) | benchmarks exist, nothing enforces them | 🏅 BETTER | scripts/bench.mjs measures the seven numbers the phone story rests on (install, cold start, idle RSS, restart, one turn, first run from a fresh checkout, rebuild after a pull) and `--budget` exits 1 when any of them crosses a ceiling declared in BUDGETS; docs/PERFORMANCE.md explains each ceiling, what to do when one trips ("fix the cause, never edit the ceiling"), and what the numbers are not. test/tier3i.test.ts runs the gate, tests the alarm against a fabricated over-budget number, and fails if the ceilings in the README block or in the doc drift from the code. npm run bench:budget is the one-liner | parity | — |

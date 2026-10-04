@@ -278,14 +278,16 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'perf',
-    usage: 'perf [--full] [--save] [--json]',
+    usage: 'perf [--full] [--save [--trust]] [--compare [release]] [--json]',
     summary: 'measure this machine against the performance budget (exit 1 when over)',
     flags: [
       '--full  also measure the slow halves: npm install, and a first-run compile',
       '--save  also write the measurement to docs/openclaw/data/perf-<release>.json',
+      '--compare [release]  compare this run against a saved measurement (default: the newest other release)',
+      '--trust  save even though the machine was busy (the file records the load)',
       '--json  the snapshot that was written to state/perf.json',
     ],
-    json: '{at, source, bench, machine, metrics, ceilings, over, skipped, file, historyFile, runs, trend, saved?}',
+    json: '{at, source, bench, machine, metrics, ceilings, over, skipped, file, historyFile, runs, trend, saved?, compare?}',
   },
   {
     cmd: 'disk',

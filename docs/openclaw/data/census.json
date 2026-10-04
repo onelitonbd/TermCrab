@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T08:45:47.354Z",
+ "measured": "2026-10-04T09:08:27.920Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 33,
+  "BETTER": 38,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 151,
+ "inScope": 156,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1435"
+    "detail": "1 match(es): src/gateway/server.ts:1443"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1437"
+    "detail": "2 match(es): src/gateway/server.ts:1445"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2551"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2559"
    }
   },
   {
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1629, src/mobile/doctor.ts:615"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1637, src/mobile/doctor.ts:622"
    }
   },
   {
@@ -530,7 +530,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:495"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:497"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1665"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1673"
    }
   },
   {
@@ -646,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "722 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "724 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -843,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3158"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3197"
    }
   },
   {
@@ -1001,7 +1001,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3096"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3135"
    }
   },
   {
@@ -1021,7 +1021,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/core/perf.ts:86"
+    "detail": "3 match(es): src/core/perf.ts:86"
    }
   },
   {
@@ -2140,7 +2140,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/core/perf.ts:81"
+    "detail": "3 match(es): src/core/perf.ts:81"
    }
   },
   {
@@ -2220,7 +2220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2770"
+    "detail": "1 match(es): ui/index.html:2771"
    }
   },
   {
@@ -2338,7 +2338,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:633"
+    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:635"
    }
   },
   {
@@ -2726,7 +2726,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2980"
+    "detail": "21 match(es): src/cli.ts:28, src/command-help.ts:70, src/core/perf.ts:452"
    }
   },
   {
@@ -3063,7 +3063,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/perf.ts:150"
+    "detail": "1 match(es): src/core/perf.ts:156"
    }
   },
   {
@@ -3123,7 +3123,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/perf.ts:378"
+    "detail": "1 match(es): src/core/perf.ts:415"
    }
   },
   {
@@ -3144,7 +3144,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es) (min 2): src/core/perf.ts:41"
+    "detail": "3 match(es) (min 2): src/core/perf.ts:41"
    }
   },
   {
@@ -3204,7 +3204,108 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/perf.ts:235"
+    "detail": "1 match(es): src/core/perf.ts:272"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "Every ceiling has a fix line (41.1)",
+   "openclaw": "a dashboard with numbers and no guidance",
+   "verdict": "BETTER",
+   "evidence": "PERF_ADVICE in src/core/perf.ts declares one \"where to look\" sentence per ceiling; `termcrab perf` prints it under an over-budget line, perfStatus() carries worstAdvice/overAdvice so the panel shows it next to the worst metric (over, or past 80% of its ceiling), and docs/PERFORMANCE.md's \"when a ceiling trips\" list is the human copy checked against the code by test/tier3l.test.ts — the fix a phone shows cannot drift from the document",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "export const PERF_ADVICE",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/perf.ts:449"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "perf --compare against a release (41.2)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "`termcrab perf --compare [release]` measures now and puts the result next to the checked-in docs/openclaw/data/perf-<release>.json (default: the newest other release): every metric both runs measured, one line each, with its ceiling and the largest movement named. Metrics the saved run skipped are listed as not compared rather than invented as unchanged, under-3% moves read as steady, the release comes from the file's own field or its name, and a machine with nothing saved gets one sentence instead of a crash. test/tier3l.test.ts 41.2 drives the real command against a fabricated 0.73.0 file",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "export function comparePerfSnapshots",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/perf.ts:691"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The suite's clock on the phone (41.3)",
+   "openclaw": "CI dashboards on a web service",
+   "verdict": "BETTER",
+   "evidence": "GET /api/suite-time serves the last recorded suite run (docs/openclaw/data/suite-time.json, written by npm run test:time): wall clock, file and case counts, the five slowest files, the budgets and whether the run was over — read-only and cheap, because it reads a recording and never runs the suite. The panel's Work page prints `(99 files · 1024 cases · 165.5 s of 240.0 s · slowest tier3j 40.4 s · recorded 7 min ago)`, so \"the tests got slow\" is a visible fact on the phone. Pinned by test/tier3l.test.ts 41.3 (fabricated record, over-budget flag, the repository's own record, a real gateway)",
+   "probe": {
+    "file": "src/gateway/server.ts",
+    "pattern": "/api/suite-time",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/gateway/server.ts:1389"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "A bad measurement is refused (41.4)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "Every snapshot records what the machine was carrying (`load: {load1, cpus, perCpu}`, `suspect`); above 1 per CPU every timing is an upper bound, not a measurement of the code. `termcrab perf` prints it, perfStatus() carries it, the doctor repeats it with a fix line, and `--save` **refuses** — a misleading number committed to the repository outlives the machine that made it; `--trust` overrides and the file records the load. TCRAB_PERF_LOAD exists so the rule itself is tested without making a machine busy (test/tier3l.test.ts 41.4: the boundary at exactly 1.0, the refusal writing nothing, the trusted save carrying suspect + perCpu, the doctor's line)",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "export function perfSuspect",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/perf.ts:250"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The docs budget where the docs line is (41.5)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "The panel's docs note (release, doc/section counts, size, freshness) now also quotes the docs page's own budget from the /api/perf snapshot: `build 43 ms of 1500 · 2777 KB of 4000 KB`, read once and shared, so the two places a person looks quote one measurement. perfStatus() carries metrics and budget for every ceiling, and the test asserts the panel reads those exact fields (test/tier3l.test.ts 41.5)",
+   "probe": {
+    "file": "ui/index.html",
+    "pattern": "loadDocsBudget",
+    "expect": "present",
+    "min": 2
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es) (min 2): ui/index.html:7077"
    }
   },
   {

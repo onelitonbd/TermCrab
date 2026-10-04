@@ -2195,9 +2195,16 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       // measurements the suite's gate runs (scripts/bench.mjs — one
       // implementation), keeps the numbers where the panel can read them, and
       // exits 1 when anything is over its ceiling.
-      const { PERF_CEILINGS, appendPerfHistory, currentRelease, describePerf, describeTrend, listSavedPerfSaves, measurePerf, perfHistoryPath, perfPath, perfTrend, readPerfHistory, savePerfSnapshot, writePerfSnapshot } =
+      const { PERF_CEILINGS, appendPerfHistory, comparePerfSnapshots, currentRelease, describeComparison, describePerf, describeSuspectLoad, describeTrend, listSavedPerfSaves, measurePerf, perfHistoryPath, perfPath, perfTrend, readPerfHistory, readSavedPerfSnapshot, perfStatus, savePerfSnapshot, writePerfSnapshot } =
         await import('./core/perf.js');
       const saveRequested = rest.includes('--save');
+      // 41.2: `--compare [release]` — against a checked-in measurement (the newest
+      // other release by default) or a named one. The comparison runs before the
+      // save so `--save --compare` compares against the release, not itself.
+      const compareIdx = rest.indexOf('--compare');
+      const compareWanted = compareIdx >= 0;
+      const trustRequested = rest.includes('--trust');
+      const compareArg = compareIdx >= 0 && rest[compareIdx + 1] && !rest[compareIdx + 1]!.startsWith('--') ? rest[compareIdx + 1]! : null;
       const asJson = rest.includes('--json');
       const everything = rest.includes('--full');
       let measured: ReturnType<typeof measurePerf>;
@@ -2219,9 +2226,31 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       // 40.4: `--save` checks the measurement in beside the other reports, one
       // file per release, so "how fast was 0.73" survives this machine.
       const release = currentRelease();
-      const saved = saveRequested ? savePerfSnapshot(snapshot, release) : null;
+      let comparison: ReturnType<typeof comparePerfSnapshots> | null = null;
+      if (compareWanted) {
+        const target = readSavedPerfSnapshot(compareArg);
+        comparison = comparePerfSnapshots({ ...snapshot, release }, target.snapshot, { then: target.file, now: file });
+      }
+      // 41.4: a number taken on a busy machine is not a number about the code, so
+      // `--save` refuses to file one unless the person says `--trust` — and then the
+      // file itself carries the load, so whoever reads it later knows.
+      let saved: ReturnType<typeof savePerfSnapshot> | null = null;
+      if (saveRequested) {
+        if (snapshot.suspect && !trustRequested) {
+          const why = `${describeSuspectLoad(snapshot.load!)} — this machine was busy, so these numbers are an upper bound, not a measurement of the code`;
+          const fix = 're-run when the machine is quiet, or pass --trust to file it anyway (the file records the load)';
+          if (asJson) failJson('perf', `refused to save: ${why}; ${fix}`);
+          else {
+            console.error(`perf: refused to save — ${why}`);
+            console.error(`      ${fix}`);
+          }
+          process.exitCode = 1;
+          return;
+        }
+        saved = savePerfSnapshot(snapshot, release);
+      }
       if (asJson) {
-        emitJson('perf', { ...snapshot, file, historyFile, runs: readPerfHistory().length, trend, ...(saved ? { saved: saved.file, savedReplaced: saved.replaced } : {}) });
+        emitJson('perf', { ...snapshot, file, historyFile, runs: readPerfHistory().length, trend, ...(saved ? { saved: saved.file, savedReplaced: saved.replaced } : {}), ...(comparison ? { compare: comparison } : {}) });
         if (snapshot.over.length) process.exitCode = 1;
         return;
       }
@@ -2240,8 +2269,18 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         const all = listSavedPerfSaves();
         if (all.length > 1) console.log(`     ${all.length} release(s) measured: ${all.map((s) => s.release).join(', ')}`);
       }
+      if (comparison) {
+        console.log('');
+        for (const line of describeComparison(comparison)) console.log(`     ${line}`);
+
+      }
+      if (snapshot.suspect) {
+        console.log(`     ⚠️ measured on a busy machine: ${describeSuspectLoad(snapshot.load!)} — treat these as upper bounds, not a measurement of the code`);
+      }
       if (snapshot.over.length) {
         console.log(`     ⚠️ over budget: ${snapshot.over.join(', ')} — see docs/PERFORMANCE.md (fix the cause, never the ceiling)`);
+        // 41.1: the ceiling says that something is slow; this says where to look.
+        for (const { key, advice } of perfStatus().overAdvice) console.log(`       ${key}: ${advice}`);
         process.exitCode = 1;
       } else {
         console.log('     inside every ceiling it measured');

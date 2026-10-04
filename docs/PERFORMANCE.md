@@ -202,40 +202,67 @@ The snapshot records the machine it came from (`node`, `platform`, `arch`, `cpus
 because a number from a laptop is not a number from a phone. `skipped` names the ceilings that run did
 not measure — an honest "not measured" instead of a zero that looks fast.
 
+## Every ceiling has a fix line (41.1)
+
+A ceiling says *that* something got slower; `PERF_ADVICE` in `src/core/perf.ts` says **where to look** —
+one sentence per metric, shown by `termcrab perf` under an over-budget line, next to the worst metric
+in the panel (when it is past 80% of its ceiling or over), and copied into the list below. The copy is
+checked against the code by `test/tier3l.test.ts`, the same way the ceilings are, so a phone and this
+page cannot drift apart.
+
+## Comparing against a release (41.2)
+
+`termcrab perf --compare 0.73.0` measures now and puts the result next to the checked-in
+`docs/openclaw/data/perf-0.73.0.json`: every metric **both** runs measured, in one line each, with its
+ceiling, and the largest movement named. Metrics the saved run skipped are *listed as not compared*
+rather than invented as unchanged, and a movement under 3% reads as steady. The default (no release)
+uses the newest other release in the data directory; a machine with nothing saved yet gets one
+sentence and the command that fixes that. CI is not consulted: this is what the released code
+measured, on the machine that filed it.
+
+## A busy machine is not a measurement (41.4)
+
+`os.loadavg()[0] / cpus` above **1** means every core is already wanted by somebody else, so every
+timing in that run is an upper bound. The snapshot records the reading (`load`, `suspect`), a plain
+`termcrab perf` prints `⚠️ measured on a busy machine: load …`, `perfStatus()` carries it, the doctor
+repeats it and points at `termcrab perf`, and **`--save` refuses** — a misleading number committed to
+the repository outlives the machine that made it. `--trust` overrides, and then the file itself carries
+the load so a reader months later can judge it. `TCRAB_PERF_LOAD` exists so the rule can be tested
+without making a machine busy.
+
 ## When a ceiling trips
 
-1. `node scripts/bench.mjs` (3 samples) — is it the code or a busy machine? Two
-   of the five are wall-clock (`coldStartMs`, `turnMs`) and will move on shared
-   CI; RSS and install are steadies.
-2. Read the `why` in the table above; it names the route that owns the number:
-   - **cold start** → what `src/bin/termcrab.ts` imports at the top; the answer
-     is almost always "move a heavy import behind the command that needs it".
-   - **idle RSS** → timers and buffers that outlive their work: the schedulers in
-     `src/gateway/`, the supervisor, the outbox, the ambient history ring.
-   - **turn** → the agent loop in `src/agent/runner.ts`, tool dispatch, or the
-     session store growing without a cap.
-   - **install** → a real `dependencies` entry appeared. There are none, on
-     purpose.
-   - **panelKb / panelMs** → whether something was added to `ui/index.html` (a library, an inline
-     asset, a second `<script src>`), or whether serving it started doing work per request (it should
-     be a file read and a write).
-   - **queueDrainMs / queueWakeMs** → whether the lane is doing work per turn it could hoist
-     (re-reading a session file, rebuilding a prompt for every message, a synchronous write in
-     `SessionQueue.finish`): 24 turns × 2 ms should be 48 ms of sleeping and almost nothing else.
-   - **subagentFanoutMs** → whether `spawnTask`'s slot cap was raised past four or tasks are being
-     serialised (a shared lock, an await on the previous task's `onFinish`).
-   - **docsMs / docsKb** → which tree `collectDocs()` is embedding
-     (`docs/openclaw/data` is excluded by default — 47 MB of raw crawl) and whether the per-doc byte
-     cap moved. The page must stay one file a phone can open offline.
-   - **restart** → shutdown doing work it should have done at startup.
-   - **first run / rebuild** → how much code `tsconfig.json` includes and what
-     the launcher rebuilds; the incremental file (`dist/.tsbuildinfo`) is what
-     keeps the second number small, so do not delete it by hand and do not
-     point it outside `dist/` (it must die with the build).
+1. `node scripts/bench.mjs` (3 samples) — is it the code or a busy machine? The
+   ceiling is deliberately loose, so crossing it means something structural moved.
+2. Read the `why` in the table above, then the fix line for the metric that moved.
+   **Every ceiling has one, declared once in `PERF_ADVICE` (`src/core/perf.ts`)** and shown by
+   `termcrab perf` when something is over and by the panel next to the worst metric — this list is
+   the human copy, and the suite checks it against the code so the two cannot drift:
+
+   - **`installMs`** → a real dependency appeared: check `dependencies` in package.json — there are none, on purpose
+   - **`coldStartMs`** → something heavy moved into startup: look at what `src/bin/termcrab.ts` imports at the top
+   - **`idleRssMb`** → timers and buffers outliving their work: the schedulers in src/gateway/, the supervisor, the outbox, the ambient history ring
+   - **`restartMs`** → shutdown doing work that should have happened at startup
+   - **`turnMs`** → the agent loop (src/agent/loop.ts), tool dispatch, or a session store growing without a cap
+   - **`panelKb`** → something was added to ui/index.html: a library, an inline asset, a second `<script src>` — it is one file by design
+   - **`panelMs`** → serving the panel started doing work per request; it should be a file read and a write
+   - **`coldInstallMs`** → npm has nothing to fetch, so this is npm itself plus mobile data: check that `dependencies` is still empty (dev tools are fine)
+   - **`coldCheckoutMs`** → the whole first contact: split it into the install half (npm, network) and the compile half (the launcher, CPU) and see which moved
+   - **`roomWriteMs`** → the room log is doing more than a bounded read-and-trim per message: src/channels/rooms.ts
+   - **`outboxDrainMs`** → the owed-message queue is doing more per row than read, claim, ack: src/mobile/outbox.ts
+   - **`telegramPollMs`** → the poll plumbing got heavier (JSON parse, offset arithmetic, handler dispatch): src/channels/api.ts
+   - **`docsMs`** → what `collectDocs()` embeds (docs/openclaw/data is excluded by default — 47 MB of raw crawl) or the per-doc byte cap
+   - **`docsKb`** → the built page grew: check the exclusion list and the embedding cap before the file becomes a download
+   - **`searchMs`** → the search became quadratic or started hitting the disk: src/agent/embed.ts — filter, cosine, sort must stay one scan
+   - **`queueDrainMs`** → the lane is doing per-turn work it could hoist: re-reading a session file, rebuilding a prompt on every message, a synchronous write in SessionQueue.finish
+   - **`queueWakeMs`** → the lane stopped pumping between turns: look at SessionQueue.drain/finish and anything awaited there
+   - **`subagentFanoutMs`** → tasks are being serialised (a shared lock, an await on the previous task) or the slot cap moved past four
+   - **`firstRunMs`** → how much code `tsconfig.json` includes and what the launcher rebuilds
+   - **`rebuildMs`** → the incremental file (dist/.tsbuildinfo) is gone, or it was pointed outside dist/
+
 3. Fix the cause — never edit the ceiling to make a red suite green. The
    ceilings are duplicated in this file *so that* the reason has to be written
    down.
-
 ## What the numbers are not
 
 - Not a promise about your phone. A budget measured on a dev box and a phone

@@ -33,40 +33,40 @@ dominating the run fails the suite instead of being noticed a month later.
 
 _Measured 2026-10-04 on node v22.22.3 — `node scripts/suite-time.mjs --run` re-measures, `--check` fails when the run is over its budget._
 
-The whole suite: **99 files, 1024 test cases, 165.5 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
+The whole suite: **100 files, 1030 test cases, 143.7 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
 
 | slowest file | time |
 |---|---|
-| `tier3j.test.js` | 40.4 s |
-| `tier3i.test.js` | 33.0 s |
-| `tier2c.test.js` | 5.6 s |
-| `tier2.test.js` | 4.8 s |
-| `tier2x.test.js` | 3.3 s |
+| `tier3j.test.js` | 33.6 s |
+| `tier3i.test.js` | 27.0 s |
+| `tier2c.test.js` | 4.3 s |
+| `tier2.test.js` | 4.3 s |
+| `tier2x.test.js` | 3.0 s |
 
 <!-- END SUITE TIME -->
 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **87.31%** of the lines in `src/` are executed by the
-suite (77.57% of branches, 87.29% of functions), across
-**1024 test cases in 99 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-04:** **87.24%** of the lines in `src/` are executed by the
+suite (77.41% of branches, 87.03% of functions), across
+**1030 test cases in 100 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
 |---|---|
-| `mobile/supervisor.js` | 18.06% |
-| `providers/types.js` | 33.33% |
-| `channels/discord.js` | 41.67% |
-| `channels/slack.js` | 47.12% |
-| `channels/matrix.js` | 48.21% |
-| `bin/termcrab.js` | 50% |
-| `channels/signal.js` | 51.54% |
-| `mobile/notify.js` | 55.17% |
-| `mobile/boot.js` | 55.56% |
-| `core/friendly.js` | 58.59% |
-| `channels/cli.js` | 59.63% |
-| `mobile/onboard.js` | 61.44% |
+| `mobile/supervisor.ts` | 18.06% |
+| `providers/types.ts` | 33.33% |
+| `channels/discord.ts` | 41.67% |
+| `channels/slack.ts` | 47.12% |
+| `channels/matrix.ts` | 48.21% |
+| `bin/termcrab.ts` | 50% |
+| `channels/signal.ts` | 51.54% |
+| `mobile/notify.ts` | 55.17% |
+| `mobile/boot.ts` | 55.56% |
+| `core/friendly.ts` | 58.59% |
+| `channels/cli.ts` | 60.26% |
+| `mobile/onboard.ts` | 61.44% |
 
 Those are the files the suite touches least. They are named here on purpose: on a phone, the
 cheapest next step is whichever of them your next bug lands in.

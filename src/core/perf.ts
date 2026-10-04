@@ -113,6 +113,8 @@ export const FAST_METRICS = ['coldStartMs', 'idleRssMb', 'restartMs', 'turnMs', 
 export interface PerfSnapshot {
   /** When the measurement finished, ISO-8601 UTC. */
   at: string;
+  /** The release this was filed for — present in `docs/openclaw/data/perf-<release>.json`. */
+  release?: string;
   /** Where the numbers came from, so nobody mistakes a checkout for a phone. */
   source: 'checkout';
   bench: string;
@@ -125,6 +127,10 @@ export interface PerfSnapshot {
   over: string[];
   /** which of them the fast run did not measure */
   skipped: string[];
+  /** 41.4 — what the machine was carrying while this was measured (absent in old files) */
+  load?: { load1: number; cpus: number; perCpu: number };
+  /** 41.4 — true when another heavy process was running: the numbers are not a fair measure */
+  suspect?: boolean;
 }
 
 export function perfPath(): string {
@@ -181,6 +187,7 @@ export function measurePerf(opts: PerfRunOptions = {}): { snapshot: PerfSnapshot
   for (const [key, c] of Object.entries(PERF_CEILINGS)) ceilings[key] = { max: c.max, unit: c.unit };
   const over = Object.keys(metrics).filter((k) => metrics[k]! > PERF_CEILINGS[k]!.max);
   const skipped = Object.keys(PERF_CEILINGS).filter((k) => !(k in metrics));
+  const load = perfLoad();
   const snapshot: PerfSnapshot = {
     at: new Date().toISOString(),
     source: 'checkout',
@@ -196,6 +203,8 @@ export function measurePerf(opts: PerfRunOptions = {}): { snapshot: PerfSnapshot
     ceilings,
     over,
     skipped,
+    load,
+    suspect: load.perCpu > PERF_BUSY_PER_CPU,
   };
   return { snapshot, bench, loud: stderr.trim() };
 }
@@ -217,6 +226,34 @@ export function perfSaveDir(): string {
 export function perfSavePath(release: string, dir = perfSaveDir()): string {
   const safe = release.replace(/[^0-9A-Za-z.+-]/g, '') || 'unknown';
   return path.join(dir, `perf-${safe}.json`);
+}
+
+/**
+ * 41.4 — what the machine was carrying when the numbers were taken.
+ *
+ * A measurement on a machine that is already busy is not a measurement of the
+ * code: `load1 / cpus` above 1 means every core is already wanted by somebody
+ * else, and every timing below is then an upper bound. `TCRAB_PERF_LOAD` exists
+ * so the rule itself can be tested (a test cannot make a real machine busy).
+ */
+export function perfLoad(): { load1: number; cpus: number; perCpu: number } {
+  const cpus = Math.max(1, os.cpus().length);
+  const override = process.env.TCRAB_PERF_LOAD;
+  const load1 = override !== undefined && override !== '' ? Number(override) : os.loadavg()[0] ?? 0;
+  const safe = Number.isFinite(load1) && load1 >= 0 ? load1 : 0;
+  return { load1: Math.round(safe * 100) / 100, cpus, perCpu: Math.round((safe / cpus) * 100) / 100 };
+}
+
+/** The rule, nameable so the CLI and the panel cannot disagree: busy above 1 per CPU. */
+export const PERF_BUSY_PER_CPU = 1;
+
+export function perfSuspect(load = perfLoad()): boolean {
+  return load.perCpu > PERF_BUSY_PER_CPU;
+}
+
+/** `load 12.5 over 4 cpu (3.1 per cpu)` — the sentence for a suspect run. */
+export function describeSuspectLoad(load: { load1: number; cpus: number; perCpu: number }): string {
+  return `load ${load.load1.toFixed(2)} over ${load.cpus} cpu (${load.perCpu.toFixed(2)} per cpu)`;
 }
 
 /** The version whose measurement we are about to file (package.json's `version`). */
@@ -400,6 +437,122 @@ export function perfTrend(history: PerfHistoryRun[]): PerfTrendRow[] {
   return rows;
 }
 
+/**
+ * 41.1 — what to look at when a ceiling trips, one line per metric.
+ *
+ * The ceiling says *that* something got slower; this says *where to look*. It
+ * lives here, next to `PERF_CEILINGS`, for the same reason: the panel, the CLI
+ * and `docs/PERFORMANCE.md` all read this object, so the fix line a phone shows
+ * cannot drift from the document (a test asserts every ceiling has one and that
+ * the doc's "when a ceiling trips" list names every key).
+ */
+export const PERF_ADVICE: Record<string, string> = {
+  installMs: 'a real dependency appeared: check `dependencies` in package.json — there are none, on purpose',
+  coldStartMs: 'something heavy moved into startup: look at what `src/bin/termcrab.ts` imports at the top',
+  idleRssMb: 'timers and buffers outliving their work: the schedulers in src/gateway/, the supervisor, the outbox, the ambient history ring',
+  restartMs: 'shutdown doing work that should have happened at startup',
+  turnMs: 'the agent loop (src/agent/loop.ts), tool dispatch, or a session store growing without a cap',
+  panelKb: 'something was added to ui/index.html: a library, an inline asset, a second `<script src>` — it is one file by design',
+  panelMs: 'serving the panel started doing work per request; it should be a file read and a write',
+  queueDrainMs: 'the lane is doing per-turn work it could hoist: re-reading a session file, rebuilding a prompt on every message, a synchronous write in SessionQueue.finish',
+  queueWakeMs: 'the lane stopped pumping between turns: look at SessionQueue.drain/finish and anything awaited there',
+  subagentFanoutMs: 'tasks are being serialised (a shared lock, an await on the previous task) or the slot cap moved past four',
+  roomWriteMs: 'the room log is doing more than a bounded read-and-trim per message: src/channels/rooms.ts',
+  outboxDrainMs: 'the owed-message queue is doing more per row than read, claim, ack: src/mobile/outbox.ts',
+  telegramPollMs: 'the poll plumbing got heavier (JSON parse, offset arithmetic, handler dispatch): src/channels/api.ts',
+  docsMs: 'what `collectDocs()` embeds (docs/openclaw/data is excluded by default — 47 MB of raw crawl) or the per-doc byte cap',
+  docsKb: 'the built page grew: check the exclusion list and the embedding cap before the file becomes a download',
+  searchMs: 'the search became quadratic or started hitting the disk: src/agent/embed.ts — filter, cosine, sort must stay one scan',
+  coldInstallMs: 'npm has nothing to fetch, so this is npm itself plus mobile data: check that `dependencies` is still empty (dev tools are fine)',
+  coldCheckoutMs: 'the whole first contact: split it into the install half (npm, network) and the compile half (the launcher, CPU) and see which moved',
+  firstRunMs: 'how much code `tsconfig.json` includes and what the launcher rebuilds',
+  rebuildMs: 'the incremental file (dist/.tsbuildinfo) is gone, or it was pointed outside dist/',
+};
+
+/** The fix line for a metric, or a generic sentence when one has not been written. */
+export function perfAdvice(key: string): string {
+  return PERF_ADVICE[key] ?? 'see docs/PERFORMANCE.md for where this number comes from';
+}
+
+/**
+ * 41.3 — the suite's own clock, where the phone can see it.
+ *
+ * `npm run test:time` records `docs/openclaw/data/suite-time.json` (wall clock,
+ * every file, the slowest five, the budgets). That file is the record a person
+ * checks before adding "just one more test", and until now it was only readable
+ * with a shell in the repository. This is the read half: the newest record,
+ * summarised — never a measurement (the suite is minutes, and the panel asks on
+ * every refresh).
+ */
+export interface SuiteTimeStatus {
+  exists: boolean;
+  file: string;
+  at: string | null;
+  age: string;
+  wallMs: number;
+  cases: number;
+  files: number;
+  budgetWallMs: number;
+  budgetFileMs: number;
+  /** the slowest files, as the record names them */
+  slowest: { file: string; ms: number }[];
+  /** true when the record says the run was over its own budget */
+  over: boolean;
+}
+
+/** Where the suite clock is recorded; env override is for tests. */
+export function suiteTimePath(): string {
+  return process.env.TCRAB_SUITE_TIME || path.join(PACKAGE_ROOT, 'docs', 'openclaw', 'data', 'suite-time.json');
+}
+
+function num(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+}
+
+interface SuiteTimeRecord {
+  at?: string;
+  wallMs?: number;
+  totalTests?: number;
+  totalFiles?: number;
+  slowest?: { file?: string; ms?: number }[];
+  budget?: { wallMs?: number; fileMs?: number };
+  over?: string[] | boolean;
+}
+
+export function suiteTimeStatus(file = suiteTimePath()): SuiteTimeStatus {
+  let record: SuiteTimeRecord | null = null;
+  try {
+    record = JSON.parse(fs.readFileSync(file, 'utf8')) as SuiteTimeRecord;
+  } catch {
+    record = null;
+  }
+  const at = record?.at ?? null;
+  const ageMs = at ? Math.max(0, Date.now() - Date.parse(at)) : null;
+  return {
+    exists: record !== null,
+    file,
+    at,
+    age: ageMs === null ? 'never recorded' : humanAgeMs(ageMs),
+    wallMs: num(record?.wallMs),
+    cases: num(record?.totalTests),
+    files: num(record?.totalFiles),
+    budgetWallMs: num(record?.budget?.wallMs) || 240_000,
+    budgetFileMs: num(record?.budget?.fileMs) || 90_000,
+    slowest: (record?.slowest ?? [])
+      .filter((row): row is { file: string; ms: number } => typeof row?.file === 'string' && typeof row?.ms === 'number')
+      .slice(0, 5),
+    over: Array.isArray(record?.over) ? record.over.length > 0 : record?.over === true,
+  };
+}
+
+/** `99 files · 1024 cases · 165.5 s of 240 s · slowest tier3j 40.4 s` — one line. */
+export function describeSuiteTime(status: SuiteTimeStatus): string {
+  if (!status.exists) return 'the suite has not recorded a run on this checkout yet — npm run test:time';
+  const secs = (ms: number): string => `${(ms / 1000).toFixed(1)} s`;
+  const slow = status.slowest[0];
+  return `${status.files} files · ${status.cases} cases · ${secs(status.wallMs)} of ${secs(status.budgetWallMs)}${status.over ? ' (OVER)' : ''}${slow ? ` · slowest ${slow.file.replace(/\.test\.js$/, '')} ${secs(slow.ms)}` : ''} · recorded ${status.age}`;
+}
+
 export interface PerfStatus {
   exists: boolean;
   file: string;
@@ -421,6 +574,18 @@ export interface PerfStatus {
   trend: PerfTrendRow[];
   /** the newest run that was over its ceiling, if any (the newest is `over` itself) */
   lastOverAt: string | null;
+  /** 41.1 — the fix line for the worst metric (null when nothing was measured) */
+  worstAdvice: string | null;
+  /** 41.1 — the fix line for each metric that is over its ceiling */
+  overAdvice: { key: string; advice: string }[];
+  /** 41.4 — the machine was busy while this was measured: do not trust the numbers */
+  suspect: boolean;
+  /** 41.4 — the load behind that judgement, when the snapshot recorded it */
+  load: PerfSnapshot['load'] | null;
+  /** 41.5 — the measured values themselves, so a surface can quote one metric */
+  metrics: Record<string, number>;
+  /** 41.5 — the ceilings that applied to them */
+  budget: Record<string, { max: number; unit: string }>;
 }
 
 /**
@@ -447,6 +612,12 @@ export function perfStatus(file = perfPath()): PerfStatus {
       runs: 0,
       trend: [],
       lastOverAt: null,
+      worstAdvice: null,
+      overAdvice: [],
+      suspect: false,
+      load: null,
+      metrics: {},
+      budget: {},
     };
   }
   const ageMs = snapshot.at ? Math.max(0, Date.now() - Date.parse(snapshot.at)) : null;
@@ -475,7 +646,121 @@ export function perfStatus(file = perfPath()): PerfStatus {
     runs: history.length,
     trend,
     lastOverAt: lastOver?.at ?? null,
+    worstAdvice: worst ? perfAdvice(worst.key) : null,
+    overAdvice: (snapshot.over ?? []).map((key) => ({ key, advice: perfAdvice(key) })),
+    suspect: snapshot.suspect === true,
+    load: snapshot.load ?? null,
+    metrics: snapshot.metrics,
+    budget: Object.fromEntries(
+      Object.entries(snapshot.ceilings ?? PERF_CEILINGS).map(([key, c]) => [key, { max: c.max, unit: c.unit }]),
+    ),
   };
+}
+
+/**
+ * 41.2 — the current run against a saved one, metric by metric.
+ *
+ * A trend says "this got slower on this phone"; a comparison against a
+ * *release* says "0.74 is 7% slower at a turn than 0.73 was, on this machine,
+ * and here is the ceiling". Only metrics both snapshots measured appear: a
+ * metric the saved run skipped is not a change, and inventing a zero for it
+ * would be the one lie this whole budget exists to avoid.
+ */
+export interface PerfComparisonRow {
+  key: string;
+  then: number;
+  now: number;
+  delta: number;
+  deltaPct: number;
+  direction: 'up' | 'down' | 'flat';
+  max: number;
+}
+
+export interface PerfComparison {
+  then: { release: string | null; at: string | null; machine: string | null; file: string };
+  now: { release: string | null; at: string | null };
+  rows: PerfComparisonRow[];
+  /** the largest movement, or null when nothing moved beyond the flat band */
+  biggest: PerfComparisonRow | null;
+  /** metrics the saved run measured that this run did not (so the compare is honest) */
+  missing: string[];
+}
+
+const FLAT_PCT = 3;
+
+export function comparePerfSnapshots(
+  now: PerfSnapshot & { release?: string },
+  then: (PerfSnapshot & { release?: string }) | null | undefined,
+  files: { then: string; now: string },
+): PerfComparison {
+  const out: PerfComparison = {
+    then: {
+      release: then?.release ?? null,
+      at: then?.at ?? null,
+      machine: then?.machine ? `${then.machine.platform}/${then.machine.arch}` : null,
+      file: files.then,
+    },
+    now: { release: now.release ?? null, at: now.at ?? null },
+    rows: [],
+    biggest: null,
+    missing: [],
+  };
+  if (!then) return out;
+  for (const [key, value] of Object.entries(now.metrics)) {
+    const before = then.metrics[key];
+    if (typeof before !== 'number') continue;
+    const delta = value - before;
+    const deltaPct = before === 0 ? (value === 0 ? 0 : 100) : Math.round((delta / before) * 100);
+    const direction: PerfComparisonRow['direction'] = Math.abs(deltaPct) < FLAT_PCT ? 'flat' : delta > 0 ? 'up' : 'down';
+    out.rows.push({ key, then: before, now: value, delta, deltaPct, direction, max: PERF_CEILINGS[key]?.max ?? 0 });
+  }
+  out.rows.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+  out.biggest = out.rows.find((r) => r.direction !== 'flat') ?? null;
+  out.missing = Object.keys(then.metrics).filter((key) => !(key in now.metrics));
+  return out;
+}
+
+/** The saved snapshot to compare against: a named release, else the newest other release. */
+export function readSavedPerfSnapshot(release: string | null, dir = perfSaveDir()): { file: string; snapshot: (PerfSnapshot & { release?: string }) | null } {
+  // The release is announced by the file's own `release` field when it has one,
+  // and by its name when it does not (`perf-0.73.0.json` is not ambiguous) —
+  // a comparison that says "saved → now" is much less useful than one that
+  // says "0.73.0 → 0.74.0".
+  const named = (file: string, snapshot: PerfSnapshot | null): (PerfSnapshot & { release?: string }) | null =>
+    snapshot ? { ...snapshot, release: snapshot.release ?? /perf-([0-9.]+)\.json$/.exec(file)?.[1] ?? undefined } : null;
+  if (release) {
+    const file = perfSavePath(release, dir);
+    return { file, snapshot: named(file, readPerfSnapshot(file)) };
+  }
+  const saves = listSavedPerfSaves(dir);
+  const current = currentRelease();
+  const pick = saves.find((s) => s.release !== current) ?? saves[0];
+  if (!pick) return { file: perfSavePath(current, dir), snapshot: null };
+  return { file: pick.file, snapshot: named(pick.file, readPerfSnapshot(pick.file)) };
+}
+
+/** The comparison as a human table, largest movement first (41.2). */
+export function describeComparison(cmp: PerfComparison): string[] {
+  const arrow = (d: PerfComparisonRow['direction']): string => (d === 'up' ? '↑' : d === 'down' ? '↓' : '·');
+  const label = `${cmp.then.release ?? 'saved'}${cmp.then.at ? ` (${cmp.then.at.slice(0, 10)})` : ''} → ${cmp.now.release ?? 'this run'}`;
+  const lines = [`compare: ${label}  [${cmp.then.machine ?? 'unknown machine'}]`];
+  if (cmp.then.at === null) {
+    lines.length = 0;
+    lines.push('compare: no saved measurement yet — file one with `termcrab perf --save` (docs/openclaw/data/perf-<release>.json)');
+    return lines;
+  }
+  if (!cmp.rows.length) {
+    lines.push('  nothing to compare: the saved run measured no metric this one did');
+    return lines;
+  }
+  for (const row of cmp.rows) {
+    const unit = PERF_CEILINGS[row.key]?.unit ?? 'ms';
+    const move = row.direction === 'flat' ? 'steady' : `${arrow(row.direction)} ${Math.abs(row.deltaPct)}%`;
+    lines.push(`  ${row.key.padEnd(15)} ${formatMetric(row.key, row.then)} → ${formatMetric(row.key, row.now)} (${unit})  ${move}`);
+  }
+  lines.push(`  largest: ${cmp.biggest ? `${cmp.biggest.key} ${arrow(cmp.biggest.direction)} ${Math.abs(cmp.biggest.deltaPct)}%` : 'nothing moved beyond the 3% band'}`);
+  if (cmp.missing.length) lines.push(`  not measured by this run (so not compared): ${cmp.missing.join(', ')}`);
+  return lines;
 }
 
 /** `coldStartMs ↑ 38% over 6 runs` — one line per metric that moved (39.1). */

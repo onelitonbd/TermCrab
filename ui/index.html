@@ -2763,6 +2763,7 @@
     </p>
     <p class="pageNote">Performance budget, measured by <code>termcrab perf</code> (exit 1 when over):
       <span class="pNote" id="perfNote"></span>
+      <span class="pNote" id="suiteNote"></span>
     </p>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
   </section>
@@ -7073,8 +7074,9 @@
       const size = Math.round(d.bytes / 1024) + ' KB';
       const counts = d.docs + ' docs · ' + d.sections + ' sections · ' + size;
       const release = d.release ? 'v' + d.release : 'release unknown';
+      const budget = await loadDocsBudget();
       const paint = (extra, bad) => {
-        note.textContent = '(' + release + ' · ' + counts + ' · ' + extra + ')';
+        note.textContent = '(' + release + ' · ' + counts + (budget ? ' · ' + budget : '') + ' · ' + extra + ')';
         note.className = bad ? 'pNote err' : 'pNote';
       };
       if (d.staleDocs > 0) {
@@ -7138,13 +7140,63 @@
       const host = p.machine ? p.machine.platform + '/' + p.machine.arch + ', node ' + p.machine.node : 'machine unknown';
       const bad = (p.over || []).length > 0;
       const extra = bad ? ' — OVER: ' + p.over.join(', ') : '';
+      // 41.1: when something is over (or close), say where to look — the same
+      // advice the doc carries, from PERF_ADVICE in src/core/perf.ts.
+      const fix = bad
+        ? (p.overAdvice || []).map(function (r) { return r.key + ': ' + r.advice; }).join(' · ')
+        : p.worstAdvice && p.worst && p.worst.pct >= 80
+          ? p.worst.key + ': ' + p.worstAdvice
+          : '';
       // 39.1: the trend, when there is a history to compare against.
       const moved = (p.trend || []).filter(function (row) { return row.direction !== 'flat'; })[0];
       const trend = moved
         ? ' · ' + moved.key + ' ' + (moved.direction === 'up' ? '↑' : '↓') + Math.abs(moved.deltaPct) + '% over ' + moved.samples + ' runs'
         : p.runs > 1 ? ' · steady over ' + p.runs + ' runs' : '';
-      note.textContent = '(' + p.measured + '/' + p.total + ' metrics · ' + host + ' · ' + p.age + ' · ' + worst + trend + extra + ')';
+      note.textContent = '(' + p.measured + '/' + p.total + ' metrics · ' + host + ' · ' + p.age + ' · ' + worst + trend + extra + (fix ? '\n  fix: ' + fix : '') + ')';
       note.className = bad ? 'pNote err' : 'pNote';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+    }
+  }
+
+  // ---- The docs page's own budget (41.5): build time and size, next to the --
+  // release the docs line already shows. From the same /api/perf snapshot the
+  // perf line reads — one measurement, two places a person looks.
+  let docsBudgetPromise = null;
+  function loadDocsBudget() {
+    if (!docsBudgetPromise) {
+      docsBudgetPromise = api('/api/perf').then(function (p) {
+        if (!p || !p.exists || !p.metrics) return '';
+        const ms = p.metrics.docsMs, kb = p.metrics.docsKb;
+        const parts = [];
+        if (typeof ms === 'number') parts.push('build ' + Math.round(ms) + ' ms' + (p.budget && p.budget.docsMs ? ' of ' + p.budget.docsMs.max : ''));
+        if (typeof kb === 'number') parts.push(Math.round(kb) + ' KB' + (p.budget && p.budget.docsKb ? ' of ' + p.budget.docsKb.max + ' KB' : ''));
+        return parts.join(' · ');
+      }).catch(function () { return ''; });
+      setTimeout(function () { docsBudgetPromise = null; }, 30000);
+    }
+    return docsBudgetPromise;
+  }
+
+  // ---- The suite's clock (41.3): the last recorded run, on the phone ----
+  async function loadSuiteTime() {
+    const note = document.getElementById('suiteNote');
+    if (!note) return;
+    try {
+      const s = await api('/api/suite-time');
+      if (!s || !s.exists) {
+        note.textContent = '(no suite run recorded yet — npm run test:time)';
+        note.className = 'pNote';
+        return;
+      }
+      const secs = function (ms) { return (ms / 1000).toFixed(1) + ' s'; };
+      const slow = (s.slowest || [])[0];
+      note.textContent = '(' + s.files + ' files · ' + s.cases + ' cases · ' + secs(s.wallMs) + ' of ' + secs(s.budgetWallMs)
+        + (s.over ? ' — OVER' : '')
+        + (slow ? ' · slowest ' + String(slow.file).replace(/\.test\.js$/, '') + ' ' + secs(slow.ms) : '')
+        + ' · ' + s.age + ')';
+      note.className = s.over ? 'pNote err' : 'pNote';
     } catch (err) {
       note.textContent = '(unavailable)';
       note.className = 'pNote err';
@@ -7159,6 +7211,7 @@
       void loadDocsSite();
       void loadTelegramRuns();
       void loadPerf();
+      void loadSuiteTime();
       const w = await api('/api/worklog');
       const note = $('workFresh');
       if (note) {

@@ -526,19 +526,26 @@ export async function runDoctor(): Promise<Check[]> {
       const host = p.machine ? `${p.machine.platform}/${p.machine.arch}` : 'unknown host';
       const over = p.over.length > 0;
       const stale = staleDays !== null && staleDays >= 30;
+      // 41.4: a snapshot taken while the machine was busy is not a clean bill of
+      // health — it is information with a caveat, and the caveat is the load.
+      const { describeSuspectLoad } = await import('../core/perf.js');
+      const busy = p.suspect && p.load ? describeSuspectLoad(p.load) : null;
       checks.push({
         id: 'perf',
         label: 'performance budget',
-        status: over ? 'warn' : stale ? 'info' : 'ok',
+        status: over ? 'warn' : stale || busy ? 'info' : 'ok',
         detail:
           `measured ${p.age} on ${host} · worst ${worst}` +
           (over ? ` · OVER: ${p.over.join(', ')}` : '') +
+          (busy ? ` · measured while busy: ${busy}` : '') +
           (p.skipped.length ? ` · ${p.skipped.length} metric(s) not measured` : ''),
         fix: over
           ? 'see docs/PERFORMANCE.md for the metric that is over, then: termcrab perf'
           : stale
             ? 'this measurement is a month old: termcrab perf'
-            : undefined,
+            : busy
+              ? 'that measurement was taken on a busy machine — re-run: termcrab perf'
+              : undefined,
       });
     }
   } catch {

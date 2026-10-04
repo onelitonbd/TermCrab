@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const SNAPSHOT = 'docs/openclaw/data/coverage.json';
@@ -48,34 +49,88 @@ function testFiles() {
     .map((f) => path.join('dist/test', f));
 }
 
-function parse(text) {
-  // # all files  |  88.30 |    78.24 |   89.82 |
+/**
+ * The coverage table, as rows with their **full path**.
+ *
+ * Node prints the table as an indented tree (`dist` → `src` → `channels` →
+ * `api.js`), and the path is the only thing that separates the copy under
+ * `dist/` from the source under `src/`: batch 41 found the hard way that a
+ * parser which keeps only the nearest directory averages the two copies
+ * together, and a number that mixes a compiled tree into "source coverage" is
+ * worse than no number. Depth is one space per level, and a row's path is its
+ * section stack plus the file name.
+ */
+export function parseCoverageTable(text) {
   const rows = [];
-  let section = '';
+  const stack = [];
   for (const line of text.split('\n')) {
     if (!line.startsWith('#')) continue;
     const body = line.slice(1).trimEnd();
-    const dir = body.match(/^\s{2,}([a-z0-9_-]+)\s{2,}\|\s*\|/i);
-    if (dir) {
-      section = dir[1];
+    const section = body.match(/^(\s+)([A-Za-z0-9_./-]+)\s{2,}([ ]*\|[ ]*)+$/);
+    if (section) {
+      const depth = section[1].length;
+      const name = section[2];
+      while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
+      stack.push({ depth, name });
       continue;
     }
-    const row = body.match(/^\s*([A-Za-z0-9_.-]+\.js)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)/);
+    const row = body.match(/^\s*([A-Za-z0-9_.-]+\.(?:mjs|cjs|js|ts|tsx|jsx))\s*\|\s*([0-9.]+)\s*\|\s*([0-9.]+)\s*\|\s*([0-9.]+)/);
     if (row) {
-      rows.push({ dir: section, file: row[1], lines: +row[2], branches: +row[3], functions: +row[4] });
+      const parts = stack.map((s) => s.name);
+      const path = [...parts, row[1]].join('/');
+      rows.push({
+        path,
+        dir: parts[parts.length - 1] ?? '',
+        file: row[1],
+        lines: +row[2],
+        branches: +row[3],
+        functions: +row[4],
+      });
       continue;
     }
     const all = body.match(/^all files\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)/);
-    if (all) rows.push({ dir: 'all', file: 'all files', lines: +all[1], branches: +all[2], functions: +all[3] });
+    if (all) rows.push({ path: 'all files', dir: 'all', file: 'all files', lines: +all[1], branches: +all[2], functions: +all[3] });
   }
   const counts = {};
   for (const m of text.matchAll(/^# (tests|pass|fail|skipped|cancelled) (\d+)$/gm)) counts[m[1]] = +m[2];
   return { rows, counts };
 }
 
+const parse = parseCoverageTable;
+
+/**
+ * The rows that are this project's own source.
+ *
+ * Node reports the files a process loaded, and the test suite loads `dist/` —
+ * tsc emits one `.js` per `.ts`, so `dist/src/agent/loop.js` **is** the source
+ * file that was executed, and it is the copy the reporter actually saw (a run
+ * that only loads `dist/` has no `src/` rows at all: batch 41 found this while
+ * chasing a number that had quietly halved, because the old parser averaged
+ * *every* non-test row, including a second copy of the tree under a temp
+ * directory). So: take `dist/src/**` or `src/**`, prefer the real `src/` row
+ * when a run has both, name the file the way a person would `.ts`, and ignore
+ * everything else (tests, scripts, temp installs).
+ */
+export function sourceRows(rows) {
+  const byPath = new Map();
+  for (const r of rows) {
+    const m = /^(?:dist\/)?src\/(.+)$/.exec(r.path);
+    if (!m) continue;
+    const rel = m[1];
+    const key = rel.replace(/\.js$/, '.ts');
+    const prev = byPath.get(key);
+    // Prefer a real `src/` row over the compiled copy when both were loaded.
+    if (!prev || (prev.path.startsWith('dist/') && !r.path.startsWith('dist/'))) {
+      byPath.set(key, { ...r, sourcePath: key });
+    }
+  }
+  return [...byPath.values()];
+}
+
 /** Weighted average over the files that belong to the product, not the tests. */
+/** The average over this project's own source rows — the number that is published. */
 function weighted(rows, key) {
-  const src = rows.filter((r) => r.dir !== 'test' && r.file !== 'all files');
+  const src = sourceRows(rows);
   if (!src.length) return 0;
   const total = src.reduce((sum, r) => sum + r[key], 0);
   return total / src.length;
@@ -121,14 +176,15 @@ function run() {
       functions: +weighted(rows, 'functions').toFixed(2),
     },
     all: rows.find((r) => r.file === 'all files') ?? { lines: 0, branches: 0, functions: 0 },
-    worst: rows
-      .filter((r) => r.dir !== 'test' && r.file !== 'all files' && r.lines < 100)
+    worst: sourceRows(rows)
+      .filter((r) => r.lines < 100)
       .sort((a, b) => a.lines - b.lines)
-      .slice(0, 12),
-    best: rows
-      .filter((r) => r.dir !== 'test' && r.file !== 'all files' && r.lines >= 100)
+      .slice(0, 12)
+      .map((r) => ({ dir: r.sourcePath.split('/').slice(0, -1).join('/'), file: r.sourcePath.split('/').pop(), lines: r.lines })),
+    best: sourceRows(rows)
+      .filter((r) => r.lines >= 100)
       .slice(0, 5)
-      .map((r) => r.file),
+      .map((r) => r.sourcePath),
   };
   fs.writeFileSync(path.join(ROOT, SNAPSHOT), JSON.stringify(snapshot, null, 2) + '\n');
   if (fs.existsSync(path.join(ROOT, DOC))) rewriteDoc(snapshot);
@@ -175,6 +231,10 @@ function snapshotOf() {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+// Importable (the parser is unit-tested): only act when this file *is* the
+// program. `test/tier3d.test.ts` imports `parseCoverageTable` through a file URL
+// to prove the table parser keeps `src/` and `dist/` apart (41's defect).
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 const mode = process.argv.includes('--run')
   ? 'run'
   : process.argv.includes('--json')
@@ -183,7 +243,7 @@ const mode = process.argv.includes('--run')
       ? 'doc'
       : 'check';
 
-if (mode === 'run') run();
+if (isMain && mode === 'run') run();
 else if (mode === 'doc') {
   const snap = snapshotOf();
   if (!snap) {
@@ -199,7 +259,7 @@ else if (mode === 'doc') {
     process.exit(1);
   }
   process.stdout.write(JSON.stringify(snap, null, 2) + '\n');
-} else {
+} else if (isMain) {
   const snap = snapshotOf();
   const problems = [];
   if (!snap) problems.push(`${SNAPSHOT} is missing — run: node scripts/coverage.mjs --run`);

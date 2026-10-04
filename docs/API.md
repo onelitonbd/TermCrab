@@ -79,6 +79,9 @@ with the same freshness object (`rebuilt: true`).
 
 ### `GET /api/perf` — the last performance measurement (38.2)
 ```json
+### GET /api/suite-time
+
+The last recorded suite run (`docs/openclaw/data/suite-time.json`, written by `npm run test:time`): wall clock, file and case counts, the five slowest files, the budgets and whether the run was over. Read-only and cheap — it reads a recording and never runs the suite; the panel's Work page prints `(99 files · 1024 cases · 165.5 s of 240.0 s · slowest tier3j 40.4 s · recorded 7 min ago)` (41.3).
 { "exists": true, "file": "/…/state/perf.json", "at": "2026-10-04T04:51:06.608Z",
   "ageMs": 69049, "age": "1 min ago",
   "worst": { "key": "idleRssMb", "value": 72, "max": 130, "pct": 55 },

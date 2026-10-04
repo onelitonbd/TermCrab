@@ -95,7 +95,7 @@ import { formatRoomHistory } from '../channels/rooms.js';
 import { buildBoard } from '../agent/board.js';
 import { docsSiteFreshness, ensureDocsSite } from '../docs/site.js';
 import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/telegram-runs.js';
-import { perfStatus } from '../core/perf.js';
+import { perfStatus, suiteTimeStatus } from '../core/perf.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -1383,6 +1383,14 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         // 38.1). Reads state/perf.json; it never measures anything, because a
         // measurement boots a gateway and runs a turn.
         json(res, 200, perfStatus());
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/api/suite-time') {
+        // 41.3: the last recorded suite run (docs/openclaw/data/suite-time.json),
+        // so "the tests got slow" is visible on a phone without a shell. Reads a
+        // recording; it never runs the suite.
+        json(res, 200, suiteTimeStatus());
         return;
       }
 
