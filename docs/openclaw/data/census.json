@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T01:09:19.319Z",
+ "measured": "2026-10-04T01:38:34.727Z",
  "tally": {
-  "WORKING": 105,
+  "WORKING": 107,
   "BETTER": 14,
-  "PARTIAL": 13,
+  "PARTIAL": 11,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 95,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 72,
+ "effortLeft": 60,
  "areas": [
   "agent",
   "automation",
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:694, src/core/config.ts:700"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:695, src/core/config.ts:700"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:475, src/cli.ts:1336, src/command-help.ts:248"
+    "detail": "11 match(es): src/agent/loop.ts:475, src/cli.ts:1337, src/command-help.ts:248"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:272, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:273, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:262"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:263"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:176, src/gateway/server.ts:1576, src/mobile/doctor.ts:555"
+    "detail": "5 match(es): src/cli.ts:177, src/gateway/server.ts:1576, src/mobile/doctor.ts:555"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:417"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:431"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1436, src/gateway/server.ts:1612"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1437, src/gateway/server.ts:1612"
    }
   },
   {
@@ -645,7 +645,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "668 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:18"
+    "detail": "693 match(es): src/agent/cdp.ts:53, src/agent/dream.ts:151, src/agent/embed-provider.ts:139"
    }
   },
   {
@@ -763,7 +763,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:759, src/agent/tools.ts:215"
+    "detail": "2 match(es): src/agent/toolbox.ts:759, src/agent/tools.ts:216"
    }
   },
   {
@@ -842,7 +842,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2750"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2818"
    }
   },
   {
@@ -1000,7 +1000,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:421, src/cli.ts:2688"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:429, src/cli.ts:2756"
    }
   },
   {
@@ -1098,7 +1098,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:664, src/agent/tools.ts:216"
+    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:664, src/agent/tools.ts:217"
    }
   },
   {
@@ -1117,26 +1117,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:72, src/agent/tools.ts:213"
+    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:72, src/agent/tools.ts:214"
    }
   },
   {
    "area": "tools",
    "capability": "Browser automation",
    "openclaw": "CDP + Playwright + OAuth flows",
-   "verdict": "PARTIAL",
-   "evidence": "CDP browser tool requires system Chrome; off by default",
+   "verdict": "WORKING",
+   "evidence": "the browser tool used to be a stub that called HTTP endpoints CDP does not have, so it either answered requires WebSocket CDP or lied; it is now a real client in src/agent/cdp.ts: a WebSocket session with id-matched replies and event waiters, Page.enable + Page.navigate + waiting for Page.loadEventFired, Runtime.evaluate for text and for click/fill (the native setter plus input/change so React and Vue state updates, and a real Input.dispatchKeyEvent Enter when submit is asked for), Emulation.setDeviceMetricsOverride + Page.captureScreenshot writing an actual PNG under workspace/browser/, and the HTTP side (/json/version, /json/list) for status and tabs. No dependency: Node 22+ global WebSocket, and an older Node gets one sentence saying so. The browser is the one the owner already has (Chrome/Chromium started with --remote-debugging-port), because a bundled Playwright + Chromium is hundreds of megabytes on a phone install; `termcrab browser [status|open|text|shot]` uses the same client so a person can check it first, and `allowBrowser` stays off until it is turned on. Proof: test/tier2z.test.ts stands up a real WebSocket server (handshake + frame codec) that plays a browser, and asserts the wire path (method order, the selector passed as data, keyDown/keyUp, a PNG signature on disk, protocol errors, the deadline) plus the tool and the CLI against it; a live Chrome is a test that skips when this machine has none, as the sandbox does. Limits stated: no OAuth consent flow, no password typing, no downloading, and Android Chrome cannot be driven this way (CDP_HOST + adb forward is the documented path)",
    "probe": {
-    "pattern": "browser",
+    "file": "src/agent/cdp.ts",
+    "pattern": "export class CdpBrowser",
     "expect": "present"
    },
-   "effort": 6,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/prompt.ts:39, src/agent/toolbox.ts:1559, src/agent/tools.ts:545"
+    "detail": "1 match(es): src/agent/cdp.ts:206"
    }
   },
   {
@@ -1175,7 +1176,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/tools.ts:17, src/gateway/server.ts:48, src/providers/mcp.ts:31"
+    "detail": "4 match(es): src/agent/tools.ts:18, src/gateway/server.ts:48, src/providers/mcp.ts:31"
    }
   },
   {
@@ -1305,9 +1306,10 @@
    "capability": "SKILL.md loading",
    "openclaw": "progressive disclosure + gating",
    "verdict": "WORKING",
-   "evidence": "src/skills/loader.ts + load_skill tool (tools.ts:318)",
+   "evidence": "the prompt carries the index only — one line per skill, name and description — and the body arrives when the model asks for it: load_skill <name> (src/agent/tools.ts) reads the skill through the same allow-list-aware loader the index is built from, so a skill the config hides cannot be read by naming it. Wrong name lists what does exist, capped so a big library cannot flood a turn, and a capitalised name still resolves (the loader stays case-sensitive; the tool does not need to be). test/skills.test.ts loads a bundled skill through the tool and pins both the failure sentence and the case-insensitive read; test/loop.test.ts pins the path the loop uses.",
    "probe": {
-    "pattern": "load_skill",
+    "file": "src/agent/tools.ts",
+    "pattern": "name: 'load_skill'",
     "expect": "present"
    },
    "effort": 0,
@@ -1316,26 +1318,28 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/prompt.ts:260, src/agent/tools.ts:214"
+    "detail": "1 match(es): src/agent/tools.ts:375"
    }
   },
   {
    "area": "skills",
    "capability": "Bundled skill library",
    "openclaw": "49 bundled + 13k ClawHub",
-   "verdict": "PARTIAL",
-   "evidence": "5 bundled: daily-briefing, shell-safety, termux-api, voice, web-research",
+   "verdict": "WORKING",
+   "evidence": "fifteen skills ship in the repo, and each one is written for this device rather than for a plugin store: shell-safety, chat-replies, memory-keeping, reminders, daily-briefing, evening-review, file-organisation, backup-habits, secrets-hygiene, doctor-first, git-habits, phone-battery, voice, termux-api, web-research. Two rules keep the library from rotting: test/skills.test.ts pins the list of fifteen (adding or deleting one without updating the test fails the suite), and it reads every `termcrab <command>` line in every skill and asserts the command exists in src/cli.ts plus the flags the skills lean on (cron add --deliver, sessions purge --older-than, subagents scratch --prune, auth add --provider/--key), so a skill can never tell the model to run something that is gone. Limits stated: fifteen is fewer than their forty-nine, and there is no marketplace — a registry is a separate row and stays out of scope for a three-surface phone agent; the trade is that every bundled skill here is short, specific and checked against the live CLI.",
    "probe": {
-    "pattern": "SKILL.md",
-    "expect": "present"
+    "scope": "skills",
+    "pattern": "\nname: ",
+    "expect": "present",
+    "min": 15
    },
-   "effort": 6,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "33 match(es): src/agent/toolbox.ts:1169, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "15 match(es) (min 15): skills/backup-habits/SKILL.md:1, skills/chat-replies/SKILL.md:1, skills/daily-briefing/SKILL.md:1"
    }
   },
   {
@@ -1917,7 +1921,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:50, src/gateway/server.ts:410"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:410"
    }
   },
   {
@@ -2133,7 +2137,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "104 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:259"
+    "detail": "105 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:260"
    }
   },
   {
@@ -2152,7 +2156,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:61"
+    "detail": "1 match(es): src/cli.ts:62"
    }
   },
   {
@@ -2171,7 +2175,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "68 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "72 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2190,7 +2194,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:413, src/command-help.ts:555"
+    "detail": "2 match(es): src/cli.ts:414, src/command-help.ts:569"
    }
   },
   {
@@ -2893,7 +2897,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "87 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "88 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

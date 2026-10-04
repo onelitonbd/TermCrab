@@ -14,6 +14,7 @@ import { guardToolExecute } from './tool-schema.js';
 import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, runCommand } from './exec-guard.js';
 import { sandboxFor } from './sandbox.js';
 import { ToolDef } from '../providers/types.js';
+import { browserStatus, CdpBrowser } from './cdp.js';
 import { createMcpClient, mcpToolsToDefs, McpClient, McpTool } from '../providers/mcp.js';
 
 const execFileAsync = promisify(execFile);
@@ -372,16 +373,23 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
   tools.push({
     def: {
       name: 'load_skill',
-      description: 'Load the full instructions of a skill by name into context. Check the skills index first.',
+      description:
+        'Read the full instructions of a skill by name (the prompt index carries only names and one line each, so this is how the body gets into context). Check the skills index first.',
       schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
     },
     async execute(args) {
-      const skill = env.skills.get(str(args, 'name'));
+      const asked = str(args, 'name').trim();
+      // 34.2: the model sometimes capitalises a name it read in the index; the
+      // loader is case-sensitive by design, the tool need not be.
+      const ciHit = env.skills.list().find((s) => s.name.toLowerCase() === asked.toLowerCase());
+      const skill = env.skills.get(asked) ?? (ciHit ? env.skills.get(ciHit.name) : null);
       if (!skill) {
-        const available = env.skills.list().map((s) => s.name).join(', ');
-        throw new Error(`skill not found. available: ${available || '(none)'}`);
+        const names = env.skills.list().map((s) => s.name);
+        const shown = names.slice(0, 24).join(', ');
+        const more = names.length > 24 ? `, … (${names.length} installed)` : '';
+        throw new Error(`skill not found: ${asked}. available: ${shown || '(none)'}${more}`);
       }
-      return `# Skill: ${skill.name}\n\n${skill.content}`;
+      return `# Skill: ${skill.name} [${skill.origin}]\n\n${skill.content.trim()}`;
     },
   });
 
@@ -542,19 +550,22 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
     },
   });
 
-  // ---- browser tool (CDP-based, read-only) ----
+  // ---- browser tool: a real CDP session against the owner's own browser (34.1) ----
   if (env.config.agent.allowBrowser) {
     tools.push({
       def: {
         name: 'browser',
-        description: 'Control a web browser via Chrome DevTools Protocol (CDP). Read-only: navigate, screenshot, extract text, click, fill forms. Requires a running Chrome/Chromium with --remote-debugging-port.',
+        description:
+          'Drive a real Chrome/Chromium over the DevTools Protocol: navigate, read the page text, click, fill a form, take a screenshot. ' +
+          'Needs a browser started with a debug port (status says which, and how). Read-only in spirit: no passwords, no downloads.',
         schema: {
           type: 'object',
           properties: {
-            action: { type: 'string', enum: ['navigate', 'screenshot', 'text', 'click', 'fill', 'status'] },
-            url: { type: 'string', description: 'navigate: URL to visit' },
+            action: { type: 'string', enum: ['navigate', 'text', 'click', 'fill', 'screenshot', 'tabs', 'status'] },
+            url: { type: 'string', description: 'navigate: http/https URL to visit' },
             selector: { type: 'string', description: 'click/fill: CSS selector' },
-            text: { type: 'string', description: 'fill: text to type' },
+            text: { type: 'string', description: 'fill: the text to type' },
+            submit: { type: 'boolean', description: 'fill: press Enter afterwards (default false)' },
             width: { type: 'number', description: 'screenshot: viewport width (default 1280)' },
             height: { type: 'number', description: 'screenshot: viewport height (default 720)' },
           },
@@ -563,38 +574,53 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
       },
       async execute(args) {
         const action = str(args, 'action');
-        if (action === 'status') {
-          const running = await isCdpAvailable();
-          return running ? 'browser: CDP available' : 'browser: no Chrome/Chromium with --remote-debugging-port found';
+
+        if (action === 'status' || action === 'tabs') {
+          const st = await browserStatus();
+          if (!st.available) return `browser: ${st.hint}`;
+          const lines = st.tabs.map((tab, i) => `  ${i + 1}. ${tab.title || '(untitled)'} — ${tab.url}`);
+          return [`browser: ${st.browser ?? 'connected'}`, `${st.tabs.length} tab(s):`, ...lines].join('\n');
         }
-        if (action === 'navigate') {
-          const url = str(args, 'url');
-          if (!/^https?:\/\//i.test(url)) throw new Error('only http/https URLs are allowed');
-          const result = await cdpNavigate(url);
-          return `navigated to ${url}: ${result}`;
+
+        // Arguments are checked before a browser is needed: a bad argument is
+        // the caller's mistake and must not read as "no browser found".
+        const url = action === 'navigate' ? str(args, 'url') : '';
+        if (action === 'navigate' && !/^https?:\/\//i.test(url)) {
+          throw new Error('only http/https URLs are allowed');
         }
-        if (action === 'screenshot') {
-          const width = typeof args.width === 'number' ? args.width : 1280;
-          const height = typeof args.height === 'number' ? args.height : 720;
-          const result = await cdpScreenshot(width, height);
-          return result;
+        if (action !== 'navigate' && !['text', 'click', 'fill', 'screenshot'].includes(action)) {
+          throw new Error('action must be navigate/text/click/fill/screenshot/tabs/status');
         }
-        if (action === 'text') {
-          const result = await cdpGetText();
-          return clip(result, 20_000);
+
+        const browser = await CdpBrowser.attach();
+        try {
+          if (action === 'navigate') {
+            const r = await browser.navigate(url);
+            return `navigated to ${r.url}${r.title ? ` — "${r.title}"` : ''}${r.loaded ? '' : ' (load event did not arrive in time; the text may still be usable)'}`;
+          }
+          if (action === 'text') {
+            const body = await browser.text(20_000);
+            return body.trim() ? clip(body, 20_000) : '(the page has no readable text)';
+          }
+          if (action === 'click') {
+            return `clicked ${await browser.click(str(args, 'selector'))}`;
+          }
+          if (action === 'fill') {
+            const selector = str(args, 'selector');
+            const text = str(args, 'text');
+            const what = await browser.fill(selector, text, args.submit === true);
+            return `filled ${what} with ${text.length} character(s)${args.submit === true ? ' and pressed Enter' : ''}`;
+          }
+          if (action === 'screenshot') {
+            const width = typeof args.width === 'number' ? args.width : 1280;
+            const height = typeof args.height === 'number' ? args.height : 720;
+            const shot = await browser.screenshot(width, height);
+            return `screenshot ${shot.width}x${shot.height} saved to ${shot.file} (${Math.round(shot.bytes / 1024)} KB)`;
+          }
+          throw new Error('unreachable action');
+        } finally {
+          await browser.close();
         }
-        if (action === 'click') {
-          const selector = str(args, 'selector');
-          const result = await cdpClick(selector);
-          return `clicked ${selector}: ${result}`;
-        }
-        if (action === 'fill') {
-          const selector = str(args, 'selector');
-          const text = str(args, 'text');
-          const result = await cdpFill(selector, text);
-          return `filled ${selector} with "${text}": ${result}`;
-        }
-        throw new Error('action must be navigate/screenshot/text/click/fill/status');
       },
     });
   }
@@ -660,99 +686,6 @@ export function batteryHint(): string {
   // informational helper used by doctor/power (kept out of LLM tools to save tokens)
   const bin = process.env.PREFIX ? `${process.env.PREFIX}/bin/termux-battery-status` : 'termux-battery-status';
   return bin;
-}
-
-// ---------------------------------------------------------------------------
-// CDP browser helpers (read-only, no Playwright dependency)
-// ---------------------------------------------------------------------------
-
-const CDP_PORT = 9222;
-
-async function isCdpAvailable(): Promise<boolean> {
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function cdpGetTarget(): Promise<string | null> {
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (!res.ok) return null;
-    const targets = (await res.json()) as { webSocketDebuggerUrl?: string; type?: string }[];
-    const page = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
-    return page?.webSocketDebuggerUrl ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function cdpSend(wsUrl: string, method: string, params?: Record<string, unknown>): Promise<unknown> {
-  // Use the HTTP-based CDP endpoint for simple commands
-  // For full WebSocket CDP, we'd need a ws library — keep it simple for now
-  const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/protocol`, {
-    signal: AbortSignal.timeout(5000),
-  });
-  if (!res.ok) throw new Error('CDP not available');
-  // Fallback: use the /json/new endpoint for navigation
-  void wsUrl;
-  void method;
-  void params;
-  return null;
-}
-
-async function cdpNavigate(url: string): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found — start Chrome with --remote-debugging-port=9222');
-  // Use the HTTP endpoint to navigate
-  const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/navigate?${encodeURIComponent(url)}`, {
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`navigation failed: HTTP ${res.status}`);
-  return 'ok';
-}
-
-async function cdpScreenshot(width: number, height: number): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  // Return a placeholder — full screenshot requires WebSocket CDP
-  return `[browser] screenshot ${width}x${height} (requires WebSocket CDP — use browser text for content)`;
-}
-
-async function cdpGetText(): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  // Use the /json/evaluate endpoint if available, otherwise return placeholder
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/evaluate?expression=document.body.innerText`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { result?: { value?: string } };
-      return data.result?.value ?? '';
-    }
-  } catch {
-    /* fall through */
-  }
-  return '[browser] text extraction requires WebSocket CDP';
-}
-
-async function cdpClick(selector: string): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  return `clicked ${selector} (requires WebSocket CDP for full interaction)`;
-}
-
-async function cdpFill(selector: string, text: string): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  return `filled ${selector} with "${text}" (requires WebSocket CDP for full interaction)`;
 }
 
 // ---------------------------------------------------------------------------

@@ -66,6 +66,8 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab sessions rename <old> <new> --json` | `{from, to, renamed}` |
 | `termcrab say <text> --json` | `{spoken, backend, chars}` — which device backend spoke (termux-tts-speak / espeak-ng / say), and on failure what to install |
 | `termcrab transcribe <file> --json` | `{file, text, engine, model, ms}` — offline whisper.cpp transcription, or an error naming the missing engine or model |
+| `termcrab browser status --json` | `{available, browser, host, port, tabs:[{title, url}], hint}` — the owner's own Chrome over CDP (`--remote-debugging-port=9222`); no bundled browser, so `available:false` comes with the line that starts one |
+| `termcrab browser open <url>\|text\|shot --json` | `{url, loaded, title}` / `{url, chars, text}` / `{file, bytes, width, height}` — navigates, reads the page as text, or writes a PNG under `workspace/browser/`. `shot` is a real screenshot of the real page (`Page.captureScreenshot`), not a saved HTML. With no browser running every subcommand exits 1 with the start hint on stderr, so a script can test `$?` |
 | `termcrab skills ls --json` | `{count, skills:[{name, origin, description}]}` |
 | `termcrab skills import <src> --json` | `{source, count, results:[{name, action}]}` |
 | `termcrab skills new <name> --json` | `{created, path}` |

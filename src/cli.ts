@@ -55,6 +55,7 @@ import { scaffoldSkill, scaffoldAgent, isSoulTemplate, SOUL_TEMPLATES } from './
 import { approveProposal, getProposal, listProposals, listRejected, rejectProposal } from './skills/proposals.js';
 import { embeddingsStatus, embeddingsSetup, embeddingsTest } from './agent/embed-setup.js';
 import { transcribeFile } from './mobile/whisper.js';
+import { browserStatus, CdpBrowser } from './agent/cdp.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
@@ -2561,6 +2562,73 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       }
       console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
       process.exitCode = 1;
+      return;
+    }
+
+    case 'browser': {
+      // 34.1: the same CDP client the agent uses — so a person can check it first.
+      const [sub = 'status'] = rest;
+      const st = await browserStatus();
+      if (sub === 'status') {
+        if (machine) {
+          emitJson('browser', st);
+          return;
+        }
+        if (!st.available) {
+          // A failure goes to stderr and exits non-zero, like every other command.
+          console.error(`❌ ${st.hint}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`✅ ${st.browser ?? 'browser connected'}`);
+        for (const [i, tab] of st.tabs.entries()) console.log(`   ${i + 1}. ${tab.title || '(untitled)'} — ${tab.url}`);
+        return;
+      }
+      if (!st.available) {
+        console.error(st.hint);
+        process.exitCode = 1;
+        return;
+      }
+      const browser = await CdpBrowser.attach();
+      try {
+        if (sub === 'text') {
+          const body = await browser.text(20_000);
+          if (machine) {
+            emitJson('browser', { url: browser.page.url, chars: body.length, text: body });
+            return;
+          }
+          console.log(body.trim() || '(the page has no readable text)');
+          return;
+        }
+        if (sub === 'open' || sub === 'navigate') {
+          const url = rest[1] ?? '';
+          if (!/^https?:\/\//i.test(url)) {
+            console.error('usage: termcrab browser open <http(s)-url>');
+            process.exitCode = 1;
+            return;
+          }
+          const r = await browser.navigate(url);
+          if (machine) {
+            emitJson('browser', r);
+            return;
+          }
+          console.log(`✅ ${r.url}${r.title ? ` — "${r.title}"` : ''}`);
+          return;
+        }
+        if (sub === 'shot' || sub === 'screenshot') {
+          const shot = await browser.screenshot();
+          if (machine) {
+            emitJson('browser', shot);
+            return;
+          }
+          console.log(`📸 ${shot.file} (${shot.width}x${shot.height}, ${Math.round(shot.bytes / 1024)} KB)`);
+          return;
+        }
+        console.error('usage: termcrab browser [status | open <url> | text | shot] [--json]');
+        process.exitCode = 1;
+      } finally {
+        await browser.close();
+      }
       return;
     }
 

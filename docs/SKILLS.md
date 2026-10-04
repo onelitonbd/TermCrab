@@ -96,6 +96,47 @@ Three properties that are on purpose:
 - **The reason is the agent's.** It has to say why, in its own words, and that
   sentence is what you read before approving. A proposal with no reason says so.
 
+## The bundled library
+
+Fifteen skills ship in `<package>/skills/`, and every one of them is a working
+instruction sheet for *this* agent on *this* device — no filler, no "insert your
+workflow here":
+
+| Skill | For |
+|---|---|
+| `shell-safety` | what the agent may never run, what needs a yes, what to check first |
+| `chat-replies` | how to answer on a phone: answer first, short, no tables in chat, long things as a file |
+| `memory-keeping` | search before asking; what belongs in memory and what must never |
+| `reminders` | "remind me at 7" → a real cron job, timezone checked, self-contained prompt |
+| `daily-briefing` | the morning/evening brief from memory, tasks and the web |
+| `evening-review` | the day's wrap-up: done, open, cost, one thing for tomorrow |
+| `file-organisation` | what lives where in the home, naming, what is safe to delete |
+| `backup-habits` | when to back up, where the file goes, how a restore actually works |
+| `secrets-hygiene` | keys never printed, never memorised; what to do when one leaks |
+| `doctor-first` | the diagnostic order when something breaks, and how to read the answer |
+| `git-habits` | small commits in the owner's repo, and the no-pull-request rule |
+| `phone-battery` | battery, heat and mobile data: small jobs, no polling |
+| `voice` | speaking replies and dictation on Termux or desktop |
+| `termux-api` | notifications, clipboard, battery, SMS, camera through Termux:API |
+| `web-research` | researching with `web_fetch`: sources, extraction, synthesis |
+
+Two rules keep this honest:
+
+- **The count is pinned.** `test/skills.test.ts` lists all fifteen; adding or
+  removing one without updating the list fails the suite, so the library cannot
+  drift silently.
+- **The commands are checked.** The same test reads every `termcrab <command>`
+  line in every skill and asserts it is a real command in `src/cli.ts`, and that
+  the flags the skills lean on (`cron add --deliver`, `sessions purge
+  --older-than`, `subagents scratch --prune`, `auth add --provider/--key`) still
+  exist. A skill that tells the model to run something that no longer exists is
+  a test failure, not a surprise in the chat.
+
+The index in the prompt is one line per skill and nothing else; the agent reads
+the body with `load_skill <name>` when it decides a skill applies. To change one
+of these, copy it into `~/.termcrab/skills/<name>/` and edit there — your copy
+wins.
+
 ## Commands
 
 ```

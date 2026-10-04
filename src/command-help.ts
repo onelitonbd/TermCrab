@@ -354,6 +354,20 @@ export const COMMANDS: CommandDoc[] = [
     example: 'termcrab agents routes set telegram crabby',
   },
   {
+    cmd: 'browser',
+    usage: 'browser [status | open <url> | text | shot] [--json]',
+    summary: 'drive the browser you already have (Chrome/Chromium with a debug port) — read a page, click, fill, screenshot',
+    flags: [
+      'status         is a browser reachable, which build, and which tabs (and how to start one if not)',
+      'open <url>     navigate and report the final URL + title',
+      'text           the page text the agent would read',
+      'shot           a real PNG under workspace/browser/',
+      '--json         the same as data',
+    ],
+    example: 'termcrab browser open https://example.com',
+    json: 'status → {available, browser?, tabs:[{title,url}], hint?} · open → {url, loaded, title} · text → {url, chars, text} · shot → {file, bytes, width, height}',
+  },
+  {
     cmd: 'transcribe',
     usage: 'transcribe <audio-file> [--model <ggml-model>] [--json]',
     summary: 'turn a voice recording into text (offline, needs whisper.cpp)',

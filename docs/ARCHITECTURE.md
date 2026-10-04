@@ -94,6 +94,7 @@ users' runtime.
 | `src/agent/goals.ts` | Goal tracking: open goals with progress, surfaced in the system prompt |
 | `src/agent/heartbeat.ts` | proactive tick: power check -> checklist -> run |
 | `src/agent/intents.ts` | Standing intents: durable directives injected into every system prompt |
+| `src/agent/cdp.ts` | Chrome DevTools Protocol client for the `browser` tool: WebSocket session, navigate/evaluate/click/fill/screenshot (34.1) |
 | `src/agent/loop.ts` | the agent run: prompt -> model -> tools -> repeat |
 | `src/agent/memory.ts` | MEMORY.md + daily logs + lexical search + compacted digests |
 | `src/agent/progress.ts` | Per-session progress card the agent maintains and the UI shows |
