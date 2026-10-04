@@ -56,24 +56,24 @@ dominating the run fails the suite instead of being noticed a month later.
 
 _Measured 2026-10-04 on node v22.22.3 — `node scripts/suite-time.mjs --run` re-measures, `--check` fails when the run is over its budget._
 
-The whole suite: **109 files, 1086 test cases, 170.0 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
+The whole suite: **110 files, 1101 test cases, 193.2 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
 
 | slowest file | time |
 |---|---|
-| `tier3j.test.js` | 37.7 s |
-| `tier3i.test.js` | 30.9 s |
-| `tier2c.test.js` | 5.2 s |
-| `tier2.test.js` | 4.7 s |
-| `tier2x.test.js` | 3.7 s |
+| `tier3j.test.js` | 44.1 s |
+| `tier3i.test.js` | 36.9 s |
+| `tier2c.test.js` | 6.3 s |
+| `tier2.test.js` | 5.2 s |
+| `tier2x.test.js` | 4.3 s |
 
 <!-- END SUITE TIME -->
 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **87.08%** of the lines in `src/` are executed by the
-suite (77.55% of branches, 86.85% of functions), across
-**1086 test cases in 109 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-04:** **87.24%** of the lines in `src/` are executed by the
+suite (77.56% of branches, 86.91% of functions), across
+**1101 test cases in 110 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
@@ -85,11 +85,11 @@ suite (77.55% of branches, 86.85% of functions), across
 | `channels/matrix.ts` | 48.21% |
 | `bin/termcrab.ts` | 50% |
 | `channels/signal.ts` | 51.54% |
-| `mobile/tts.ts` | 54.45% |
 | `mobile/notify.ts` | 55.17% |
 | `mobile/boot.ts` | 55.56% |
 | `core/friendly.ts` | 58.59% |
-| `channels/cli.ts` | 60.36% |
+| `channels/cli.ts` | 60.99% |
+| `mobile/onboard.ts` | 61.44% |
 
 Those are the files the suite touches least. They are named here on purpose: on a phone, the
 cheapest next step is whichever of them your next bug lands in.

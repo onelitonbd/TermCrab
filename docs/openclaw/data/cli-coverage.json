@@ -38,6 +38,8 @@
     "bootstrap",
     "schema",
     "perf",
+    "suite-time",
+    "work",
     "disk",
     "status",
     "dream",
@@ -214,83 +216,93 @@
       "runs": 18
     },
     {
-      "command": "disk",
+      "command": "suite-time",
       "line": 2301,
+      "runs": 2
+    },
+    {
+      "command": "work",
+      "line": 2323,
+      "runs": 3
+    },
+    {
+      "command": "disk",
+      "line": 2371,
       "runs": 4
     },
     {
       "command": "status",
-      "line": 2340,
+      "line": 2410,
       "runs": 3
     },
     {
       "command": "wake",
-      "line": 2380,
+      "line": 2450,
       "runs": 1
     },
     {
       "command": "sessions",
-      "line": 2418,
+      "line": 2488,
       "runs": 13
     },
     {
       "command": "subagents",
-      "line": 2623,
+      "line": 2693,
       "runs": 3
     },
     {
       "command": "agents",
-      "line": 2684,
+      "line": 2754,
       "runs": 6
     },
     {
       "command": "docs",
-      "line": 2767,
+      "line": 2837,
       "runs": 17
     },
     {
       "command": "security",
-      "line": 2833,
+      "line": 2903,
       "runs": 4
     },
     {
       "command": "board",
-      "line": 2856,
+      "line": 2926,
       "runs": 2
     },
     {
       "command": "rooms",
-      "line": 2871,
+      "line": 2941,
       "runs": 4
     },
     {
       "command": "browser",
-      "line": 2951,
+      "line": 3021,
       "runs": 5
     },
     {
       "command": "transcribe",
-      "line": 3018,
+      "line": 3088,
       "runs": 1
     },
     {
       "command": "embeddings",
-      "line": 3052,
+      "line": 3122,
       "runs": 6
     },
     {
       "command": "context",
-      "line": 3112,
+      "line": 3182,
       "runs": 1
     },
     {
       "command": "memory",
-      "line": 3132,
+      "line": 3202,
       "runs": 6
     },
     {
       "command": "config",
-      "line": 3268,
+      "line": 3338,
       "runs": 7
     }
   ],
@@ -333,13 +345,13 @@
     },
     {
       "command": "dream",
-      "line": 2351,
+      "line": 2421,
       "why": "a long background consolidation pass; the same store is exercised by the library tests",
       "instead": "test/dream.test.ts"
     },
     {
       "command": "boot",
-      "line": 3254,
+      "line": 3324,
       "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
       "instead": "test/tier2w.test.ts"
     }
@@ -394,6 +406,8 @@
     "wake": 1,
     "docs": 17,
     "perf": 18,
-    "owner": 2
+    "owner": 2,
+    "suite-time": 2,
+    "work": 3
   }
 }

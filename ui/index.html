@@ -2675,6 +2675,21 @@
 
     <div class="memPane" id="tlPane-tools">
       <p class="tlNote" style="margin-top:0">Green "active" tools are live on this machine right now. "planned" entries are on the roadmap — not built yet.</p>
+      <div class="setCard" id="tgToolCard">
+        <h4>Switches</h4>
+        <div class="d">The three switches the config really carries. Flipping one writes the same key <code>termcrab config set</code> writes.</div>
+        <div id="toolToggles" class="secList"></div>
+      </div>
+      <div class="setCard" id="watchCard">
+        <h4>Watchers</h4>
+        <div class="d">A change under a watched path fires <code>file.changed</code>, which hooks and crons can hear.</div>
+        <div class="pBar" style="margin:6px 0">
+          <input id="wtPath" placeholder="~/notes" style="flex:1" />
+          <input id="wtMatch" placeholder=".md" style="width:90px" />
+          <button id="wtAdd" class="ghost smallBtn" type="button">Add</button>
+        </div>
+        <div id="wtList" class="secList"></div>
+      </div>
       <div id="toolCat" aria-live="polite"><div class="nx">loading…</div></div>
     </div>
 
@@ -2794,6 +2809,15 @@
       <span class="pNote" id="perfNote"></span>
       <span class="pNote" id="suiteNote"></span>
     </p>
+    <div class="setCard" id="inboxCard">
+      <h4>Inbox &amp; rooms</h4>
+      <div class="d">What people sent you, and what was said in group rooms while the bot was not addressed — the same store the agent's tools read.</div>
+      <div class="pBar" style="margin:6px 0">
+        <button id="ibRefresh" class="ghost smallBtn" type="button">Refresh</button>
+      </div>
+      <div id="inboxList" class="secList"><div class="nx">loading…</div></div>
+      <div id="roomsList" class="secList" style="margin-top:8px"></div>
+    </div>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
   </section>
 
@@ -2921,6 +2945,12 @@
       <div id="secretsList" class="secList"><div class="nx">loading secrets…</div></div>
     </div>
 
+    <div class="setCard" id="secScanCard">
+      <h4>Security scan</h4>
+      <div class="d">The same audit <code>termcrab security</code> and the chat's <code>/security</code> run — findings with their fixes, never a key value.</div>
+      <div id="secFindings" class="secList"><div class="nx">loading…</div></div>
+    </div>
+
   </section>
 
   <section class="view" id="view-logs" hidden>
@@ -3018,6 +3048,9 @@
         </button>
       </div>
       <span class="composerSp"></span>
+      <button id="sayLast" class="iconBtn" type="button" title="Speak the last answer (downloads a voice file)" aria-label="Speak the last answer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      </button>
       <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       </button>
@@ -5880,6 +5913,18 @@
 
     const secList = $('secretsList');
     if (secList) {
+      // 52.2 — the *named* secrets store (agent/secrets.ts), as names only:
+      // the values never leave the server, and the card says so.
+      api('/api/secrets').then((data) => {
+        const named = (data.secrets || []);
+        const box = document.createElement('div');
+        box.className = 'nx';
+        box.style.marginTop = '8px';
+        box.textContent = named.length
+          ? `Named secrets on this device (${named.length}): ` + named.map((s) => s.name).join(', ')
+          : 'No named secrets stored. The agent can read one by name without it ever entering a prompt.';
+        secList.appendChild(box);
+      }).catch(() => { /* the card still shows the config keys */ });
       const secrets = [
         { key: 'provider.apiKey', label: 'AI Provider Key', desc: 'Authentication key for your active AI service', icon: '<path d="M12 2a8 8 0 0 0-8 8c0 3 2 5.5 5 7v3h6v-3c3-1.5 5-4 5-7a8 8 0 0 0-8-8z"/><path d="M9 22h6"/>' },
         { key: 'gateway.token', label: 'Web Panel Password', desc: 'Password required to access this control interface', icon: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' },
@@ -6975,6 +7020,192 @@
     await loadKeys();
   });
 
+  // ---- 52.x: the cards that close the named ◐ cells ----
+  // Inbox & rooms: same store the agent's inbox_list/room_history tools read.
+  async function refreshInbox() {
+    const box = $('inboxList');
+    const rooms = $('roomsList');
+    if (!box) return;
+    try {
+      const data = await api('/api/inbox?limit=20');
+      const rows = data.entries || [];
+      box.innerHTML = '';
+      if (!rows.length) box.innerHTML = '<div class="nx">the inbox is empty</div>';
+      for (const e of rows.slice(0, 12)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = e.name + (e.gone ? ' (gone)' : '');
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `${e.kind} · ${Math.max(1, Math.round((e.bytes || 0) / 1024))} KB · ${e.from || ''}`;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const open = document.createElement('button');
+        open.className = 'ghost'; open.textContent = 'Read';
+        open.onclick = async () => {
+          try {
+            const one = await api('/api/inbox/' + encodeURIComponent(e.name));
+            addMsg('sys', one.ok ? `${e.name}:\n${one.text}` : `could not read ${e.name}: ${one.reason}`);
+            switchView('chat');
+          } catch (err) { addMsg('sys', 'read failed: ' + err.message); }
+        };
+        row.append(name, meta, sp, open);
+        box.appendChild(row);
+      }
+      const rData = await api('/api/rooms');
+      rooms.innerHTML = '';
+      const list = rData.rooms || [];
+      if (!list.length) rooms.innerHTML = '<div class="nx">no rooms recorded yet (group messages the bot was not addressed in land here)</div>';
+      for (const r of list.slice(0, 8)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = `${r.channel} · ${r.room}`;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `${r.messages} msg · ${r.sinceAddressed} since addressed`;
+        row.append(name, meta);
+        rooms.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // Watchers: the same config key `/watch` in Telegram and `config set` write.
+  async function refreshWatchers() {
+    const box = $('wtList');
+    if (!box) return;
+    try {
+      const data = await api('/api/watchers');
+      const list = data.watchers || [];
+      box.innerHTML = '';
+      if (!list.length) box.innerHTML = '<div class="nx">nothing watched yet</div>';
+      for (const w of list) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id'; name.textContent = w.path + (w.match ? ` (${w.match})` : '');
+        const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = w.id;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const rm = document.createElement('button');
+        rm.className = 'ghost'; rm.textContent = 'Remove';
+        rm.onclick = async () => {
+          try { await api('/api/watchers', { method: 'POST', body: { action: 'rm', id: w.id } }); refreshWatchers(); }
+          catch (e) { addMsg('sys', 'remove failed: ' + e.message); }
+        };
+        row.append(name, meta, sp, rm);
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // Tool switches: three checkboxes bound to the config keys that exist.
+  async function refreshToolToggles() {
+    const box = $('toolToggles');
+    if (!box) return;
+    try {
+      const data = await api('/api/config');
+      const agent = (data.config && data.config.agent) || {};
+      const defs = [
+        { tool: 'exec', key: 'allowExec', label: 'Shell commands (exec)', desc: 'let the agent run commands on this device' },
+        { tool: 'browser', key: 'allowBrowser', label: 'Browser automation', desc: 'let the agent drive a browser' },
+        { tool: 'code', key: 'allowCodeExec', label: 'Code execution', desc: 'let the agent run code it wrote' },
+      ];
+      box.innerHTML = '';
+      for (const d of defs) {
+        const row = document.createElement('label');
+        row.className = 'sessRow';
+        row.style.cursor = 'pointer';
+        const on = document.createElement('input');
+        on.type = 'checkbox';
+        on.checked = agent[d.key] === true;
+        on.onchange = async () => {
+          try {
+            await api('/api/tools/toggle', { method: 'POST', body: { tool: d.tool, enabled: on.checked } });
+            addMsg('sys', `${d.label}: ${on.checked ? 'on' : 'off'}`);
+          } catch (e) { addMsg('sys', 'toggle failed: ' + e.message); on.checked = !on.checked; }
+        };
+        const name = document.createElement('span');
+        name.className = 'id'; name.textContent = d.label;
+        const meta = document.createElement('span');
+        meta.className = 'meta'; meta.textContent = d.desc;
+        row.append(on, name, meta);
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // Security scan: findings with fixes, straight from /api/security.
+  async function refreshSecurity() {
+    const box = $('secFindings');
+    if (!box) return;
+    try {
+      const data = await api('/api/security');
+      const findings = (data.findings || []).filter((f) => f.level !== 'ok');
+      box.innerHTML = '';
+      if (!findings.length) { box.innerHTML = '<div class="nx">nothing to fix</div>'; return; }
+      const head = document.createElement('div');
+      head.className = 'nx';
+      head.textContent = `${findings.length} finding(s)`;
+      box.appendChild(head);
+      for (const f of findings.slice(0, 12)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = (f.level === 'fail' ? '❌ ' : '⚠️ ') + f.title;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = f.fix || '';
+        row.append(name, meta);
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // 52.5 — a spoken reply, as a file: the browser cannot hear this machine's
+  // speakers, so the answer arrives as a download it can play.
+  $('sayLast') && ($('sayLast').onclick = async () => {
+    const text = lastAssistantText();
+    if (!text) { addMsg('sys', 'nothing to speak yet'); return; }
+    try {
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + state.token },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        addMsg('sys', '🔇 ' + (body.hint || body.error || 'could not synthesize'));
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'reply.ogg';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+    } catch (e) { addMsg('sys', '🔇 ' + e.message); }
+  });
+  /** The last answer in the transcript, which is what "speak it" means. */
+  function lastAssistantText() {
+    const bubbles = document.querySelectorAll('#log .ai .textBody');
+    const last = bubbles[bubbles.length - 1];
+    return last ? (last.innerText || '').trim().slice(0, 1500) : '';
+  }
+  $('wtAdd') && ($('wtAdd').onclick = async () => {
+    const path = ($('wtPath').value || '').trim();
+    const match = ($('wtMatch').value || '').trim();
+    if (!path) { addMsg('sys', 'a path is required'); return; }
+    try {
+      await api('/api/watchers', { method: 'POST', body: { action: 'add', path, match } });
+      $('wtPath').value = ''; $('wtMatch').value = '';
+      refreshWatchers();
+    } catch (e) { addMsg('sys', 'add failed: ' + e.message); }
+  });
+  $('ibRefresh') && ($('ibRefresh').onclick = () => refreshInbox());
+
   // ---- Chats panel (export / rename / purge) ----
   async function refreshSessPanel() {
     try {
@@ -7004,7 +7235,40 @@
         const load = document.createElement('button');
         load.className = 'ghost'; load.textContent = 'Open';
         load.onclick = () => { $('session').value = s.id; loadSession(s.id); switchView('chat'); };
-        row.append(id, meta, sp, load);
+        // 52.5 — rename and export, the two the rail never had.
+        const rename = document.createElement('button');
+        rename.className = 'ghost'; rename.textContent = 'Rename';
+        rename.onclick = async () => {
+          const to = prompt('New name for ' + s.id + ' (letters, digits, . _ - : only)', s.id);
+          if (!to || to === s.id) return;
+          try {
+            await api('/api/sessions/' + encodeURIComponent(s.id) + '/rename', { method: 'POST', body: { to } });
+            addMsg('sys', `renamed ${s.id} → ${to}`);
+            refreshSessPanel();
+          } catch (e) { addMsg('sys', 'rename failed: ' + e.message); }
+        };
+        const exp = document.createElement('button');
+        exp.className = 'ghost'; exp.textContent = 'Export';
+        exp.onclick = async () => {
+          try {
+            const one = await api('/api/sessions/' + encodeURIComponent(s.id) + '/export');
+            if (!one.markdown) { addMsg('sys', 'export: no chat found with that id'); return; }
+            const blob = new Blob([one.markdown], { type: 'text/markdown' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = s.id.replace(/[^\w.-]+/g, '_') + '.md';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+          } catch (e) { addMsg('sys', 'export failed: ' + e.message); }
+        };
+        const del = document.createElement('button');
+        del.className = 'ghost'; del.textContent = 'Delete';
+        del.onclick = async () => {
+          if (!confirm(`Delete the transcript of ${s.id}? (the archived history stays on disk)`)) return;
+          try { await api('/api/sessions/' + encodeURIComponent(s.id), { method: 'DELETE' }); refreshSessPanel(); }
+          catch (e) { addMsg('sys', 'delete failed: ' + e.message); }
+        };
+        row.append(id, meta, sp, load, rename, exp, del);
         box.appendChild(row);
       }
     } catch (e) { $('sessList').innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
@@ -7935,10 +8199,10 @@
     const primary = document.querySelector('#view-' + name + ' details[data-primary]');
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
-    if (name === 'tools') refreshTools();
+    if (name === 'tools') { refreshTools(); refreshWatchers(); refreshToolToggles(); }
     if (name === 'board') refreshBoard();
-    if (name === 'work') refreshWork();
-    if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); }
+    if (name === 'work') { refreshWork(); refreshInbox(); }
+    if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); refreshSecurity(); }
     if (name === 'logs') { refreshLogs(); startLogAuto(); } else { stopLogAuto(); }
     if (name === 'debug') { refreshDebug(); if ($('debugAuto')?.checked) { clearInterval(debugTimer); debugTimer = setInterval(refreshDebug, 3000); } } else { clearInterval(debugTimer); debugTimer = null; }
     if (name === 'providers') showProvidersRoot();

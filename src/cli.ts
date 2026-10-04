@@ -2298,6 +2298,76 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       return;
     }
 
+    case 'suite-time': {
+      // 52.4 — the same record the panel's /api/suite-time and the chat's
+      // /suite-time read; the terminal was the only surface without it.
+      const { suiteTimeStatus } = await import('./core/perf.js');
+      const st = suiteTimeStatus();
+      if (machine) {
+        emitJson('suite-time', st);
+        return;
+      }
+      if (!st.exists) {
+        console.log('🕐 the suite has never been timed here — record it: npm run test:time');
+        return;
+      }
+      console.log('');
+      console.log(`  🕐 suite: ${(st.wallMs / 1000).toFixed(1)} s · ${st.cases} case(s) · ${st.files} file(s)`);
+      console.log(`     recorded ${st.age} (${st.at ?? '?'})`);
+      console.log(`     budget ${(st.budgetWallMs / 1000).toFixed(0)} s wall, ${(st.budgetFileMs / 1000).toFixed(0)} s per file`);
+      if (st.over) console.log('     ⚠️ the recorded run was over its budget');
+      for (const s of st.slowest.slice(0, 5)) console.log(`     ${s.file.padEnd(24)} ${(s.ms / 1000).toFixed(1)} s`);
+      return;
+    }
+
+    case 'work': {
+      // 52.4 — WORKLOG.md from the terminal: the blocks the chat and the panel
+      // render, and `--full` prints the file itself for piping.
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const { PACKAGE_ROOT } = await import('./core/paths.js');
+      const file = path.join(PACKAGE_ROOT, 'WORKLOG.md');
+      if (!fs.existsSync(file)) {
+        console.error('work: no WORKLOG.md in this install');
+        process.exitCode = 1;
+        return;
+      }
+      const markdown = fs.readFileSync(file, 'utf8');
+      if (rest.includes('--full')) {
+        process.stdout.write(markdown);
+        return;
+      }
+      const block = (from: string, to: string): string[] => {
+        const i = markdown.indexOf(from);
+        if (i < 0) return [];
+        const j = markdown.indexOf(to, i + from.length);
+        return markdown.slice(i, j < 0 ? undefined : j).split('\n');
+      };
+      const rows = (lines: string[]): string[] =>
+        lines
+          .map((l) => l.trim())
+          .flatMap((l) => {
+            if (l.startsWith('- ')) return [l.slice(2)];
+            const m = /^\|\s*([\d.]+)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/.exec(l);
+            return m ? [`${m[1]} ${m[2]} (${m[3]})`] : [];
+          });
+      const now = rows(block('## 2. Now', '## 3. Next'));
+      const next = rows(block('## 3. Next', 'What remains outside a batch'));
+      if (machine) {
+        emitJson('work', { file, now, next: next.slice(0, 8) });
+        return;
+      }
+      console.log('');
+      console.log('  📋 WORKLOG.md — what is being built');
+      for (const r of now) console.log(`     ${r}`);
+      if (next.length) {
+        console.log('     next:');
+        for (const r of next.slice(0, 8)) console.log(`       ${r}`);
+      }
+      console.log('     the whole file: termcrab work --full');
+      return;
+    }
+
     case 'disk': {
       const config = loadConfig();
       const asJson = rest.includes('--json');

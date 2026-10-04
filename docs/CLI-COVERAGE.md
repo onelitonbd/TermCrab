@@ -5,7 +5,7 @@ actually runs it through the built binary. The number below is a recording, not 
 `src/cli.ts` appends its command to `$TCRAB_CLI_COVERAGE` on every dispatch, and
 `node scripts/cli-coverage.mjs --run` runs the whole suite with that variable set.
 
-**Measured:** 2026-10-04 · **47 of 55** commands executed end-to-end by `npm test` (85%).
+**Measured:** 2026-10-04 · **49 of 57** commands executed end-to-end by `npm test` (86%).
 
 ## Run by the suite
 
@@ -42,22 +42,24 @@ actually runs it through the built binary. The number below is a recording, not 
 | `termcrab bootstrap` | line 2149 | 3 |
 | `termcrab schema` | line 2181 | 3 |
 | `termcrab perf` | line 2203 | 18 |
-| `termcrab disk` | line 2301 | 4 |
-| `termcrab status` | line 2340 | 3 |
-| `termcrab wake` | line 2380 | 1 |
-| `termcrab sessions` | line 2418 | 13 |
-| `termcrab subagents` | line 2623 | 3 |
-| `termcrab agents` | line 2684 | 6 |
-| `termcrab docs` | line 2767 | 17 |
-| `termcrab security` | line 2833 | 4 |
-| `termcrab board` | line 2856 | 2 |
-| `termcrab rooms` | line 2871 | 4 |
-| `termcrab browser` | line 2951 | 5 |
-| `termcrab transcribe` | line 3018 | 1 |
-| `termcrab embeddings` | line 3052 | 6 |
-| `termcrab context` | line 3112 | 1 |
-| `termcrab memory` | line 3132 | 6 |
-| `termcrab config` | line 3268 | 7 |
+| `termcrab suite-time` | line 2301 | 2 |
+| `termcrab work` | line 2323 | 3 |
+| `termcrab disk` | line 2371 | 4 |
+| `termcrab status` | line 2410 | 3 |
+| `termcrab wake` | line 2450 | 1 |
+| `termcrab sessions` | line 2488 | 13 |
+| `termcrab subagents` | line 2693 | 3 |
+| `termcrab agents` | line 2754 | 6 |
+| `termcrab docs` | line 2837 | 17 |
+| `termcrab security` | line 2903 | 4 |
+| `termcrab board` | line 2926 | 2 |
+| `termcrab rooms` | line 2941 | 4 |
+| `termcrab browser` | line 3021 | 5 |
+| `termcrab transcribe` | line 3088 | 1 |
+| `termcrab embeddings` | line 3122 | 6 |
+| `termcrab context` | line 3182 | 1 |
+| `termcrab memory` | line 3202 | 6 |
+| `termcrab config` | line 3338 | 7 |
 
 ## Not run by the suite — and what covers it instead
 

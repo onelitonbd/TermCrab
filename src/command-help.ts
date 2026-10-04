@@ -310,6 +310,23 @@ export const COMMANDS: CommandDoc[] = [
     json: '{before:{root, totalBytes, files, byArea}, budgetBytes, keepDays, trim, overBudget}',
   },
   {
+    cmd: 'suite-time',
+    usage: 'suite-time [--json]',
+    summary: "the tests' own clock, as recorded by npm run test:time",
+    flags: ['--json  the same record as data (the panel serves it too)'],
+    json: '{exists, file, at, age, wallMs, cases, files, budgetWallMs, budgetFileMs, slowest, over}',
+  },
+  {
+    cmd: 'work',
+    usage: 'work [--full] [--json]',
+    summary: 'what is being built right now, straight from WORKLOG.md',
+    flags: [
+      '--full  print the whole tracker (pipe it, diff it)',
+      '--json  the Now/Next rows as data',
+    ],
+    json: '{file, now:[…], next:[…]}',
+  },
+  {
     cmd: 'status',
     usage: 'status [--json]',
     summary: 'plain-English overview: brain, memory, schedule, battery',

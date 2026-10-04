@@ -19,6 +19,9 @@ import { dreamHistory, readDreamState, runDream } from '../agent/dream.js';
 import { collectDocs, docsSiteFreshness } from '../docs/site.js';
 import { loadCrons } from '../cron/store.js';
 import { addIntent, listIntents, removeIntent } from '../agent/intents.js';
+import { addCron } from '../cron/store.js';
+import { approveProposal, getProposal, rejectProposal } from '../skills/proposals.js';
+import { importSkills } from '../skills/importer.js';
 import { nextRun, parseCron } from '../cron/parser.js';
 import { listAgents } from '../agent/prompt.js';
 
@@ -517,6 +520,115 @@ export function skillsReport(store: { list: () => { name: string; description: s
   return ok(clampLines(lines).join('\n'));
 }
 
+/**
+ * 52.3 — `/skills approve|reject|import` from a chat. Approving is the one
+ * write that makes agent-authored code live, so it takes an inline confirm
+ * where the surface has buttons and a plain `yes`-shaped second step where it
+ * does not; the work itself is the CLI's own `approveProposal()`.
+ */
+export function skillsDecide(action: string, name: string, rest = ''): ReportResult {
+  if (!name) return fail(`usage: /skills ${action} <name>`);
+  if (action === 'approve') {
+    const r = approveProposal(name, {});
+    if (!r.ok) return fail(r.error ?? `could not approve ${name}`);
+    return ok(`✅ approved ${r.name} — live now (${r.path})`);
+  }
+  const r = rejectProposal(name, rest);
+  if (!r.ok) return fail(r.error ?? `could not reject ${name}`);
+  return ok(`✅ rejected ${r.name} — kept with the reason in skills/_rejected/${r.name}/`);
+}
+
+/** `/skills show <name>` — what a proposal actually says, before deciding. */
+export function skillShow(name: string): ReportResult {
+  const one = name ? getProposal(name) : null;
+  if (!one) return fail(`no proposal named "${name || '(none)'}" — /skills lists them`);
+  let body = '';
+  try {
+    body = fs.readFileSync(one.path, 'utf8');
+  } catch {
+    /* the proposal's own file is gone between listing and reading */
+  }
+  const lines = [
+    `📝 ${one.name} — ${one.description}`,
+    `   proposed by ${one.by}${one.source ? ` · ${one.source}` : ''}`,
+    ...(body ? body.split('\n').slice(0, 14).map((l) => `   ${l}`) : []),
+  ];
+  return ok(clampLines(lines).join('\n'));
+}
+
+/**
+ * 52.3 — `/cron add "<schedule>" <prompt> [--name <name>] [--deliver telegram|panel|none]`.
+ * This is the one cron verb a chat needed and did not have; the schedule is the
+ * same parser every other surface uses, so an invalid one is refused with the
+ * same words the terminal prints.
+ */
+export function cronAddReport(schedule: string, prompt: string, name?: string, deliver?: string): ReportResult {
+  if (!schedule || !prompt) {
+    return fail('usage: /cron add "<schedule>" <prompt> [--name <name>] [--deliver telegram|panel|none]');
+  }
+  try {
+    const job = addCron({
+      name: name ?? '',
+      schedule,
+      prompt,
+      ...(deliver === 'telegram' || deliver === 'panel' || deliver === 'none' ? { deliver } : {}),
+    });
+    return ok(
+      [
+        `⏱ added ${job.id} — ${job.name}`,
+        `   ${job.schedule} · next ${nextRunText(job.schedule)}`,
+        `   prompt: ${job.prompt.slice(0, 120)}`,
+        '   remove: termcrab cron rm <id> (or the panel Work page)',
+      ].join('\n'),
+    );
+  } catch (err) {
+    return fail(`cron: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * Parse `/cron add "<schedule>" <prompt> [--name x] [--deliver y]`. The
+ * schedule is the first quoted string (a cron expression has spaces), the
+ * prompt is everything after it that is not a flag.
+ */
+export function parseCronAdd(arg: string): { schedule: string; prompt: string; name?: string; deliver?: string } {
+  const text = arg.replace(/^add\s+/, '').trim();
+  const m = /^"([^"]+)"\s*([\s\S]*)$/.exec(text);
+  const schedule = m ? m[1]!.trim() : text.split(/\s+/)[0] ?? '';
+  let rest = (m ? m[2]! : text.slice(schedule.length)).trim();
+  let name: string | undefined;
+  let deliver: string | undefined;
+  const nameM = /(?:^|\s)--name\s+("[^"]+"|\S+)/.exec(rest);
+  if (nameM) {
+    name = nameM[1]!.replace(/^"|"$/g, '');
+    rest = rest.replace(nameM[0], ' ');
+  }
+  const deliverM = /(?:^|\s)--deliver\s+(\S+)/.exec(rest);
+  if (deliverM) {
+    deliver = deliverM[1]!;
+    rest = rest.replace(deliverM[0], ' ');
+  }
+  return { schedule, prompt: rest.trim(), ...(name ? { name } : {}), ...(deliver ? { deliver } : {}) };
+}
+
+/** `/skills import <folder|git-url>` — the CLI's own importer, from a chat. */
+export async function importReport(source: string): Promise<ReportResult> {
+  const clean = source.trim().replace(/^["']|["']$/g, '');
+  if (!clean) return fail('usage: /skills import <folder|git-url>');
+  try {
+    const results = await importSkills(clean, {});
+    const added = results.filter((r) => r.action !== 'skipped');
+    return ok(
+      [
+        `📦 imported ${added.length} of ${results.length} skill(s) from ${clean}`,
+        ...added.slice(0, 12).map((r) => `   ${r.action}: ${r.name}`),
+      ].join('\n'),
+    );
+  } catch (err) {
+    return fail(`import failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 /** `/cron` — the scheduled jobs and when they next run. */
 export function cronReport(): ReportResult {
   const jobs = loadCrons();
@@ -587,8 +699,8 @@ export const CHAT_COMMANDS: { cmd: string; args: string; description: string }[]
   { cmd: '/embeddings', args: '', description: 'Memory search engine' },
   { cmd: '/dream', args: '[now]', description: 'Memory consolidation' },
   { cmd: '/docs', args: '[name]', description: 'The offline manual' },
-  { cmd: '/skills', args: '', description: 'Skills and proposals' },
-  { cmd: '/cron', args: '', description: 'Scheduled jobs' },
+  { cmd: '/skills', args: '[approve|reject|show|import]', description: 'Skills and proposals' },
+  { cmd: '/cron', args: '[add]', description: 'Scheduled jobs' },
   { cmd: '/suite-time', args: '', description: "The tests' own clock" },
   { cmd: '/work', args: '[full]', description: 'What is being built now' },
   { cmd: '/say', args: '<text>', description: 'Send it as a voice note' },
@@ -677,10 +789,18 @@ export async function runReportCommand(text: string, deps: ReportDeps): Promise<
     }
     case '/docs':
       return docsReport(arg || undefined);
-    case '/skills':
+    case '/skills': {
+      const sub = rest[0] ?? '';
+      if (sub === 'approve' || sub === 'reject') return skillsDecide(sub, rest[1] ?? '', rest.slice(2).join(' '));
+      if (sub === 'show') return skillShow(rest[1] ?? '');
+      if (sub === 'import') return await importReport(rest[1] ?? '');
       return skillsReport(deps.skills, deps.proposals?.() ?? []);
-    case '/cron':
-      return cronReport();
+    }
+    case '/cron': {
+      if (rest[0] !== 'add') return cronReport();
+      const parsed = parseCronAdd(arg);
+      return cronAddReport(parsed.schedule, parsed.prompt, parsed.name, parsed.deliver);
+    }
     case '/orders':
       return ordersReport(rest[0] ?? '', rest.slice(1).join(' '));
     default:

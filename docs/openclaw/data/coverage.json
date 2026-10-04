@@ -1,16 +1,16 @@
 {
   "measuredAt": "2026-10-04",
-  "fingerprint": "0dfc3a3707d6ecfb",
+  "fingerprint": "31871c3760fbb06c",
   "floor": 80,
-  "tests": 1086,
-  "pass": 1081,
+  "tests": 1101,
+  "pass": 1096,
   "fail": 0,
   "skipped": 5,
-  "testFiles": 109,
+  "testFiles": 110,
   "source": {
-    "lines": 87.08,
-    "branches": 77.55,
-    "functions": 86.85
+    "lines": 87.24,
+    "branches": 77.56,
+    "functions": 86.91
   },
   "all": {
     "lines": 0,
@@ -55,11 +55,6 @@
     },
     {
       "dir": "mobile",
-      "file": "tts.ts",
-      "lines": 54.45
-    },
-    {
-      "dir": "mobile",
       "file": "notify.ts",
       "lines": 55.17
     },
@@ -76,7 +71,12 @@
     {
       "dir": "channels",
       "file": "cli.ts",
-      "lines": 60.36
+      "lines": 60.99
+    },
+    {
+      "dir": "mobile",
+      "file": "onboard.ts",
+      "lines": 61.44
     }
   ],
   "best": [

@@ -517,9 +517,10 @@ test('web control parity API', async (t) => {
       // login screen shows the server's plain-English refusal hint, not a generic error
       // Auth removed — login gate tests removed.
       // loads when the page opens
-      // 50.x: the settings page also loads the identity/backup/service cards.
+      // 50.x/52.x: the settings page also loads the identity/backup/service
+      // cards, and the security scan.
       assert.ok(
-        html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); }"),
+        html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); refreshSecurity(); }"),
         'loads on open',
       );
       // agents card keeps its ids (create/edit flow untouched)

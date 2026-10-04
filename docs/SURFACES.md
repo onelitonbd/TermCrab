@@ -64,14 +64,22 @@ gets a voice reply when `channels.telegram.voiceReplies` is on, `/embeddings
 setup` runs behind an **inline confirm**, `/controlui` opens the panel as a
 `web_app` button built from `gateway.publicUrl`, and a **forum topic** is its
 own session (`telegram:<chatId>:<threadId>`). Was 24 ✅ / 28 ❌, then 45 ✅ / 7 ❌;
-now **52 ✅, 14 ◐, 0 ❌**.
+now **54 ✅, 12 ◐, 0 ❌** — batch 52 added the proposal decisions
+(`/skills approve` answers with the proposal's own text and an inline **Approve**
+button; reject/show/import work too) and `/cron add`.
 
-**Web panel — the good surface with fewer holes.** `ui/index.html` has 11 views
+
+**Web panel — the surface that caught up.** `ui/index.html` has 11 views
 (`chat, status, board, providers, models, memory, tools, logs, debug, work,
 settings`) and 61 `/api/*` endpoints, including things Telegram has never heard
 of: approvals with Allow/Deny cards, devices, canvas, crons, skills, doctor with
 fixes, perf, suite clock, worklog, docs. **51 ✅, 15 ◐, 0 ❌** — no missing cell.
-Since batch 47 the chat box itself runs the shared dispatcher (`ui:!fromChat` →
+Batch 52 added the views that were still "ask the chat": the **Inbox** (files people
+sent, readable in place), **Rooms** (what was said while the bot was not addressed),
+**Watchers** (add/remove), **tool switches** (the three config keys, flipped in
+place), a **security scan** with its fixes, the **named secrets** (names only,
+never a value), **rename/export/delete** on every chat row, and a **Speak** button
+that downloads the last answer as OGG/Opus. Since batch 47 the chat box itself runs the shared dispatcher (`ui:!fromChat` →
 `POST /api/slash`), so `/status` typed into the panel chat is a command, not a
 prompt. Batch 49 closed the quick gaps (ranked **chat search**, the
 **prompt-context report**, the **embedding-provider picker**, a **queue-mode chip
@@ -89,15 +97,15 @@ Batches 46–48 proved the shape: one dispatcher, three callers.
 ## 2. Scoreboard
 | surface | ✅ direct | ◐ narrower door | ❌ missing | — n/a |
 |---|---|---|---|---|
-| CLI / TUI | 50 | 15 | **0** | 6 |
-| Telegram | 52 | 14 | **0** | 5 |
-| Web panel | 51 | 15 | **0** | 5 |
+| CLI / TUI | 51 | 14 | **0** | 6 |
+| Telegram | 54 | 12 | **0** | 5 |
+| Web panel | 58 | 8 | **0** | 5 |
 
-**No row has a ❌ on any surface: 0 of 71 rows have at least one ❌.** Batch 51 closed the last seven (all Telegram:
-`/suite-time`, `/work`, `/embeddings setup`, voice replies, `/say`, the mini app,
-forum topics), so what is left is the honest middle — 44 named ◐ cells whose
-reason is written out below, and batch 52 walks the ones that are half-doors
-rather than deliberate terminal jobs.
+**No row has a ❌ on any surface: 0 of 71 rows have at least one ❌.** Batch 51 closed the last seven (all Telegram),
+and batch 52 walked the half-doors: the panel's inbox/rooms/watchers/tool switches/security/secrets,
+session rename and export, a downloadable spoken reply, Telegram's proposal decisions and `cron add`,
+and the CLI's `suite-time` / `work`. What is left is **34 named ◐ cells** (CLI 14 · Telegram 12 · Web 8),
+each with its reason below — several deliberately so (a service install from a chat is a bad idea).
 
 By area (rows each): gateway 17 · ops 12 · channels 9 · context 8 · tools 7 ·
 sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
@@ -130,7 +138,7 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | sessions | List / switch conversations | ✅ | ✅ | ✅ |  |
 | sessions | Search across conversations | ✅ | ✅ | ✅ |  |
 | sessions | Show one transcript | ✅ | ✅ | ✅ |  |
-| sessions | Rename / purge / export | ✅ | ✅ | ◐ | purge exists; no rename/export |
+| sessions | Rename / purge / export | ✅ | ✅ | ✅ |  |
 | sessions | Start a fresh conversation | ✅ | ✅ | ✅ |  |
 | context | Memory: browse what it knows | ✅ | ✅ | ✅ |  |
 | context | Memory: search it | ✅ | ✅ | ✅ |  |
@@ -141,16 +149,16 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | context | Embeddings: setup / switch provider | ◐ | ✅ | ✅ | the install runs in the terminal; the provider switch exists here too |
 | context | Identity files (SOUL/IDENTITY/USER bootstrap) | ✅ | ◐ | ✅ | "remember …" writes USER.md; SOUL/IDENTITY are not editable from chat |
 | tools | Tool catalog: what the agent can do | ◐ | ◐ | ✅ | context lists schemas; no catalog command |
-| tools | Tool toggles (enable/disable a tool) | ◐ | ◐ | ◐ | config set agent.allowExec etc. |
+| tools | Tool toggles (enable/disable a tool) | ◐ | ◐ | ✅ | config set agent.allowExec etc. |
 | tools | Shell / files / web tools in conversation | ◐ | ◐ | ◐ | the agent's own exec/read/web tools |
 | tools | Browser automation | ✅ | ◐ | ◐ | agent tool in chat |
 | tools | Image generation | ✅ | ◐ | ◐ | agent tool in chat |
 | tools | Send a file back to a chat | ◐ | ✅ | ◐ | needs a channel to send into |
 | tools | Document extraction (PDF/DOCX/XLSX in) | ◐ | ✅ | ◐ | no command; agent reads text files only |
-| skills | Skills: list / import / create / proposals | ✅ | ◐ | ✅ | list + proposals; approve/import stay in the terminal |
-| automation | Cron jobs: list / add / run | ✅ | ◐ | ✅ | list; adding stays in the terminal or the panel |
+| skills | Skills: list / import / create / proposals | ✅ | ✅ | ✅ |  |
+| automation | Cron jobs: list / add / run | ✅ | ✅ | ✅ |  |
 | automation | Heartbeat: run a self-check now | ✅ | ✅ | ✅ |  |
-| automation | Watchers / file triggers | ◐ | ✅ | ◐ | config set only |
+| automation | Watchers / file triggers | ◐ | ✅ | ✅ | config set only |
 | automation | Standing orders | ✅ | ✅ | ✅ |  |
 | mobile | Dictation (speech → text) | ✅ | ✅ | ✅ |  |
 | mobile | Text to speech | ✅ | ✅ | ✅ |  |
@@ -162,14 +170,14 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | ops | Disk usage | ✅ | ✅ | ✅ |  |
 | ops | Install as a service | ✅ | — | ◐ | the card shows status + the exact command; installing stays in a terminal on purpose |
 | ops | Boot autostart (Termux:Boot) | ✅ | — | ✅ |  |
-| ops | Security audit (findings + fixes) | ✅ | ✅ | ◐ | the shared text is served, but no panel view yet (batch 50) |
-| ops | Secrets: named keys, audit | ✅ | ✅ | ◐ | names via /api/slash; no panel view yet (batch 50) |
+| ops | Security audit (findings + fixes) | ✅ | ✅ | ✅ |  |
+| ops | Secrets: named keys, audit | ✅ | ✅ | ✅ |  |
 | ops | Performance budget + history | ✅ | ✅ | ✅ |  |
-| ops | Suite clock (the tests' own record) | ◐ | ✅ | ✅ | npm run test:time; not a termcrab command |
+| ops | Suite clock (the tests' own record) | ✅ | ✅ | ✅ |  |
 | ops | Work tracker: what is being built now | ✅ | ✅ | ✅ |  |
 | ops | Docs: the offline manual | ✅ | ✅ | ✅ |  |
-| channels | Rooms: what was said while unaddressed | ✅ | ✅ | ◐ | room_history tool in chat; no view |
-| channels | Inbox: files people sent | ◐ | ✅ | ◐ | inbox_list/read tools in a turn |
+| channels | Rooms: what was said while unaddressed | ✅ | ✅ | ✅ |  |
+| channels | Inbox: files people sent | ◐ | ✅ | ✅ | inbox_list/read tools in a turn |
 | channels | Typing indicator | — | ✅ | ✅ |  |
 | channels | Media in / out (photos, voice, files) | ◐ | ✅ | ◐ | in: attach only in the panel |
 | channels | Telegram inline buttons (rich messages) | — | ✅ | — |  |
@@ -201,6 +209,21 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | W5 | backup / restore | 50 | `POST /api/backup` reuses `writeBackup()`; `GET /api/backups` lists archives; `POST /api/restore` takes a dry-run first and needs the archive name typed back before `restoreBackup()` moves the current files aside |
 | W8 | service card | 50 | `GET /api/service` serves `serviceStatus()` + the plan and the exact command; the panel never executes it |
 | W9b | transcribe upload | 50 | `POST /api/transcribe` writes the bytes inside `$TCRAB_HOME/state/uploads` and calls the same `transcribeFile()` the CLI does |
+
+### 4.0b Closed by batch 52 — the half-doors (Web 7 + Telegram 2 + CLI 1)
+
+| id | cell | how it works now |
+|---|---|---|
+| W10 | panel inbox | `GET /api/inbox` + `GET /api/inbox/:name` (name-guarded, same store the `inbox_list` tool reads); the Work view lists and reads |
+| W11 | panel rooms | `GET /api/rooms` + `GET /api/rooms/:channel/:room`; the Work view lists what was said while unaddressed |
+| W12 | panel watchers | `GET|POST /api/watchers` adds/removes the same `config.watchers` entries `/watch` and `config set` write |
+| W13 | tool switches | `POST /api/tools/toggle` → `agent.allowExec` / `allowBrowser` / `allowCodeExec`; the Tools tab renders the three checkboxes |
+| W14 | security view | `GET /api/security` → the same findings-with-fixes the chat's `/security` prints; Settings renders them |
+| W15 | secrets view | `GET /api/secrets` → names and timestamps only; the Settings card appends them under the masked config keys |
+| W16/W17 | rename / export on the rail | the routes existed since v0.5 (the audit's "no rename/export" note was stale — `test/p1.test.ts` proves it); batch 52 wired the chats rail to them and Export now downloads the markdown the route returns |
+| W18 | a spoken reply, downloaded | `POST /api/voice` → OGG/Opus bytes (422 + install hint without an engine); the composer's Speak button downloads them |
+| T25 | proposal decisions | `/skills approve <name>` shows the proposal and an inline Approve button (`skills:approve:` → `approveProposal()`); `/skills reject|show|import` and `/cron add "…" …` resolve through the shared dispatcher |
+| C8 | CLI suite clock + tracker | `termcrab suite-time` and `termcrab work [--full]`, both with `--json` envelopes |
 
 ### 4.1 Closed by batch 51 — Telegram's tail (the last seven ❌ in the audit)
 
@@ -270,13 +293,14 @@ Each row was one batch, in dependency order; every batch keeps the repo's rules
 | 49 | panel gaps, quick half: sessions search, context view, embeddings picker, queue/steer | web | W1, W2, W3, C4 (half) | **done** |
 | 50 | panel gaps, builder half: identity editor, backup/restore, service card, transcribe upload | web (+ API) | W4, W5, W8, W9b | **done** |
 | 51 | voice replies, `/say`, `/suite-time`, `/work`, `/embeddings setup`, mini app, forum topics | Telegram | T8, T18b, T18c, T22, T22b, T23, T24 | **done** |
-| 52 | the named ◐s: panel inbox/rooms/watchers/tool toggles, panel security+secrets, Telegram skills/cron authoring, CLI `suite-time`/`work`, session rename/export | web + Telegram + CLI | the half-doors in §4.2/§4.3 | next |
+| 52 | the named ◐s: panel inbox/rooms/watchers/tool toggles, panel security+secrets, Telegram skills/cron authoring, CLI `suite-time`/`work`, session rename/export | web + Telegram + CLI | the half-doors in §4.0b | **done** |
+| 53 | the ◐s that are still half-doors: tool catalog on CLI/Telegram, canvas, live runs (queue/steer/tool activity), memory write everywhere, media downloads | CLI + Telegram + web | the rest of §3's ◐ cells | next |
 
 Note the ordering: the CLI started complete, so 46–48 lifted Telegram — that is
 where 28 of the 38 missing cells lived. Batches 49–50 closed the web row, 51 the
-Telegram tail (the ❌ register is now empty on all three), 52 the ◐s that are
-half-doors rather than deliberate terminal jobs. After 52 every ◐ in §3 must be
-a deliberate "narrower door" note, never a hole.
+Telegram tail (the ❌ register is empty on all three since), 52 the first slice
+of the ◐s. Batch 53 takes the rest; what remains after it must be a deliberate
+"narrower door" note, never a hole.
 
 ## 7. Keeping this true
 

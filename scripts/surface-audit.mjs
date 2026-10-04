@@ -73,7 +73,7 @@ export const CAPABILITIES = [
   { area: 'sessions', name: 'List / switch conversations', cli: [P(CLI_SRC, "case 'sessions'")], tg: [P(SERVER_SRC, "text === '/sessions'")], web: [P(PANEL_SRC, '/api/sessions')] },
   { area: 'sessions', name: 'Search across conversations', cli: [P(CLI_SRC, 'search')], tg: [P(SERVER_SRC, '/sessions search')], web: [P(SERVER_SRC, 'searchSessions'), P(PANEL_SRC, "api\\('/api/sessions\\?q='")] },
   { area: 'sessions', name: 'Show one transcript', cli: [P(HELP_SRC, 'export')], tg: [P(SERVER_SRC, '/sessions show')], web: [P(PANEL_SRC, '/api/sessions/')] },
-  { area: 'sessions', name: 'Rename / purge / export', cli: [P(CLI_SRC, 'purge'), P(CLI_SRC, 'rename')], tg: [P(CT, 'sessionsRenameCommand'), P(CT, 'sessionsPurgeCommand')], web: { partial: 'purge exists; no rename/export' } },
+  { area: 'sessions', name: 'Rename / purge / export', cli: [P(CLI_SRC, 'purge'), P(CLI_SRC, 'rename')], tg: [P(CT, 'sessionsRenameCommand'), P(CT, 'sessionsPurgeCommand')], web: [P(SERVER_SRC, '/rename'), P(SERVER_SRC, '/export'), P(PANEL_SRC, "'Export'")] },
   { area: 'sessions', name: 'Start a fresh conversation', cli: [P(CLI_SRC, "case 'agent'")], tg: [P(SERVER_SRC, "text === '/new'")], web: { probes: [P(SERVER_SRC, "sessions\\.reset\\(sid\\)")], note: 'the chat resets the session; the palette keeps its view action' } },
 
   // ------------------------------------------------------- memory/context
@@ -88,18 +88,18 @@ export const CAPABILITIES = [
 
   // --------------------------------------------------------------- tools
   { area: 'tools', name: 'Tool catalog: what the agent can do', cli: { partial: 'context lists schemas; no catalog command' }, tg: { partial: 'ask in chat and the agent answers' }, web: [P(PANEL_SRC, '/api/tools')] },
-  { area: 'tools', name: 'Tool toggles (enable/disable a tool)', cli: { partial: 'config set agent.allowExec etc.' }, tg: { partial: 'config only' }, web: { partial: 'catalog shows active/planned; no toggle' } },
+  { area: 'tools', name: 'Tool toggles (enable/disable a tool)', cli: { partial: 'config set agent.allowExec etc.' }, tg: { partial: 'config only' }, web: [P(SERVER_SRC, "'/api/tools/toggle'"), P(PANEL_SRC, 'toolToggles')] },
   { area: 'tools', name: 'Shell / files / web tools in conversation', cli: { partial: "the agent's own exec/read/web tools" }, tg: { partial: "the agent's own tools in a turn" }, web: { partial: "the agent's own tools in a turn" } },
   { area: 'tools', name: 'Browser automation', cli: [P(CLI_SRC, "case 'browser'")], tg: { partial: 'agent tool in chat' }, web: { partial: 'agent tool in chat; no browser panel' } },
   { area: 'tools', name: 'Image generation', cli: [P(CLI_SRC, "case 'image'")], tg: { partial: 'agent tool in chat' }, web: { partial: 'agent tool in chat; no button' } },
   { area: 'tools', name: 'Send a file back to a chat', cli: { partial: 'needs a channel to send into' }, tg: [P(TG_SRC, 'sendDocument')], web: { partial: 'send_file reaches the panel as a path, not a download' } },
   { area: 'tools', name: 'Document extraction (PDF/DOCX/XLSX in)', cli: { partial: 'no command; agent reads text files only' }, tg: [P(TG_SRC, 'fetchIncoming')], web: { partial: 'attach accepts text types only' } },
-  { area: 'skills', name: 'Skills: list / import / create / proposals', cli: [P(CLI_SRC, "case 'skills'")], tg: { probes: [P(CR, "case '/skills'")], partial: 'list + proposals; approve/import stay in the terminal' }, web: [P(PANEL_SRC, '/api/skills')] },
+  { area: 'skills', name: 'Skills: list / import / create / proposals', cli: [P(CLI_SRC, "case 'skills'")], tg: [P(CR, 'skillsDecide'), P(CR, 'skillShow'), P(SERVER_SRC, 'skills:approve:')], web: [P(PANEL_SRC, '/api/skills')] },
 
   // ---------------------------------------------------------- automation
-  { area: 'automation', name: 'Cron jobs: list / add / run', cli: [P(CLI_SRC, "case 'cron'")], tg: { probes: [P(CR, "case '/cron'")], partial: 'list; adding stays in the terminal or the panel' }, web: [P(PANEL_SRC, '/api/crons')] },
+  { area: 'automation', name: 'Cron jobs: list / add / run', cli: [P(CLI_SRC, "case 'cron'")], tg: [P(CR, 'cronAddReport'), P(CR, 'parseCronAdd')], web: [P(PANEL_SRC, '/api/crons')] },
   { area: 'automation', name: 'Heartbeat: run a self-check now', cli: [P(CLI_SRC, "case 'heartbeat'")], tg: [P(SERVER_SRC, "text === '/heartbeat'")], web: [P(PANEL_SRC, '/api/heartbeat')] },
-  { area: 'automation', name: 'Watchers / file triggers', cli: { partial: 'config set only' }, tg: [P(CT, "case '/watch'")], web: { partial: 'presence counts them; nothing to edit' } },
+  { area: 'automation', name: 'Watchers / file triggers', cli: { partial: 'config set only' }, tg: [P(CT, "case '/watch'")], web: [P(SERVER_SRC, "'/api/watchers'"), P(PANEL_SRC, 'wtAdd')] },
   { area: 'automation', name: 'Standing orders', cli: [P(CLI_SRC, "case 'orders'")], tg: [P(SERVER_SRC, "text === '/orders'")], web: [P(CR, "cmd: '/orders'[^}]*Standing orders")] },
 
   // ---------------------------------------------------------------- voice
@@ -115,16 +115,16 @@ export const CAPABILITIES = [
   { area: 'ops', name: 'Disk usage', cli: [P(CLI_SRC, "case 'disk'")], tg: [P(CR, "case '/disk'")], web: [P(PANEL_SRC, '/api/disk')] },
   { area: 'ops', name: 'Install as a service', cli: [P(CLI_SRC, "case 'service'")], tg: null, web: { probes: [P(SERVER_SRC, "'/api/service'"), P(PANEL_SRC, 'svcInfo')], partial: 'the card shows status + the exact command; installing stays in a terminal on purpose' } },
   { area: 'ops', name: 'Boot autostart (Termux:Boot)', cli: [P(CLI_SRC, "case 'boot'")], tg: null, web: { probes: [P(PANEL_SRC, '/api/boot/install')], note: 'a "Start at boot" button with termux detection' } },
-  { area: 'ops', name: 'Security audit (findings + fixes)', cli: [P(CLI_SRC, "case 'security'")], tg: [P(CR, "case '/security'")], web: { partial: 'the shared text is served, but no panel view yet (batch 50)' } },
-  { area: 'ops', name: 'Secrets: named keys, audit', cli: [P(CLI_SRC, "case 'auth'")], tg: [P(CR, "case '/auth'")], web: { partial: 'names via /api/slash; no panel view yet (batch 50)' } },
+  { area: 'ops', name: 'Security audit (findings + fixes)', cli: [P(CLI_SRC, "case 'security'")], tg: [P(CR, "case '/security'")], web: [P(SERVER_SRC, "'/api/security'"), P(PANEL_SRC, 'secFindings')] },
+  { area: 'ops', name: 'Secrets: named keys, audit', cli: [P(CLI_SRC, "case 'auth'")], tg: [P(CR, "case '/auth'")], web: [P(SERVER_SRC, "'/api/secrets'"), P(PANEL_SRC, 'secretsList'), P(PANEL_SRC, "'/api/secrets'")] },
   { area: 'ops', name: 'Performance budget + history', cli: [P(CLI_SRC, "case 'perf'")], tg: [P(CR, "case '/perf'")], web: [P(PANEL_SRC, '/api/perf')] },
-  { area: 'ops', name: "Suite clock (the tests' own record)", cli: { partial: 'npm run test:time; not a termcrab command' }, tg: [P(CR, "'/suite-time'"), P(CR, 'suiteTimeReport')], web: [P(PANEL_SRC, '/api/suite-time')] },
-  { area: 'ops', name: 'Work tracker: what is being built now', cli: { probes: [P(CLI_SRC, "case 'owner'")], note: 'termcrab owner + scripts/status.mjs' }, tg: [P(CR, "'/work'"), P(CR, 'workReport'), P(SERVER_SRC, "'/work full'")], web: [P(PANEL_SRC, '/api/worklog')] },
+  { area: 'ops', name: "Suite clock (the tests' own record)", cli: [P(CLI_SRC, "case 'suite-time'")], tg: [P(CR, "'/suite-time'"), P(CR, 'suiteTimeReport')], web: [P(PANEL_SRC, '/api/suite-time')] },
+  { area: 'ops', name: 'Work tracker: what is being built now', cli: [P(CLI_SRC, "case 'owner'"), P(CLI_SRC, "case 'work'")], tg: [P(CR, "'/work'"), P(CR, 'workReport'), P(SERVER_SRC, "'/work full'")], web: [P(PANEL_SRC, '/api/worklog')] },
   { area: 'ops', name: 'Docs: the offline manual', cli: [P(CLI_SRC, "case 'docs'")], tg: [P(CR, "case '/docs'")], web: [P(PANEL_SRC, '/api/docs')] },
 
   // ------------------------------------------------------------ channels
-  { area: 'channels', name: 'Rooms: what was said while unaddressed', cli: [P(CLI_SRC, "case 'rooms'")], tg: [P(SERVER_SRC, "text === '/history'")], web: { partial: 'room_history tool in chat; no view' } },
-  { area: 'channels', name: 'Inbox: files people sent', cli: { partial: 'inbox_list/read tools in a turn' }, tg: [P(SERVER_SRC, "text === '/inbox'")], web: { partial: 'tools in chat; no inbox view' } },
+  { area: 'channels', name: 'Rooms: what was said while unaddressed', cli: [P(CLI_SRC, "case 'rooms'")], tg: [P(SERVER_SRC, "text === '/history'")], web: [P(SERVER_SRC, "'/api/rooms'"), P(PANEL_SRC, 'roomsList')] },
+  { area: 'channels', name: 'Inbox: files people sent', cli: { partial: 'inbox_list/read tools in a turn' }, tg: [P(SERVER_SRC, "text === '/inbox'")], web: [P(SERVER_SRC, "'/api/inbox'"), P(PANEL_SRC, 'inboxList')] },
   { area: 'channels', name: 'Typing indicator', cli: null, tg: [P(TG_SRC, 'sendChatAction')], web: [P(PANEL_SRC, "typing|Thinking")] },
   { area: 'channels', name: 'Media in / out (photos, voice, files)', cli: { partial: 'in: attach only in the panel' }, tg: [P(TG_SRC, 'sendDocument')], web: { probes: [P(PANEL_SRC, 'attachFile')], partial: 'in: attach (text types); out: send_file as a path' } },
   { area: 'channels', name: 'Telegram inline buttons (rich messages)', cli: null, tg: [P(API_SRC, 'inline_keyboard'), P(TG_SRC, 'editMessageReplyMarkup')], web: null },

@@ -65,6 +65,7 @@ import { toProviderMessages } from '../agent/loop.js';
 import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
+import { getProposal } from '../skills/proposals.js';
 import { ChannelName } from '../channels/api.js';
 import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
 import { resolveRoute, routeTable, setRoute } from '../agent/routing.js';
@@ -97,7 +98,11 @@ import {
   registerVoiceSender,
   recordInbound,
 } from '../channels/conversations.js';
-import { formatRoomHistory } from '../channels/rooms.js';
+import { formatRoomHistory, listRooms } from '../channels/rooms.js';
+import { securityAudit } from '../agent/security.js';
+import { auditSecrets } from '../agent/security.js';
+import { listSecrets } from '../agent/secrets.js';
+import { speakToFile } from '../mobile/tts.js';
 import { buildBoard } from '../agent/board.js';
 import { docsSiteFreshness, ensureDocsSite } from '../docs/site.js';
 import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/telegram-runs.js';
@@ -107,6 +112,8 @@ import { canvasList, canvasRemove } from './canvas.js';
 import {
   CHAT_COMMANDS,
   controlUiReport,
+  skillShow,
+  skillsDecide,
   embeddingsSetupReport,
   runReportCommand,
   sayReport,
@@ -608,6 +615,12 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         // 51.2 — `/embeddings setup` asks first, then installs. The confirm is
         // a button because installing a package is not something to discover
         // after the fact; the same `embeddingsSetup()` the CLI and the panel run.
+        if (data.startsWith('skills:approve:')) {
+          void queryId;
+          const name = data.slice('skills:approve:'.length);
+          const r = skillsDecide('approve', name);
+          return r.ok ? r.text : `⚠️ ${r.error}`;
+        }
         if (data === 'emb:setup') {
           void queryId;
           const r = await embeddingsSetup();
@@ -1018,6 +1031,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       // what is missing, so the refusal goes out as text.
       if (!url || /^https?:\/\/(127\.0\.0\.1|localhost)\b/i.test(url)) return { text: report.text };
       await tg.sendWebApp(num, report.text, '🦀 Open the panel', url);
+      return { text: '' };
+    }
+
+    if (text.startsWith('/skills approve ')) {
+      const name = text.slice('/skills approve'.length).trim();
+      if (!name) return { text: '⚠️ usage: /skills approve <name>' };
+      const one = getProposal(name);
+      if (!one) return { text: `⚠️ no proposal named “${name}” — /skills lists them` };
+      const shown = skillShow(name);
+      const body = shown.ok ? shown.text : `📝 ${name}`;
+      await tg.sendButtons(num, `${body}\n\nApproving makes it live on this machine.`, [
+        [{ text: '✅ Approve', data: `skills:approve:${name}` }],
+      ]);
       return { text: '' };
     }
 
@@ -2670,6 +2696,140 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           if (env.XAI_API_KEY) detected.push({ type: 'openai', key: env.XAI_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.x.ai/v1', label: 'xAI' });
           if (env.MISTRAL_API_KEY) detected.push({ type: 'openai', key: env.MISTRAL_API_KEY.slice(0, 8) + '…', baseUrl: 'https://api.mistral.ai/v1', label: 'Mistral' });
           json(res, 200, { detected });
+          return;
+        }
+
+        // ── 52.1/52.2/52.5 — the ◐ cells, one door each ──────────────────
+        // Inbox: the files people sent, listed and readable (the same store
+        // the agent's inbox_list tool and the chat's /inbox read).
+        if (req.method === 'GET' && pathname === '/api/inbox') {
+          const limit = Math.min(Number(new URL(req.url!, 'http://x').searchParams.get('limit')) || 50, 200);
+          json(res, 200, { entries: listInbox({ limit }) });
+          return;
+        }
+        {
+          const m = pathname.match(/^\/api\/inbox\/([^/]+)$/);
+          if (req.method === 'GET' && m) {
+            const name = decodeURIComponent(m[1]!);
+            if (path.basename(name) !== name) {
+              json(res, 400, { error: 'a file name, not a path' });
+              return;
+            }
+            const read = readArrival(name);
+            json(res, read.ok ? 200 : 404, read);
+            return;
+          }
+        }
+
+        // Rooms: what was said while the bot was not addressed (34.3).
+        if (req.method === 'GET' && pathname === '/api/rooms') {
+          json(res, 200, { rooms: listRooms() });
+          return;
+        }
+        {
+          const m = pathname.match(/^\/api\/rooms\/([^/]+)\/([^/]+)$/);
+          if (req.method === 'GET' && m) {
+            const channel = decodeURIComponent(m[1]!);
+            const room = decodeURIComponent(m[2]!);
+            const limit = Math.min(Number(new URL(req.url!, 'http://x').searchParams.get('limit')) || 30, 200);
+            json(res, 200, { channel, room, history: formatRoomHistory(channel, room, { limit, lineChars: 200 }) });
+            return;
+          }
+        }
+
+        // Watchers: the file triggers /watch writes in a chat and the CLI
+        // writes; the panel was the one surface that could only look at them.
+        if (req.method === 'GET' && pathname === '/api/watchers') {
+          json(res, 200, { watchers: config.watchers ?? [] });
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/watchers') {
+          const body = (await readJsonBody(req)) as { action?: string; id?: string; path?: string; match?: string } | null;
+          const action = body?.action ?? 'add';
+          const watchers = [...(config.watchers ?? [])];
+          if (action === 'rm' || action === 'remove') {
+            const id = (body?.id ?? '').trim();
+            const left = watchers.filter((w) => w.id !== id);
+            if (left.length === watchers.length) {
+              json(res, 404, { error: `no watcher with id ${id || '(none)'}` });
+              return;
+            }
+            config.watchers = left;
+            saveConfig(config);
+            json(res, 200, { ok: true, removed: id, watchers: left });
+            return;
+          }
+          const what = (body?.path ?? '').trim();
+          if (!what) {
+            json(res, 400, { error: 'path required' });
+            return;
+          }
+          const id = `w${Date.now().toString(36)}`;
+          watchers.push({ id, path: what, ...(body?.match ? { match: body.match } : {}) });
+          config.watchers = watchers;
+          saveConfig(config);
+          json(res, 200, { ok: true, added: { id, path: what }, watchers });
+          return;
+        }
+
+        // Tool toggles: the three switches the config really carries, so the
+        // panel's catalog can flip them instead of sending you to a terminal.
+        if (req.method === 'POST' && pathname === '/api/tools/toggle') {
+          const body = (await readJsonBody(req)) as { tool?: string; enabled?: boolean } | null;
+          const map: Record<string, 'allowExec' | 'allowBrowser' | 'allowCodeExec'> = {
+            exec: 'allowExec',
+            shell: 'allowExec',
+            browser: 'allowBrowser',
+            code: 'allowCodeExec',
+            code_exec: 'allowCodeExec',
+          };
+          const key = map[(body?.tool ?? '').toLowerCase()];
+          if (!key) {
+            json(res, 400, { error: `no toggle for "${body?.tool ?? ''}" — toggles: ${Object.keys(map).join(', ')}` });
+            return;
+          }
+          config.agent[key] = body?.enabled !== false;
+          saveConfig(config);
+          json(res, 200, { ok: true, tool: key, enabled: config.agent[key] });
+          return;
+        }
+
+        // Security: the same audit the chat's /security and `termcrab security`
+        // run — findings with fixes, never a secret value.
+        if (req.method === 'GET' && pathname === '/api/security') {
+          const sandbox = detectSandbox();
+          const findings = securityAudit({ config, sandboxAvailable: sandbox.isolated });
+          json(res, 200, { findings, sandbox, notable: findings.filter((f) => f.level !== 'ok').length });
+          return;
+        }
+
+        // Secrets: names and timestamps only; a value never leaves the store.
+        if (req.method === 'GET' && pathname === '/api/secrets') {
+          json(res, 200, { secrets: listSecrets() });
+          return;
+        }
+
+        // 52.5 — a spoken reply as a downloadable OGG, for the panel's Speak
+        // button (a browser cannot hear this machine's speakers).
+        if (req.method === 'POST' && pathname === '/api/voice') {
+          const body = (await readJsonBody(req)) as { text?: string } | null;
+          const text = (body?.text ?? '').trim();
+          if (!text) {
+            json(res, 400, { error: 'text required' });
+            return;
+          }
+          const spoken = await speakToFile(text.slice(0, 600), path.join(stateDir(), 'voice'));
+          if (!spoken.ok || !spoken.file) {
+            json(res, 422, { error: spoken.error ?? 'could not synthesize', hint: 'install espeak-ng and ffmpeg' });
+            return;
+          }
+          const bytes = fs.readFileSync(spoken.file);
+          res.writeHead(200, {
+            'content-type': spoken.ogg ? 'audio/ogg' : 'audio/wav',
+            'content-length': String(bytes.byteLength),
+            'content-disposition': `attachment; filename="${path.basename(spoken.file)}"`,
+          });
+          res.end(bytes);
           return;
         }
 
