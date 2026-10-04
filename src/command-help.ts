@@ -117,6 +117,19 @@ export const COMMANDS: CommandDoc[] = [
     json: '{restored, bytes, movedTo, from, schema:{from,to,migrated}}',
   },
   {
+    cmd: 'service',
+    usage: 'service [status | install | uninstall] [--dry-run] [--json]',
+    summary: 'keep the agent running: a systemd user unit on Linux, launchd on macOS, Termux:Boot on Android',
+    flags: [
+      'install       write the unit and print the commands that enable it (no sudo, no root)',
+      '--dry-run     print the path and the steps, write nothing',
+      'uninstall     remove the unit (never touches your data)',
+      '--json        platform, file, installed, action, steps',
+    ],
+    example: 'termcrab service install',
+    json: '{ok, platform, file, installed, action, steps, error?}',
+  },
+  {
     cmd: 'bootstrap',
     usage: 'bootstrap [--write | --force] [--json]',
     summary: 'the files a new home gets (SOUL, IDENTITY, AGENTS, USER, MEMORY) and whether anything is missing',

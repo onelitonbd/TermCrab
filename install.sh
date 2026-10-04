@@ -29,6 +29,32 @@ command -v git >/dev/null 2>&1 || {
   if [ -n "${PREFIX:-}" ]; then pkg install -y git; else fail "git not found"; fi
 }
 
+# --- check only -------------------------------------------------------
+# `install.sh --check` (or TCRAB_CHECK=1) answers "what would this do on this
+# machine?" without cloning, installing or writing anything: the version gate
+# above still runs, so an old Node is reported as the failure it is.
+CHECK=0
+case "${1:-}" in --check|-n|--dry-run) CHECK=1 ;; esac
+[ "${TCRAB_CHECK:-0}" = "1" ] && CHECK=1
+if [ "$CHECK" = "1" ]; then
+  say "check: nothing will be written"
+  echo "   node       : $(node -v)  (>= 20.10 required)"
+  echo "   git        : $(git --version)"
+  echo "   repo       : $REPO"
+  echo "   ref        : $BRANCH   (TCRAB_BRANCH overrides)"
+  echo "   destination: $DEST"
+  if [ -d "$DEST/.git" ]; then
+    echo "   mode       : upgrade an existing install"
+  else
+    echo "   mode       : fresh install"
+  fi
+  echo "   steps      : clone or update the checkout -> npm install (dev packages only;"
+  echo "                TermCrab has no runtime dependencies) -> npm run build ->"
+  echo "                put 'termcrab' on your PATH"
+  echo "   afterwards : termcrab onboard     (setup wizard)"
+  exit 0
+fi
+
 # --- clone / upgrade --------------------------------------------------
 MODE="install"
 if [ -d "$DEST/.git" ]; then

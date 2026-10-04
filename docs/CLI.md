@@ -103,6 +103,7 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab backup [file.tar] --json` | `{file, format, formatVersion, createdAt, release, schemaVersion, files, bytes, platform, node}` |
 | `termcrab restore <file.tar> --json` | `{restored, bytes, movedTo, from, schema:{from,to,migrated}}` · `--dry-run` → `{dryRun, manifest, files:[{rel,bytes,exists}], tooNew}` |
 | `termcrab schema --json` | `{current, home, stamp:{version,updatedAt,applied,release}, from, to, applied, adopted, backupDir}` · `--dry-run` lists steps without writing |
+| `termcrab service status --json` | `{ok, platform:'systemd'\|'launchd'\|'termux', file, installed, action, steps}` · `install` writes the unit (or the Termux:Boot script), `--dry-run` prints it and writes nothing |
 | `termcrab bootstrap --json` | `{home, complete, missing:[rel], present:[{rel,bytes,why}], stage:'empty'\|'first-run'\|'done', nextStep}` · `--write` writes only what is missing, `--force` rewrites the templates |
 | `termcrab embeddings status --json` | `{packageInstalled, enabled, indexVectors, modelCached, provider, model, costNote, blocker?, summary}` |
 | `termcrab embeddings test [text] --json` | `{ok, provider, model, dims, ms, chars, preview}` — embeds one string through whatever provider the config selects |

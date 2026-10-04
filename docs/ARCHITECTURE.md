@@ -130,7 +130,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/backup.ts` | One-tar backup/restore of a home, manifest inside (31) |
@@ -174,6 +174,7 @@ users' runtime.
 | `src/mobile/notify.ts` | Is termux-notification usable? |
 | `src/mobile/outbox.ts` | offline message queue (persist + retry) |
 | `src/mobile/power.ts` | battery readout + adaptive heartbeat decision |
+| `src/mobile/service.ts` | Install TermCrab as a service: systemd user unit, launchd agent, or the Termux:Boot script (32.4) |
 | `src/mobile/stt.ts` | One-shot speech-to-text for the web panel's 🎤 button |
 | `src/mobile/supervisor.ts` | restart watchdog (systemd replacement) |
 | `src/mobile/tts-stream.ts` | TTS streaming: chunked synthesis for long text |

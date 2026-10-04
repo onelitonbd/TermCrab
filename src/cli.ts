@@ -71,6 +71,7 @@ import { rollingLine, rollingSessionKey } from './agent/rolling.js';
 import { runTui } from './tui/app.js';
 import { MIGRATIONS, SCHEMA_VERSION, ensureSchema, readStamp, runMigrations } from './core/schema.js';
 import { bootstrapStatus, runBootstrap } from './core/bootstrap.js';
+import { installService, serviceStatus, uninstallService } from './mobile/service.js';
 import { planRestore, restoreBackup, writeBackup } from './core/backup.js';
 import { applyVerified, latestBuildSnapshot, repoRoot, restoreBuildSnapshot, verifyBuild } from './core/updater.js';
 import { formatSessionView, sessionView } from './agent/session-view.js';
@@ -112,6 +113,7 @@ Everyday extras:
   termcrab bootstrap [--write]       the files a new home gets (SOUL, IDENTITY, AGENTS, USER, MEMORY)
   termcrab doctor --share            copy-paste report for asking help (passwords stripped)
   termcrab boot [install|status]     start automatically when the phone boots
+  termcrab service [status|install]  run as a service (systemd user unit / launchd / Termux:Boot)
   termcrab approvals [list]          dangerous tools waiting for your yes/no (panel card answers too)
   termcrab approvals approve <id>    let that one tool run
   termcrab approvals deny <id>       refuse it — the agent is told and moves on
@@ -1891,6 +1893,29 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'service': {
+      // 32.4: one command that makes the agent come back after a reboot —
+      // systemd user unit on Linux, launchd on macOS, Termux:Boot on Android.
+      const [sub = 'status'] = rest;
+      const r = sub === 'install' ? installService({ dryRun: rest.includes('--dry-run'), force: rest.includes('--force') }) : sub === 'uninstall' ? uninstallService() : serviceStatus();
+      if (machine) {
+        emitJson('service', r);
+        if (!r.ok) process.exitCode = 1;
+        return;
+      }
+      if (!r.ok) {
+        console.error(`❌ ${r.error}`);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(`⚙️  ${r.platform} · ${r.action}`);
+      console.log(`   ${r.file}`);
+      if (sub === 'install' && r.action !== 'already installed') {
+        for (const s of r.steps) console.log(`   → ${s}`);
+      }
+      if (sub === 'status' && !r.installed) console.log('   install it: termcrab service install');
+      return;
+    }
     case 'bootstrap': {
       // The file set a new home gets (32.3). Visible on purpose: `--json`
       // answers "is my home complete", and running it twice changes nothing.

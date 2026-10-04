@@ -116,6 +116,7 @@ termcrab agent [msg] [--as <name>] [--tier local]
                            chat one-shot or interactive REPL (/as <name>, /agents inside)
 termcrab tui            full-screen terminal: live transcript, tool cards, shared main session
 termcrab bootstrap      the files a new home gets (SOUL, IDENTITY, AGENTS, USER, MEMORY)
+termcrab service        run as a service: systemd user unit, launchd agent, or Termux:Boot
 termcrab backup [file]   one tar of everything that matters (config, chats, memory, skills, state)
 termcrab restore <file>  verify it, then put it back — nothing is overwritten in place
 termcrab schema          the state schema version, and which migrations have run

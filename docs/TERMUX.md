@@ -107,6 +107,22 @@ recoverable. The state carries a version (`termcrab schema`), so an archive from
 is carried forward on the next start, and an archive from a *newer* build is refused with a
 sentence instead of being half-read. A backup holds your API key — treat the file like a password.
 
+## As a service (survive a reboot)
+
+```bash
+termcrab service status     # what is installed on this device
+termcrab service install    # write it
+termcrab service --help     # what it writes, per platform
+```
+
+On Android the "service" is the **Termux:Boot** script — Android has no systemd — so
+`service install` writes `~/.termux/boot/start-termcrab` (the same file `termcrab boot install`
+writes: wake-lock, then the supervisor). On Linux it writes a **systemd user unit** at
+`~/.config/systemd/user/termcrab.service` and prints the two commands that enable it; on macOS a
+launchd agent. No root, no sudo, and `--dry-run` prints the path, the exact file and the steps
+without writing anything. Uninstalling never touches your data — it is a file in your own
+`.config` (or `.termux/boot`), nothing more.
+
 ## Keep it up for weeks
 
 ```bash

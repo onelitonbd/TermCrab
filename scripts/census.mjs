@@ -515,13 +515,14 @@ check('mobile', 'Native GUI / foreground service', 'desktop apps + node apps', '
 check('ops', 'Install is download-only (no silent build)', 'n/a', 'WORKING',
   'package.json has no `prepare`/`postinstall`; the TypeScript compile is an explicit, visible `npm run build` (measured: 0.5s install, 3.0s build vs 4.5s combined)',
   { file: 'package.json', pattern: /"(prepare|postinstall)"/, expect: 'absent' }, 0, 'core');
-check('ops', 'Installer', 'curl install.sh + Docker + Nix + Fly', 'PARTIAL',
-  'install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths',
-  { paths: ['install.sh'], expect: 'present' }, 2);
+check('ops', 'Installer', 'curl install.sh + Docker + Nix + Fly', 'WORKING',
+  'install.sh is the one command on Termux, Linux and macOS: it installs Node via pkg when asked on Termux, clones or upgrades an existing checkout (reset to the requested ref, user data in the home is untouched), installs the dev packages, builds, puts `termcrab` on PATH and *proves the command runs* before claiming success. `install.sh --check` answers "what would this do on this machine" and writes nothing (the CI job runs it, and the test asserts it creates no files), and a Node that is too old fails with a sentence before anything is touched. The packaged path is tested end to end too: `npm pack` the tarball, install it in a clean directory, run --version and bootstrap. Docker/Nix/Fly are out of scope (see the container row): a phone agent is not a server fleet',
+  { paths: ['install.sh'], expect: 'present' }, 0);
 check('ops', 'Container / server deploy', 'Docker, docker-compose, Fly, Nix, systemd', 'ABSENT',
   'Termux/Node host only', { pattern: 'docker|Dockerfile', expect: 'absent' }, 3, { lane: 'later', scope: 'out', why: 'not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned' });
-check('ops', 'Service install', 'openclaw gateway install (systemd/launchd)', 'PARTIAL',
-  'Termux supervisor; docs/LOCAL.md covers a systemd path', { pattern: 'systemd', expect: 'present' }, 3);
+check('ops', 'Service install', 'openclaw gateway install (systemd/launchd)', 'WORKING',
+  '`termcrab service install|status|uninstall` writes the right thing for the device: a **systemd user unit** on Linux (~/.config/systemd/user/termcrab.service, no root, ExecStart the CLI gateway subcommand, Restart=on-failure, WantedBy=default.target), a **launchd agent** on macOS, and on Android — which has no systemd — the Termux:Boot script that already existed (`termcrab boot`). `--dry-run` prints the path, the exact file and the commands that enable it; the unit content is asserted byte-for-byte in the test through a TCRAB_SERVICE_DIR override, uninstall never touches user data, and the agent can still be run in the foreground or under `termcrab supervisor`',
+  { file: 'src/mobile/service.ts', pattern: 'export function installService', expect: 'present' }, 0);
 check('ops', 'Logs + diagnostics', 'seven-page doctor, log levels, OTel, Prometheus', 'WORKING',
   'every console line is mirrored into logs/termcrab.jsonl as one JSON object per line (ts, level, area, message) — `termcrab logs [n]` reads it, `--json` gives the records, `--path` the file, and `termcrab doctor`/`doctor --share` still work. Rotation is built in and stated: 2 MB x 3 files by default, `logs.maxMB` / `logs.files` to change it, and `termcrab disk` already counts the logs area as trimmable. OTel/Prometheus export is not attempted — a phone agent keeps its metrics in the log file and the doctor output',
   { file: 'src/core/structured-log.ts', pattern: 'export class StructuredLog', expect: 'present' }, 0);
@@ -537,9 +538,8 @@ check('ops', 'Tests', 'contract tests per channel, 16k-PR CI', 'PARTIAL',
   '437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000)',
   { pattern: /node:test/, scope: 'test', expect: 'present' }, 6);
 check('ops', 'CI matrix', 'lint + types + budgets + swiftlint + semgrep + knip', 'PARTIAL',
-  'ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity',
-  { paths: ['ci/github-actions.yml'], expect: 'present' }, 3);
-check('ops', 'Documentation site', 'full docs site, thousands of pages', 'PARTIAL',
+  'The workflow is versioned at ci/ci.yml (Node 20/22/24 + the full suite + an offline CLI smoke incl. bootstrap --json + tracker and census checks + an installer job + a packaged-tarball job) and every line of it is asserted by test/tier2w.test.ts, but the installed copy at .github/workflows/ci.yml is one command away rather than in the tree: GitHub refuses a push that creates a workflow file unless the credential carries the workflows permission, and the integration writing this repository has contents:write without it (the API says it plainly: Resource not accessible by integration). `npm run ci:install` copies ci/ci.yml into place byte for byte, `--check` fails when the two drift (the workflow runs that check itself), and after one push from the repo owner the matrix really runs. Until then this stays PARTIAL on purpose - a workflow file in a folder GitHub does not read is not CI',
+  { paths: ['ci/ci.yml', 'scripts/install-ci.mjs'], expect: 'present' }, 1);check('ops', 'Documentation site', 'full docs site, thousands of pages', 'PARTIAL',
   'docs/ markdown + README; no site generator, no search, no versioning',
   { paths: ['docs/ARCHITECTURE.md', 'docs/API.md'], expect: 'present' }, 5);
 check('ops', 'Docs that match the code', 'generated docs map, tested examples', 'WORKING',

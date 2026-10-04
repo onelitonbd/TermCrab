@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৯১%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯৭টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ২১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৯৬ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯২%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ৯৯টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১৯টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৮৯ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 97 | wired and observable |
+| ✅ WORKING | 99 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 21 | exists, narrower than theirs |
+| 🟡 PARTIAL | 19 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 91%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 92%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~96d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~89d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~99d | in-scope only |
+| **total** | 132 | ~92d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -197,20 +197,20 @@ Out of scope, and why:
 | Transcription | realtime transcription service | 🟡 PARTIAL | a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL | parity | 3 |
 | Native GUI / foreground service | desktop apps + node apps | 🚫 OUT OF SCOPE | no companion app; a persistent notification is the closest — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### ops — 75% (11 in-scope checks, 1 out of scope)
+### ops — 85% (11 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Install is download-only (no silent build) | n/a | ✅ WORKING | package.json has no `prepare`/`postinstall`; the TypeScript compile is an explicit, visible `npm run build` (measured: 0.5s install, 3.0s build vs 4.5s combined) | core | — |
-| Installer | curl install.sh + Docker + Nix + Fly | 🟡 PARTIAL | install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths | parity | 2 |
+| Installer | curl install.sh + Docker + Nix + Fly | ✅ WORKING | install.sh is the one command on Termux, Linux and macOS: it installs Node via pkg when asked on Termux, clones or upgrades an existing checkout (reset to the requested ref, user data in the home is untouched), installs the dev packages, builds, puts `termcrab` on PATH and *proves the command runs* before claiming success. `install.sh --check` answers "what would this do on this machine" and writes nothing (the CI job runs it, and the test asserts it creates no files), and a Node that is too old fails with a sentence before anything is touched. The packaged path is tested end to end too: `npm pack` the tarball, install it in a clean directory, run --version and bootstrap. Docker/Nix/Fly are out of scope (see the container row): a phone agent is not a server fleet | parity | — |
 | Container / server deploy | Docker, docker-compose, Fly, Nix, systemd | 🚫 OUT OF SCOPE | Termux/Node host only — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
-| Service install | openclaw gateway install (systemd/launchd) | 🟡 PARTIAL | Termux supervisor; docs/LOCAL.md covers a systemd path | parity | 3 |
+| Service install | openclaw gateway install (systemd/launchd) | ✅ WORKING | `termcrab service install|status|uninstall` writes the right thing for the device: a **systemd user unit** on Linux (~/.config/systemd/user/termcrab.service, no root, ExecStart the CLI gateway subcommand, Restart=on-failure, WantedBy=default.target), a **launchd agent** on macOS, and on Android — which has no systemd — the Termux:Boot script that already existed (`termcrab boot`). `--dry-run` prints the path, the exact file and the commands that enable it; the unit content is asserted byte-for-byte in the test through a TCRAB_SERVICE_DIR override, uninstall never touches user data, and the agent can still be run in the foreground or under `termcrab supervisor` | parity | — |
 | Logs + diagnostics | seven-page doctor, log levels, OTel, Prometheus | ✅ WORKING | every console line is mirrored into logs/termcrab.jsonl as one JSON object per line (ts, level, area, message) — `termcrab logs [n]` reads it, `--json` gives the records, `--path` the file, and `termcrab doctor`/`doctor --share` still work. Rotation is built in and stated: 2 MB x 3 files by default, `logs.maxMB` / `logs.files` to change it, and `termcrab disk` already counts the logs area as trimmable. OTel/Prometheus export is not attempted — a phone agent keeps its metrics in the log file and the doctor output | parity | — |
 | Telemetry stance | version check only, opt-out | 🏅 BETTER | no telemetry at all; update check is manual | parity | — |
 | Release discipline | CalVer, release notes, validation programme | ✅ WORKING | scripts/release.mjs writes package.json and the CHANGELOG section together and --check fails the suite when they drift (test/tier0.test.ts 10.7); --notes feeds `gh release create`, --tag refuses a dirty tree; package.json now carries the same version as the newest CHANGELOG entry | parity | — |
 | Work tracking (what is being built, right now) | n/a | ✅ WORKING | WORKLOG.md (now/next/done with commits + proofs) + scripts/status.mjs (commit-age freshness, exit 1 when stale) + panel Work page (/api/worklog, token-gated); test/worklog.test.ts fails any commit that skips the tracker | core | — |
 | Tests | contract tests per channel, 16k-PR CI | 🟡 PARTIAL | 437 cases in 50 files (test/*.test.ts), real HTTP endpoint pins, 3 jsdom UI batteries; full run 18s (node:test, --test-timeout=60000) | parity | 6 |
-| CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity | parity | 3 |
+| CI matrix | lint + types + budgets + swiftlint + semgrep + knip | 🟡 PARTIAL | The workflow is versioned at ci/ci.yml (Node 20/22/24 + the full suite + an offline CLI smoke incl. bootstrap --json + tracker and census checks + an installer job + a packaged-tarball job) and every line of it is asserted by test/tier2w.test.ts, but the installed copy at .github/workflows/ci.yml is one command away rather than in the tree: GitHub refuses a push that creates a workflow file unless the credential carries the workflows permission, and the integration writing this repository has contents:write without it (the API says it plainly: Resource not accessible by integration). `npm run ci:install` copies ci/ci.yml into place byte for byte, `--check` fails when the two drift (the workflow runs that check itself), and after one push from the repo owner the matrix really runs. Until then this stays PARTIAL on purpose - a workflow file in a folder GitHub does not read is not CI | parity | 1 |
 | Documentation site | full docs site, thousands of pages | 🟡 PARTIAL | docs/ markdown + README; no site generator, no search, no versioning | parity | 5 |
 | Docs that match the code | generated docs map, tested examples | ✅ WORKING | the file map in docs/ARCHITECTURE.md is generated from the tree by scripts/docs-map.mjs (descriptions carried over, undescribed files marked); --check runs inside the suite (test/docs-map.test.ts 11.5) so a file that appears or disappears without the doc noticing fails the build, and 8.5 still fails if either map-style doc names a .ts file that does not exist. The README performance numbers are generated the same way (scripts/bench.mjs) and checked against a fresh run (test/tier2.test.ts 12.1), and every command the phone guide prints is verified against the real CLI (12.3) | core | — |
 

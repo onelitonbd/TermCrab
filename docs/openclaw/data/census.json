@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T00:22:06.055Z",
+ "measured": "2026-10-04T00:28:55.113Z",
  "tally": {
-  "WORKING": 97,
+  "WORKING": 99,
   "BETTER": 14,
-  "PARTIAL": 21,
+  "PARTIAL": 19,
   "BROKEN": 0,
   "ABSENT": 0
  },
- "coverage": 91,
+ "coverage": 92,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 99,
+ "effortLeft": 92,
  "areas": [
   "agent",
   "automation",
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1206, src/command-help.ts:231"
+    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1208, src/command-help.ts:244"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:266, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:268, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:256"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:258"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:170, src/gateway/server.ts:1556, src/mobile/doctor.ts:555"
+    "detail": "5 match(es): src/cli.ts:172, src/gateway/server.ts:1556, src/mobile/doctor.ts:555"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:379"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:392"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1306, src/gateway/server.ts:1592"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1308, src/gateway/server.ts:1592"
    }
   },
   {
@@ -644,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "617 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:18"
+    "detail": "622 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:18"
    }
   },
   {
@@ -841,7 +841,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2476"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2501"
    }
   },
   {
@@ -999,7 +999,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:417, src/cli.ts:2414"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:417, src/cli.ts:2439"
    }
   },
   {
@@ -2130,7 +2130,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "102 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:253"
+    "detail": "103 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:255"
    }
   },
   {
@@ -2168,7 +2168,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "57 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "58 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2187,7 +2187,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:407, src/command-help.ts:517"
+    "detail": "2 match(es): src/cli.ts:409, src/command-help.ts:530"
    }
   },
   {
@@ -2225,7 +2225,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:40, src/command-help.ts:287"
+    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:40, src/command-help.ts:300"
    }
   },
   {
@@ -2437,7 +2437,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/core/paths.ts:8, src/core/structured-log.ts:69, src/core/usage.ts:6"
+    "detail": "10 match(es): src/core/paths.ts:8, src/core/structured-log.ts:69, src/core/usage.ts:6"
    }
   },
   {
@@ -2592,7 +2592,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:445, src/gateway/server.ts:85"
+    "detail": "7 match(es): src/cli.ts:30, src/command-help.ts:122, src/gateway/server.ts:85"
    }
   },
   {
@@ -2733,15 +2733,15 @@
    "area": "ops",
    "capability": "Installer",
    "openclaw": "curl install.sh + Docker + Nix + Fly",
-   "verdict": "PARTIAL",
-   "evidence": "install.sh (Termux-native, re-runnable) + npm install; no container or package-manager paths",
+   "verdict": "WORKING",
+   "evidence": "install.sh is the one command on Termux, Linux and macOS: it installs Node via pkg when asked on Termux, clones or upgrades an existing checkout (reset to the requested ref, user data in the home is untouched), installs the dev packages, builds, puts `termcrab` on PATH and *proves the command runs* before claiming success. `install.sh --check` answers \"what would this do on this machine\" and writes nothing (the CI job runs it, and the test asserts it creates no files), and a Node that is too old fails with a sentence before anything is touched. The packaged path is tested end to end too: `npm pack` the tarball, install it in a clean directory, run --version and bootstrap. Docker/Nix/Fly are out of scope (see the container row): a phone agent is not a server fleet",
    "probe": {
     "paths": [
      "install.sh"
     ],
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
@@ -2773,19 +2773,20 @@
    "area": "ops",
    "capability": "Service install",
    "openclaw": "openclaw gateway install (systemd/launchd)",
-   "verdict": "PARTIAL",
-   "evidence": "Termux supervisor; docs/LOCAL.md covers a systemd path",
+   "verdict": "WORKING",
+   "evidence": "`termcrab service install|status|uninstall` writes the right thing for the device: a **systemd user unit** on Linux (~/.config/systemd/user/termcrab.service, no root, ExecStart the CLI gateway subcommand, Restart=on-failure, WantedBy=default.target), a **launchd agent** on macOS, and on Android — which has no systemd — the Termux:Boot script that already existed (`termcrab boot`). `--dry-run` prints the path, the exact file and the commands that enable it; the unit content is asserted byte-for-byte in the test through a TCRAB_SERVICE_DIR override, uninstall never touches user data, and the agent can still be run in the foreground or under `termcrab supervisor`",
    "probe": {
-    "pattern": "systemd",
+    "file": "src/mobile/service.ts",
+    "pattern": "export function installService",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/mobile/boot.ts:15, src/mobile/supervisor.ts:9"
+    "detail": "1 match(es): src/mobile/service.ts:141"
    }
   },
   {
@@ -2888,7 +2889,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "84 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "85 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {
@@ -2896,20 +2897,21 @@
    "capability": "CI matrix",
    "openclaw": "lint + types + budgets + swiftlint + semgrep + knip",
    "verdict": "PARTIAL",
-   "evidence": "ci/github-actions.yml: node 20/22/24 build + test + offline CLI smoke + npm pack sanity",
+   "evidence": "The workflow is versioned at ci/ci.yml (Node 20/22/24 + the full suite + an offline CLI smoke incl. bootstrap --json + tracker and census checks + an installer job + a packaged-tarball job) and every line of it is asserted by test/tier2w.test.ts, but the installed copy at .github/workflows/ci.yml is one command away rather than in the tree: GitHub refuses a push that creates a workflow file unless the credential carries the workflows permission, and the integration writing this repository has contents:write without it (the API says it plainly: Resource not accessible by integration). `npm run ci:install` copies ci/ci.yml into place byte for byte, `--check` fails when the two drift (the workflow runs that check itself), and after one push from the repo owner the matrix really runs. Until then this stays PARTIAL on purpose - a workflow file in a folder GitHub does not read is not CI",
    "probe": {
     "paths": [
-     "ci/github-actions.yml"
+     "ci/ci.yml",
+     "scripts/install-ci.mjs"
     ],
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 1,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "found: ci/github-actions.yml"
+    "detail": "found: ci/ci.yml, scripts/install-ci.mjs"
    }
   },
   {
