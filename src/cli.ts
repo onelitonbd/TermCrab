@@ -59,6 +59,7 @@ import { browserStatus, CdpBrowser } from './agent/cdp.js';
 import { clearRoom, formatRoomHistory, listRooms, parseRoomKey, readRoom } from './channels/rooms.js';
 import { buildBoard, formatBoard } from './agent/board.js';
 import { auditSecrets, formatFindings, securityAudit } from './agent/security.js';
+import { docsSitePath, ensureDocsSite } from './docs/site.js';
 import { detectSandbox } from './agent/sandbox.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
@@ -114,6 +115,7 @@ Everyday extras:
   termcrab import openclaw [--apply] bring your old OpenClaw setup over (preview first!)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
   termcrab rooms [list|show|clear]   what was said in a group while you were not addressed
+  termcrab docs                      every doc as one offline HTML page (opens with no network; /docs in the panel)
   termcrab heartbeat                 run one self-check right now
   termcrab update                    check if a newer TermCrab exists (and how to get it)
   termcrab update --apply            pull, install and build — verified, rolled back if it will not start
@@ -2650,6 +2652,35 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         return;
       }
       console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
+      process.exitCode = 1;
+      return;
+    }
+
+    case 'docs': {
+      // 34.8: the docs as one offline HTML file, built from docs/ + the panel's renderer.
+      const sub = rest.filter((r) => r !== '--json')[0] ?? 'build';
+      if (sub === 'path') {
+        const file = docsSitePath();
+        if (machine) {
+          emitJson('docs', { file, exists: fs.existsSync(file) });
+          return;
+        }
+        console.log(file);
+        return;
+      }
+      if (sub === 'build' || sub === 'rebuild') {
+        const r = ensureDocsSite({ force: sub === 'rebuild' });
+        if (machine) {
+          emitJson('docs', r);
+          return;
+        }
+        console.log(
+          `📖 ${r.rebuilt ? 'built' : 'up to date'} — ${r.docs} docs, ${r.sections} sections, ` +
+            `${Math.round(r.bytes / 1024)} KB\n   ${r.file}\n   open it with any browser, or: termcrab gateway → /docs`,
+        );
+        return;
+      }
+      console.error('usage: termcrab docs [build | rebuild | path] [--json]');
       process.exitCode = 1;
       return;
     }

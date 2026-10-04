@@ -93,6 +93,7 @@ import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
 import { listConversations, registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
 import { formatRoomHistory } from '../channels/rooms.js';
 import { buildBoard } from '../agent/board.js';
+import { docsSitePath, ensureDocsSite } from '../docs/site.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -1133,6 +1134,22 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         return;
       }
 
+      // 34.8: the offline docs page — every doc in docs/ as one self-contained
+      // HTML file with search, built on demand. Served exactly like the panel
+      // shell at `/` (a static page; nothing secret inside it), and the same
+      // file works with no network at all: `termcrab docs`, then open it.
+      if (req.method === 'GET' && (pathname === '/docs' || pathname === '/docs/' || pathname === '/docs/site')) {
+        try {
+          const r = ensureDocsSite();
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+          res.end(fs.readFileSync(r.file, 'utf8'));
+        } catch (err) {
+          res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
+          res.end(`could not build the docs page: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        return;
+      }
+
       // Portal: reverse proxy to an exposed local server.
       if (pathname.startsWith('/portal/')) {
         const u = new URL(url, 'http://localhost');
@@ -2110,6 +2127,29 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         if (req.method === 'GET' && pathname === '/api/tasks') {
           json(res, 200, { suggestions: listSuggestions('pending') });
+          return;
+        }
+        if (req.method === 'GET' && pathname === '/api/docs') {
+          // 34.8: what the docs page is, without building it twice — the panel
+          // shows size/counts and links to /docs.
+          const file = docsSitePath();
+          let exists = false;
+          let bytes = 0;
+          try {
+            const st = fs.statSync(file);
+            exists = true;
+            bytes = st.size;
+          } catch {
+            /* not built yet */
+          }
+          let docs = 0;
+          let sections = 0;
+          if (exists) {
+            const head = fs.readFileSync(file, 'utf8').slice(0, 4096);
+            docs = Number(/name="docs-count" content="(\d+)"/.exec(head)?.[1] ?? 0);
+            sections = Number(/name="docs-sections" content="(\d+)"/.exec(head)?.[1] ?? 0);
+          }
+          json(res, 200, { file, exists, bytes, docs, sections, url: '/docs' });
           return;
         }
         if (req.method === 'GET' && pathname === '/api/board') {

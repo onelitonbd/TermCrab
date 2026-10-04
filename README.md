@@ -352,6 +352,7 @@ Telegram / Web UI / CLI ──► Gateway (127.0.0.1:7788, token auth, SSE event
 ```
 
 Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
+**Every doc on one offline page:** `termcrab docs` (or `GET /docs`) — `state/docs-site.html`, searchable, no network ·
 Gateway API: [docs/API.md](docs/API.md) ·
 Web panel: [docs/PANEL.md](docs/PANEL.md) ·
 Testing and coverage: [docs/TESTING.md](docs/TESTING.md) ·

@@ -89,7 +89,16 @@ function run() {
     text = execFileSync(
       process.execPath,
       ['--test', '--test-timeout=60000', '--experimental-test-coverage', ...testFiles()],
-      { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+        // The two gate tests in test/tier3d.test.ts assert that *this* recording
+        // is green and current. Inside the run that produces it they cannot be
+        // true yet, so they stand down — and only they: any other failure still
+        // lands in `fail` below, and `--check` refuses a recording with one.
+        env: { ...process.env, TCRAB_COVERAGE_RECORDING: '1' },
+      },
     );
   } catch (err) {
     text = String(err && err.stdout ? err.stdout : '');

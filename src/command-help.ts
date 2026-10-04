@@ -355,6 +355,19 @@ export const COMMANDS: CommandDoc[] = [
     example: 'termcrab agents routes set telegram crabby',
   },
   {
+    cmd: 'docs',
+    usage: 'docs [build | rebuild | path] [--json]',
+    summary: 'every doc as one offline HTML page — searchable, zero-dependency, rendered by the panel\'s own markdown renderer',
+    flags: [
+      'build          build it if it is stale (the default), reusing the file otherwise',
+      'rebuild        build it again even if it looks fresh',
+      'path           just print where the file is',
+      '--json         {file, bytes, docs, sections, builtAt, rebuilt}',
+    ],
+    example: 'termcrab docs && echo "open: $(termcrab docs path)"',
+    json: '{file, bytes, docs, sections, builtAt, rebuilt}',
+  },
+  {
     cmd: 'security',
     usage: 'security [audit] [--json]',
     summary: 'audit what this install actually allows (exec, sandbox, approvals, bind address, tokens, browser) and where your keys actually are — read-only, every finding carries its fix',

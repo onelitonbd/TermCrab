@@ -2752,6 +2752,10 @@
       </button>
     </div>
     <p class="pageNote">What the agent is building right now: the current batch, what proves it, and what comes next — read straight from <code>WORKLOG.md</code> in the project.</p>
+    <p class="pageNote">Every document in <code>docs/</code>, as one offline page with search:
+      <a id="docsSiteLink" href="/docs" target="_blank" rel="noopener">open the docs site →</a>
+      <span class="pNote" id="docsSiteNote"></span>
+    </p>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
   </section>
 
@@ -7041,11 +7045,26 @@
   }
   function stopLogAuto() { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
 
+  // ---- The offline docs site (34.8): link + size, from the live gateway ----
+  async function loadDocsSite() {
+    const link = document.getElementById('docsSiteLink');
+    const note = document.getElementById('docsSiteNote');
+    if (!link || !note) return;
+    try {
+      const d = await api('/api/docs');
+      link.href = '/docs';
+      note.textContent = d && d.exists ? '(' + d.docs + ' docs · ' + Math.round(d.bytes / 1024) + ' KB, rebuilt when stale)' : '(build it: termcrab docs)';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+    }
+  }
+
   // ---- Work tracker (WORKLOG.md, served by /api/worklog) ----
   async function refreshWork() {
     const box = $('workBody');
     if (!box) return;
     try {
+      void loadDocsSite();
       const w = await api('/api/worklog');
       const note = $('workFresh');
       if (note) {

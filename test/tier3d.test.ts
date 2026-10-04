@@ -251,7 +251,14 @@ test('34.6 the coverage snapshot is pinned to the source it measured', { concurr
     worst: { dir: string; file: string; lines: number }[];
   };
 
-  await t.test('the recorded run is green and clears the floor it declares', () => {
+  await t.test('the recorded run is green and clears the floor it declares', (t) => {
+    if (process.env.TCRAB_COVERAGE_RECORDING === '1') {
+      // This run *is* the recording: the snapshot on disk is the previous one,
+      // so this assertion can only be made afterwards. Any other failure in this
+      // run still lands in the snapshot's `fail` count and --check refuses it.
+      t.skip('this suite run is the recording itself');
+      return;
+    }
     assert.equal(snap.fail, 0, 'coverage from a red suite means nothing');
     assert.ok(snap.floor >= 80, `the floor is a real bar, not a formality: ${snap.floor}`);
     assert.ok(
@@ -261,7 +268,11 @@ test('34.6 the coverage snapshot is pinned to the source it measured', { concurr
     assert.ok(snap.tests >= 900 && snap.testFiles >= 90, `measured ${snap.tests} tests in ${snap.testFiles} files`);
   });
 
-  await t.test('the check passes now, and the doc carries the same number', () => {
+  await t.test('the check passes now, and the doc carries the same number', (t) => {
+    if (process.env.TCRAB_COVERAGE_RECORDING === '1') {
+      t.skip('the check is run by the next (non-recording) suite run');
+      return;
+    }
     const out = execFileSync(process.execPath, ['scripts/coverage.mjs', '--check'], { encoding: 'utf8', cwd: ROOT });
     assert.match(out, /coverage: ok/);
     const doc = fs.readFileSync(path.join(ROOT, 'docs', 'TESTING.md'), 'utf8');

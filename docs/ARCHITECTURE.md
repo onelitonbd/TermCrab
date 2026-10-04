@@ -159,6 +159,7 @@ users' runtime.
 | `src/cron/parser.ts` | Dependency-free 5-field cron: minute hour day-of-month month day-of-week Supports: * , - / and macros @hourly @daily @midnight @weekly @monthly @yearly plus … |
 | `src/cron/scheduler.ts` | Cron scheduler: ticks once a minute and runs due jobs through the session lane |
 | `src/cron/store.ts` | Cron job store (crons.json): load/save/add/remove + next-run bookkeeping |
+| `src/docs/site.ts` | 34.8 — the documentation site: one self-contained HTML file, offline |
 | `src/gateway/auth.ts` | constant-time token checks (header or query) |
 | `src/gateway/canvas.ts` | Canvas / A2UI: agent-driven visual widgets served by the gateway |
 | `src/gateway/client.ts` | The one place that knows how to talk to the local gateway: host resolution (0.0.0.0/:: mean "this machine"), the bearer token, and a short timeout |

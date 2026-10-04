@@ -43,6 +43,7 @@
     "sessions",
     "subagents",
     "agents",
+    "docs",
     "security",
     "board",
     "rooms",
@@ -57,271 +58,276 @@
   "covered": [
     {
       "command": "help",
-      "line": 407,
-      "runs": 15
+      "line": 409,
+      "runs": 16
     },
     {
       "command": "completion",
-      "line": 427,
+      "line": 429,
       "runs": 3
     },
     {
       "command": "version",
-      "line": 444,
+      "line": 446,
       "runs": 2
     },
     {
       "command": "gateway",
-      "line": 483,
-      "runs": 2
+      "line": 485,
+      "runs": 3
     },
     {
       "command": "doctor",
-      "line": 524,
+      "line": 526,
       "runs": 3
     },
     {
       "command": "update",
-      "line": 560,
+      "line": 562,
       "runs": 3
     },
     {
       "command": "say",
-      "line": 621,
+      "line": 623,
       "runs": 1
     },
     {
       "command": "agent",
-      "line": 695,
+      "line": 697,
       "runs": 1
     },
     {
       "command": "heartbeat",
-      "line": 801,
+      "line": 803,
       "runs": 2
     },
     {
       "command": "skills",
-      "line": 808,
+      "line": 810,
       "runs": 6
     },
     {
       "command": "cron",
-      "line": 1040,
+      "line": 1042,
       "runs": 13
     },
     {
       "command": "approvals",
-      "line": 1319,
+      "line": 1321,
       "runs": 3
     },
     {
       "command": "usage",
-      "line": 1397,
+      "line": 1399,
       "runs": 4
     },
     {
       "command": "run",
-      "line": 1443,
+      "line": 1445,
       "runs": 4
     },
     {
       "command": "wait",
-      "line": 1444,
+      "line": 1446,
       "runs": 1
     },
     {
       "command": "stop",
-      "line": 1510,
+      "line": 1512,
       "runs": 2
     },
     {
       "command": "runs",
-      "line": 1543,
+      "line": 1545,
       "runs": 3
     },
     {
       "command": "presence",
-      "line": 1580,
+      "line": 1582,
       "runs": 3
     },
     {
       "command": "events",
-      "line": 1624,
+      "line": 1626,
       "runs": 3
     },
     {
       "command": "image",
-      "line": 1664,
+      "line": 1666,
       "runs": 1
     },
     {
       "command": "models",
-      "line": 1708,
+      "line": 1710,
       "runs": 1
     },
     {
       "command": "auth",
-      "line": 1748,
+      "line": 1750,
       "runs": 4
     },
     {
       "command": "orders",
-      "line": 1853,
+      "line": 1855,
       "runs": 5
     },
     {
       "command": "logs",
-      "line": 1918,
+      "line": 1920,
       "runs": 3
     },
     {
       "command": "backup",
-      "line": 2028,
+      "line": 2030,
       "runs": 2
     },
     {
       "command": "restore",
-      "line": 2046,
+      "line": 2048,
       "runs": 3
     },
     {
       "command": "service",
-      "line": 2114,
+      "line": 2116,
       "runs": 1
     },
     {
       "command": "bootstrap",
-      "line": 2137,
+      "line": 2139,
       "runs": 3
     },
     {
       "command": "schema",
-      "line": 2169,
+      "line": 2171,
       "runs": 3
     },
     {
       "command": "disk",
-      "line": 2191,
+      "line": 2193,
       "runs": 4
     },
     {
       "command": "status",
-      "line": 2230,
+      "line": 2232,
       "runs": 3
     },
     {
       "command": "wake",
-      "line": 2270,
+      "line": 2272,
       "runs": 1
     },
     {
       "command": "sessions",
-      "line": 2308,
+      "line": 2310,
       "runs": 13
     },
     {
       "command": "subagents",
-      "line": 2513,
+      "line": 2515,
       "runs": 3
     },
     {
       "command": "agents",
-      "line": 2574,
+      "line": 2576,
+      "runs": 6
+    },
+    {
+      "command": "docs",
+      "line": 2659,
       "runs": 6
     },
     {
       "command": "security",
-      "line": 2657,
+      "line": 2688,
       "runs": 4
     },
     {
       "command": "board",
-      "line": 2680,
+      "line": 2711,
       "runs": 2
     },
     {
       "command": "rooms",
-      "line": 2695,
+      "line": 2726,
       "runs": 4
     },
     {
       "command": "browser",
-      "line": 2775,
+      "line": 2806,
       "runs": 5
     },
     {
       "command": "transcribe",
-      "line": 2842,
+      "line": 2873,
       "runs": 1
     },
     {
       "command": "embeddings",
-      "line": 2876,
+      "line": 2907,
       "runs": 4
     },
     {
       "command": "context",
-      "line": 2930,
+      "line": 2961,
       "runs": 1
     },
     {
       "command": "memory",
-      "line": 2950,
+      "line": 2981,
       "runs": 6
     },
     {
       "command": "config",
-      "line": 3086,
-      "runs": 2
+      "line": 3117,
+      "runs": 5
     }
   ],
   "untested": [
     {
       "command": "onboard",
-      "line": 450,
+      "line": 452,
       "why": "an interactive question-and-answer wizard on stdin; the prompts are asserted directly",
       "instead": "test/tier.test.ts"
     },
     {
       "command": "supervisor",
-      "line": 520,
+      "line": 522,
       "why": "supervise-and-restart is a loop with no exit condition — spawning it would hang the suite",
       "instead": "test/tier2s.test.ts"
     },
     {
       "command": "tui",
-      "line": 644,
+      "line": 646,
       "why": "needs a real TTY (alternate screen + raw keys); the suite drives it through a fake TTY instead",
       "instead": "test/tier2r.test.ts"
     },
     {
       "command": "import",
-      "line": 1250,
+      "line": 1252,
       "why": "reads a Telegram desktop export; the suite builds the same files and imports them through the library",
       "instead": "test/import.test.ts"
     },
     {
       "command": "pair",
-      "line": 1951,
+      "line": 1953,
       "why": "the pairing code is printed for a device that has to answer — the HTTP flow is tested live instead",
       "instead": "test/tier2i.test.ts"
     },
     {
       "command": "devices",
-      "line": 1975,
+      "line": 1977,
       "why": "same flow: the paired-device list and revocation are asserted over a real socket",
       "instead": "test/tier2i.test.ts"
     },
     {
       "command": "dream",
-      "line": 2241,
+      "line": 2243,
       "why": "a long background consolidation pass; the same store is exercised by the library tests",
       "instead": "test/dream.test.ts"
     },
     {
       "command": "boot",
-      "line": 3072,
+      "line": 3103,
       "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
       "instead": "test/tier2w.test.ts"
     }
@@ -330,14 +336,14 @@
   "runCounts": {
     "approvals": 3,
     "memory": 6,
-    "config": 2,
+    "config": 5,
+    "gateway": 3,
     "--version": 2,
     "run": 4,
     "wait": 1,
     "stop": 2,
     "version": 2,
-    "gateway": 2,
-    "help": 15,
+    "help": 16,
     "not-a-command": 3,
     "completion": 3,
     "status": 3,
@@ -373,6 +379,7 @@
     "update": 3,
     "agent": 1,
     "heartbeat": 2,
-    "wake": 1
+    "wake": 1,
+    "docs": 6
   }
 }

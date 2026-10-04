@@ -31,6 +31,20 @@ one rendered as a card with a note only when there is something to note. It **on
 on that screen can start, stop or schedule anything, and the single write on it (revoking a device)
 is a deliberate button press.
 
+## The docs page (`/docs`)
+
+The panel renders markdown; so does the docs site. That is deliberate: `ui/index.html` contains
+the markdown renderer between two comment markers (`==== markdown renderer … ====`), and
+`termcrab docs` **slices that block out verbatim** into the docs page it builds. There is one
+renderer in this repository, not two, and a test asserts the slice is byte-identical to the file —
+change the panel's renderer and the docs page changes with it, or the build fails.
+
+The Work page links to it (`open the docs site →`), next to the size and doc count from
+`GET /api/docs`. `GET /docs` builds the page if a source changed and serves it; the same file is
+written to `state/docs-site.html` by `termcrab docs`, so it also opens straight from the phone's
+file manager with no server and no network. Search, navigation and the copy buttons are inline
+JavaScript and CSS in that one file — no CDN, no service worker, no fetch.
+
 ## How it is tested (there is no browser in the build)
 
 The panel's JavaScript is *extracted from the real file and executed in Node*, so the tests run the
