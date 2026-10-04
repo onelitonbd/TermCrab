@@ -101,6 +101,9 @@ import { canvasList, canvasRemove } from './canvas.js';
 import { CHAT_COMMANDS, runReportCommand } from './chat-reports.js';
 import { queueCommand, runControlCommand, sessionsPurgeCommand, sessionsRenameCommand, steerCommand, type ControlDeps } from './chat-control.js';
 import { embeddingsSetup, embeddingsStatus } from '../agent/embed-setup.js';
+import { planRestore, restoreBackup, writeBackup } from '../core/backup.js';
+import { servicePlan, serviceStatus } from '../mobile/service.js';
+import { transcribeFile } from '../mobile/whisper.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
 import { listAsks, answer as answerAsk } from '../agent/ask.js';
 import { getProgress } from '../agent/progress.js';
@@ -158,6 +161,37 @@ function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<string>
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+/**
+ * 50.1 — the three files a person may edit from the panel. The map is the
+ * security boundary: a request names one of these keys, never a path, so no
+ * input can walk outside the home.
+ */
+const IDENTITY_FILES = [
+  { name: 'SOUL.md', rel: 'workspace/SOUL.md', what: 'who the agent is and how it behaves' },
+  { name: 'IDENTITY.md', rel: 'workspace/IDENTITY.md', what: 'name, tone, language, hard nos' },
+  { name: 'USER.md', rel: 'memory/USER.md', what: 'what the agent knows about the owner' },
+] as const;
+const IDENTITY_MAX = 32 * 1024;
+
+/** Audio uploads are bytes, not JSON — same contract, a bigger limit. */
+function readBodyBuffer(req: http.IncomingMessage, limit = 25_000_000): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => {
+      size += c.length;
+      if (size > limit) {
+        reject(new Error(`upload too large (limit ${Math.round(limit / 1_000_000)} MB)`));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
@@ -2058,6 +2092,169 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           const r = steerCommand(controlDepsFor(webSession, 'web', 'main'), String(body?.text ?? ''));
           if (r.ok) json(res, 200, { ok: true, message: r.text });
           else json(res, 400, { ok: false, error: r.error });
+          return;
+        }
+
+        // 50.1 — the identity files, readable and editable from the panel. The
+        // name is a key into IDENTITY_FILES, so a path can never be one.
+        if (pathname === '/api/bootstrap' && req.method === 'GET') {
+          const files = IDENTITY_FILES.map((f) => {
+            const abs = path.join(home(), f.rel);
+            let text = '';
+            let bytes = 0;
+            try {
+              if (fs.existsSync(abs)) {
+                text = fs.readFileSync(abs, 'utf8');
+                bytes = fs.statSync(abs).size;
+              }
+            } catch {
+              /* unreadable reads as empty, and the write below will say why */
+            }
+            return { name: f.name, rel: f.rel, what: f.what, exists: bytes > 0, bytes, text, max: IDENTITY_MAX };
+          });
+          json(res, 200, { files });
+          return;
+        }
+        if (pathname === '/api/bootstrap' && req.method === 'PUT') {
+          const body = await readJsonBody(req);
+          const spec = IDENTITY_FILES.find((f) => f.name === body?.file);
+          if (!spec) {
+            json(res, 400, { error: `file must be one of: ${IDENTITY_FILES.map((f) => f.name).join(', ')}` });
+            return;
+          }
+          const text = typeof body?.text === 'string' ? body.text : null;
+          if (text === null) {
+            json(res, 400, { error: 'text must be a string' });
+            return;
+          }
+          if (Buffer.byteLength(text, 'utf8') > IDENTITY_MAX) {
+            json(res, 413, { error: `${spec.name} is limited to ${Math.round(IDENTITY_MAX / 1024)} KB` });
+            return;
+          }
+          const abs = path.join(home(), spec.rel);
+          fs.mkdirSync(path.dirname(abs), { recursive: true });
+          fs.writeFileSync(abs, text, 'utf8');
+          json(res, 200, { ok: true, file: spec.name, rel: spec.rel, bytes: Buffer.byteLength(text, 'utf8') });
+          return;
+        }
+
+        // 50.2 — backup and restore, reusing the CLI's own module. Restore
+        // always asks for the archive name typed back, and only looks inside
+        // $TCRAB_HOME/backups: an upload can never name an arbitrary path.
+        if (pathname === '/api/backups' && req.method === 'GET') {
+          const dir = path.join(home(), 'backups');
+          let list: { name: string; bytes: number; modified: number }[] = [];
+          try {
+            list = fs
+              .readdirSync(dir)
+              .filter((f) => f.endsWith('.tar') || f.endsWith('.tar.gz'))
+              .map((f) => {
+                const st = fs.statSync(path.join(dir, f));
+                return { name: f, bytes: st.size, modified: st.mtimeMs };
+              })
+              .sort((a, b) => b.modified - a.modified);
+          } catch {
+            /* no backups dir yet */
+          }
+          json(res, 200, { dir, backups: list });
+          return;
+        }
+        if (pathname === '/api/backup' && req.method === 'POST') {
+          const dir = path.join(home(), 'backups');
+          fs.mkdirSync(dir, { recursive: true });
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const file = path.join(dir, `backup-${stamp}.tar`);
+          const r = writeBackup(file, { release: version() });
+          json(res, 200, { ok: true, file: r.file, name: path.basename(r.file), manifest: r.manifest });
+          return;
+        }
+        const backupDownload = pathname.match(/^\/api\/backups\/([^/]+)$/);
+        if (backupDownload && req.method === 'GET') {
+          const name = path.basename(decodeURIComponent(backupDownload[1]!));
+          const file = path.join(home(), 'backups', name);
+          if (!fs.existsSync(file)) {
+            json(res, 404, { error: 'no such backup' });
+            return;
+          }
+          res.writeHead(200, { 'content-type': 'application/x-tar', 'content-disposition': `attachment; filename="${name}"` });
+          res.end(fs.readFileSync(file));
+          return;
+        }
+        if (pathname === '/api/restore' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const name = typeof body?.name === 'string' ? path.basename(body.name) : '';
+          if (!name) {
+            json(res, 400, { error: 'name must be the archive file name from GET /api/backups' });
+            return;
+          }
+          const file = path.join(home(), 'backups', name);
+          if (!fs.existsSync(file)) {
+            json(res, 404, { error: `no backup called ${name} in ${path.join(home(), 'backups')}` });
+            return;
+          }
+          try {
+            const plan = planRestore(file);
+            if (body?.dryRun === true) {
+              json(res, 200, { ok: true, dryRun: true, plan });
+              return;
+            }
+            if (body?.confirm !== name) {
+              json(res, 400, {
+                error: `restore replaces your home with the archive's copies (the previous files are moved to state/restore-*/) — resend with confirm:"${name}"`,
+              });
+              return;
+            }
+            const r = restoreBackup(file);
+            json(res, 200, { ok: true, restored: r.restored, bytes: r.bytes, movedTo: r.movedTo, manifest: r.manifest });
+          } catch (err) {
+            json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+          }
+          return;
+        }
+
+        // 50.3 — the service card: what is installed, where the file is, and
+        // the command a human runs. Read-only on purpose: no remote execution.
+        if (pathname === '/api/service' && req.method === 'GET') {
+          const status = serviceStatus();
+          const plan = servicePlan();
+          json(res, 200, {
+            ...status,
+            plan: { platform: plan.platform, file: plan.file, steps: plan.steps, content: plan.content },
+            installCommand: plan.platform === 'termux' ? 'termcrab boot install' : 'termcrab service install',
+            note: 'the panel never runs this — copy it into a terminal on the device',
+          });
+          return;
+        }
+
+        // 50.4 — transcribe an uploaded audio file. The bytes are written
+        // inside $TCRAB_HOME/state/uploads and handed to the same
+        // transcribeFile() the CLI's `termcrab transcribe` calls.
+        if (pathname === '/api/transcribe' && req.method === 'POST') {
+          const ext =
+            (new URL(req.url ?? '/', 'http://localhost').searchParams.get('ext') ?? 'ogg')
+              .replace(/[^a-z0-9]/gi, '')
+              .slice(0, 5) || 'ogg';
+          let buf: Buffer;
+          try {
+            buf = await readBodyBuffer(req);
+          } catch (err) {
+            json(res, 413, { error: err instanceof Error ? err.message : 'upload failed' });
+            return;
+          }
+          if (!buf.length) {
+            json(res, 400, { error: 'empty upload — send the audio bytes as the request body' });
+            return;
+          }
+          const dir = path.join(home(), 'state', 'uploads');
+          fs.mkdirSync(dir, { recursive: true });
+          const file = path.join(dir, `upload-${Date.now()}.${ext}`);
+          fs.writeFileSync(file, buf);
+          const r = await transcribeFile(file);
+          if (!r.ok) {
+            json(res, 422, { ok: false, error: r.error ?? 'transcription failed', file, bytes: buf.length });
+            return;
+          }
+          json(res, 200, { ok: true, text: r.text ?? '', engine: r.engine ?? null, ms: r.ms ?? 0, bytes: buf.length, file });
           return;
         }
 

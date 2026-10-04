@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T14:50:17.740Z",
+ "measured": "2026-10-04T14:56:28.954Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 50,
+  "BETTER": 51,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 168,
+ "inScope": 169,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1538"
+    "detail": "1 match(es): src/gateway/server.ts:1572"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1540"
+    "detail": "2 match(es): src/gateway/server.ts:1574"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:314"
+    "detail": "1 match(es): src/gateway/server.ts:348"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2803"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:3000"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1329"
+    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1363"
    }
   },
   {
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1732, src/mobile/doctor.ts:622"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1766, src/mobile/doctor.ts:622"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1768"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1802"
    }
   },
   {
@@ -646,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "751 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "764 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -805,7 +805,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:723"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:757"
    }
   },
   {
@@ -1573,7 +1573,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:582, src/mobile/doctor.ts:427"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:616, src/mobile/doctor.ts:427"
    }
   },
   {
@@ -1744,7 +1744,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1003"
+    "detail": "1 match(es): src/gateway/server.ts:1037"
    }
   },
   {
@@ -1962,7 +1962,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:418"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:452"
    }
   },
   {
@@ -2120,7 +2120,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): ui/index.html:2778"
+    "detail": "2 match(es): ui/index.html:2787"
    }
   },
   {
@@ -2180,7 +2180,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): ui/index.html:2785"
+    "detail": "2 match(es): ui/index.html:2794"
    }
   },
   {
@@ -2220,7 +2220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2791"
+    "detail": "1 match(es): ui/index.html:2800"
    }
   },
   {
@@ -2590,7 +2590,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "10 match(es): src/core/paths.ts:8, src/core/structured-log.ts:69, src/core/usage.ts:6"
+    "detail": "12 match(es): src/core/paths.ts:8, src/core/structured-log.ts:69, src/core/usage.ts:6"
    }
   },
   {
@@ -2861,7 +2861,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/channels/intake.ts:21, src/cli.ts:57, src/mobile/whisper.ts:107"
+    "detail": "8 match(es): src/channels/intake.ts:21, src/cli.ts:57, src/gateway/server.ts:106"
    }
   },
   {
@@ -3264,7 +3264,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1484"
+    "detail": "1 match(es): src/gateway/server.ts:1518"
    }
   },
   {
@@ -3305,7 +3305,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es) (min 2): ui/index.html:7351"
+    "detail": "2 match(es) (min 2): ui/index.html:7554"
    }
   },
   {
@@ -3390,6 +3390,26 @@
   },
   {
    "area": "ops",
+   "capability": "The panel is whole (50.x)",
+   "openclaw": "a web surface that ends in the terminal",
+   "verdict": "BETTER",
+   "evidence": "The four flows that were terminal-only are doors now: GET/PUT /api/bootstrap edits SOUL.md / IDENTITY.md / USER.md by name (paths pinned inside the home, 32 KB cap); POST /api/backup writes with writeBackup(), GET /api/backups lists, and POST /api/restore does a dry-run then demands the archive name typed back before restoreBackup() moves the current files aside; GET /api/service serves the status, the plan and the exact command read-only; POST /api/transcribe lands the bytes in state/uploads and runs the CLI's own transcribeFile(). The audit's web row has no missing cell left — the seven that remain are all Telegram.",
+   "probe": {
+    "file": "test/tier3s.test.ts",
+    "pattern": "50.1",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): test/tier3s.test.ts:70"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "The panel's quick gaps, closed (49.x)",
    "openclaw": "a web surface that shows less than the terminal",
    "verdict": "BETTER",
@@ -3446,7 +3466,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es) (min 3): src/gateway/server.ts:914"
+    "detail": "3 match(es) (min 3): src/gateway/server.ts:948"
    }
   },
   {

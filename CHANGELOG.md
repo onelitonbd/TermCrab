@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.80.0 - 2026-10-04
+
+**The web panel has no missing cell left.** Batch 50 closed the four flows that still ended in a shell —
+editing the files that define the agent, backing the home up (and getting it back), the service card, and
+turning an audio file into text — and every one of them is a door onto a module the CLI already had.
+
+- **Identity editor.** `GET /api/bootstrap` returns SOUL.md, IDENTITY.md and USER.md with their sizes and
+  text; `PUT` writes one back. The request names the *file*, never a path: the three names map to fixed
+  paths inside the home, so no input can walk out of it, and each file is capped at 32 KB. The Settings
+  view renders a textarea per file with its own Save and a byte count.
+- **Backup and restore.** `POST /api/backup` reuses `writeBackup()` and writes
+  `$TCRAB_HOME/backups/backup-<stamp>.tar`; `GET /api/backups` lists what exists and
+  `GET /api/backups/<name>` hands the archive back; `POST /api/restore` runs a dry-run first, then demands
+  the archive name typed back (`confirm`) before `restoreBackup()` puts your files back and moves whatever
+  was in their place into `state/restore-*/`.
+- **The service card.** `GET /api/service` serves the platform, the unit file, the steps after install and
+  the exact command (`termcrab service install` / `termcrab boot install`). It is read-only by design —
+  the panel copies the line, a human decides to run it.
+- **Transcribe upload.** `POST /api/transcribe` takes the audio bytes (25 MB cap), writes them under
+  `$TCRAB_HOME/state/uploads/` and hands the path to the same `transcribeFile()` the CLI's
+  `termcrab transcribe` calls, so a missing engine answers with the CLI's own install hint.
+
+**Proof:** `test/tier3s.test.ts` — 4 cases on the real HTTP surface: an identity round-trip plus a refused
+traversal and an oversized body; a backup that lists, downloads, refuses a restore without the typed name,
+and then really restores a changed file; a service card whose POST is a 404 (read-only); and a transcribe
+run against a fake `whisper-cli` on PATH, including the empty-upload refusal and the missing-engine
+answer. `scripts/surface-audit.mjs` moves to **CLI 50 / Telegram 45 / Web 51, gaps 7** — the web row has
+no ❌ left at all; the remaining seven are Telegram, which is batch 51. Full suite
+**1068 pass · 0 fail · 3 skip · 108 files · 1071 cases** (166.7 s of a 240 s budget), coverage
+87.41 / 77.44 / 87.07 on fingerprint `47e70cd80b029a28`, census 100% of 169 in-scope checks.
+
+
+- TODO: what changed, and why it matters to somebody on a phone.
+
 ## 0.79.0 - 2026-10-04
 
 **The panel stops borrowing from the terminal.** Batch 49: four things the web panel could only do by

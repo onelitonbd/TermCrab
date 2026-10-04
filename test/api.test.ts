@@ -517,7 +517,11 @@ test('web control parity API', async (t) => {
       // login screen shows the server's plain-English refusal hint, not a generic error
       // Auth removed — login gate tests removed.
       // loads when the page opens
-      assert.ok(html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); }"), 'loads on open');
+      // 50.x: the settings page also loads the identity/backup/service cards.
+      assert.ok(
+        html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); }"),
+        'loads on open',
+      );
       // agents card keeps its ids (create/edit flow untouched)
       for (const id of ['agList', 'agNew', 'agTemplate', 'agCreate', 'agSoul', 'agSave', 'cfgPath']) {
         assert.ok(html.includes('id="' + id + '"'), 'id ' + id);

@@ -84,7 +84,7 @@ export const CAPABILITIES = [
   { area: 'context', name: 'Context report: what the model is sent', cli: [P(CLI_SRC, "case 'context'")], tg: [P(SERVER_SRC, "text === '/context'")], web: [P(SERVER_SRC, "'/api/context'"), P(PANEL_SRC, 'ctxTable')] },
   { area: 'context', name: 'Embeddings: status', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(CR, "case '/embeddings'")], web: [P(SERVER_SRC, 'embeddingsStatus'), P(PANEL_SRC, 'embStatus')] },
   { area: 'context', name: 'Embeddings: setup / switch provider', cli: { probes: [P(HELP_SRC, 'embeddings')], partial: 'the install runs in the terminal; the provider switch exists here too' }, tg: { missing: 'not available' }, web: [P(SERVER_SRC, 'embeddingsSetup'), P(PANEL_SRC, "action: 'install'")] },
-  { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: { partial: '"remember …" writes USER.md; SOUL/IDENTITY are not editable from chat' }, web: { missing: 'a SOUL.md badge on agents; no editor' } },
+  { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: { partial: '"remember …" writes USER.md; SOUL/IDENTITY are not editable from chat' }, web: [P(SERVER_SRC, "'/api/bootstrap'"), P(PANEL_SRC, 'idFiles')] },
 
   // --------------------------------------------------------------- tools
   { area: 'tools', name: 'Tool catalog: what the agent can do', cli: { partial: 'context lists schemas; no catalog command' }, tg: { partial: 'ask in chat and the agent answers' }, web: [P(PANEL_SRC, '/api/tools')] },
@@ -105,15 +105,15 @@ export const CAPABILITIES = [
   // ---------------------------------------------------------------- voice
   { area: 'mobile', name: 'Dictation (speech → text)', cli: [P(CLI_SRC, "case 'wake'")], tg: [P(TG_SRC, 'voice')], web: [P(PANEL_SRC, '/api/listen')] },
   { area: 'mobile', name: 'Text to speech', cli: [P(CLI_SRC, "case 'say'")], tg: { missing: 'no voice replies from the bot' }, web: [P(PANEL_SRC, '/api/say')] },
-  { area: 'mobile', name: 'Transcribe a voice file', cli: [P(CLI_SRC, "case 'transcribe'")], tg: [P(TG_SRC, 'voice')], web: { missing: 'no upload-transcribe in the panel' } },
+  { area: 'mobile', name: 'Transcribe a voice file', cli: [P(CLI_SRC, "case 'transcribe'")], tg: [P(TG_SRC, 'voice')], web: [P(SERVER_SRC, "'/api/transcribe'"), P(PANEL_SRC, 'trFile')] },
   { area: 'mobile', name: 'Wake word loop', cli: [P(CLI_SRC, "case 'wake'")], tg: null, web: [P(PANEL_SRC, '/api/wake')] },
 
   // --------------------------------------------------------------- ops
   { area: 'ops', name: 'Doctor: find and fix problems', cli: [P(CLI_SRC, "case 'doctor'")], tg: [P(CR, "case '/doctor'")], web: [P(PANEL_SRC, '/api/doctor')] },
   { area: 'ops', name: 'Update: check / apply / rollback', cli: [P(CLI_SRC, "case 'update'")], tg: { probes: [P(CT, "case '/update'")], partial: 'check from chat; apply is terminal-only until the confirm lands (48)' }, web: [P(PANEL_SRC, '/api/update')] },
-  { area: 'ops', name: 'Backup / restore the home', cli: [P(CLI_SRC, "case 'backup'")], tg: [P(CT, "case '/backup'")], web: { missing: 'not available yet (batch 50)' } },
+  { area: 'ops', name: 'Backup / restore the home', cli: [P(CLI_SRC, "case 'backup'")], tg: [P(CT, "case '/backup'")], web: [P(SERVER_SRC, "'/api/restore'"), P(PANEL_SRC, 'bkCreate')] },
   { area: 'ops', name: 'Disk usage', cli: [P(CLI_SRC, "case 'disk'")], tg: [P(CR, "case '/disk'")], web: [P(PANEL_SRC, '/api/disk')] },
-  { area: 'ops', name: 'Install as a service', cli: [P(CLI_SRC, "case 'service'")], tg: null, web: { missing: 'no panel view (terminal-native)' } },
+  { area: 'ops', name: 'Install as a service', cli: [P(CLI_SRC, "case 'service'")], tg: null, web: { probes: [P(SERVER_SRC, "'/api/service'"), P(PANEL_SRC, 'svcInfo')], partial: 'the card shows status + the exact command; installing stays in a terminal on purpose' } },
   { area: 'ops', name: 'Boot autostart (Termux:Boot)', cli: [P(CLI_SRC, "case 'boot'")], tg: null, web: { probes: [P(PANEL_SRC, '/api/boot/install')], note: 'a "Start at boot" button with termux detection' } },
   { area: 'ops', name: 'Security audit (findings + fixes)', cli: [P(CLI_SRC, "case 'security'")], tg: [P(CR, "case '/security'")], web: { partial: 'the shared text is served, but no panel view yet (batch 50)' } },
   { area: 'ops', name: 'Secrets: named keys, audit', cli: [P(CLI_SRC, "case 'auth'")], tg: [P(CR, "case '/auth'")], web: { partial: 'names via /api/slash; no panel view yet (batch 50)' } },

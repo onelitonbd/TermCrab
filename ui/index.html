@@ -2722,6 +2722,15 @@
         </div>
       </div>
       <div class="tlCard">
+        <div class="tlCardHead">TRANSCRIBE A FILE</div>
+        <div class="pBar">
+          <input type="file" id="trFile" accept="audio/*" />
+          <button id="trGo" class="ghost" type="button">Transcribe</button>
+        </div>
+        <div id="trOut" class="pNote"></div>
+        <p class="pNote" style="margin:0">Offline, through the same engine <code>termcrab transcribe</code> uses. If the engine is missing, the exact install hint comes back here.</p>
+      </div>
+      <div class="tlCard">
         <div class="tlCardHead">STARTUP</div>
         <div class="pBar">
           <span class="pNote" id="bootInfo">boot: …</span>
@@ -2861,6 +2870,44 @@
           <button id="agSave" class="hnBtnPrimary" type="button">Save Personality</button>
           <button id="agCancelEdit" class="hnBtnSecondary" type="button">Cancel</button>
         </div>
+      </div>
+    </div>
+
+    <div class="memSectionLabel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      IDENTITY FILES
+    </div>
+    <div class="setCard" id="idCard">
+      <h4>Workspace files</h4>
+      <div class="d">The three files that make the agent yours — SOUL.md, IDENTITY.md and USER.md. Edits save straight to disk inside this device's home.</div>
+      <div id="idFiles"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memSectionLabel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+      BACKUP &amp; RESTORE
+    </div>
+    <div class="setCard" id="bkCard">
+      <h4>Backups</h4>
+      <div class="d">One archive of this home: config, memory, sessions, skills. Restoring moves the current files aside first, so a wrong choice is recoverable.</div>
+      <div class="pBar" style="margin:8px 0">
+        <button id="bkCreate" class="hnBtnPrimary" type="button">Create a backup</button>
+        <span class="pNote" id="bkNote"></span>
+      </div>
+      <div id="bkList" class="listCol"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memSectionLabel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      SERVICE
+    </div>
+    <div class="setCard" id="svcCard">
+      <h4>Keep it running</h4>
+      <div class="d">Install the agent as a service so it comes back after a reboot. The panel never runs the install — copy the line into a terminal on this device.</div>
+      <div id="svcInfo" class="pNote">loading…</div>
+      <div class="pBar" style="margin-top:8px">
+        <code id="svcCmd" style="flex:1;overflow:auto">termcrab service install</code>
+        <button id="svcCopy" class="ghost" type="button">Copy</button>
       </div>
     </div>
 
@@ -5675,6 +5722,162 @@
       host.append(lbl, card);
     }
     // Secrets manager
+  /**
+   * 50.1/50.2/50.3 — the identity files, the backups and the service card.
+   * Everything here goes through the endpoints the CLI's own modules back, so
+   * the panel cannot do something the terminal cannot explain.
+   */
+  async function refreshFiles() {
+    // --- identity files
+    const idHost = $('idFiles');
+    if (idHost) {
+      try {
+        const d = await api('/api/bootstrap');
+        idHost.innerHTML = '';
+        for (const f of d.files || []) {
+          const wrap = document.createElement('div');
+          wrap.style.marginBottom = '12px';
+          const head = document.createElement('div');
+          head.className = 'pNote';
+          head.textContent = `${f.name} — ${f.what} · ${f.exists ? f.bytes + ' B' : 'empty'} · max ${Math.round((f.max || 32768) / 1024)} KB`;
+          const ta = document.createElement('textarea');
+          ta.value = f.text || '';
+          ta.id = 'idf-' + f.name;
+          ta.style.cssText = 'width:100%;min-height:96px;font-family:ui-monospace,monospace;font-size:12px';
+          const bar = document.createElement('div');
+          bar.className = 'pBar';
+          bar.style.marginTop = '6px';
+          const save = document.createElement('button');
+          save.className = 'ghost go';
+          save.textContent = 'Save ' + f.name;
+          const note = document.createElement('span');
+          note.className = 'pNote';
+          save.onclick = async () => {
+            try {
+              const r = await api('/api/bootstrap', {
+                method: 'PUT', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ file: f.name, text: ta.value }),
+              });
+              note.textContent = 'saved ' + r.bytes + ' B';
+            } catch (e) { note.textContent = 'save failed: ' + e.message; }
+          };
+          bar.append(save, note);
+          wrap.append(head, ta, bar);
+          idHost.appendChild(wrap);
+        }
+      } catch (e) { idHost.textContent = 'files failed: ' + e.message; }
+    }
+
+    // --- backups
+    const bkHost = $('bkList');
+    const renderBackups = async () => {
+      if (!bkHost) return;
+      try {
+        const d = await api('/api/backups');
+        bkHost.innerHTML = '';
+        const list = d.backups || [];
+        if (!list.length) { bkHost.innerHTML = '<div class="nx">no backups yet</div>'; return; }
+        for (const b of list) {
+          const row = document.createElement('div');
+          row.className = 'sessRow';
+          const nm = document.createElement('span');
+          nm.className = 'id';
+          nm.textContent = b.name;
+          const meta = document.createElement('span');
+          meta.className = 'meta';
+          meta.textContent = `${Math.max(1, Math.round(b.bytes / 1024))} KB · ${new Date(b.modified).toISOString().slice(0, 16).replace('T', ' ')}`;
+          const sp = document.createElement('span'); sp.className = 'sp';
+          const dl = document.createElement('button');
+          dl.className = 'ghost'; dl.textContent = 'Download';
+          dl.onclick = async () => {
+            try {
+              const res = await fetch('/api/backups/' + encodeURIComponent(b.name), { headers: { authorization: 'Bearer ' + state.token } });
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              const blob = await res.blob();
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = b.name;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            } catch (e) { if ($('bkNote')) $('bkNote').textContent = 'download failed: ' + e.message; }
+          };
+          const rs = document.createElement('button');
+          rs.className = 'ghost danger'; rs.textContent = 'Restore…';
+          rs.onclick = async () => {
+            try {
+              const plan = await api('/api/restore', {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ name: b.name, dryRun: true }),
+              });
+              const n = (plan.plan && plan.plan.files) ? plan.plan.files.length : 0;
+              if (!confirm(`Restore ${b.name}? ${n} file(s) come back; anything in their place moves to state/restore-*/ first.\nType the archive name in the next box to confirm.`)) return;
+              const typed = prompt('Type the archive name to confirm:', '');
+              if (typed === null) return;
+              const r = await api('/api/restore', {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ name: b.name, confirm: typed }),
+              });
+              if ($('bkNote')) $('bkNote').textContent = `restored ${r.restored} file(s)` + (r.movedTo ? ' · previous home moved aside' : '');
+            } catch (e) { if ($('bkNote')) $('bkNote').textContent = 'restore failed: ' + e.message; }
+          };
+          row.append(nm, meta, sp, dl, rs);
+          bkHost.appendChild(row);
+        }
+      } catch (e) { bkHost.innerHTML = '<div class="nx">backups failed: ' + e.message + '</div>'; }
+    };
+    if ($('bkCreate')) {
+      $('bkCreate').onclick = async () => {
+        $('bkNote').textContent = 'writing the archive…';
+        try {
+          const r = await api('/api/backup', { method: 'POST' });
+          $('bkNote').textContent = `${r.name} · ${Math.max(1, Math.round(r.manifest.bytes / 1024))} KB · ${r.manifest.files} file(s)`;
+          renderBackups();
+        } catch (e) { $('bkNote').textContent = 'backup failed: ' + e.message; }
+      };
+    }
+    renderBackups();
+
+    // --- service card
+    if ($('svcInfo')) {
+      try {
+        const d = await api('/api/service');
+        const steps = (d.plan && d.plan.steps) || [];
+        $('svcInfo').textContent = [
+          `${d.platform} · ${d.installed ? 'installed' : 'not installed'}`,
+          d.file,
+          steps.length ? 'after install: ' + steps.join(' ; ') : '',
+        ].filter(Boolean).join(' · ');
+        $('svcCmd').textContent = d.installCommand || 'termcrab service install';
+      } catch (e) { $('svcInfo').textContent = 'service status failed: ' + e.message; }
+    }
+    if ($('svcCopy')) {
+      $('svcCopy').onclick = async () => {
+        try { await navigator.clipboard.writeText($('svcCmd').textContent); $('svcCopy').textContent = 'Copied'; }
+        catch { $('svcCopy').textContent = 'Select and copy'; }
+      };
+    }
+  }
+
+  // 50.4 — transcribe an uploaded audio file, offline.
+  if ($('trGo')) {
+    $('trGo').onclick = async () => {
+      const inp = $('trFile');
+      const file = inp && inp.files && inp.files[0];
+      if (!file) { $('trOut').textContent = 'pick an audio file first'; return; }
+      $('trOut').textContent = `transcribing ${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)…`;
+      try {
+        const ext = (file.name.split('.').pop() || 'ogg').toLowerCase();
+        const buf = await file.arrayBuffer();
+        const r = await api('/api/transcribe?ext=' + encodeURIComponent(ext), {
+          method: 'POST',
+          headers: { 'content-type': file.type || 'application/octet-stream' },
+          body: buf,
+        });
+        $('trOut').textContent = r.text || '(nothing recognized)';
+      } catch (e) { $('trOut').textContent = e.message; }
+    };
+  }
+
     const secList = $('secretsList');
     if (secList) {
       const secrets = [
@@ -7735,7 +7938,7 @@
     if (name === 'tools') refreshTools();
     if (name === 'board') refreshBoard();
     if (name === 'work') refreshWork();
-    if (name === 'settings') { refreshSettings(); refreshAgents(); }
+    if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); }
     if (name === 'logs') { refreshLogs(); startLogAuto(); } else { stopLogAuto(); }
     if (name === 'debug') { refreshDebug(); if ($('debugAuto')?.checked) { clearInterval(debugTimer); debugTimer = setInterval(refreshDebug, 3000); } } else { clearInterval(debugTimer); debugTimer = null; }
     if (name === 'providers') showProvidersRoot();

@@ -1,16 +1,16 @@
 {
   "measuredAt": "2026-10-04",
-  "fingerprint": "d7cc05b2138a3e8b",
+  "fingerprint": "47e70cd80b029a28",
   "floor": 80,
-  "tests": 1067,
-  "pass": 1062,
+  "tests": 1071,
+  "pass": 1066,
   "fail": 0,
   "skipped": 5,
-  "testFiles": 107,
+  "testFiles": 108,
   "source": {
-    "lines": 87.4,
-    "branches": 77.41,
-    "functions": 87.06
+    "lines": 87.41,
+    "branches": 77.44,
+    "functions": 87.07
   },
   "all": {
     "lines": 0,
