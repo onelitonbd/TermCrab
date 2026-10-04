@@ -1,5 +1,5 @@
 {
- "measured": "2026-10-04T04:04:20.443Z",
+ "measured": "2026-10-04T04:21:53.231Z",
  "tally": {
   "WORKING": 117,
   "BETTER": 14,
@@ -10,7 +10,7 @@
  "coverage": 100,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 14,
+ "effortLeft": 13,
  "areas": [
   "agent",
   "automation",
@@ -530,7 +530,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:482"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:483"
    }
   },
   {
@@ -843,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3062"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3070"
    }
   },
   {
@@ -1001,7 +1001,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3000"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3008"
    }
   },
   {
@@ -1503,18 +1503,18 @@
    "capability": "Telegram",
    "openclaw": "grammY bot + groups + topics",
    "verdict": "WORKING",
-   "evidence": "src/channels/telegram.ts long-poll, allowlist, chunking, outbox",
+   "evidence": "src/channels/telegram.ts long-poll over src/channels/api.ts (getMe/getUpdates/sendMessage/sendChatAction/getFile/downloadFile, zero dependencies - global fetch), allowlist (an empty one keeps the channel OFF), chunking, typing indicator, outbox retry, group mention policy with ambient room history, per-user/per-chat scoping, timeouts and abort. Two levels of proof: test/telegram.test.ts (18 cases) + test/tier3h.test.ts drive the client against a real local HTTP stub, and `npm run smoke:telegram` (36.2) drives the same client against the real Bot API in one command - sendMessage, then read the owner reply back - printing `skipped` and exiting 0 with no token, never printing the token itself (errors included); TCRAB_TELEGRAM_API points it at a self-hosted Bot API server. Not implemented: topics/forum threading and grammY (we use the raw Bot API on purpose: grammY would be a runtime dependency on a phone)",
    "probe": {
     "pattern": {},
     "expect": "present"
    },
-   "effort": 1,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:34, src/channels/matrix.ts:34, src/channels/telegram.ts:37"
+    "detail": "4 match(es): src/channels/api.ts:43, src/channels/matrix.ts:34, src/channels/telegram.ts:37"
    }
   },
   {
@@ -1723,7 +1723,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:46, src/channels/telegram.ts:38"
+    "detail": "4 match(es): src/channels/api.ts:55, src/channels/telegram.ts:38"
    }
   },
   {
@@ -1742,7 +1742,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "10 match(es): src/agent/toolbox.ts:21, src/channels/api.ts:68, src/channels/conversations.ts:92"
+    "detail": "10 match(es): src/agent/toolbox.ts:21, src/channels/api.ts:77, src/channels/conversations.ts:92"
    }
   },
   {
@@ -2198,7 +2198,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:620"
+    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:621"
    }
   },
   {

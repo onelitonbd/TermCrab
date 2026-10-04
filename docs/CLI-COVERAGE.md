@@ -46,16 +46,16 @@ actually runs it through the built binary. The number below is a recording, not 
 | `termcrab sessions` | line 2310 | 13 |
 | `termcrab subagents` | line 2515 | 3 |
 | `termcrab agents` | line 2576 | 6 |
-| `termcrab docs` | line 2659 | 6 |
-| `termcrab security` | line 2688 | 4 |
-| `termcrab board` | line 2711 | 2 |
-| `termcrab rooms` | line 2726 | 4 |
-| `termcrab browser` | line 2806 | 5 |
-| `termcrab transcribe` | line 2873 | 1 |
-| `termcrab embeddings` | line 2907 | 6 |
-| `termcrab context` | line 2967 | 1 |
-| `termcrab memory` | line 2987 | 6 |
-| `termcrab config` | line 3123 | 5 |
+| `termcrab docs` | line 2659 | 8 |
+| `termcrab security` | line 2696 | 4 |
+| `termcrab board` | line 2719 | 2 |
+| `termcrab rooms` | line 2734 | 4 |
+| `termcrab browser` | line 2814 | 5 |
+| `termcrab transcribe` | line 2881 | 1 |
+| `termcrab embeddings` | line 2915 | 6 |
+| `termcrab context` | line 2975 | 1 |
+| `termcrab memory` | line 2995 | 6 |
+| `termcrab config` | line 3131 | 5 |
 
 ## Not run by the suite — and what covers it instead
 

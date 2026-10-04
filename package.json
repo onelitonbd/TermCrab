@@ -1,6 +1,6 @@
 {
   "name": "termcrab",
-  "version": "0.69.0",
+  "version": "0.70.0",
   "description": "TermCrab - the always-on AI agent that lives in your Termux. Gateway, channels, skills, memory. Zero native dependencies.",
   "type": "module",
   "license": "MIT",
@@ -46,7 +46,8 @@
     "ci:install": "node scripts/install-ci.mjs",
     "test:coverage": "node scripts/coverage.mjs --run",
     "test:cli": "node scripts/cli-coverage.mjs --run",
-    "check:measure": "node scripts/coverage.mjs --check && node scripts/cli-coverage.mjs --check"
+    "check:measure": "node scripts/coverage.mjs --check && node scripts/cli-coverage.mjs --check",
+    "smoke:telegram": "node scripts/smoke-telegram.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

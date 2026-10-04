@@ -152,7 +152,9 @@ test('35.1/35.2/35.3 the tail is named, not promised', { concurrency: false }, a
     const newest = tags[tags.length - 1]!;
     const changelog = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
     assert.match(changelog, new RegExp(`^## ${newest.slice(1)} `, 'm'), `${newest} describes that release`);
-    assert.match(worklog, /\| 35\.1 \|[^|]*\| ✔ done/, 'and the worklog says the tag/release step closed');
+    // Batch 35 has moved from §2 (the current batch) into §4 (done) by now, so
+    // the invariant is that the tracker still names the published tag.
+    assert.match(worklog, new RegExp(`v${newest.slice(1)}`), 'and the tracker names the published tag');
   });
 
   await t.test('35.2 is one owner command, quoted exactly, and still PARTIAL', () => {

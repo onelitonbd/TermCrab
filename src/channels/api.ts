@@ -1,12 +1,21 @@
 /** Minimal Telegram Bot API client on global fetch - zero dependencies. */
 
 export class TelegramApi {
-  constructor(private readonly token: string) {
+  /**
+   * `baseUrl` exists for two reasons: a self-hosted Bot API server, and the
+   * smoke test (36.2), which points the *real* client at a local stub so the
+   * request shapes can be asserted without a network. It defaults to
+   * `TCRAB_TELEGRAM_API` and then to Telegram itself.
+   */
+  constructor(
+    private readonly token: string,
+    private readonly baseUrl: string = process.env.TCRAB_TELEGRAM_API || 'https://api.telegram.org',
+  ) {
     if (!token) throw new Error('telegram token missing');
   }
 
   private url(method: string): string {
-    return `https://api.telegram.org/bot${this.token}/${method}`;
+    return `${this.baseUrl.replace(/\/+$/, '')}/bot${this.token}/${method}`;
   }
 
   private async call<T>(method: string, payload: Record<string, unknown>, timeoutMs = 60_000): Promise<T> {
@@ -54,7 +63,7 @@ export class TelegramApi {
 
   /** The bytes themselves — a different host, so not `call()`. */
   async downloadFile(filePath: string, maxBytes = 20 * 1024 * 1024): Promise<Buffer> {
-    const url = `https://api.telegram.org/file/bot${this.token}/${filePath}`;
+    const url = `${this.baseUrl.replace(/\/+$/, '')}/file/bot${this.token}/${filePath}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`telegram download failed: ${res.status}`);
     const declared = Number(res.headers.get('content-length') ?? 0);

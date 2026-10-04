@@ -167,6 +167,29 @@ case this was built for. Per-room routing rules (which of several agents answers
 in which room) stay out of scope: the three surfaces are Telegram, the panel and
 the terminal, and `agents.routes.telegram` already decides the agent.
 
+## Proving it live, not just in the suite (36.2)
+
+Every Telegram test in this repository talks to a **fake** Bot API — a local HTTP server that answers
+the shapes we expect. That is the right way to test a protocol and it is not proof that a real bot
+answers a real phone. `npm run smoke:telegram` is the missing half, and it is deliberately the
+smallest thing that can pass:
+
+```bash
+TCRAB_TELEGRAM_TOKEN=123:ABC TCRAB_TELEGRAM_CHAT=456 npm run smoke:telegram   # --wait 30 by default
+```
+
+It drives `src/channels/api.ts` — the same client the channel uses — through three real calls:
+`getMe` (is this token a bot?), `sendMessage` (does it arrive?) and a bounded `getUpdates` loop that
+reads **your reply** back and prints it. With no token it prints `skipped` and exits **0**, because a
+phone with no bot is not a failure; with a token it never prints the token (not even inside an error
+message, which is where leaks usually happen), and a rejected token exits 1 with the API's own
+sentence. With no chat id yet it prints the ids it can see in the update queue, which is how you find
+your own number the first time.
+
+`TCRAB_TELEGRAM_API` points the client at a self-hosted Bot API server — and at the stub the test
+suite uses, which is how the script's own behaviour (the redaction, the exit codes, the read-back) is
+pinned without a network.
+
 ## Config worth knowing
 
 ```bash

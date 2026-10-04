@@ -2658,7 +2658,9 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
 
     case 'docs': {
       // 34.8: the docs as one offline HTML file, built from docs/ + the panel's renderer.
-      const sub = rest.filter((r) => r !== '--json')[0] ?? 'build';
+      // Every flag is stripped, not just --json: `docs --keep` must mean
+      // "build and keep a copy", not "unknown subcommand --keep".
+      const sub = rest.filter((r) => !r.startsWith('-'))[0] ?? 'build';
       if (sub === 'path') {
         const file = docsSitePath();
         if (machine) {
@@ -2669,18 +2671,24 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         return;
       }
       if (sub === 'build' || sub === 'rebuild') {
-        const r = ensureDocsSite({ force: sub === 'rebuild' });
+        // `--keep` also writes docs-site-<release>.html, so the docs as of a
+        // release stay readable after the next one changes them (36.3).
+        const keep = rest.includes('--keep');
+        const r = ensureDocsSite({ force: sub === 'rebuild' || keep, keep });
         if (machine) {
           emitJson('docs', r);
           return;
         }
         console.log(
           `📖 ${r.rebuilt ? 'built' : 'up to date'} — ${r.docs} docs, ${r.sections} sections, ` +
-            `${Math.round(r.bytes / 1024)} KB\n   ${r.file}\n   open it with any browser, or: termcrab gateway → /docs`,
+            `${Math.round(r.bytes / 1024)} KB · release ${r.release || 'unknown'}\n   ${r.file}\n   open it with any browser, or: termcrab gateway → /docs`,
         );
+        if (r.kept?.length) {
+          console.log(`   kept for this release: ${r.kept.map((f) => path.basename(f)).join(', ')}`);
+        }
         return;
       }
-      console.error('usage: termcrab docs [build | rebuild | path] [--json]');
+      console.error('usage: termcrab docs [build | rebuild | path] [--keep] [--json]');
       process.exitCode = 1;
       return;
     }

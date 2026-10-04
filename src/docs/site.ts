@@ -48,6 +48,8 @@ export interface SiteOptions {
   maxBytes?: number;
   now?: number;
   title?: string;
+  /** The release this page describes (defaults to package.json's version). */
+  release?: string;
 }
 
 export interface BuiltSite {
@@ -60,6 +62,18 @@ export interface BuiltSite {
   bytes: number;
   rendererBytes: number;
   builtAt: number;
+  /** The release the page says it describes. */
+  release: string;
+}
+
+/** The version in package.json, or `unknown` when there is not one to read. */
+function releaseOf(root: string): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { version?: string };
+    return pkg.version ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 /** Slice the markdown renderer out of the panel HTML — the one implementation. */
@@ -398,13 +412,17 @@ export function buildDocsSite(opts: SiteOptions = {}): BuiltSite {
   const { docs, skipped } = collectDocs(opts);
   const index = buildIndex(docs);
   const title = opts.title ?? 'TermCrab docs — offline';
+  const builtAt = opts.now ?? Date.now();
+  const release = opts.release ?? releaseOf(root);
+  const totalSections = docs.reduce((a, d) => a + d.sections, 0);
   const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="docs-count" content="${docs.length}">
 <meta name="docs-sections" content="${docs.reduce((a, d) => a + d.sections, 0)}">
-<meta name="built-at" content="${opts.now ?? Date.now()}">
+<meta name="built-at" content="${builtAt}">
+<meta name="release" content="${release}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
 <style>${CSS}</style>
@@ -416,6 +434,7 @@ export function buildDocsSite(opts: SiteOptions = {}): BuiltSite {
   <input id="q" type="search" placeholder="Search ${docs.length} docs…" autocomplete="off">
   <span id="count">${docs.length} docs</span>
 </header>
+<p id="stamp"><span id="stampVersion">${release}</span> · built ${new Date(builtAt).toISOString().slice(0, 16).replace('T', ' ')} UTC · ${docs.length} docs, ${totalSections} sections</p>
 <main>
   <nav></nav>
   <div id="doc">Loading…</div>
@@ -433,11 +452,12 @@ ${embedInto(SITE_JS, { DOCS: docs, INDEX: index, SKIPPED: skipped })}
   return {
     html,
     docs,
-    sections: docs.reduce((a, d) => a + d.sections, 0),
+    sections: totalSections,
     skipped,
     bytes,
     rendererBytes: Buffer.byteLength(renderer, 'utf8'),
-    builtAt: opts.now ?? Date.now(),
+    builtAt,
+    release,
   };
 }
 
@@ -454,13 +474,28 @@ export interface EnsureResult {
   builtAt: number;
   /** True when this call regenerated the file. */
   rebuilt: boolean;
+  /** The release the page describes. */
+  release: string;
+  /** Per-release copies kept on disk (`--keep`), newest first. */
+  kept?: string[];
+}
+
+/**
+ * Where a kept copy for a release lives: `docs-site-0.69.0.html`, next to the
+ * live page. The point is to be able to answer *"what did the docs say at
+ * 0.68?"* months later, on a phone, with no network — a question the single
+ * always-current file cannot answer.
+ */
+export function keptDocsSitePath(release: string): string {
+  const safe = release.replace(/[^A-Za-z0-9._-]/g, '_');
+  return path.join(path.dirname(docsSitePath()), `docs-site-${safe}.html`);
 }
 
 /**
  * Build the page into the home, or reuse it when it is newer than every source
  * (the panel serves this; a stale page is the only failure mode worth avoiding).
  */
-export function ensureDocsSite(opts: SiteOptions & { force?: boolean; out?: string } = {}): EnsureResult {
+export function ensureDocsSite(opts: SiteOptions & { force?: boolean; out?: string; keep?: boolean } = {}): EnsureResult {
   ensureLayout();
   const root = opts.root ?? PACKAGE_ROOT;
   const file = opts.out ?? docsSitePath();
@@ -485,7 +520,8 @@ export function ensureDocsSite(opts: SiteOptions & { force?: boolean; out?: stri
       const docs = Number(/name="docs-count" content="(\d+)"/.exec(head)?.[1] ?? 0);
       const sections = Number(/name="docs-sections" content="(\d+)"/.exec(head)?.[1] ?? 0);
       const builtAt = Number(/name="built-at" content="(\d+)"/.exec(head)?.[1] ?? 0);
-      return { file, bytes: st.size, docs, sections, builtAt, rebuilt: false };
+      const release = /name="release" content="([^"]*)"/.exec(head)?.[1] ?? '';
+      return { file, bytes: st.size, docs, sections, builtAt, rebuilt: false, release };
     }
   } catch {
     /* build it */
@@ -493,12 +529,66 @@ export function ensureDocsSite(opts: SiteOptions & { force?: boolean; out?: stri
   const built = buildDocsSite(opts);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, built.html, 'utf8');
-  return {
+  const result: EnsureResult = {
     file,
     bytes: built.bytes,
     docs: built.docs.length,
     sections: built.sections,
     builtAt: built.builtAt,
     rebuilt: true,
+    release: built.release,
   };
+  if (opts.keep && !opts.out) {
+    result.kept = keepReleaseCopy(built);
+  }
+  return result;
+}
+
+/** Maximum per-release copies kept; the oldest goes first, like the logs. */
+export const KEEP_COPIES = 5;
+
+/**
+ * Write `docs-site-<release>.html` and return the copies that survive, newest
+ * first. Pruning is by count and by release order, not by a timer: the last few
+ * releases are the ones anybody asks about, and a phone should not collect a
+ * megabyte per release for a year.
+ */
+export function keepReleaseCopy(built: BuiltSite): string[] {
+  const dir = path.dirname(docsSitePath());
+  const target = keptDocsSitePath(built.release);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(target, built.html, 'utf8');
+  const copies = fs
+    .readdirSync(dir)
+    .filter((f) => /^docs-site-.*\.html$/.test(f))
+    .map((f) => path.join(dir, f))
+    .sort((a, b) => compareReleaseTags(b, a))
+    .slice(0, KEEP_COPIES);
+  for (const keep of copies) if (!fs.existsSync(keep)) fs.writeFileSync(keep, '', 'utf8');
+  const keepSet = new Set(copies);
+  for (const f of fs.readdirSync(dir)) {
+    if (!/^docs-site-.*\.html$/.test(f)) continue;
+    const full = path.join(dir, f);
+    if (!keepSet.has(full)) {
+      try {
+        fs.rmSync(full);
+      } catch {
+        /* a copy we cannot remove is not a reason to fail the build */
+      }
+    }
+  }
+  return copies;
+}
+
+/** Compare two `docs-site-<version>.html` names the way versions compare. */
+function compareReleaseTags(a: string, b: string): number {
+  const num = (f: string): number[] =>
+    (f.match(/docs-site-(\d+(?:\.\d+)*)/)?.[1] ?? '0').split('.').map((n) => Number(n) || 0);
+  const av = num(a);
+  const bv = num(b);
+  for (let i = 0; i < Math.max(av.length, bv.length); i++) {
+    const d = (av[i] ?? 0) - (bv[i] ?? 0);
+    if (d) return d;
+  }
+  return a.localeCompare(b);
 }

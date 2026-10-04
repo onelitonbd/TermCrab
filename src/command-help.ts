@@ -356,11 +356,12 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'docs',
-    usage: 'docs [build | rebuild | path] [--json]',
+    usage: 'docs [build | rebuild | path] [--keep] [--json]',
     summary: 'every doc as one offline HTML page — searchable, zero-dependency, rendered by the panel\'s own markdown renderer',
     flags: [
       'build          build it if it is stale (the default), reusing the file otherwise',
       'rebuild        build it again even if it looks fresh',
+      '--keep         also write docs-site-<release>.html and keep the last 5 releases',
       'path           just print where the file is',
       '--json         {file, bytes, docs, sections, builtAt, rebuilt}',
     ],

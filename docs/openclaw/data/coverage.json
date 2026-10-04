@@ -1,16 +1,16 @@
 {
   "measuredAt": "2026-10-04",
-  "fingerprint": "eb856225b988e968",
+  "fingerprint": "01d04886fe92e71b",
   "floor": 80,
-  "tests": 985,
-  "pass": 980,
+  "tests": 999,
+  "pass": 994,
   "fail": 0,
   "skipped": 5,
-  "testFiles": 95,
+  "testFiles": 96,
   "source": {
-    "lines": 86.91,
-    "branches": 77.4,
-    "functions": 86.88
+    "lines": 86.98,
+    "branches": 77.5,
+    "functions": 87.01
   },
   "all": {
     "lines": 0,
@@ -84,16 +84,9 @@
     {
       "dir": "channels",
       "file": "cli.js",
-      "lines": 57.93,
-      "branches": 22.46,
-      "functions": 63.75
-    },
-    {
-      "dir": "channels",
-      "file": "api.js",
-      "lines": 58.11,
-      "branches": 80,
-      "functions": 41.67
+      "lines": 58.03,
+      "branches": 22.67,
+      "functions": 64.2
     },
     {
       "dir": "core",
@@ -101,6 +94,13 @@
       "lines": 58.59,
       "branches": 52.27,
       "functions": 100
+    },
+    {
+      "dir": "mobile",
+      "file": "onboard.js",
+      "lines": 61.44,
+      "branches": 34.29,
+      "functions": 45.45
     }
   ],
   "best": [

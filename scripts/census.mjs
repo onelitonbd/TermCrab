@@ -337,7 +337,8 @@ check('plugins', 'Plugin manifest + permissions', 'manifest, allowlists, install
 
 // --------------------------------------------------------------- 8. channels
 check('channels', 'Telegram', 'grammY bot + groups + topics', 'WORKING',
-  'src/channels/telegram.ts long-poll, allowlist, chunking, outbox', { pattern: /getUpdates|sendMessage/, expect: 'present' }, 1);
+  'src/channels/telegram.ts long-poll over src/channels/api.ts (getMe/getUpdates/sendMessage/sendChatAction/getFile/downloadFile, zero dependencies - global fetch), allowlist (an empty one keeps the channel OFF), chunking, typing indicator, outbox retry, group mention policy with ambient room history, per-user/per-chat scoping, timeouts and abort. Two levels of proof: test/telegram.test.ts (18 cases) + test/tier3h.test.ts drive the client against a real local HTTP stub, and `npm run smoke:telegram` (36.2) drives the same client against the real Bot API in one command - sendMessage, then read the owner reply back - printing `skipped` and exiting 0 with no token, never printing the token itself (errors included); TCRAB_TELEGRAM_API points it at a self-hosted Bot API server. Not implemented: topics/forum threading and grammY (we use the raw Bot API on purpose: grammY would be a runtime dependency on a phone)',
+  { pattern: /getUpdates|sendMessage/, expect: 'present' }, 0);
 check('channels', 'WhatsApp', 'Baileys QR pairing', 'PARTIAL',
   'src/channels/whatsapp.ts optional Baileys (npm install baileys)', { pattern: /baileys/i, expect: 'present' }, 3, { lane: 'later', scope: 'out', why: 'user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it' });
 check('channels', 'Discord', 'official plugin', 'WORKING',

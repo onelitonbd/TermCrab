@@ -11,7 +11,7 @@
 
 <!-- BEGIN SUMMARY-BN -->
 - **এখনকার স্কোর: ১০০%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১১ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~11d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~10d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~14d | in-scope only |
+| **total** | 132 | ~13d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -129,7 +129,7 @@ Out of scope, and why:
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Telegram | grammY bot + groups + topics | ✅ WORKING | src/channels/telegram.ts long-poll, allowlist, chunking, outbox | parity | 1 |
+| Telegram | grammY bot + groups + topics | ✅ WORKING | src/channels/telegram.ts long-poll over src/channels/api.ts (getMe/getUpdates/sendMessage/sendChatAction/getFile/downloadFile, zero dependencies - global fetch), allowlist (an empty one keeps the channel OFF), chunking, typing indicator, outbox retry, group mention policy with ambient room history, per-user/per-chat scoping, timeouts and abort. Two levels of proof: test/telegram.test.ts (18 cases) + test/tier3h.test.ts drive the client against a real local HTTP stub, and `npm run smoke:telegram` (36.2) drives the same client against the real Bot API in one command - sendMessage, then read the owner reply back - printing `skipped` and exiting 0 with no token, never printing the token itself (errors included); TCRAB_TELEGRAM_API points it at a self-hosted Bot API server. Not implemented: topics/forum threading and grammY (we use the raw Bot API on purpose: grammY would be a runtime dependency on a phone) | parity | — |
 | WhatsApp | Baileys QR pairing | 🚫 OUT OF SCOPE | src/channels/whatsapp.ts optional Baileys (npm install baileys) — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | parity | — |
 | Discord | official plugin | 🚫 OUT OF SCOPE | src/channels/discord.ts routes through the same agent handler as Telegram (allowlist, bot-ignore, reply) and queues a failed send in the outbox; discord.js stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
 | Slack | official plugin | 🚫 OUT OF SCOPE | src/channels/slack.ts replies through say() with the agent answer, skips subtypes/bots and other channels, and queues failures; @slack/bolt stays optional and injectable. test/adapters.test.ts 13.5 — **user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it** | later | — |
