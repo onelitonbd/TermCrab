@@ -284,7 +284,7 @@ export const COMMANDS: CommandDoc[] = [
       '--full  also measure the slow halves: npm install, and a first-run compile',
       '--json  the snapshot that was written to state/perf.json',
     ],
-    json: '{at, source, bench, machine, metrics, ceilings, over, skipped, file}',
+    json: '{at, source, bench, machine, metrics, ceilings, over, skipped, file, historyFile, runs, trend}',
   },
   {
     cmd: 'disk',

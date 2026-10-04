@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T06:21:08.765Z",
+ "measured": "2026-10-04T07:21:24.367Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 23,
+  "BETTER": 28,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 141,
+ "inScope": 146,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -843,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3138"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3148"
    }
   },
   {
@@ -1001,7 +1001,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3076"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3086"
+   }
+  },
+  {
+   "area": "context",
+   "capability": "Memory search has a budget (39.2)",
+   "openclaw": "a vector store with no timing story",
+   "verdict": "BETTER",
+   "evidence": "The index is a JSONL file scanned in memory: filter to the rows this model can compare, cosine each, sort, take k. searchMs measures one search over 10 000 vectors (about a year on a phone) with a 200 ms ceiling, with a deterministic local embedder so the number is our scan and not an API. Measured: ~7 ms. The ceiling is the alarm for a search that quietly became quadratic or an index that started hitting the disk per query. docs/PERFORMANCE.md states what it does not claim (not a remote embedder latency, not a phone number). Pinned by test/tier3j.test.ts 39.2",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "searchMs",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): src/core/perf.ts:74"
    }
   },
   {
@@ -2105,6 +2125,46 @@
   },
   {
    "area": "surfaces",
+   "capability": "The docs page has a budget (39.3)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "The offline docs page is 60 documents rendered into one HTML file by the panel own markdown renderer, and it now has two ceilings: docsMs 1 500 (a rebuild — `termcrab docs rebuild` or the panel rebuild button — measured at ~49 ms) and docsKb 4 000 (the file a phone has to hold, measured at 2 754 KB). docs/PERFORMANCE.md points at what keeps it small (docs/openclaw/data is excluded: 47 MB of raw crawl) and the README table carries both rows. Pinned by test/tier3j.test.ts 39.3 (the ceilings, a real build, the bench, the doc, the CLI table)",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "docsKb",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): src/core/perf.ts:69"
+   }
+  },
+  {
+   "area": "channels",
+   "capability": "The Telegram loop has a budget (39.4)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "Three numbers only a person using the device feels, measured in a throwaway TCRAB_HOME and against a local Bot API stub: roomWriteMs (~180 ms, 200 group messages into one room at its cap — every append pays the read-and-trim that keeps the log bounded to 200 messages / 64 KB), outboxDrainMs (~257 ms, 200 owed messages queued, claimed, acked and swept — a phone that was offline has to flush without a stall) and telegramPollMs (~63 ms, 50 poll cycles of 50 updates through the real TelegramApi). Ceilings 1500/1500/2000 ms. Pinned by test/tier3j.test.ts 39.4 (the ceilings, the room bound, the real outbox drain, the bench, the CLI table)",
+   "probe": {
+    "file": "src/mobile/outbox.ts",
+    "pattern": "export function outboxSweep",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/mobile/outbox.ts:161"
+   }
+  },
+  {
+   "area": "surfaces",
    "capability": "The budget on the panel (38.2)",
    "openclaw": "n/a",
    "verdict": "BETTER",
@@ -3003,7 +3063,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/perf.ts:83"
+    "detail": "1 match(es): src/core/perf.ts:123"
    }
   },
   {
@@ -3044,6 +3104,46 @@
    "probeResult": {
     "state": "ok",
     "detail": "2 match(es): docs/OWNER.md:15"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The budget has a history (39.1)",
+   "openclaw": "a single number, no memory",
+   "verdict": "BETTER",
+   "evidence": "Every `termcrab perf` run appends one line to state/perf-history.jsonl (newest 60, oldest dropped). With two or more runs the command prints the movement and the panel shows it: `coldStartMs ↑ 46% over 4 run(s) (100 ms → 146 ms)`. `↑` means slower or bigger, which for every metric here is worse; a move under 3% reads as flat so jitter is not mistaken for a regression. GET /api/perf carries runs, trend and lastOverAt. TCRAB_PERF_HISTORY points the series elsewhere; a torn line is not a run. Pinned by test/tier3j.test.ts 39.1 (append + bound + torn line, the trend semantics, three real CLI runs, the env override, a real gateway)",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "export function perfTrend",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/perf.ts:270"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "Cold checkout timed from nothing (39.5)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "The bench measures the first contact a new person pays, with no shortcuts: a copy of the tree with no dist/ and no node_modules, an isolated npm cache (so it cannot freeload), `npm install` and `./termcrab version` which compiles. Measured here: install 735 ms, end to end 6.35 s. Ceilings: coldInstallMs 60 000, coldCheckoutMs 90 000 — the install half is network (mobile data), the compile half is CPU (the phone), and the --first-run flag is what measures them. Pinned by test/tier3j.test.ts 39.5, which runs the real cold path (empty cache, real npm, the launcher) and asserts both numbers and both ceilings",
+   "probe": {
+    "file": "scripts/bench.mjs",
+    "pattern": "measureColdCheckout",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): scripts/bench.mjs:402"
    }
   },
   {

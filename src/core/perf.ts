@@ -22,7 +22,7 @@ import { humanAgeMs } from './format.js';
 export interface PerfCeiling {
   max: number;
   why: string;
-  unit: 'ms' | 'MB';
+  unit: 'ms' | 'MB' | 'KB';
 }
 
 /**
@@ -36,12 +36,52 @@ export const PERF_CEILINGS: Record<string, PerfCeiling> = {
   idleRssMb: { max: 130, unit: 'MB', why: 'a 2 GB phone kills hogs' },
   restartMs: { max: 2_500, unit: 'ms', why: 'a restart has to be invisible' },
   turnMs: { max: 5_000, unit: 'ms', why: 'the whole message-to-answer loop, offline' },
+  coldInstallMs: {
+    max: 60_000,
+    unit: 'ms',
+    why: 'npm install on a checkout with an empty cache: three dev packages, no runtime dependencies — the whole point of having none is that this stays short even on mobile data',
+  },
+  coldCheckoutMs: {
+    max: 90_000,
+    unit: 'ms',
+    why: 'the complete first contact: .git clone to a tree, npm install, ./termcrab answers. Measured with an isolated npm cache, so it cannot freeload on this machine',
+  },
+  roomWriteMs: {
+    max: 1_500,
+    unit: 'ms',
+    why: '200 group messages recorded into one room at its cap (every append re-reads and trims a 64 KB file) — a chatty group must not make the phone hot',
+  },
+  outboxDrainMs: {
+    max: 1_500,
+    unit: 'ms',
+    why: 'queueing, claiming and acknowledging 200 owed messages — a phone that was offline has to flush a queue without a stall',
+  },
+  telegramPollMs: {
+    max: 2_000,
+    unit: 'ms',
+    why: '50 poll cycles of 50 updates each through the real client against a local stub, offsets and all — the plumbing between Telegram and our handlers',
+  },
+  docsMs: {
+    max: 1_500,
+    unit: 'ms',
+    why: 'building the offline docs page (60 docs, ~2.7 MB of markdown into one HTML file) — the panel serves it, and a rebuild must stay a blink',
+  },
+  docsKb: {
+    max: 4_000,
+    unit: 'KB',
+    why: 'the built page on a phone: every doc in one file, and 4 MB is the line past which a phone tab gets unhappy',
+  },
+  searchMs: {
+    max: 200,
+    unit: 'ms',
+    why: 'one memory search over 10 000 vectors (a year on a phone): filter + cosine + sort must stay a scan, not a stop',
+  },
   firstRunMs: { max: 30_000, unit: 'ms', why: 'the one wait a new user pays' },
   rebuildMs: { max: 8_000, unit: 'ms', why: 'pull, then run, must not be a rebuild' },
 };
 
 /** What the fast half measures; the rest needs npm and a 5 s compile. */
-export const FAST_METRICS = ['coldStartMs', 'idleRssMb', 'restartMs', 'turnMs'];
+export const FAST_METRICS = ['coldStartMs', 'idleRssMb', 'restartMs', 'turnMs', 'searchMs', 'docsMs', 'docsKb', 'roomWriteMs', 'outboxDrainMs', 'telegramPollMs'];
 
 export interface PerfSnapshot {
   /** When the measurement finished, ISO-8601 UTC. */
@@ -53,7 +93,7 @@ export interface PerfSnapshot {
   /** measured values, keyed like the ceilings */
   metrics: Record<string, number>;
   /** the ceilings that applied, so an old snapshot explains itself */
-  ceilings: Record<string, { max: number; unit: 'ms' | 'MB' }>;
+  ceilings: Record<string, { max: number; unit: 'ms' | 'MB' | 'KB' }>;
   /** names of the metrics over their ceiling (empty = inside the budget) */
   over: string[];
   /** which of them the fast run did not measure */
@@ -151,6 +191,107 @@ export function readPerfSnapshot(file = perfPath()): PerfSnapshot | null {
   }
 }
 
+/**
+ * 39.1 — a history, not just a snapshot.
+ *
+ * One snapshot answers "how fast is it right now?". It cannot answer the
+ * question a phone actually provokes: *is it getting slower?* So every
+ * measurement appends one compact line to `state/perf-history.jsonl` (bounded —
+ * the newest `HISTORY_LIMIT` runs), and `perfTrend()` compares the newest run
+ * against the oldest in the window, oldest-first so a reader can see the shape.
+ */
+export const HISTORY_LIMIT = 60;
+
+export interface PerfHistoryRun {
+  at: string;
+  metrics: Record<string, number>;
+  over: string[];
+}
+
+export function perfHistoryPath(): string {
+  return process.env.TCRAB_PERF_HISTORY || path.join(stateDir(), 'perf-history.jsonl');
+}
+
+/** Append one run and keep only the newest `HISTORY_LIMIT` lines. */
+export function appendPerfHistory(snapshot: PerfSnapshot, file = perfHistoryPath()): string {
+  const run: PerfHistoryRun = { at: snapshot.at, metrics: snapshot.metrics, over: snapshot.over };
+  const runs = [run, ...readPerfHistory(Number.MAX_SAFE_INTEGER, file)].slice(0, HISTORY_LIMIT);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${runs.reverse().map((r) => JSON.stringify(r)).join('\n')}\n`, 'utf8');
+  return file;
+}
+
+/** The recorded runs, newest first; a torn line is dropped like every other reader here. */
+export function readPerfHistory(limit = HISTORY_LIMIT, file = perfHistoryPath()): PerfHistoryRun[] {
+  let raw = '';
+  try {
+    raw = fs.readFileSync(file, 'utf8');
+  } catch {
+    return [];
+  }
+  const runs: PerfHistoryRun[] = [];
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      const parsed = JSON.parse(line) as PerfHistoryRun;
+      if (parsed && typeof parsed.at === 'string' && parsed.metrics) runs.push(parsed);
+    } catch {
+      /* a half-written line is not a run */
+    }
+  }
+  runs.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return runs.slice(0, Math.max(0, limit));
+}
+
+export interface PerfTrendRow {
+  key: string;
+  /** the oldest value in the window */
+  first: number;
+  /** the newest value */
+  last: number;
+  /** last minus first — positive means slower/bigger, which for every one of our metrics is worse */
+  delta: number;
+  /** delta as a percentage of `first`, rounded */
+  deltaPct: number;
+  direction: 'up' | 'down' | 'flat';
+  samples: number;
+  /** the newest run is over its ceiling */
+  over: boolean;
+}
+
+function directionOf(first: number, last: number): 'up' | 'down' | 'flat' {
+  if (first === 0) return last === 0 ? 'flat' : 'up';
+  const pct = ((last - first) / first) * 100;
+  if (Math.abs(pct) < 3) return 'flat'; // a 3% band: jitter is not a trend
+  return pct > 0 ? 'up' : 'down';
+}
+
+/** Per metric, newest against oldest in the window (chronological, oldest first). */
+export function perfTrend(history: PerfHistoryRun[]): PerfTrendRow[] {
+  const runs = [...history].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  if (runs.length < 2) return [];
+  const first = runs[0]!;
+  const last = runs[runs.length - 1]!;
+  const rows: PerfTrendRow[] = [];
+  for (const key of Object.keys(PERF_CEILINGS)) {
+    const values = runs.map((r) => r.metrics[key]).filter((v): v is number => typeof v === 'number');
+    if (values.length < 2) continue;
+    const from = values[0]!;
+    const to = values[values.length - 1]!;
+    rows.push({
+      key,
+      first: from,
+      last: to,
+      delta: to - from,
+      deltaPct: from === 0 ? (to === 0 ? 0 : 100) : Math.round(((to - from) / from) * 100),
+      direction: directionOf(from, to),
+      samples: values.length,
+      over: to > PERF_CEILINGS[key]!.max,
+    });
+  }
+  return rows;
+}
+
 export interface PerfStatus {
   exists: boolean;
   file: string;
@@ -166,6 +307,12 @@ export interface PerfStatus {
   measured: number;
   total: number;
   machine: PerfSnapshot['machine'] | null;
+  /** how many runs are recorded in the history (0 when there is none) */
+  runs: number;
+  /** per-metric movement across the window, worst-looking first */
+  trend: PerfTrendRow[];
+  /** the newest run that was over its ceiling, if any (the newest is `over` itself) */
+  lastOverAt: string | null;
 }
 
 /**
@@ -189,6 +336,9 @@ export function perfStatus(file = perfPath()): PerfStatus {
       measured: 0,
       total: Object.keys(PERF_CEILINGS).length,
       machine: null,
+      runs: 0,
+      trend: [],
+      lastOverAt: null,
     };
   }
   const ageMs = snapshot.at ? Math.max(0, Date.now() - Date.parse(snapshot.at)) : null;
@@ -199,6 +349,9 @@ export function perfStatus(file = perfPath()): PerfStatus {
     const pct = Math.round((value / ceiling) * 100);
     if (!worst || pct > worst.pct) worst = { key, value, max: ceiling, pct };
   }
+  const history = readPerfHistory();
+  const trend = perfTrend(history).sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+  const lastOver = history.find((r) => (r.over ?? []).length > 0);
   return {
     exists: true,
     file,
@@ -211,13 +364,27 @@ export function perfStatus(file = perfPath()): PerfStatus {
     measured: Object.keys(snapshot.metrics).length,
     total: Object.keys(PERF_CEILINGS).length,
     machine: snapshot.machine ?? null,
+    runs: history.length,
+    trend,
+    lastOverAt: lastOver?.at ?? null,
   };
+}
+
+/** `coldStartMs ↑ 38% over 6 runs` — one line per metric that moved (39.1). */
+export function describeTrend(trend: PerfTrendRow[]): string[] {
+  const arrow = (d: PerfTrendRow['direction']): string => (d === 'up' ? '↑' : d === 'down' ? '↓' : '·');
+  return trend.map((row) => {
+    const move = row.direction === 'flat' ? 'steady' : `${arrow(row.direction)} ${Math.abs(row.deltaPct)}%`;
+    return `${row.key.padEnd(13)} ${move.padEnd(10)} over ${row.samples} run(s) (${formatMetric(row.key, row.first)} → ${formatMetric(row.key, row.last)})`;
+  });
 }
 
 /** `122 ms` / `71 MB` — the unit the ceiling is written in. */
 export function formatMetric(key: string, value: number): string {
   const unit = PERF_CEILINGS[key]?.unit ?? 'ms';
-  return unit === 'MB' ? `${Math.round(value)} MB` : `${Math.round(value)} ms`;
+  if (unit === 'MB') return `${Math.round(value)} MB`;
+  if (unit === 'KB') return `${Math.round(value)} KB`;
+  return `${Math.round(value)} ms`;
 }
 
 /** One line per metric: `coldStartMs 124 ms of 1500 ms  ok`. */

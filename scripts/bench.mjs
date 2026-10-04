@@ -217,6 +217,213 @@ function measureFirstRun() {
   }
 }
 
+/**
+ * 39.2 — one memory search over a real index.
+ *
+ * The index is plain JSONL scanned in memory: filter to the rows this model can
+ * compare, cosine each, sort, take k. That is O(n) on purpose (a phone has no
+ * vector database and does not need one), and this measurement is what keeps it
+ * that way — the ceiling would catch a search that quietly became quadratic, or
+ * an index that started loading from disk on every query.
+ *
+ * The embedder is a deterministic local pseudo-embedder so the number is about
+ * *our* scan and not about somebody's API latency. 10 000 rows is roughly a year
+ * of memory on a phone.
+ */
+export const SEARCH_ROWS = 10_000;
+
+/**
+ * 39.3 — the offline docs page, built for real.
+ *
+ * The page is 60 documents rendered into one HTML file by the panel's own
+ * markdown renderer, and the gateway serves it on demand. Two numbers matter on
+ * a phone: how long a rebuild takes (the panel's rebuild button, `termcrab docs
+ * rebuild`) and how big the file is (a phone tab with 3 MB of inline markdown is
+ * fine; 40 MB is not). Both get ceilings.
+ */
+/**
+ * 39.4 — the loops a person feels: a chatty group, a queue that was owed, and
+ * the poll plumbing itself. All three write into a throwaway TCRAB_HOME, and
+ * the bot calls go to a local stub, so the numbers are about our code.
+ */
+async function measureLoops() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tbench-loops-'));
+  const prevHome = process.env.TCRAB_HOME;
+  process.env.TCRAB_HOME = home;
+  const http = await import('node:http');
+  // A stub Bot API: getUpdates answers 50 updates, anything else a tiny object.
+  let calls = 0;
+  const server = http.createServer((req, res) => {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => {
+      calls += 1;
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+      const body = raw ? JSON.parse(raw) : {};
+      const method = url.pathname.split('/').pop();
+      let result = {};
+      if (method === 'getUpdates') {
+        const offset = Number(body.offset ?? 0);
+        result = Array.from({ length: 50 }, (_, i) => ({
+          update_id: offset + i,
+          message: {
+            message_id: i,
+            chat: { id: 42, type: 'group' },
+            from: { id: 7, username: 'someone' },
+            text: `group chatter ${offset + i}`,
+          },
+        }));
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, result }));
+    });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const port = server.address().port;
+  try {
+    const { recordRoomMessage } = await import(path.join(ROOT, 'dist', 'src', 'channels', 'rooms.js'));
+    const { outboxPush, outboxPending, outboxMarkSending, outboxAck, outboxSweep } = await import(
+      path.join(ROOT, 'dist', 'src', 'mobile', 'outbox.js')
+    );
+    const { TelegramApi } = await import(path.join(ROOT, 'dist', 'src', 'channels', 'api.js'));
+
+    // A chatty group: 200 messages into one room, which is at its cap the whole
+    // time — every append pays the trim it exists to pay.
+    const roomStarted = performance.now();
+    for (let i = 0; i < 200; i++) {
+      recordRoomMessage({
+        channel: 'telegram',
+        room: 'group-42',
+        from: `user${i % 5}`,
+        text: `message number ${i} about the usual things`,
+        addressed: false,
+      });
+    }
+    const roomWriteMs = Math.round(performance.now() - roomStarted);
+
+    // A queue that was owed: 200 messages queued, claimed, acked and swept.
+    const outboxStarted = performance.now();
+    const ids = [];
+    for (let i = 0; i < 200; i++) ids.push(outboxPush({ channel: 'telegram', chatId: 42, text: `owed reply ${i}` }).id);
+    for (const item of outboxPending('telegram', { staleMs: 0 })) {
+      outboxMarkSending(item.id);
+      outboxAck(item.id);
+    }
+    outboxSweep(0);
+    const outboxDrainMs = Math.round(performance.now() - outboxStarted);
+
+    // The poll plumbing: 50 cycles of 50 updates through the real client.
+    const api = new TelegramApi('123:ABC', `http://127.0.0.1:${port}`);
+    const pollStarted = performance.now();
+    let offset = 0;
+    for (let cycle = 0; cycle < 50; cycle++) {
+      const updates = await api.getUpdates(offset, 0);
+      for (const upd of updates) offset = upd.update_id + 1;
+    }
+    const telegramPollMs = Math.round(performance.now() - pollStarted);
+    if (calls < 50) throw new Error(`the stub only saw ${calls} call(s)`);
+
+    return { roomWriteMs, outboxDrainMs, telegramPollMs };
+  } finally {
+    server.close();
+    fs.rmSync(home, { recursive: true, force: true });
+    if (prevHome === undefined) delete process.env.TCRAB_HOME;
+    else process.env.TCRAB_HOME = prevHome;
+  }
+}
+
+async function measureDocs(samples) {
+  const { buildDocsSite } = await import(path.join(ROOT, 'dist', 'src', 'docs', 'site.js'));
+  let bestMs = Number.POSITIVE_INFINITY;
+  let bytes = 0;
+  let docs = 0;
+  for (let i = 0; i < samples; i++) {
+    const started = performance.now();
+    const built = buildDocsSite({});
+    bestMs = Math.min(bestMs, performance.now() - started);
+    bytes = built.bytes;
+    docs = built.docs.length;
+  }
+  if (docs < 10) throw new Error(`the docs build only saw ${docs} document(s)`);
+  return { docsMs: Math.round(bestMs * 10) / 10, docsKb: Math.round(bytes / 1024) };
+}
+
+function pseudoVector(text, dim = 384) {
+  const v = new Array(dim);
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  for (let i = 0; i < dim; i++) {
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    v[i] = ((h >>> 0) / 4294967296) * 2 - 1;
+  }
+  return v;
+}
+
+async function measureSearch(samples) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tbench-search-'));
+  try {
+    const { EmbeddingIndex } = await import(path.join(ROOT, 'dist', 'src', 'agent', 'embed.js'));
+    const embedder = { embed: async (texts) => texts.map((t) => pseudoVector(t)), name: () => 'bench:deterministic' };
+    const file = path.join(dir, 'index.jsonl');
+    const lines = [];
+    for (let i = 0; i < SEARCH_ROWS; i++) {
+      const text = `memory row ${i} about ${i % 7 === 0 ? 'battery and charging habits' : i % 5 === 0 ? 'the docs site and releases' : 'ordinary notes'}`;
+      lines.push(JSON.stringify({ id: `m${i}`, text, vec: pseudoVector(text), provider: 'bench', model: 'deterministic' }));
+    }
+    fs.writeFileSync(file, `${lines.join('\n')}\n`);
+    const index = new EmbeddingIndex(file, embedder);
+    const times = [];
+    for (let i = 0; i < samples; i++) {
+      const started = performance.now();
+      const hits = await index.search(`what did I say about row ${i}`, 5);
+      times.push(performance.now() - started);
+      if (i === 0 && hits.length === 0) throw new Error('the search returned nothing over its own index');
+    }
+    return Math.round(median(times) * 10) / 10;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * 39.5 — the cold checkout, from nothing: what a new person actually pays.
+ *
+ * `measureFirstRun` symlinks this repo's `node_modules` (the developer's second
+ * run); this one does the real thing — a copy of the tree, no `dist/`, no
+ * `node_modules`, an **isolated npm cache** so it cannot freeload on whatever
+ * npm already downloaded here, then `npm install` and `./termcrab version`
+ * (which compiles). Two numbers: the install, and the whole first contact.
+ */
+function measureColdCheckout() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tbench-cold-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tbench-cold-home-'));
+  const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'tbench-cold-cache-'));
+  try {
+    for (const item of ['src', 'ui', 'test/fixtures', 'scripts', 'package.json', 'package-lock.json', 'tsconfig.json', 'tsconfig.test.json', 'termcrab']) {
+      fs.cpSync(path.join(ROOT, item), path.join(dir, item), { recursive: true });
+    }
+    fs.chmodSync(path.join(dir, 'termcrab'), 0o755);
+    const env = { ...process.env, TCRAB_HOME: home, NO_COLOR: '1', npm_config_cache: cache, npm_config_update_notifier: 'false' };
+    const installStarted = performance.now();
+    execFileSync('npm', ['install', '--no-fund', '--no-audit'], { cwd: dir, env, stdio: 'ignore' });
+    const coldInstallMs = Math.round(performance.now() - installStarted);
+    const commandStarted = performance.now();
+    execFileSync(path.join(dir, 'termcrab'), ['version'], { cwd: dir, env, stdio: 'ignore' });
+    const coldCheckoutMs = Math.round(performance.now() - installStarted);
+    const commandMs = Math.round(performance.now() - commandStarted);
+    return { coldInstallMs, coldCheckoutMs, coldCommandMs: commandMs };
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(cache, { recursive: true, force: true });
+  }
+}
+
 /** One real turn through the panel: message → queue → run → answer. */
 async function measureTurn(port) {
   const started = performance.now();
@@ -255,8 +462,16 @@ function renderBlock(bench) {
     `| idle RSS (gateway, offline brain) | ${bench.idleRssMb} MB | ${BUDGETS.idleRssMb.max} MB | an old phone has ~2 GB, and the OS kills hogs |`,
     `| stop + start again (\`supervisor\`) | ${bench.restartMs} ms | ${BUDGETS.restartMs.max} ms | a restart must be invisible |`,
     `| one real turn (message → answer, offline) | ${bench.turnMs} ms | ${BUDGETS.turnMs.max} ms | loudness of the whole loop |`,
+    `| one memory search over ${SEARCH_ROWS.toLocaleString('en-US')} vectors | ${bench.searchMs} ms | ${BUDGETS.searchMs.max} ms | a chatty month of memory must stay instant |`,
+    `| the offline docs page, built (60 docs) | ${bench.docsMs} ms | ${BUDGETS.docsMs.max} ms | the panel's rebuild button must stay a blink |`,
+    `| the built docs page on disk | ${bench.docsKb} KB | ${BUDGETS.docsKb.max} KB | one HTML file a phone has to hold |`,
+    `| a chatty group: 200 messages into one room | ${bench.roomWriteMs} ms | ${BUDGETS.roomWriteMs.max} ms | every message pays the trim that keeps the room bounded |`,
+    `| a queue that was owed: 200 messages queued, acked, swept | ${bench.outboxDrainMs} ms | ${BUDGETS.outboxDrainMs.max} ms | a phone that was offline has to flush without a stall |`,
+    `| 50 poll cycles of 50 updates (local stub) | ${bench.telegramPollMs} ms | ${BUDGETS.telegramPollMs.max} ms | the plumbing between Telegram and our handlers |`,
     `| first run from a fresh checkout (\`./termcrab\`, compiles) | ${bench.firstRunMs} ms | ${BUDGETS.firstRunMs.max} ms | the one wait a new user pays, once |`,
     `| rebuild after a \`git pull\` (incremental) | ${bench.rebuildMs} ms | ${BUDGETS.rebuildMs.max} ms | how long "pull, then run" keeps you |`,
+    `| a cold checkout: \`npm install\` (empty npm cache) | ${bench.coldInstallMs} ms | ${BUDGETS.coldInstallMs.max} ms | three dev packages, zero runtime ones — on mobile data this is the whole download |`,
+    `| a cold checkout, end to end (install → \`./termcrab\` answers) | ${bench.coldCheckoutMs} ms | ${BUDGETS.coldCheckoutMs.max} ms | the complete first contact, measured from nothing |`,
     '',
     END,
   ].join('\n');
@@ -309,6 +524,9 @@ async function main() {
       await sleep(200);
     }
     const turnMs = await measureTurn(port);
+    const searchMs = await measureSearch(QUICK ? 5 : 25);
+    const { docsMs, docsKb } = await measureDocs(QUICK ? 2 : 5);
+    const { roomWriteMs, outboxDrainMs, telegramPollMs } = await measureLoops();
     const bench = {
       measuredAt: new Date().toISOString().slice(0, 10),
       node: process.version,
@@ -319,7 +537,13 @@ async function main() {
       // the start half, so that is what goes in the table.
       restartMs: stops.length ? median(stops) + median(starts) : startMs,
       turnMs,
-      ...(FIRST_RUN ? measureFirstRun() : {}),
+      searchMs,
+      docsMs,
+      docsKb,
+      roomWriteMs,
+      outboxDrainMs,
+      telegramPollMs,
+      ...(FIRST_RUN ? { ...measureFirstRun(), ...measureColdCheckout() } : {}),
       tolerancePct: TOLERANCE_PCT,
       budget: checkBudgets({
         installMs: 0,

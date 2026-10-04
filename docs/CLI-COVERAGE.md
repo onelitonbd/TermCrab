@@ -13,8 +13,8 @@ actually runs it through the built binary. The number below is a recording, not 
 |---|---|---|
 | `termcrab help` | line 409 | 18 |
 | `termcrab completion` | line 429 | 3 |
-| `termcrab version` | line 446 | 7 |
-| `termcrab gateway` | line 485 | 9 |
+| `termcrab version` | line 446 | 15 |
+| `termcrab gateway` | line 485 | 15 |
 | `termcrab doctor` | line 526 | 3 |
 | `termcrab update` | line 562 | 3 |
 | `termcrab say` | line 623 | 1 |
@@ -40,23 +40,23 @@ actually runs it through the built binary. The number below is a recording, not 
 | `termcrab service` | line 2116 | 1 |
 | `termcrab bootstrap` | line 2139 | 3 |
 | `termcrab schema` | line 2171 | 3 |
-| `termcrab perf` | line 2193 | 5 |
-| `termcrab disk` | line 2232 | 4 |
-| `termcrab status` | line 2271 | 3 |
-| `termcrab wake` | line 2311 | 1 |
-| `termcrab sessions` | line 2349 | 13 |
-| `termcrab subagents` | line 2554 | 3 |
-| `termcrab agents` | line 2615 | 6 |
-| `termcrab docs` | line 2698 | 14 |
-| `termcrab security` | line 2764 | 4 |
-| `termcrab board` | line 2787 | 2 |
-| `termcrab rooms` | line 2802 | 4 |
-| `termcrab browser` | line 2882 | 5 |
-| `termcrab transcribe` | line 2949 | 1 |
-| `termcrab embeddings` | line 2983 | 6 |
-| `termcrab context` | line 3043 | 1 |
-| `termcrab memory` | line 3063 | 6 |
-| `termcrab config` | line 3199 | 5 |
+| `termcrab perf` | line 2193 | 7 |
+| `termcrab disk` | line 2242 | 4 |
+| `termcrab status` | line 2281 | 3 |
+| `termcrab wake` | line 2321 | 1 |
+| `termcrab sessions` | line 2359 | 13 |
+| `termcrab subagents` | line 2564 | 3 |
+| `termcrab agents` | line 2625 | 6 |
+| `termcrab docs` | line 2708 | 14 |
+| `termcrab security` | line 2774 | 4 |
+| `termcrab board` | line 2797 | 2 |
+| `termcrab rooms` | line 2812 | 4 |
+| `termcrab browser` | line 2892 | 5 |
+| `termcrab transcribe` | line 2959 | 1 |
+| `termcrab embeddings` | line 2993 | 6 |
+| `termcrab context` | line 3053 | 1 |
+| `termcrab memory` | line 3073 | 6 |
+| `termcrab config` | line 3209 | 5 |
 
 ## Not run by the suite — and what covers it instead
 

@@ -7138,7 +7138,12 @@
       const host = p.machine ? p.machine.platform + '/' + p.machine.arch + ', node ' + p.machine.node : 'machine unknown';
       const bad = (p.over || []).length > 0;
       const extra = bad ? ' — OVER: ' + p.over.join(', ') : '';
-      note.textContent = '(' + p.measured + '/' + p.total + ' metrics · ' + host + ' · ' + p.age + ' · ' + worst + extra + ')';
+      // 39.1: the trend, when there is a history to compare against.
+      const moved = (p.trend || []).filter(function (row) { return row.direction !== 'flat'; })[0];
+      const trend = moved
+        ? ' · ' + moved.key + ' ' + (moved.direction === 'up' ? '↑' : '↓') + Math.abs(moved.deltaPct) + '% over ' + moved.samples + ' runs'
+        : p.runs > 1 ? ' · steady over ' + p.runs + ' runs' : '';
+      note.textContent = '(' + p.measured + '/' + p.total + ' metrics · ' + host + ' · ' + p.age + ' · ' + worst + trend + extra + ')';
       note.className = bad ? 'pNote err' : 'pNote';
     } catch (err) {
       note.textContent = '(unavailable)';

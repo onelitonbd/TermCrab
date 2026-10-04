@@ -83,9 +83,12 @@ with the same freshness object (`rebuilt: true`).
   "ageMs": 69049, "age": "1 min ago",
   "worst": { "key": "idleRssMb", "value": 72, "max": 130, "pct": 55 },
   "over": [], "skipped": ["firstRunMs", "rebuildMs"], "measured": 5, "total": 7,
-  "machine": { "node": "v22.22.3", "platform": "linux", "arch": "x64", "cpus": 2, "totalMemMb": 3940 } }
+  "machine": { "node": "v22.22.3", "platform": "linux", "arch": "x64", "cpus": 2, "totalMemMb": 3940 },
+  "runs": 6, "lastOverAt": null,
+  "trend": [ { "key": "coldStartMs", "first": 116, "last": 146, "delta": 30, "deltaPct": 26,
+               "direction": "up", "samples": 6, "over": false } ] }
 ```
-Reads `state/perf.json`, written by `termcrab perf` (38.1); it **never measures anything** (a measurement boots a gateway and runs a turn). `worst` is the metric furthest along its ceiling, so the panel can say what to watch. No snapshot yet → `exists: false` and `age: "never measured"`.
+Reads `state/perf.json`, written by `termcrab perf` (38.1); it **never measures anything** (a measurement boots a gateway and runs a turn). `worst` is the metric furthest along its ceiling, so the panel can say what to watch. `runs`/`trend`/`lastOverAt` come from `state/perf-history.jsonl` (39.1): `direction: "up"` means slower or bigger, a move under 3% reads as `flat`, and `samples` says how many runs the comparison used. No snapshot yet → `exists: false` and `age: "never measured"`.
 
 ### `GET /api/telegram-runs` — the recorded live runs (37.4)
 ```json

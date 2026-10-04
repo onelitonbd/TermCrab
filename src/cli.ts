@@ -2195,7 +2195,8 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       // measurements the suite's gate runs (scripts/bench.mjs — one
       // implementation), keeps the numbers where the panel can read them, and
       // exits 1 when anything is over its ceiling.
-      const { PERF_CEILINGS, describePerf, measurePerf, perfPath, writePerfSnapshot } = await import('./core/perf.js');
+      const { PERF_CEILINGS, appendPerfHistory, describePerf, describeTrend, measurePerf, perfHistoryPath, perfPath, perfTrend, readPerfHistory, writePerfSnapshot } =
+        await import('./core/perf.js');
       const asJson = rest.includes('--json');
       const everything = rest.includes('--full');
       let measured: ReturnType<typeof measurePerf>;
@@ -2210,8 +2211,12 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       }
       const { snapshot } = measured;
       const file = writePerfSnapshot(snapshot);
+      // 39.1: every run is appended to the history, so "is it getting slower?"
+      // is answered by the series and not by one afternoon's number.
+      const historyFile = appendPerfHistory(snapshot);
+      const trend = perfTrend(readPerfHistory()).sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
       if (asJson) {
-        emitJson('perf', { ...snapshot, file });
+        emitJson('perf', { ...snapshot, file, historyFile, runs: readPerfHistory().length, trend });
         if (snapshot.over.length) process.exitCode = 1;
         return;
       }
@@ -2219,7 +2224,12 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       console.log(`  ⏱️  performance budget — ${Object.keys(snapshot.metrics).length} of ${Object.keys(PERF_CEILINGS).length} metrics measured on ${snapshot.machine.platform}/${snapshot.machine.arch}, node ${snapshot.machine.node}`);
       for (const line of describePerf(snapshot)) console.log(`     ${line}`);
       if (snapshot.skipped.length) console.log(`     not in this run: ${snapshot.skipped.join(', ')} — add --full (install + a first-run compile)`);
+      if (trend.length) {
+        console.log('     trend (first → newest in the recorded window):');
+        for (const line of describeTrend(trend.slice(0, 4))) console.log(`       ${line}`);
+      }
       console.log(`     snapshot: ${file}`);
+      console.log(`     history: ${historyFile} (${readPerfHistory().length} run(s))`);
       if (snapshot.over.length) {
         console.log(`     ⚠️ over budget: ${snapshot.over.join(', ')} — see docs/PERFORMANCE.md (fix the cause, never the ceiling)`);
         process.exitCode = 1;

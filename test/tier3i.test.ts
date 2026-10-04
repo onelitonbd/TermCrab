@@ -208,9 +208,10 @@ test('37.1 the bench enforces a ceiling per number, and --budget exits 1 when on
 test("37.1 the budget is written down where a person can read it, and cannot drift from the code", () => {
   const { budget: ceilings } = askBench();
   const doc = fs.readFileSync(path.join(ROOT, 'docs/PERFORMANCE.md'), 'utf8');
+  const flatDoc = doc.replace(/\s+/g, '');
   for (const { key, max } of ceilings) {
     assert.ok(doc.includes(key), `docs/PERFORMANCE.md names ${key}`);
-    assert.ok(doc.includes(String(max)), `docs/PERFORMANCE.md carries ${key}'s ceiling (${max})`);
+    assert.ok(flatDoc.includes(String(max)), `docs/PERFORMANCE.md carries ${key}'s ceiling (${max})`);
   }
   assert.match(doc, /test\/tier3i\.test\.ts/, 'the doc names the test that runs it');
   assert.match(doc, /--budget/, 'and the command that enforces it');
@@ -221,7 +222,10 @@ test("37.1 the budget is written down where a person can read it, and cannot dri
   assert.ok(block, 'the README keeps the generated bench block');
   assert.match(block[0], /budget \(the alarm\)/, 'the table has a budget column');
   for (const { max } of ceilings) {
-    assert.ok(block[0].includes(`${max} ms`) || block[0].includes(`${max} MB`), `the README block shows the ${max} ceiling`);
+    assert.ok(
+      /\b(ms|MB|KB)\b/.test(block[0]) && new RegExp(`\\b${max} (ms|MB|KB)\\b`).test(block[0]),
+      `the README block shows the ${max} ceiling with its unit`,
+    );
   }
   assert.match(readme, /docs\/PERFORMANCE\.md/, 'and links the page that explains the ceilings');
 
@@ -500,10 +504,15 @@ test('38.1 termcrab perf measures this machine, writes the snapshot, and exits 1
   assert.equal(envelope.ok, true);
   assert.equal(envelope.command, 'perf');
   assert.equal(envelope.data.source, 'checkout', 'the snapshot says where the numbers came from');
-  assert.equal(Object.keys(envelope.data.ceilings).length, 7, 'all seven ceilings travel with the snapshot');
-  assert.ok(Object.keys(envelope.data.metrics).length >= 5, 'and the fast half was measured');
+  assert.ok(Object.keys(envelope.data.ceilings).length >= 8, 'every ceiling travels with the snapshot');
+  assert.ok(Object.keys(envelope.data.metrics).length >= 6, 'and the fast half was measured');
   assert.deepEqual(envelope.data.over, [], 'nothing is over on this machine');
-  assert.deepEqual(envelope.data.skipped, ['firstRunMs', 'rebuildMs'], 'the slow halves are named as not measured');
+  for (const slow of ['firstRunMs', 'rebuildMs', 'coldInstallMs', 'coldCheckoutMs']) {
+    assert.ok(envelope.data.skipped.includes(slow), `${slow} is listed as not measured`);
+  }
+  for (const key of envelope.data.skipped) {
+    assert.ok(key in envelope.data.ceilings, `${key} is a ceiling that exists, not a typo`);
+  }
   for (const [key, value] of Object.entries(envelope.data.metrics)) {
     assert.ok(value >= 0 && value <= envelope.data.ceilings[key]!.max, `${key} ${value} is inside its ceiling`);
   }
@@ -518,7 +527,7 @@ test('38.1 termcrab perf measures this machine, writes the snapshot, and exits 1
 
   const human = await runNodeAsync([cli, 'perf'], 300_000, env);
   assert.equal(human.code, 0, `the human view exits 0: ${human.stderr}`);
-  assert.match(human.stdout, /performance budget — 5 of 7 metrics measured/);
+  assert.match(human.stdout, /performance budget — \d+ of \d+ metrics measured/);
   for (const key of Object.keys(written.ceilings)) {
     assert.ok(human.stdout.includes(key), `the table names ${key}`);
   }
@@ -606,7 +615,7 @@ test('38.2 the panel reads the last measurement — and says so when there is no
       assert.equal(now.exists, true);
       assert.equal(now.age, '1 min ago', 'the age is in words');
       assert.equal(now.measured, 5);
-      assert.equal(now.total, 7);
+      assert.equal(now.total, Object.keys(PERF_CEILINGS).length);
       assert.deepEqual(now.over, []);
       assert.equal(now.machine.arch, 'arm64', 'the machine travels with the number');
       assert.equal(now.worst.key, 'idleRssMb', '54% of 130 is the furthest along');

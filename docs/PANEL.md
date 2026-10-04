@@ -67,6 +67,9 @@ anything crossed a ceiling the line turns red and names it. It comes from `GET /
 gateway and run a turn on every refresh). Nothing measured yet says `(not measured yet — termcrab perf)`
 rather than showing zeros.
 
+With more than one recorded run the line also carries the movement — `coldStartMs ↑ 26% over 6 runs` (from
+`state/perf-history.jsonl`, 39.1), or `steady over 6 runs` when nothing moved beyond the 3% jitter band.
+
 ## How it is tested (there is no browser in the build)
 
 The panel's JavaScript is *extracted from the real file and executed in Node*, so the tests run the

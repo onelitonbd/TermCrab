@@ -33,12 +33,20 @@ _Measured 2026-10-04 on Node v22.22.3 — re-run `node scripts/bench.mjs` and ex
 | what | measured | budget (the alarm) | why it matters on a phone |
 |---|---|---|---|
 | `npm install` (zero runtime deps, `--omit=dev`) | 261 ms | 20000 ms | the slow step that never happens |
-| cold start (`termcrab version`) | 124 ms | 1500 ms | every CLI call pays it |
-| idle RSS (gateway, offline brain) | 72 MB | 130 MB | an old phone has ~2 GB, and the OS kills hogs |
-| stop + start again (`supervisor`) | 136 ms | 2500 ms | a restart must be invisible |
-| one real turn (message → answer, offline) | 99 ms | 5000 ms | loudness of the whole loop |
-| first run from a fresh checkout (`./termcrab`, compiles) | 5184 ms | 30000 ms | the one wait a new user pays, once |
-| rebuild after a `git pull` (incremental) | 1712 ms | 8000 ms | how long "pull, then run" keeps you |
+| cold start (`termcrab version`) | 134 ms | 1500 ms | every CLI call pays it |
+| idle RSS (gateway, offline brain) | 74 MB | 130 MB | an old phone has ~2 GB, and the OS kills hogs |
+| stop + start again (`supervisor`) | 189 ms | 2500 ms | a restart must be invisible |
+| one real turn (message → answer, offline) | 91 ms | 5000 ms | loudness of the whole loop |
+| one memory search over 10,000 vectors | 7.3 ms | 200 ms | a chatty month of memory must stay instant |
+| the offline docs page, built (60 docs) | 44.8 ms | 1500 ms | the panel's rebuild button must stay a blink |
+| the built docs page on disk | 2760 KB | 4000 KB | one HTML file a phone has to hold |
+| a chatty group: 200 messages into one room | 33 ms | 1500 ms | every message pays the trim that keeps the room bounded |
+| a queue that was owed: 200 messages queued, acked, swept | 257 ms | 1500 ms | a phone that was offline has to flush without a stall |
+| 50 poll cycles of 50 updates (local stub) | 63 ms | 2000 ms | the plumbing between Telegram and our handlers |
+| first run from a fresh checkout (`./termcrab`, compiles) | 5830 ms | 30000 ms | the one wait a new user pays, once |
+| rebuild after a `git pull` (incremental) | 1737 ms | 8000 ms | how long "pull, then run" keeps you |
+| a cold checkout: `npm install` (empty npm cache) | 735 ms | 60000 ms | three dev packages, zero runtime ones — on mobile data this is the whole download |
+| a cold checkout, end to end (install → `./termcrab` answers) | 6350 ms | 90000 ms | the complete first contact, measured from nothing |
 
 <!-- END BENCH -->
 
