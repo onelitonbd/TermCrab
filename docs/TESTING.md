@@ -33,22 +33,22 @@ dominating the run fails the suite instead of being noticed a month later.
 
 _Measured 2026-10-04 on node v22.22.3 — `node scripts/suite-time.mjs --run` re-measures, `--check` fails when the run is over its budget._
 
-The whole suite: **101 files, 1034 test cases, 163.4 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
+The whole suite: **101 files, 1034 test cases, 149.2 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
 
 | slowest file | time |
 |---|---|
-| `tier3j.test.js` | 38.1 s |
-| `tier3i.test.js` | 32.5 s |
-| `tier2c.test.js` | 6.0 s |
-| `tier2.test.js` | 4.8 s |
-| `tier2x.test.js` | 3.1 s |
+| `tier3j.test.js` | 34.3 s |
+| `tier3i.test.js` | 28.5 s |
+| `tier2c.test.js` | 4.6 s |
+| `tier2.test.js` | 4.5 s |
+| `tier2x.test.js` | 3.0 s |
 
 <!-- END SUITE TIME -->
 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **87.34%** of the lines in `src/` are executed by the
+**Measured 2026-10-04:** **87.33%** of the lines in `src/` are executed by the
 suite (77.58% of branches, 87.13% of functions), across
 **1034 test cases in 101 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.

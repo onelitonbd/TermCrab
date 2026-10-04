@@ -161,6 +161,9 @@ export function startContinuousStt(
     }
 
     timer = setTimeout(() => {
+      // 43.1 — a stopped listener does nothing at all: no kill of a child that
+      // may already have been replaced, no restart.
+      if (!running) return;
       // No speech in this window — restart
       try { child?.kill(); } catch { /* already gone */ }
       again();
@@ -168,6 +171,13 @@ export function startContinuousStt(
     timer.unref?.();
 
     child.stdout?.on('data', (b: Buffer) => {
+      // 43.1 — a stopped listener never calls back. The recognizer's last line
+      // can still be sitting in the pipe when stop() is called; under load the
+      // delivery loses that race and a phrase arrives after the person stopped
+      // (which is how this was found: test/tier2y.test.ts 33.5 flaked once, and
+      // the probe that followed reproduced it three times out of three). The
+      // handler re-checks `running` instead of assuming stop() beat the pipe.
+      if (!running) return;
       out += b.toString();
       const line = out.split('\n').map((s) => s.trim()).filter(Boolean)[0];
       if (line) {

@@ -104,7 +104,9 @@ printf 'set a timer for ten minutes\\nand another line\\n'`,
     assert.equal(silent.ok, false);
     assert.match(String(silent.error), /no speech recognized|nothing heard/);
 
-    // A recognizer that never answers hits the deadline and says so.
+    // A recognizer that never answers hits the deadline and says so — with the
+    // wait it actually had (43.2: the sentence used to say 30s no matter what
+    // the caller asked for).
     fs.writeFileSync(path.join(fake.dir, 'termux-speech-to-text'), '#!/bin/sh\nsleep 2\n', { mode: 0o755 });
     fs.chmodSync(path.join(fake.dir, 'termux-speech-to-text'), 0o755);
     const started = Date.now();
@@ -112,6 +114,8 @@ printf 'set a timer for ten minutes\\nand another line\\n'`,
     assert.equal(slow.ok, false);
     assert.ok(Date.now() - started < 3_000, 'settles at the deadline');
     assert.match(String(slow.error), /nothing heard/);
+    assert.match(String(slow.error), /waited 0\.\ds/, 'the timeout names the wait this call had');
+    assert.doesNotMatch(String(slow.error), /waited 30s/, 'not a hard-coded 30s the caller never asked for');
 
     // Continuous mode: a phrase goes to the callback and listening continues
     // until stop() — with a delay between attempts so it cannot spin.
@@ -124,13 +128,30 @@ printf 'set a timer for ten minutes\\nand another line\\n'`,
     const { startContinuousStt: start } = await import('../src/mobile/tts-stream.js');
     const heard: string[] = [];
     const loop = start((t) => heard.push(t), { timeoutMs: 5_000, restartDelayMs: 20 });
-    await new Promise((r) => setTimeout(r, 400));
+    // 43.3 — wait for the second phrase instead of timing the loop with a
+    // stopwatch: a fixed 400 ms window is a flake waiting for a loaded machine
+    // (it went red once in a full-suite run and passed three times alone).
+    const deadline = Date.now() + 3_000;
+    while (heard.length < 2 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
     loop.stop();
     const atStop = heard.length;
     assert.ok(atStop >= 2, `continuous listening keeps going (heard ${atStop})`);
     assert.equal(loop.isRunning(), false);
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 250));
     assert.equal(heard.length, atStop, 'nothing arrives after stop()');
+
+    // 43.1 — the race that flake was made of, made deterministic: a phrase
+    // already in the pipe when stop() is called must not be delivered. The busy
+    // loop keeps the event loop from reading the child's output until after
+    // stop(), so the delivery has to lose the race every single time.
+    const raced: string[] = [];
+    const blocked = start((t) => raced.push(t), { timeoutMs: 5_000, restartDelayMs: 20 });
+    const until = Date.now() + 250;
+    while (Date.now() < until) { /* deliberately block the event loop */ }
+    blocked.stop();
+    await new Promise((r) => setTimeout(r, 250));
+    assert.deepEqual(raced, [], 'a stopped listener never calls back, even for speech already in the pipe');
+    assert.equal(blocked.isRunning(), false);
   } finally {
     fake.restore();
   }

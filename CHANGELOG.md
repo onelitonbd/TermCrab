@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.76.1 - 2026-10-04
+
+**A defect the closing audit found — and the flake it was hiding behind.** The last full-suite runs had one red test among 1034: `33.5 dictation runs a real recognizer`, which passes 3/3 when run alone. A test that only fails under load is the kind of thing a project leans on as "flaky" — it was not noise.
+
+- **A stopped listener called back.** `startContinuousStt` (continuous dictation) delivered a phrase *after* `stop()` whenever the recognizer's last line was already sitting in the pipe: the `data` handler never re-checked whether it was still running. On the phone that is a phrase appearing after you stopped listening; in the suite it is a race that loses under load. A probe that blocks the event loop and then stops the listener reproduced it **three times out of three** before the fix and zero after; the restart timer is guarded the same way.
+- **The timeout told a story about a wait nobody asked for.** `listenOnce(150)` answered `nothing heard (waited 30s)` — a number hard-coded from the default. It now names the wait this call actually had (`waited 0.2s`), which matters exactly when a person is already confused about why nothing happened.
+- **The test that found it stopped guessing with a stopwatch.** The "keeps going" half waits for the second phrase with a 3-second ceiling instead of trusting a fixed 400 ms window, and the after-stop race is asserted deterministically (block the event loop, then `stop()`), so the regression fails 100% of the time against the unfixed build. tier2y runs 3/3 under three CPU burners.
+- Tests: the same **1034 cases**, with `test/tier2y.test.ts` carrying the new deterministic case and both timeout assertions. Census unchanged at **100%** of 160 in-scope checks (WORKING 117 · BETTER 42 · PARTIAL 1 — the CI push); coverage re-recorded at **87.33%** of `src/` lines (floor 80, fingerprint `fe3c7162f9761392`); the suite clock records **101 files · 1034 cases · 149.2 s** (budget 240 s). Release **0.76.1**, following `v0.76.0`.
+
+
 ## 0.76.0 - 2026-10-04
 
 **The closing release.** The declared queue is empty: every batch that was written down is done, and the tracker says so in one sentence instead of inventing the next batch.

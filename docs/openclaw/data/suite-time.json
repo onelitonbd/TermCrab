@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-04T10:14:41.598Z",
+  "at": "2026-10-04T10:43:57.186Z",
   "node": "v22.22.3",
-  "wallMs": 163381,
+  "wallMs": 149237,
   "totalFiles": 101,
   "totalTests": 1034,
   "totalTopTests": 693,
@@ -11,29 +11,29 @@
   "slowest": [
     {
       "file": "tier3j.test.js",
-      "ms": 38144
+      "ms": 34263
     },
     {
       "file": "tier3i.test.js",
-      "ms": 32469
+      "ms": 28542
     },
     {
       "file": "tier2c.test.js",
-      "ms": 6015
+      "ms": 4561
     },
     {
       "file": "tier2.test.js",
-      "ms": 4823
+      "ms": 4461
     },
     {
       "file": "tier2x.test.js",
-      "ms": 3086
+      "ms": 2955
     }
   ],
   "files": [
     {
       "file": "tier3j.test.js",
-      "ms": 38144,
+      "ms": 34263,
       "cases": 8,
       "passed": 8,
       "skipped": 0,
@@ -41,12 +41,12 @@
       "fail": 0,
       "slowest": {
         "name": "39.2 one memory search over 10 000 vectors is measured, budgeted, and stays a scan",
-        "ms": 25599
+        "ms": 23275
       }
     },
     {
       "file": "tier3i.test.js",
-      "ms": 32469,
+      "ms": 28542,
       "cases": 12,
       "passed": 12,
       "skipped": 0,
@@ -54,12 +54,12 @@
       "fail": 0,
       "slowest": {
         "name": "37.1 the bench enforces a ceiling per number, and --budget exits 1 when one is crossed",
-        "ms": 20522
+        "ms": 18096
       }
     },
     {
       "file": "tier2c.test.js",
-      "ms": 6015,
+      "ms": 4561,
       "cases": 28,
       "passed": 28,
       "skipped": 0,
@@ -67,12 +67,12 @@
       "fail": 0,
       "slowest": {
         "name": "14.2 every structured command has a documented machine view",
-        "ms": 3904
+        "ms": 2757
       }
     },
     {
       "file": "tier2.test.js",
-      "ms": 4823,
+      "ms": 4461,
       "cases": 10,
       "passed": 10,
       "skipped": 0,
@@ -80,12 +80,12 @@
       "fail": 0,
       "slowest": {
         "name": "12.1 the numbers in the README are reproducible with the bench script",
-        "ms": 4307
+        "ms": 4026
       }
     },
     {
       "file": "tier2x.test.js",
-      "ms": 3086,
+      "ms": 2955,
       "cases": 10,
       "passed": 10,
       "skipped": 0,
@@ -93,12 +93,12 @@
       "fail": 0,
       "slowest": {
         "name": "33.4 the CLI records where a job delivers, and refuses a nonsense target",
-        "ms": 870
+        "ms": 830
       }
     },
     {
       "file": "tier0.test.js",
-      "ms": 2955,
+      "ms": 2793,
       "cases": 12,
       "passed": 12,
       "skipped": 0,
@@ -106,12 +106,12 @@
       "fail": 0,
       "slowest": {
         "name": "10.2 a script can wait for a run and read its result",
-        "ms": 1094
+        "ms": 1006
       }
     },
     {
       "file": "tier3k.test.js",
-      "ms": 2591,
+      "ms": 2329,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -119,12 +119,12 @@
       "fail": 0,
       "slowest": {
         "name": "40.2 doctor reports the measurement: never measured, aging, and over budget",
-        "ms": 1284
+        "ms": 1098
       }
     },
     {
       "file": "tier3f.test.js",
-      "ms": 2187,
+      "ms": 2033,
       "cases": 36,
       "passed": 36,
       "skipped": 0,
@@ -132,25 +132,12 @@
       "fail": 0,
       "slowest": {
         "name": "34.8 the two ways in: termcrab docs, and GET /docs",
-        "ms": 1708
-      }
-    },
-    {
-      "file": "tier3l.test.js",
-      "ms": 2046,
-      "cases": 6,
-      "passed": 6,
-      "skipped": 0,
-      "topTests": 6,
-      "fail": 0,
-      "slowest": {
-        "name": "41.4 a measurement taken on a busy machine is flagged, and --save refuses it",
-        "ms": 1102
+        "ms": 1591
       }
     },
     {
       "file": "tier2t.test.js",
-      "ms": 1974,
+      "ms": 1994,
       "cases": 13,
       "passed": 13,
       "skipped": 0,
@@ -158,38 +145,25 @@
       "fail": 0,
       "slowest": {
         "name": "31.2 `termcrab backup`, `restore --dry-run` and `schema` speak plainly on the terminal",
-        "ms": 1040
+        "ms": 1029
       }
     },
     {
-      "file": "tier2n.test.js",
-      "ms": 1973,
+      "file": "tier3l.test.js",
+      "ms": 1912,
       "cases": 6,
       "passed": 6,
       "skipped": 0,
       "topTests": 6,
       "fail": 0,
       "slowest": {
-        "name": "26.1 standing orders: one store behind the CLI, the chat and the prompt",
-        "ms": 787
-      }
-    },
-    {
-      "file": "launcher.test.js",
-      "ms": 1953,
-      "cases": 2,
-      "passed": 2,
-      "skipped": 0,
-      "topTests": 2,
-      "fail": 0,
-      "slowest": {
-        "name": "the checkout ships a launcher that builds on first run",
-        "ms": 1952
+        "name": "41.4 a measurement taken on a busy machine is flagged, and --save refuses it",
+        "ms": 993
       }
     },
     {
       "file": "tier2p.test.js",
-      "ms": 1945,
+      "ms": 1902,
       "cases": 9,
       "passed": 9,
       "skipped": 0,
@@ -197,38 +171,12 @@
       "fail": 0,
       "slowest": {
         "name": "27.4 a turn that makes no progress stops itself, and keeps what it had said",
-        "ms": 1289
-      }
-    },
-    {
-      "file": "tier3d.test.js",
-      "ms": 1915,
-      "cases": 22,
-      "passed": 22,
-      "skipped": 0,
-      "topTests": 4,
-      "fail": 0,
-      "slowest": {
-        "name": "34.6 the four commands the suite never reached, reached and asserted",
-        "ms": 1218
-      }
-    },
-    {
-      "file": "toolbox.test.js",
-      "ms": 1560,
-      "cases": 26,
-      "passed": 26,
-      "skipped": 0,
-      "topTests": 26,
-      "fail": 0,
-      "slowest": {
-        "name": "conversations: registry, send via registered channel, correlated turn",
-        "ms": 823
+        "ms": 1285
       }
     },
     {
       "file": "tier2y.test.js",
-      "ms": 1556,
+      "ms": 1771,
       "cases": 3,
       "passed": 3,
       "skipped": 0,
@@ -236,51 +184,64 @@
       "fail": 0,
       "slowest": {
         "name": "33.5 dictation runs a real recognizer and takes the first phrase",
-        "ms": 768
+        "ms": 992
       }
     },
     {
-      "file": "tier2b.test.js",
-      "ms": 1553,
-      "cases": 15,
-      "passed": 15,
+      "file": "launcher.test.js",
+      "ms": 1770,
+      "cases": 2,
+      "passed": 2,
       "skipped": 0,
-      "topTests": 4,
+      "topTests": 2,
       "fail": 0,
       "slowest": {
-        "name": "13.2 colour follows the environment and never leaks into a pipe",
-        "ms": 601
+        "name": "the checkout ships a launcher that builds on first run",
+        "ms": 1770
       }
     },
     {
-      "file": "tier2w.test.js",
-      "ms": 1492,
+      "file": "tier2n.test.js",
+      "ms": 1757,
       "cases": 6,
       "passed": 6,
       "skipped": 0,
       "topTests": 6,
       "fail": 0,
       "slowest": {
-        "name": "32.4 the packaged tarball really installs and runs (npm pack, no network)",
-        "ms": 1016
+        "name": "26.1 standing orders: one store behind the CLI, the chat and the prompt",
+        "ms": 687
       }
     },
     {
-      "file": "compaction-llm.test.js",
-      "ms": 1451,
-      "cases": 8,
-      "passed": 8,
+      "file": "tier3d.test.js",
+      "ms": 1703,
+      "cases": 22,
+      "passed": 22,
       "skipped": 0,
-      "topTests": 6,
+      "topTests": 4,
       "fail": 0,
       "slowest": {
-        "name": "11.3b a huge overflow says what it could not summarise",
-        "ms": 631
+        "name": "34.6 the four commands the suite never reached, reached and asserted",
+        "ms": 1082
+      }
+    },
+    {
+      "file": "toolbox.test.js",
+      "ms": 1582,
+      "cases": 26,
+      "passed": 26,
+      "skipped": 0,
+      "topTests": 26,
+      "fail": 0,
+      "slowest": {
+        "name": "conversations: registry, send via registered channel, correlated turn",
+        "ms": 824
       }
     },
     {
       "file": "tier2r.test.js",
-      "ms": 1429,
+      "ms": 1410,
       "cases": 11,
       "passed": 11,
       "skipped": 0,
@@ -288,12 +249,51 @@
       "fail": 0,
       "slowest": {
         "name": "29.2 the input box edits: history, Ctrl-U, backspace, and /help",
-        "ms": 618
+        "ms": 616
+      }
+    },
+    {
+      "file": "tier2b.test.js",
+      "ms": 1349,
+      "cases": 15,
+      "passed": 15,
+      "skipped": 0,
+      "topTests": 4,
+      "fail": 0,
+      "slowest": {
+        "name": "13.2 colour follows the environment and never leaks into a pipe",
+        "ms": 537
+      }
+    },
+    {
+      "file": "compaction-llm.test.js",
+      "ms": 1330,
+      "cases": 8,
+      "passed": 8,
+      "skipped": 0,
+      "topTests": 6,
+      "fail": 0,
+      "slowest": {
+        "name": "11.3b a huge overflow says what it could not summarise",
+        "ms": 574
+      }
+    },
+    {
+      "file": "tier2w.test.js",
+      "ms": 1286,
+      "cases": 6,
+      "passed": 6,
+      "skipped": 0,
+      "topTests": 6,
+      "fail": 0,
+      "slowest": {
+        "name": "32.4 the packaged tarball really installs and runs (npm pack, no network)",
+        "ms": 880
       }
     },
     {
       "file": "tier2l.test.js",
-      "ms": 1329,
+      "ms": 1240,
       "cases": 16,
       "passed": 16,
       "skipped": 0,
@@ -301,12 +301,12 @@
       "fail": 0,
       "slowest": {
         "name": "23.2 the CLI reads the same file",
-        "ms": 420
+        "ms": 402
       }
     },
     {
       "file": "tier2z.test.js",
-      "ms": 1323,
+      "ms": 1212,
       "cases": 4,
       "passed": 3,
       "skipped": 1,
@@ -314,38 +314,12 @@
       "fail": 0,
       "slowest": {
         "name": "34.1 the CLI reads a page through the same client, and reports honestly without one",
-        "ms": 1049
-      }
-    },
-    {
-      "file": "tier3b.test.js",
-      "ms": 1210,
-      "cases": 10,
-      "passed": 10,
-      "skipped": 0,
-      "topTests": 3,
-      "fail": 0,
-      "slowest": {
-        "name": "34.4 cron: what happened last is recorded, shown, and does not disable anything",
-        "ms": 728
-      }
-    },
-    {
-      "file": "tier2m.test.js",
-      "ms": 1163,
-      "cases": 10,
-      "passed": 10,
-      "skipped": 0,
-      "topTests": 10,
-      "fail": 0,
-      "slowest": {
-        "name": "24.2 termcrab events lists what can wake a hook, and who listens",
-        "ms": 441
+        "ms": 943
       }
     },
     {
       "file": "approvals.test.js",
-      "ms": 1149,
+      "ms": 1128,
       "cases": 7,
       "passed": 7,
       "skipped": 0,
@@ -353,25 +327,12 @@
       "fail": 0,
       "slowest": {
         "name": "6.2 + 6.4 the panel and the CLI answer the same pending approval",
-        "ms": 466
-      }
-    },
-    {
-      "file": "tier3h.test.js",
-      "ms": 1133,
-      "cases": 14,
-      "passed": 14,
-      "skipped": 0,
-      "topTests": 3,
-      "fail": 0,
-      "slowest": {
-        "name": "36.3 the docs page per release",
-        "ms": 570
+        "ms": 439
       }
     },
     {
       "file": "browser.test.js",
-      "ms": 1058,
+      "ms": 1050,
       "cases": 12,
       "passed": 12,
       "skipped": 0,
@@ -379,51 +340,64 @@
       "fail": 0,
       "slowest": {
         "name": "code_exec: timeout works",
-        "ms": 1010
+        "ms": 1002
+      }
+    },
+    {
+      "file": "tier3h.test.js",
+      "ms": 1042,
+      "cases": 14,
+      "passed": 14,
+      "skipped": 0,
+      "topTests": 3,
+      "fail": 0,
+      "slowest": {
+        "name": "36.3 the docs page per release",
+        "ms": 536
+      }
+    },
+    {
+      "file": "tier3b.test.js",
+      "ms": 1008,
+      "cases": 10,
+      "passed": 10,
+      "skipped": 0,
+      "topTests": 3,
+      "fail": 0,
+      "slowest": {
+        "name": "34.4 cron: what happened last is recorded, shown, and does not disable anything",
+        "ms": 584
+      }
+    },
+    {
+      "file": "tier2m.test.js",
+      "ms": 892,
+      "cases": 10,
+      "passed": 10,
+      "skipped": 0,
+      "topTests": 10,
+      "fail": 0,
+      "slowest": {
+        "name": "24.1 /api/presence counts attached watchers, and attaching emits a presence event",
+        "ms": 309
       }
     },
     {
       "file": "tier2j.test.js",
-      "ms": 965,
+      "ms": 870,
       "cases": 19,
       "passed": 19,
       "skipped": 0,
       "topTests": 19,
       "fail": 0,
       "slowest": {
-        "name": "21.3 sessions reset archives through the CLI, and show names the policy",
-        "ms": 308
-      }
-    },
-    {
-      "file": "tier3c.test.js",
-      "ms": 869,
-      "cases": 16,
-      "passed": 16,
-      "skipped": 0,
-      "topTests": 3,
-      "fail": 0,
-      "slowest": {
-        "name": "34.5 the CLI, the doctor and the docs all read the same audit",
-        "ms": 841
-      }
-    },
-    {
-      "file": "tier3a.test.js",
-      "ms": 868,
-      "cases": 15,
-      "passed": 15,
-      "skipped": 0,
-      "topTests": 4,
-      "fail": 0,
-      "slowest": {
-        "name": "34.3 the agent can read the room it is standing in",
-        "ms": 716
+        "name": "21.1 the CLI verify finds a torn tail and repairs it",
+        "ms": 275
       }
     },
     {
       "file": "config.test.js",
-      "ms": 850,
+      "ms": 801,
       "cases": 7,
       "passed": 7,
       "skipped": 0,
@@ -431,12 +405,25 @@
       "fail": 0,
       "slowest": {
         "name": "config get will not lock a fresh panel that runs open (default port)",
-        "ms": 358
+        "ms": 345
+      }
+    },
+    {
+      "file": "tier3c.test.js",
+      "ms": 767,
+      "cases": 16,
+      "passed": 16,
+      "skipped": 0,
+      "topTests": 3,
+      "fail": 0,
+      "slowest": {
+        "name": "34.5 the CLI, the doctor and the docs all read the same audit",
+        "ms": 742
       }
     },
     {
       "file": "tier2q.test.js",
-      "ms": 754,
+      "ms": 707,
       "cases": 9,
       "passed": 9,
       "skipped": 0,
@@ -444,12 +431,25 @@
       "fail": 0,
       "slowest": {
         "name": "28.1 sessions show names the main session without a word of config",
-        "ms": 447
+        "ms": 422
+      }
+    },
+    {
+      "file": "tier3a.test.js",
+      "ms": 677,
+      "cases": 15,
+      "passed": 15,
+      "skipped": 0,
+      "topTests": 4,
+      "fail": 0,
+      "slowest": {
+        "name": "34.3 the agent can read the room it is standing in",
+        "ms": 553
       }
     },
     {
       "file": "tier2v.test.js",
-      "ms": 684,
+      "ms": 646,
       "cases": 6,
       "passed": 6,
       "skipped": 0,
@@ -457,12 +457,12 @@
       "fail": 0,
       "slowest": {
         "name": "32.3 the CLI: status, --write, and a real command on an untouched home",
-        "ms": 582
+        "ms": 544
       }
     },
     {
       "file": "tier2o.test.js",
-      "ms": 652,
+      "ms": 646,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -470,25 +470,12 @@
       "fail": 0,
       "slowest": {
         "name": "27.1 a tool that changes something is never batched — it runs after the batch, in order",
-        "ms": 254
-      }
-    },
-    {
-      "file": "tier2u.test.js",
-      "ms": 649,
-      "cases": 10,
-      "passed": 10,
-      "skipped": 0,
-      "topTests": 10,
-      "fail": 0,
-      "slowest": {
-        "name": "32.1 termcrab embeddings test really embeds, through a local HTTP endpoint",
-        "ms": 340
+        "ms": 252
       }
     },
     {
       "file": "api.test.js",
-      "ms": 602,
+      "ms": 617,
       "cases": 30,
       "passed": 30,
       "skipped": 0,
@@ -496,12 +483,25 @@
       "fail": 0,
       "slowest": {
         "name": "web control parity API",
-        "ms": 388
+        "ms": 399
+      }
+    },
+    {
+      "file": "tier2u.test.js",
+      "ms": 608,
+      "cases": 10,
+      "passed": 10,
+      "skipped": 0,
+      "topTests": 10,
+      "fail": 0,
+      "slowest": {
+        "name": "32.1 termcrab embeddings test really embeds, through a local HTTP endpoint",
+        "ms": 309
       }
     },
     {
       "file": "tier3m.test.js",
-      "ms": 573,
+      "ms": 506,
       "cases": 4,
       "passed": 4,
       "skipped": 0,
@@ -509,12 +509,12 @@
       "fail": 0,
       "slowest": {
         "name": "42.5 termcrab owner prints the declared handover, for the phone",
-        "ms": 437
+        "ms": 384
       }
     },
     {
       "file": "tier2g.test.js",
-      "ms": 510,
+      "ms": 476,
       "cases": 22,
       "passed": 22,
       "skipped": 0,
@@ -522,25 +522,12 @@
       "fail": 0,
       "slowest": {
         "name": "18.5 the CLI and the chat answer from the same ranked search",
-        "ms": 479
-      }
-    },
-    {
-      "file": "usage.test.js",
-      "ms": 492,
-      "cases": 6,
-      "passed": 6,
-      "skipped": 0,
-      "topTests": 4,
-      "fail": 0,
-      "slowest": {
-        "name": "9.3 + 9.4 the panel and the CLI report the same real numbers",
-        "ms": 444
+        "ms": 452
       }
     },
     {
       "file": "queue-serialize.test.js",
-      "ms": 453,
+      "ms": 457,
       "cases": 10,
       "passed": 10,
       "skipped": 0,
@@ -548,12 +535,25 @@
       "fail": 0,
       "slowest": {
         "name": "5.7 HTTP: two chat posts serialize, and the poll reports the real queue",
-        "ms": 394
+        "ms": 390
+      }
+    },
+    {
+      "file": "usage.test.js",
+      "ms": 443,
+      "cases": 6,
+      "passed": 6,
+      "skipped": 0,
+      "topTests": 4,
+      "fail": 0,
+      "slowest": {
+        "name": "9.3 + 9.4 the panel and the CLI report the same real numbers",
+        "ms": 382
       }
     },
     {
       "file": "tier2h.test.js",
-      "ms": 450,
+      "ms": 385,
       "cases": 20,
       "passed": 20,
       "skipped": 0,
@@ -561,12 +561,12 @@
       "fail": 0,
       "slowest": {
         "name": "19.3 context introspection measures the real prompt",
-        "ms": 356
+        "ms": 299
       }
     },
     {
       "file": "tier3g.test.js",
-      "ms": 338,
+      "ms": 281,
       "cases": 12,
       "passed": 12,
       "skipped": 0,
@@ -574,25 +574,12 @@
       "fail": 0,
       "slowest": {
         "name": "35.4 a stale index is visible in the status, with the fix",
-        "ms": 325
-      }
-    },
-    {
-      "file": "tier2e.test.js",
-      "ms": 303,
-      "cases": 27,
-      "passed": 27,
-      "skipped": 0,
-      "topTests": 5,
-      "fail": 0,
-      "slowest": {
-        "name": "16.4 the inbox is its own area, and it is the only part of the workspace that gets swept",
-        "ms": 218
+        "ms": 267
       }
     },
     {
       "file": "thinking.test.js",
-      "ms": 227,
+      "ms": 233,
       "cases": 21,
       "passed": 21,
       "skipped": 0,
@@ -600,12 +587,25 @@
       "fail": 0,
       "slowest": {
         "name": "gateway: the picked level reaches the provider request",
-        "ms": 99
+        "ms": 119
+      }
+    },
+    {
+      "file": "tier2e.test.js",
+      "ms": 227,
+      "cases": 27,
+      "passed": 27,
+      "skipped": 0,
+      "topTests": 5,
+      "fail": 0,
+      "slowest": {
+        "name": "16.4 the inbox is its own area, and it is the only part of the workspace that gets swept",
+        "ms": 159
       }
     },
     {
       "file": "tier2d.test.js",
-      "ms": 223,
+      "ms": 201,
       "cases": 20,
       "passed": 20,
       "skipped": 0,
@@ -613,12 +613,12 @@
       "fail": 0,
       "slowest": {
         "name": "15.3 in a group the bot answers only when addressed",
-        "ms": 113
+        "ms": 110
       }
     },
     {
       "file": "tier2i.test.js",
-      "ms": 197,
+      "ms": 181,
       "cases": 21,
       "passed": 21,
       "skipped": 0,
@@ -626,25 +626,25 @@
       "fail": 0,
       "slowest": {
         "name": "20.4 pair over HTTP, then use the device token",
+        "ms": 73
+      }
+    },
+    {
+      "file": "auth.test.js",
+      "ms": 174,
+      "cases": 4,
+      "passed": 4,
+      "skipped": 0,
+      "topTests": 4,
+      "fail": 0,
+      "slowest": {
+        "name": "with a token configured, every sampled /api route refuses an anonymous caller",
         "ms": 81
       }
     },
     {
-      "file": "memory.test.js",
-      "ms": 195,
-      "cases": 5,
-      "passed": 5,
-      "skipped": 0,
-      "topTests": 5,
-      "fail": 0,
-      "slowest": {
-        "name": "readHead truncates long memory",
-        "ms": 184
-      }
-    },
-    {
       "file": "phase3.test.js",
-      "ms": 182,
+      "ms": 161,
       "cases": 8,
       "passed": 8,
       "skipped": 0,
@@ -652,38 +652,25 @@
       "fail": 0,
       "slowest": {
         "name": "phase 3: wake service + wizard + update button",
-        "ms": 182
+        "ms": 161
       }
     },
     {
-      "file": "p1.test.js",
-      "ms": 171,
-      "cases": 24,
-      "passed": 24,
+      "file": "memory.test.js",
+      "ms": 157,
+      "cases": 5,
+      "passed": 5,
       "skipped": 0,
       "topTests": 5,
       "fail": 0,
       "slowest": {
-        "name": "P1: gateway session/dream routes",
-        "ms": 148
-      }
-    },
-    {
-      "file": "gateway.test.js",
-      "ms": 171,
-      "cases": 8,
-      "passed": 8,
-      "skipped": 0,
-      "topTests": 8,
-      "fail": 0,
-      "slowest": {
-        "name": "doctor reports the web panel password state",
-        "ms": 89
+        "name": "readHead truncates long memory",
+        "ms": 147
       }
     },
     {
       "file": "queue.test.js",
-      "ms": 154,
+      "ms": 156,
       "cases": 8,
       "passed": 8,
       "skipped": 0,
@@ -695,8 +682,34 @@
       }
     },
     {
-      "file": "memory-truth.test.js",
+      "file": "p1.test.js",
       "ms": 152,
+      "cases": 24,
+      "passed": 24,
+      "skipped": 0,
+      "topTests": 5,
+      "fail": 0,
+      "slowest": {
+        "name": "P1: gateway session/dream routes",
+        "ms": 129
+      }
+    },
+    {
+      "file": "gateway.test.js",
+      "ms": 144,
+      "cases": 8,
+      "passed": 8,
+      "skipped": 0,
+      "topTests": 8,
+      "fail": 0,
+      "slowest": {
+        "name": "doctor reports the web panel password state",
+        "ms": 66
+      }
+    },
+    {
+      "file": "memory-truth.test.js",
+      "ms": 138,
       "cases": 6,
       "passed": 6,
       "skipped": 0,
@@ -704,51 +717,12 @@
       "fail": 0,
       "slowest": {
         "name": "7.2 compaction summarises but deletes nothing",
-        "ms": 59
-      }
-    },
-    {
-      "file": "models.test.js",
-      "ms": 147,
-      "cases": 8,
-      "passed": 8,
-      "skipped": 0,
-      "topTests": 2,
-      "fail": 0,
-      "slowest": {
-        "name": "models API: fetch / register / use, everything live",
-        "ms": 111
-      }
-    },
-    {
-      "file": "worklog.test.js",
-      "ms": 147,
-      "cases": 9,
-      "passed": 9,
-      "skipped": 0,
-      "topTests": 3,
-      "fail": 0,
-      "slowest": {
-        "name": "the panel serves the tracker (and still asks for the password)",
-        "ms": 74
-      }
-    },
-    {
-      "file": "auth.test.js",
-      "ms": 140,
-      "cases": 4,
-      "passed": 4,
-      "skipped": 0,
-      "topTests": 4,
-      "fail": 0,
-      "slowest": {
-        "name": "with a token configured, every sampled /api route refuses an anonymous caller",
-        "ms": 65
+        "ms": 50
       }
     },
     {
       "file": "writer-fence.test.js",
-      "ms": 136,
+      "ms": 132,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -756,25 +730,12 @@
       "fail": 0,
       "slowest": {
         "name": "8.4 two surfaces on one session share one lane",
-        "ms": 90
-      }
-    },
-    {
-      "file": "providers.test.js",
-      "ms": 136,
-      "cases": 14,
-      "passed": 14,
-      "skipped": 0,
-      "topTests": 1,
-      "fail": 0,
-      "slowest": {
-        "name": "providers API: list / add / keys / use / delete",
-        "ms": 136
+        "ms": 89
       }
     },
     {
       "file": "compaction.test.js",
-      "ms": 133,
+      "ms": 132,
       "cases": 3,
       "passed": 3,
       "skipped": 0,
@@ -782,12 +743,12 @@
       "fail": 0,
       "slowest": {
         "name": "compaction: past the threshold a digest is written and only the hot window shrinks",
-        "ms": 64
+        "ms": 61
       }
     },
     {
       "file": "probe.test.js",
-      "ms": 132,
+      "ms": 130,
       "cases": 14,
       "passed": 14,
       "skipped": 0,
@@ -795,12 +756,51 @@
       "fail": 0,
       "slowest": {
         "name": "probe: server that accepts reasoning_effort → supports all levels",
-        "ms": 49
+        "ms": 47
+      }
+    },
+    {
+      "file": "models.test.js",
+      "ms": 129,
+      "cases": 8,
+      "passed": 8,
+      "skipped": 0,
+      "topTests": 2,
+      "fail": 0,
+      "slowest": {
+        "name": "models API: fetch / register / use, everything live",
+        "ms": 106
+      }
+    },
+    {
+      "file": "worklog.test.js",
+      "ms": 126,
+      "cases": 9,
+      "passed": 9,
+      "skipped": 0,
+      "topTests": 3,
+      "fail": 0,
+      "slowest": {
+        "name": "the panel serves the tracker (and still asks for the password)",
+        "ms": 67
+      }
+    },
+    {
+      "file": "providers.test.js",
+      "ms": 107,
+      "cases": 14,
+      "passed": 14,
+      "skipped": 0,
+      "topTests": 1,
+      "fail": 0,
+      "slowest": {
+        "name": "providers API: list / add / keys / use / delete",
+        "ms": 107
       }
     },
     {
       "file": "mcp.test.js",
-      "ms": 96,
+      "ms": 97,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -813,7 +813,7 @@
     },
     {
       "file": "tier3e.test.js",
-      "ms": 96,
+      "ms": 86,
       "cases": 15,
       "passed": 15,
       "skipped": 0,
@@ -821,38 +821,12 @@
       "fail": 0,
       "slowest": {
         "name": "34.7 a live gateway answers all seven board calls with the fields the screen reads",
-        "ms": 70
-      }
-    },
-    {
-      "file": "tier.test.js",
-      "ms": 80,
-      "cases": 1,
-      "passed": 1,
-      "skipped": 0,
-      "topTests": 1,
-      "fail": 0,
-      "slowest": {
-        "name": "tier routing: local uses localProvider, cloud ignores it, missing local falls back",
-        "ms": 80
-      }
-    },
-    {
-      "file": "loop.test.js",
-      "ms": 75,
-      "cases": 14,
-      "passed": 14,
-      "skipped": 0,
-      "topTests": 14,
-      "fail": 0,
-      "slowest": {
-        "name": "mock provider run: tool executes, transcript persists, events fire",
-        "ms": 36
+        "ms": 62
       }
     },
     {
       "file": "docs-map.test.js",
-      "ms": 74,
+      "ms": 78,
       "cases": 3,
       "passed": 3,
       "skipped": 0,
@@ -860,38 +834,38 @@
       "fail": 0,
       "slowest": {
         "name": "11.5 the file map in ARCHITECTURE.md is generated and cannot drift",
-        "ms": 67
+        "ms": 68
       }
     },
     {
-      "file": "tier2s.test.js",
-      "ms": 71,
-      "cases": 8,
-      "passed": 7,
-      "skipped": 1,
-      "topTests": 8,
-      "fail": 0,
-      "slowest": {
-        "name": "30.2 the exec tool carries the sandbox note, and require stops it before it spawns",
-        "ms": 48
-      }
-    },
-    {
-      "file": "dream.test.js",
-      "ms": 66,
-      "cases": 6,
-      "passed": 6,
+      "file": "tier.test.js",
+      "ms": 75,
+      "cases": 1,
+      "passed": 1,
       "skipped": 0,
-      "topTests": 6,
+      "topTests": 1,
       "fail": 0,
       "slowest": {
-        "name": "force dream runs, writes state, and logs the cycle",
-        "ms": 50
+        "name": "tier routing: local uses localProvider, cloud ignores it, missing local falls back",
+        "ms": 75
+      }
+    },
+    {
+      "file": "loop.test.js",
+      "ms": 73,
+      "cases": 14,
+      "passed": 14,
+      "skipped": 0,
+      "topTests": 14,
+      "fail": 0,
+      "slowest": {
+        "name": "mock provider run: tool executes, transcript persists, events fire",
+        "ms": 34
       }
     },
     {
       "file": "agents.test.js",
-      "ms": 63,
+      "ms": 69,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -899,12 +873,38 @@
       "fail": 0,
       "slowest": {
         "name": "runTurn namespaces sessions per agent",
-        "ms": 39
+        "ms": 38
+      }
+    },
+    {
+      "file": "tier2s.test.js",
+      "ms": 62,
+      "cases": 8,
+      "passed": 7,
+      "skipped": 1,
+      "topTests": 8,
+      "fail": 0,
+      "slowest": {
+        "name": "30.2 the exec tool carries the sandbox note, and require stops it before it spawns",
+        "ms": 43
+      }
+    },
+    {
+      "file": "dream.test.js",
+      "ms": 59,
+      "cases": 6,
+      "passed": 6,
+      "skipped": 0,
+      "topTests": 6,
+      "fail": 0,
+      "slowest": {
+        "name": "force dream runs, writes state, and logs the cycle",
+        "ms": 46
       }
     },
     {
       "file": "shutdown.test.js",
-      "ms": 52,
+      "ms": 43,
       "cases": 2,
       "passed": 2,
       "skipped": 0,
@@ -912,12 +912,12 @@
       "fail": 0,
       "slowest": {
         "name": "gateway stops promptly with an open event stream",
-        "ms": 48
+        "ms": 40
       }
     },
     {
       "file": "status.test.js",
-      "ms": 51,
+      "ms": 43,
       "cases": 3,
       "passed": 3,
       "skipped": 0,
@@ -925,12 +925,12 @@
       "fail": 0,
       "slowest": {
         "name": "status report is plain English and factual",
-        "ms": 40
+        "ms": 33
       }
     },
     {
       "file": "whatsapp.test.js",
-      "ms": 41,
+      "ms": 40,
       "cases": 9,
       "passed": 9,
       "skipped": 0,
@@ -938,25 +938,12 @@
       "fail": 0,
       "slowest": {
         "name": "channel: allowlisted inbound message produces an agent reply",
-        "ms": 22
-      }
-    },
-    {
-      "file": "stream.test.js",
-      "ms": 38,
-      "cases": 9,
-      "passed": 9,
-      "skipped": 0,
-      "topTests": 9,
-      "fail": 0,
-      "slowest": {
-        "name": "openai streaming: text deltas + tool call assembly",
-        "ms": 25
+        "ms": 23
       }
     },
     {
       "file": "tier2k.test.js",
-      "ms": 38,
+      "ms": 36,
       "cases": 17,
       "passed": 17,
       "skipped": 0,
@@ -968,34 +955,21 @@
       }
     },
     {
-      "file": "tier2f.test.js",
-      "ms": 35,
-      "cases": 18,
-      "passed": 18,
-      "skipped": 0,
-      "topTests": 5,
-      "fail": 0,
-      "slowest": {
-        "name": "17.1 the agent can list and read its inbox",
-        "ms": 12
-      }
-    },
-    {
-      "file": "migrate.test.js",
+      "file": "stream.test.js",
       "ms": 31,
-      "cases": 6,
-      "passed": 6,
+      "cases": 9,
+      "passed": 9,
       "skipped": 0,
-      "topTests": 6,
+      "topTests": 9,
       "fail": 0,
       "slowest": {
-        "name": "apply: round-trip moves personality, memory, skills, agents, config — secrets stay hidden",
-        "ms": 11
+        "name": "openai streaming: text deltas + tool call assembly",
+        "ms": 21
       }
     },
     {
       "file": "lifecycle.test.js",
-      "ms": 30,
+      "ms": 28,
       "cases": 1,
       "passed": 1,
       "skipped": 0,
@@ -1003,12 +977,25 @@
       "fail": 0,
       "slowest": {
         "name": "stop() closes the listener and the config watcher",
-        "ms": 30
+        "ms": 28
+      }
+    },
+    {
+      "file": "tier2f.test.js",
+      "ms": 26,
+      "cases": 18,
+      "passed": 18,
+      "skipped": 0,
+      "topTests": 5,
+      "fail": 0,
+      "slowest": {
+        "name": "17.1 the agent can list and read its inbox",
+        "ms": 9
       }
     },
     {
       "file": "skills.test.js",
-      "ms": 25,
+      "ms": 24,
       "cases": 8,
       "passed": 8,
       "skipped": 0,
@@ -1016,12 +1003,12 @@
       "fail": 0,
       "slowest": {
         "name": "lists skills with user overriding builtin",
-        "ms": 11
+        "ms": 10
       }
     },
     {
       "file": "picker.test.js",
-      "ms": 19,
+      "ms": 23,
       "cases": 18,
       "passed": 18,
       "skipped": 0,
@@ -1030,6 +1017,19 @@
       "slowest": {
         "name": "provider menu: numbered list, current marked, reply hint",
         "ms": 3
+      }
+    },
+    {
+      "file": "migrate.test.js",
+      "ms": 23,
+      "cases": 6,
+      "passed": 6,
+      "skipped": 0,
+      "topTests": 6,
+      "fail": 0,
+      "slowest": {
+        "name": "apply: round-trip moves personality, memory, skills, agents, config — secrets stay hidden",
+        "ms": 8
       }
     },
     {
@@ -1047,7 +1047,7 @@
     },
     {
       "file": "whisper.test.js",
-      "ms": 19,
+      "ms": 17,
       "cases": 4,
       "passed": 3,
       "skipped": 1,
@@ -1055,25 +1055,25 @@
       "fail": 0,
       "slowest": {
         "name": "whisper: a fake engine that outputs text succeeds; empty output is a friendly failure",
-        "ms": 14
+        "ms": 13
       }
     },
     {
-      "file": "replay.test.js",
-      "ms": 13,
-      "cases": 3,
-      "passed": 3,
+      "file": "import.test.js",
+      "ms": 14,
+      "cases": 5,
+      "passed": 5,
       "skipped": 0,
-      "topTests": 3,
+      "topTests": 5,
       "fail": 0,
       "slowest": {
-        "name": "replay: creates new session with user messages only",
-        "ms": 7
+        "name": "imports a single skill folder",
+        "ms": 4
       }
     },
     {
       "file": "embed.test.js",
-      "ms": 11,
+      "ms": 10,
       "cases": 8,
       "passed": 8,
       "skipped": 0,
@@ -1085,21 +1085,47 @@
       }
     },
     {
-      "file": "import.test.js",
-      "ms": 11,
+      "file": "wake.test.js",
+      "ms": 10,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
       "topTests": 5,
       "fail": 0,
       "slowest": {
-        "name": "imports a single skill folder",
-        "ms": 3
+        "name": "runWakeLoop: full flow with injected stream speaks the reply",
+        "ms": 8
+      }
+    },
+    {
+      "file": "replay.test.js",
+      "ms": 10,
+      "cases": 3,
+      "passed": 3,
+      "skipped": 0,
+      "topTests": 3,
+      "fail": 0,
+      "slowest": {
+        "name": "replay: creates new session with user messages only",
+        "ms": 6
+      }
+    },
+    {
+      "file": "beat-plan.test.js",
+      "ms": 9,
+      "cases": 6,
+      "passed": 6,
+      "skipped": 0,
+      "topTests": 1,
+      "fail": 0,
+      "slowest": {
+        "name": "beat plan: structured smallest-to-biggest, with effort and proof per beat",
+        "ms": 9
       }
     },
     {
       "file": "phone-tools.test.js",
-      "ms": 11,
+      "ms": 9,
       "cases": 12,
       "passed": 12,
       "skipped": 0,
@@ -1111,21 +1137,8 @@
       }
     },
     {
-      "file": "wake.test.js",
-      "ms": 11,
-      "cases": 5,
-      "passed": 5,
-      "skipped": 0,
-      "topTests": 5,
-      "fail": 0,
-      "slowest": {
-        "name": "runWakeLoop: full flow with injected stream speaks the reply",
-        "ms": 9
-      }
-    },
-    {
       "file": "cron.test.js",
-      "ms": 10,
+      "ms": 9,
       "cases": 8,
       "passed": 8,
       "skipped": 0,
@@ -1133,20 +1146,7 @@
       "fail": 0,
       "slowest": {
         "name": "cron store CRUD + findDue dedupes by state",
-        "ms": 6
-      }
-    },
-    {
-      "file": "canvas.test.js",
-      "ms": 10,
-      "cases": 10,
-      "passed": 10,
-      "skipped": 0,
-      "topTests": 10,
-      "fail": 0,
-      "slowest": {
-        "name": "canvas: tool is registered",
-        "ms": 2
+        "ms": 5
       }
     },
     {
@@ -1159,20 +1159,7 @@
       "fail": 0,
       "slowest": {
         "name": "headings, emphasis, strike and inline code",
-        "ms": 2
-      }
-    },
-    {
-      "file": "telegram.test.js",
-      "ms": 9,
-      "cases": 18,
-      "passed": 18,
-      "skipped": 0,
-      "topTests": 18,
-      "fail": 0,
-      "slowest": {
-        "name": "telegram send retries as plain text when the HTML is rejected",
-        "ms": 2
+        "ms": 3
       }
     },
     {
@@ -1189,8 +1176,34 @@
       }
     },
     {
-      "file": "offline.test.js",
+      "file": "telegram.test.js",
       "ms": 8,
+      "cases": 18,
+      "passed": 18,
+      "skipped": 0,
+      "topTests": 18,
+      "fail": 0,
+      "slowest": {
+        "name": "telegram send retries as plain text when the HTML is rejected",
+        "ms": 2
+      }
+    },
+    {
+      "file": "canvas.test.js",
+      "ms": 7,
+      "cases": 10,
+      "passed": 10,
+      "skipped": 0,
+      "topTests": 10,
+      "fail": 0,
+      "slowest": {
+        "name": "canvas: tool is registered",
+        "ms": 2
+      }
+    },
+    {
+      "file": "offline.test.js",
+      "ms": 7,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -1198,38 +1211,25 @@
       "fail": 0,
       "slowest": {
         "name": "offline demo: a real setup with no network and no key",
-        "ms": 8
-      }
-    },
-    {
-      "file": "beat-plan.test.js",
-      "ms": 7,
-      "cases": 6,
-      "passed": 6,
-      "skipped": 0,
-      "topTests": 1,
-      "fail": 0,
-      "slowest": {
-        "name": "beat plan: structured smallest-to-biggest, with effort and proof per beat",
         "ms": 7
       }
     },
     {
       "file": "update.test.js",
-      "ms": 5,
+      "ms": 6,
       "cases": 10,
       "passed": 10,
       "skipped": 0,
       "topTests": 10,
       "fail": 0,
       "slowest": {
-        "name": "semverGt compares versions correctly",
-        "ms": 1
+        "name": "checkForUpdate says \"no internet connection\" in plain words",
+        "ms": 2
       }
     },
     {
       "file": "friendly.test.js",
-      "ms": 5,
+      "ms": 4,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -1237,12 +1237,12 @@
       "fail": 0,
       "slowest": {
         "name": "connection refused explains what and how to fix",
-        "ms": 2
+        "ms": 1
       }
     },
     {
       "file": "frontmatter.test.js",
-      "ms": 4,
+      "ms": 3,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -1250,12 +1250,12 @@
       "fail": 0,
       "slowest": {
         "name": "parses scalar frontmatter values",
-        "ms": 2
+        "ms": 1
       }
     },
     {
       "file": "tracing.test.js",
-      "ms": 4,
+      "ms": 3,
       "cases": 7,
       "passed": 7,
       "skipped": 0,
@@ -1264,19 +1264,6 @@
       "slowest": {
         "name": "tracing: addToolCall records tool calls",
         "ms": 1
-      }
-    },
-    {
-      "file": "tts.test.js",
-      "ms": 4,
-      "cases": 4,
-      "passed": 4,
-      "skipped": 0,
-      "topTests": 4,
-      "fail": 0,
-      "slowest": {
-        "name": "resolveTts prefers termux-tts-speak when available",
-        "ms": 2
       }
     },
     {
@@ -1293,8 +1280,21 @@
       }
     },
     {
-      "file": "failover.test.js",
+      "file": "tts.test.js",
       "ms": 3,
+      "cases": 4,
+      "passed": 4,
+      "skipped": 0,
+      "topTests": 4,
+      "fail": 0,
+      "slowest": {
+        "name": "resolveTts prefers termux-tts-speak when available",
+        "ms": 1
+      }
+    },
+    {
+      "file": "failover.test.js",
+      "ms": 2,
       "cases": 5,
       "passed": 5,
       "skipped": 0,
@@ -1302,7 +1302,7 @@
       "fail": 0,
       "slowest": {
         "name": "failover: single provider returns directly",
-        "ms": 2
+        "ms": 1
       }
     },
     {
@@ -1319,6 +1319,19 @@
       }
     },
     {
+      "file": "census-scope.test.js",
+      "ms": 2,
+      "cases": 1,
+      "passed": 1,
+      "skipped": 0,
+      "topTests": 1,
+      "fail": 0,
+      "slowest": {
+        "name": "25.1 the census is scored over in-scope work, and says why the rest is out",
+        "ms": 2
+      }
+    },
+    {
       "file": "share.test.js",
       "ms": 1,
       "cases": 1,
@@ -1328,19 +1341,6 @@
       "fail": 0,
       "slowest": {
         "name": "share report is copy-paste safe: secrets scrubbed, checks present",
-        "ms": 1
-      }
-    },
-    {
-      "file": "census-scope.test.js",
-      "ms": 1,
-      "cases": 1,
-      "passed": 1,
-      "skipped": 0,
-      "topTests": 1,
-      "fail": 0,
-      "slowest": {
-        "name": "25.1 the census is scored over in-scope work, and says why the rest is out",
         "ms": 1
       }
     }
