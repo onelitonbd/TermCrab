@@ -32,6 +32,11 @@ are about TermCrab and not about somebody's API latency.
 | `idleRssMb` — idle RSS (gateway, offline) | 71 MB | **130 MB** | a 2 GB phone kills hogs. Memory is a *level*, not a sample, so ~1.8× is the tightest honest multiple |
 | `restartMs` — stop + start again (`supervisor`) | 136 ms | **2500 ms** | the supervisor restarts after a crash; a restart has to be invisible to the person holding the phone |
 | `turnMs` — one real turn (message → answer, offline) | 88 ms | **5000 ms** | the whole loop, offline. A provider call is the user's own network and is excluded by design |
+| `panelKb` — the control panel, as one HTML file | 317 KB | **700 KB** | inline CSS, inline JavaScript, no bundler, no CDN, no framework — that is why it works offline. The ceiling is what stops *"let us add a framework"* from being a quiet decision |
+| `panelMs` — the gateway serving `GET /` | ~3 ms | **250 ms** | the shell has to appear before any `/api` call; a phone opening the panel should never wait on the server |
+| `queueDrainMs` — 24 turns through one session lane | 55 ms | **500 ms** | the queue's own overhead with a runner that sleeps 2 ms a turn (48 ms of the 55), so what the ceiling watches is *per-turn* cost: a session that is busy must keep moving, and a phone is ~5× slower than this box |
+| `queueWakeMs` — the worst gap between one queued turn finishing and the next starting | 1 ms | **120 ms** | the wake-up a person feels while the session is busy. It is a timer, not a model, so a phone should still be tens of milliseconds; weeks of silence behind a finished turn means the lane stopped pumping |
+| `subagentFanoutMs` — four subagents spawned together, each sleeping 40 ms | 41 ms | **600 ms** | four is the default slot count (`agent.maxSubagents`), and this proves they are *parallel*: near-40 ms is four slots, near-160 ms would be four turns in a polite queue |
 | `coldInstallMs` — `npm install` on a fresh checkout, **empty npm cache** | 742 ms | **60 000 ms** | three dev packages and zero runtime dependencies; on mobile data this is the whole download, and the ceiling is where a phone's patience ends |
 | `coldCheckoutMs` — `npm install` → `./termcrab` answers, end to end | 6.5 s | **90 000 ms** | the complete first contact. Measured with an isolated cache so it cannot freeload on whatever npm already downloaded on this machine |
 | `roomWriteMs` — 200 group messages recorded into one room | ~180 ms | **1500 ms** | a chatty group: the room log is bounded twice (200 messages, 64 KB) and every append pays the read-and-trim that keeps it bounded. Unbounded growth would show up here first |
@@ -42,6 +47,55 @@ are about TermCrab and not about somebody's API latency.
 | `searchMs` — one memory search over 10 000 vectors | 7 ms | **200 ms** | the index is a JSONL file scanned in memory — filter, cosine, sort — and 10 000 rows is about a year on a phone. The ceiling is the alarm for a search that quietly became quadratic, or an index that started hitting the disk on every query. Measured with a deterministic local embedder, so the number is about *our* scan and not somebody's API |
 | `firstRunMs` — first `./termcrab` from a fresh checkout | 5212 ms | **30000 ms** | the one wait a new user pays, once: the launcher compiles 126 files with `tsc`. A phone is several times slower, which is why the ceiling is 30 s on a box that does it in 5 |
 | `rebuildMs` — run again after a `git pull` | 1704 ms | **8000 ms** | "pull, then run" must stay a fraction of a full build, or people stop pulling |
+
+## The doctor reads the measurement (40.2)
+
+`termcrab doctor` includes one line about the budget, read from `state/perf.json`:
+
+```
+✅ performance budget - measured just now on linux/x64 · worst docsKb 2766/4000 (69%) · 4 metric(s) not measured
+ℹ️  performance budget - measured 33 d ago on linux/x64 · worst …        fix: this measurement is a month old: termcrab perf
+⚠️  performance budget - measured just now … OVER: turnMs                fix: see docs/PERFORMANCE.md for the metric that is over, then: termcrab perf
+```
+
+Three states, three honest answers: never measured (information, with the command), aging (measurements
+rot — a number from last month is a fact about last month), and over budget (a warning naming the metric
+and the document that says what to do). The doctor **never measures anything itself** — a measurement
+boots a gateway and runs a turn, and a health check must be cheap.
+
+## The queue's numbers (40.5)
+
+The panel's Work page says "N waiting", and a phone that is busy is exactly where the agent feels
+slowest: not in the model, but in the lane. Three ceilings cover that:
+
+- **`queueDrainMs`** — 24 turns queued into one session, each runner sleeping 2 ms. Real
+  `SessionQueue`, real pump, real lane; the 48 ms of sleeping is subtracted by the reader, and
+  what remains (7 ms) is per-turn overhead. It is the number that catches a "read the session file
+  once per turn" change.
+- **`queueWakeMs`** — the worst gap between the previous turn finishing and the next starting,
+  measured from the runner's own clock. Seconds here would mean the lane stopped pumping;
+  the ceiling is 120 ms because this is a timer on a loaded dev box, and a phone still has to feel
+  immediate.
+- **`subagentFanoutMs`** — four `spawnTask` calls back to back, each sleeping 40 ms. The result is
+  ~41 ms, which is the *proof* of four parallel slots: a queue would show 160 ms. The cap is
+  `agent.maxSubagents` (default 4), so this also fails if somebody serialises task startup.
+
+Measurements run against the built `dist/` copies of `SessionQueue` and `spawnTask` — the same code
+the gateway runs, not a model of it.
+
+## The panel's own weight (40.1)
+
+The panel has no build step on purpose: `ui/index.html` is the whole thing — inline CSS, inline
+JavaScript, one file the gateway serves as-is. Two ceilings keep that honest:
+
+- **`panelKb`** (700 KB, 317 today) — a framework would not fit, and adding one would have to be a
+  deliberate decision with a written reason, not a quiet `npm install` that grew the file.
+- **`panelMs`** (250 ms, ~3 today) — the gateway serving that file. The shell has to arrive before any
+  `/api` call, because every screen renders from data fetched after it.
+
+The same file is where the docs page's markdown renderer is extracted from (`termcrab docs` slices it
+out verbatim), so this budget is also, indirectly, the docs page's — which is why 39.3 exists next to
+it and both are measured by the same bench run.
 
 ## The cold checkout, from nothing (39.5)
 
@@ -162,6 +216,14 @@ not measure — an honest "not measured" instead of a zero that looks fast.
      session store growing without a cap.
    - **install** → a real `dependencies` entry appeared. There are none, on
      purpose.
+   - **panelKb / panelMs** → whether something was added to `ui/index.html` (a library, an inline
+     asset, a second `<script src>`), or whether serving it started doing work per request (it should
+     be a file read and a write).
+   - **queueDrainMs / queueWakeMs** → whether the lane is doing work per turn it could hoist
+     (re-reading a session file, rebuilding a prompt for every message, a synchronous write in
+     `SessionQueue.finish`): 24 turns × 2 ms should be 48 ms of sleeping and almost nothing else.
+   - **subagentFanoutMs** → whether `spawnTask`'s slot cap was raised past four or tasks are being
+     serialised (a shared lock, an await on the previous task's `onFinish`).
    - **docsMs / docsKb** → which tree `collectDocs()` is embedding
      (`docs/openclaw/data` is excluded by default — 47 MB of raw crawl) and whether the per-doc byte
      cap moved. The page must stay one file a phone can open offline.

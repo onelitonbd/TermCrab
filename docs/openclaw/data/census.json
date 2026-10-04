@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T07:21:24.367Z",
+ "measured": "2026-10-04T08:45:47.354Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 28,
+  "BETTER": 33,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 146,
+ "inScope": 151,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1629, src/mobile/doctor.ts:575"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1629, src/mobile/doctor.ts:615"
    }
   },
   {
@@ -530,7 +530,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:494"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:495"
    }
   },
   {
@@ -843,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3148"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3158"
    }
   },
   {
@@ -1001,7 +1001,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3086"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3096"
    }
   },
   {
@@ -1021,7 +1021,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/core/perf.ts:74"
+    "detail": "2 match(es): src/core/perf.ts:86"
    }
   },
   {
@@ -2140,7 +2140,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/core/perf.ts:69"
+    "detail": "2 match(es): src/core/perf.ts:81"
    }
   },
   {
@@ -2338,7 +2338,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:632"
+    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:633"
    }
   },
   {
@@ -2376,7 +2376,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "69 match(es): src/agent/loop.ts:232, src/agent/routing.ts:22, src/cli.ts:43"
+    "detail": "70 match(es): src/agent/loop.ts:232, src/agent/routing.ts:22, src/cli.ts:43"
    }
   },
   {
@@ -2822,7 +2822,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "33 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
+    "detail": "35 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
    }
   },
   {
@@ -3063,7 +3063,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/perf.ts:123"
+    "detail": "1 match(es): src/core/perf.ts:150"
    }
   },
   {
@@ -3123,7 +3123,108 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/perf.ts:270"
+    "detail": "1 match(es): src/core/perf.ts:378"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The panel's own weight has a ceiling (40.1)",
+   "openclaw": "Control UI is a built web app",
+   "verdict": "BETTER",
+   "evidence": "ui/index.html is the whole control panel — one file, inline CSS and JavaScript, no bundler, no CDN, no build step — and it now has two ceilings: panelKb (700 KB, measured 317 KB) so \"let us add a framework\" cannot be a quiet decision, and panelMs (250 ms, measured ~4 ms) so the shell arrives before any /api call. Both are in FAST_METRICS, so `termcrab perf` and the panel see them; docs/PERFORMANCE.md has a section naming the trips. Pinned by test/tier3k.test.ts 40.1, which serves the file over a real gateway five times, asserts the body is byte-identical to the file, that it contains the Work view, and that there is no <script src> or CDN link",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "panelKb",
+    "expect": "present",
+    "min": 2
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es) (min 2): src/core/perf.ts:41"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The doctor reads the measurement (40.2)",
+   "openclaw": "a health check with no numbers",
+   "verdict": "BETTER",
+   "evidence": "`termcrab doctor` now includes one line about the budget, read from state/perf.json: never measured (\"not measured on this home yet\" + fix: termcrab perf), aging (info, \"measured 33 d ago … this measurement is a month old\"), or over (a ⚠️ naming the OVER metrics and pointing at docs/PERFORMANCE.md). The detail carries age, host, the worst metric as a % of its ceiling and how many were skipped. It never measures anything itself — measuring boots a gateway and runs a turn, and a health check has to be cheap. Pinned by test/tier3k.test.ts 40.2 (three states, the text and the JSON envelope)",
+   "probe": {
+    "file": "src/mobile/doctor.ts",
+    "pattern": "id: 'perf'",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): src/mobile/doctor.ts:517"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The docs page's footer, on every surface (40.3)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "The built offline docs page carries a real footer: the release, the build time in UTC, \"60 docs, 317 sections\" (the same counts the header claims) and \"generated by termcrab docs\" — so the copy on the phone says what it is. It survives a rebuild, and `docs status`/the panel report the same release from the same stamp. Pinned by test/tier3k.test.ts 40.3, which rebuilds and re-reads the markup",
+   "probe": {
+    "file": "src/docs/site.ts",
+    "pattern": "footerVersion",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/docs/site.ts:444"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "A release measurement, checked in (40.4)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "`termcrab perf --save` writes the snapshot to docs/openclaw/data/perf-<release>.json — one file per release, checked in — with the release, the machine and a note pointing at docs/PERFORMANCE.md, and says which happened (written or replaced). \"How fast was 0.73?\" is now answerable offline, from the repository, on any machine; perf-0.73.0.json is the first. Pinned by test/tier3k.test.ts 40.4 (a stand-in bench for speed, written then replaced, the committed files re-validated against the ceilings they were judged by)",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "export function savePerfSnapshot",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/perf.ts:235"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The queue's numbers (40.5)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "The parts that make a phone feel slow while the agent is busy now have ceilings: queueDrainMs (500 ms; 24 turns through one real SessionQueue lane measured at 53 ms, 48 of it the runner sleeping), queueWakeMs (120 ms; the worst gap between one queued turn finishing and the next starting, measured at 1 ms) and subagentFanoutMs (600 ms; four 40 ms sleepers measured at 41 ms, which is the proof the four slots are parallel and not a polite queue). All three are in FAST_METRICS. Writing the test found a real defect — waitForTasks left its deadline timer running when an answer arrived first, holding a one-shot process alive for a full minute — and it is fixed. Pinned by test/tier3k.test.ts 40.5 (a real lane of twelve turns, a real four-task fan-out, the doc and the committed snapshot)",
+   "probe": {
+    "file": "src/agent/tasks.ts",
+    "pattern": "so a settled wait leaves nothing behind",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/agent/tasks.ts:221"
    }
   },
   {
@@ -3143,7 +3244,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): scripts/bench.mjs:402"
+    "detail": "2 match(es): scripts/bench.mjs:443"
    }
   },
   {

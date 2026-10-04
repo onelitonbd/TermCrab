@@ -2195,8 +2195,9 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       // measurements the suite's gate runs (scripts/bench.mjs — one
       // implementation), keeps the numbers where the panel can read them, and
       // exits 1 when anything is over its ceiling.
-      const { PERF_CEILINGS, appendPerfHistory, describePerf, describeTrend, measurePerf, perfHistoryPath, perfPath, perfTrend, readPerfHistory, writePerfSnapshot } =
+      const { PERF_CEILINGS, appendPerfHistory, currentRelease, describePerf, describeTrend, listSavedPerfSaves, measurePerf, perfHistoryPath, perfPath, perfTrend, readPerfHistory, savePerfSnapshot, writePerfSnapshot } =
         await import('./core/perf.js');
+      const saveRequested = rest.includes('--save');
       const asJson = rest.includes('--json');
       const everything = rest.includes('--full');
       let measured: ReturnType<typeof measurePerf>;
@@ -2215,8 +2216,12 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       // is answered by the series and not by one afternoon's number.
       const historyFile = appendPerfHistory(snapshot);
       const trend = perfTrend(readPerfHistory()).sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+      // 40.4: `--save` checks the measurement in beside the other reports, one
+      // file per release, so "how fast was 0.73" survives this machine.
+      const release = currentRelease();
+      const saved = saveRequested ? savePerfSnapshot(snapshot, release) : null;
       if (asJson) {
-        emitJson('perf', { ...snapshot, file, historyFile, runs: readPerfHistory().length, trend });
+        emitJson('perf', { ...snapshot, file, historyFile, runs: readPerfHistory().length, trend, ...(saved ? { saved: saved.file, savedReplaced: saved.replaced } : {}) });
         if (snapshot.over.length) process.exitCode = 1;
         return;
       }
@@ -2230,6 +2235,11 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       }
       console.log(`     snapshot: ${file}`);
       console.log(`     history: ${historyFile} (${readPerfHistory().length} run(s))`);
+      if (saved) {
+        console.log(`     saved: ${saved.file}${saved.replaced ? ' (replaced the earlier measurement for this release)' : ''}`);
+        const all = listSavedPerfSaves();
+        if (all.length > 1) console.log(`     ${all.length} release(s) measured: ${all.map((s) => s.release).join(', ')}`);
+      }
       if (snapshot.over.length) {
         console.log(`     ⚠️ over budget: ${snapshot.over.join(', ')} — see docs/PERFORMANCE.md (fix the cause, never the ceiling)`);
         process.exitCode = 1;

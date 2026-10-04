@@ -26,9 +26,11 @@ export interface PerfCeiling {
 }
 
 /**
- * The ceilings (37.1). Measured 2026-10-04 on the development box while these
- * were written; each one is a loose multiple so the alarm fires on a
- * regression rather than on jitter. docs/PERFORMANCE.md explains them.
+ * The ceilings (37.1, extended through 40.5). Measured on the development box
+ * while each batch was written; every one is a loose multiple so the alarm
+ * fires on a regression rather than on jitter. docs/PERFORMANCE.md explains
+ * them, and `termcrab perf --save` files a release's numbers under
+ * docs/openclaw/data/ so an old claim can be checked.
  */
 export const PERF_CEILINGS: Record<string, PerfCeiling> = {
   installMs: { max: 20_000, unit: 'ms', why: 'zero runtime deps: npm has nothing to fetch' },
@@ -36,6 +38,16 @@ export const PERF_CEILINGS: Record<string, PerfCeiling> = {
   idleRssMb: { max: 130, unit: 'MB', why: 'a 2 GB phone kills hogs' },
   restartMs: { max: 2_500, unit: 'ms', why: 'a restart has to be invisible' },
   turnMs: { max: 5_000, unit: 'ms', why: 'the whole message-to-answer loop, offline' },
+  panelKb: {
+    max: 700,
+    unit: 'KB',
+    why: 'the panel is one HTML file with no build step — inline CSS/JS, no bundler, no CDN. 317 KB today; the ceiling is what stops "let us add a framework" from being a quiet decision',
+  },
+  panelMs: {
+    max: 250,
+    unit: 'ms',
+    why: 'the gateway serving that file: a phone opening the panel must get the shell immediately, before any /api call',
+  },
   coldInstallMs: {
     max: 60_000,
     unit: 'ms',
@@ -76,12 +88,27 @@ export const PERF_CEILINGS: Record<string, PerfCeiling> = {
     unit: 'ms',
     why: 'one memory search over 10 000 vectors (a year on a phone): filter + cosine + sort must stay a scan, not a stop',
   },
+  queueDrainMs: {
+    max: 500,
+    unit: 'ms',
+    why: '24 turns through one lane with a 2 ms runner: the queue\'s own overhead per turn (53 ms here, 48 of it the runner sleeping) — a busy session must drain, not crawl',
+  },
+  queueWakeMs: {
+    max: 120,
+    unit: 'ms',
+    why: 'the worst gap between one queued turn finishing and the next starting (1 ms here): the wake-up latency a person feels while the session is busy',
+  },
+  subagentFanoutMs: {
+    max: 600,
+    unit: 'ms',
+    why: 'four subagents spawned together, each sleeping 40 ms, must finish in about the time of one: it proves the four slots are parallel, not a polite queue',
+  },
   firstRunMs: { max: 30_000, unit: 'ms', why: 'the one wait a new user pays' },
   rebuildMs: { max: 8_000, unit: 'ms', why: 'pull, then run, must not be a rebuild' },
 };
 
 /** What the fast half measures; the rest needs npm and a 5 s compile. */
-export const FAST_METRICS = ['coldStartMs', 'idleRssMb', 'restartMs', 'turnMs', 'searchMs', 'docsMs', 'docsKb', 'roomWriteMs', 'outboxDrainMs', 'telegramPollMs'];
+export const FAST_METRICS = ['coldStartMs', 'idleRssMb', 'restartMs', 'turnMs', 'searchMs', 'docsMs', 'docsKb', 'panelKb', 'panelMs', 'queueDrainMs', 'queueWakeMs', 'subagentFanoutMs', 'roomWriteMs', 'outboxDrainMs', 'telegramPollMs'];
 
 export interface PerfSnapshot {
   /** When the measurement finished, ISO-8601 UTC. */
@@ -171,6 +198,87 @@ export function measurePerf(opts: PerfRunOptions = {}): { snapshot: PerfSnapshot
     skipped,
   };
   return { snapshot, bench, loud: stderr.trim() };
+}
+
+/**
+ * 40.4 — check a measurement in, so "how fast was 0.73?" is answerable offline.
+ *
+ * `state/perf.json` is this home's latest number and `state/perf-history.jsonl`
+ * is the series on this device; neither travels with the repository. `--save`
+ * writes a copy into `docs/openclaw/data/perf-<release>.json` — one file per
+ * release, committed on purpose — and says so, because a measurement that is
+ * only on the phone that took it is a measurement nobody can check.
+ */
+export function perfSaveDir(): string {
+  return process.env.TCRAB_PERF_SAVE_DIR || path.join(PACKAGE_ROOT, 'docs', 'openclaw', 'data');
+}
+
+/** The file a release's measurement lives in, `perf-<release>.json`. */
+export function perfSavePath(release: string, dir = perfSaveDir()): string {
+  const safe = release.replace(/[^0-9A-Za-z.+-]/g, '') || 'unknown';
+  return path.join(dir, `perf-${safe}.json`);
+}
+
+/** The version whose measurement we are about to file (package.json's `version`). */
+export function currentRelease(): string {
+  try {
+    return (JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')) as { version?: string }).version ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Write the snapshot for a release into the tracker's data dir. Returns the file
+ * and whether an earlier copy was replaced (so the CLI can say which happened).
+ */
+export function savePerfSnapshot(
+  snapshot: PerfSnapshot,
+  release: string,
+  dir = perfSaveDir(),
+): { file: string; replaced: boolean } {
+  const file = perfSavePath(release, dir);
+  const replaced = fs.existsSync(file);
+  fs.mkdirSync(dir, { recursive: true });
+  const body = {
+    ...snapshot,
+    release,
+    __note: 'measured on the machine in `machine`; the ceilings and their reasons live in docs/PERFORMANCE.md',
+  };
+  fs.writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`, 'utf8');
+  return { file, replaced };
+}
+
+/** The saved measurements, newest release first. */
+export function listSavedPerfSaves(dir = perfSaveDir()): { file: string; release: string; at: string }[] {
+  try {
+    return fs
+      .readdirSync(dir)
+      .filter((f) => /^perf-\d+\.\d+\.\d+\.json$/.test(f))
+      .map((f) => {
+        const file = path.join(dir, f);
+        try {
+          const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as { release?: string; at?: string };
+          return { file, release: parsed.release ?? f.replace(/^perf-|\.json$/g, ''), at: parsed.at ?? '' };
+        } catch {
+          return { file, release: f.replace(/^perf-|\.json$/g, ''), at: '' };
+        }
+      })
+      .sort((a, b) => compareReleases(b.release, a.release));
+  } catch {
+    return [];
+  }
+}
+
+/** `0.10.0` after `0.9.0` — numeric, not lexicographic. */
+function compareReleases(a: string, b: string): number {
+  const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
 }
 
 /** Write the snapshot where the panel can read it; returns the file. */

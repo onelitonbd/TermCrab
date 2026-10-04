@@ -33,24 +33,24 @@ dominating the run fails the suite instead of being noticed a month later.
 
 _Measured 2026-10-04 on node v22.22.3 — `node scripts/suite-time.mjs --run` re-measures, `--check` fails when the run is over its budget._
 
-The whole suite: **98 files, 1019 test cases, 156.9 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
+The whole suite: **99 files, 1024 test cases, 165.5 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
 
 | slowest file | time |
 |---|---|
-| `tier3j.test.js` | 38.5 s |
-| `tier3i.test.js` | 30.6 s |
-| `tier2c.test.js` | 5.8 s |
-| `tier2.test.js` | 4.9 s |
-| `tier2x.test.js` | 3.6 s |
+| `tier3j.test.js` | 40.4 s |
+| `tier3i.test.js` | 33.0 s |
+| `tier2c.test.js` | 5.6 s |
+| `tier2.test.js` | 4.8 s |
+| `tier2x.test.js` | 3.3 s |
 
 <!-- END SUITE TIME -->
 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **87.19%** of the lines in `src/` are executed by the
-suite (77.55% of branches, 87.34% of functions), across
-**1019 test cases in 98 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-04:** **87.31%** of the lines in `src/` are executed by the
+suite (77.57% of branches, 87.29% of functions), across
+**1024 test cases in 99 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
@@ -65,7 +65,7 @@ suite (77.55% of branches, 87.34% of functions), across
 | `mobile/notify.js` | 55.17% |
 | `mobile/boot.js` | 55.56% |
 | `core/friendly.js` | 58.59% |
-| `channels/cli.js` | 59.02% |
+| `channels/cli.js` | 59.63% |
 | `mobile/onboard.js` | 61.44% |
 
 Those are the files the suite touches least. They are named here on purpose: on a phone, the

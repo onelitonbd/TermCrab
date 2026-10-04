@@ -323,7 +323,48 @@ async function measureLoops() {
     const telegramPollMs = Math.round(performance.now() - pollStarted);
     if (calls < 50) throw new Error(`the stub only saw ${calls} call(s)`);
 
-    return { roomWriteMs, outboxDrainMs, telegramPollMs };
+    // 40.5: the queue's own numbers. One lane, 24 turns, a runner that costs
+    // 2 ms — so what is left on the clock is the queue's overhead and the
+    // latency between "the turn before finished" and "the next one started".
+    const { SessionQueue } = await import(path.join(ROOT, 'dist', 'src', 'agent', 'sessions.js'));
+    const queue = new SessionQueue();
+    const starts = [];
+    queue.setRunner(async () => {
+      starts.push(performance.now());
+      await new Promise((r) => setTimeout(r, 2));
+      return 'ok';
+    });
+    const drainStarted = performance.now();
+    queue.submit({ sessionId: 'bench', userMessage: 'a message while the agent is busy', channel: 'bench' });
+    let finalTurn = null;
+    for (let i = 0; i < 23; i++) {
+      finalTurn = queue.submit({ sessionId: 'bench', userMessage: `queued ${i}`, channel: 'bench' }).turn;
+    }
+    const settled = await queue.waitForTurn('bench', 60_000, finalTurn.id);
+    if (!settled || settled.status !== 'done') throw new Error(`the queue did not drain: ${settled?.status ?? 'timeout'}`);
+    const queueDrainMs = Math.round(performance.now() - drainStarted);
+    const gaps = starts.slice(1).map((at, i) => at - starts[i] - 2);
+    const queueWakeMs = Math.round(Math.max(0, ...gaps));
+
+    // Four subagent slots, four sleepers: parallel slots finish in about the
+    // time of one, so a wall clock near 40 ms is the proof they are real.
+    const { spawnTask, waitForTasks, runningTasks } = await import(path.join(ROOT, 'dist', 'src', 'agent', 'tasks.js'));
+    const fanStarted = performance.now();
+    for (let i = 0; i < 4; i++) {
+      spawnTask({
+        sessionId: `fan-${i}`,
+        prompt: `sleeper ${i}`,
+        run: async () => {
+          await new Promise((r) => setTimeout(r, 40));
+          return 'done';
+        },
+      });
+    }
+    if (runningTasks().length !== 4) throw new Error(`four slots did not open: ${runningTasks().length} running`);
+    await waitForTasks(undefined, 60_000);
+    const subagentFanoutMs = Math.round(performance.now() - fanStarted);
+
+    return { roomWriteMs, outboxDrainMs, telegramPollMs, queueDrainMs, queueWakeMs, subagentFanoutMs };
   } finally {
     server.close();
     fs.rmSync(home, { recursive: true, force: true });
@@ -424,6 +465,33 @@ function measureColdCheckout() {
   }
 }
 
+/**
+ * 40.1 — the panel's own weight.
+ *
+ * The control panel is one HTML file: inline CSS, inline JavaScript, no
+ * bundler, no CDN, no framework — that is why it works offline and why a phone
+ * can hold it. Two numbers keep that true: the file's size (a quiet
+ * "let us add a framework" would show up here) and the time the gateway takes
+ * to serve it (the shell must arrive before any /api call).
+ */
+async function measurePanel(port) {
+  const file = path.join(ROOT, 'ui', 'index.html');
+  const panelKb = Math.round(fs.statSync(file).size / 1024);
+  const times = [];
+  for (let i = 0; i < 5; i++) {
+    const started = performance.now();
+    const res = await fetch(`http://127.0.0.1:${port}/`);
+    const body = await res.text();
+    times.push(performance.now() - started);
+    if (i === 0) {
+      if (res.status !== 200) throw new Error(`the panel returned ${res.status}`);
+      if (!body.includes('view-work')) throw new Error('the panel shell did not come back from GET /');
+    }
+  }
+  const panelMs = Math.round(median(times) * 10) / 10;
+  return { panelKb, panelMs };
+}
+
 /** One real turn through the panel: message → queue → run → answer. */
 async function measureTurn(port) {
   const started = performance.now();
@@ -462,6 +530,11 @@ function renderBlock(bench) {
     `| idle RSS (gateway, offline brain) | ${bench.idleRssMb} MB | ${BUDGETS.idleRssMb.max} MB | an old phone has ~2 GB, and the OS kills hogs |`,
     `| stop + start again (\`supervisor\`) | ${bench.restartMs} ms | ${BUDGETS.restartMs.max} ms | a restart must be invisible |`,
     `| one real turn (message → answer, offline) | ${bench.turnMs} ms | ${BUDGETS.turnMs.max} ms | loudness of the whole loop |`,
+    `| the panel itself (one HTML file, no build step) | ${bench.panelKb} KB | ${BUDGETS.panelKb.max} KB | no framework decided by accident |`,
+    `| the gateway serving that panel (\`GET /\`) | ${bench.panelMs} ms | ${BUDGETS.panelMs.max} ms | the shell has to appear before any /api call |`,
+    `| 24 turns through one session queue | ${bench.queueDrainMs} ms | ${BUDGETS.queueDrainMs.max} ms | the queue's own overhead while the agent is busy |`,
+    `| the worst gap between queued turns (24 in one lane) | ${bench.queueWakeMs} ms | ${BUDGETS.queueWakeMs.max} ms | the wake-up a person feels behind a busy session |`,
+    `| four subagents spawned together (40 ms each) | ${bench.subagentFanoutMs} ms | ${BUDGETS.subagentFanoutMs.max} ms | four slots must be parallel, not a polite queue |`,
     `| one memory search over ${SEARCH_ROWS.toLocaleString('en-US')} vectors | ${bench.searchMs} ms | ${BUDGETS.searchMs.max} ms | a chatty month of memory must stay instant |`,
     `| the offline docs page, built (60 docs) | ${bench.docsMs} ms | ${BUDGETS.docsMs.max} ms | the panel's rebuild button must stay a blink |`,
     `| the built docs page on disk | ${bench.docsKb} KB | ${BUDGETS.docsKb.max} KB | one HTML file a phone has to hold |`,
@@ -526,7 +599,8 @@ async function main() {
     const turnMs = await measureTurn(port);
     const searchMs = await measureSearch(QUICK ? 5 : 25);
     const { docsMs, docsKb } = await measureDocs(QUICK ? 2 : 5);
-    const { roomWriteMs, outboxDrainMs, telegramPollMs } = await measureLoops();
+    const { panelKb, panelMs } = await measurePanel(port);
+    const { roomWriteMs, outboxDrainMs, telegramPollMs, queueDrainMs, queueWakeMs, subagentFanoutMs } = await measureLoops();
     const bench = {
       measuredAt: new Date().toISOString().slice(0, 10),
       node: process.version,
@@ -540,18 +614,17 @@ async function main() {
       searchMs,
       docsMs,
       docsKb,
+      panelKb,
+      panelMs,
+      queueDrainMs,
+      queueWakeMs,
+      subagentFanoutMs,
       roomWriteMs,
       outboxDrainMs,
       telegramPollMs,
       ...(FIRST_RUN ? { ...measureFirstRun(), ...measureColdCheckout() } : {}),
       tolerancePct: TOLERANCE_PCT,
-      budget: checkBudgets({
-        installMs: 0,
-        coldStartMs: 0,
-        idleRssMb: 0,
-        restartMs: 0,
-        turnMs: 0,
-      }).map((b) => ({ key: b.key, max: b.max, why: b.why })),
+      budget: checkBudgets({ installMs: 0, coldStartMs: 0, idleRssMb: 0, restartMs: 0, turnMs: 0, panelKb: 0, panelMs: 0, searchMs: 0, docsMs: 0, docsKb: 0, queueDrainMs: 0, queueWakeMs: 0, subagentFanoutMs: 0, roomWriteMs: 0, outboxDrainMs: 0, telegramPollMs: 0 }).map((b) => ({ key: b.key, max: b.max, why: b.why })),
     };
     const budget = checkBudgets(bench).filter((b) => typeof b.value === 'number');
     bench.overBudget = budget.filter((b) => !b.ok).map((b) => b.key);

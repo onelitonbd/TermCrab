@@ -59,7 +59,13 @@ export class TaskLimitError extends Error {
 
 const tasks = new Map<string, Task>();
 const order: string[] = [];
-const waiters: { ids?: string[]; resolve: () => void }[] = [];
+/**
+ * Waiters for `waitForTasks`. Each carries its own deadline timer so that a
+ * wait which settles early *cancels* the timer: an uncleared 60 s timeout keeps
+ * a one-shot CLI process alive long after its answer was printed (40.5 found
+ * this — the test file hung for exactly the deadline).
+ */
+const waiters: { ids?: string[]; resolve: () => void; timer?: NodeJS.Timeout }[] = [];
 
 /** Kept in memory only: a restarted gateway has no subagents to report. */
 const MAX_HISTORY = 200;
@@ -72,6 +78,7 @@ function notifyWaiters(): void {
     const list = w.ids ? w.ids.map((id) => tasks.get(id)) : [...tasks.values()];
     if (list.every((t) => t && t.status !== 'running')) {
       waiters.splice(i, 1);
+      if (w.timer) clearTimeout(w.timer);
       w.resolve();
     }
   }
@@ -206,12 +213,13 @@ export async function waitForTasks(ids: string[] | undefined, timeoutMs: number)
   const pending = wanted.filter((id) => tasks.get(id)?.status === 'running');
   if (pending.length) {
     await new Promise<void>((resolve) => {
-      const w = { ids: pending, resolve };
+      const w: { ids?: string[]; resolve: () => void; timer?: NodeJS.Timeout } = { ids: pending, resolve };
       waiters.push(w);
       // Unlike a task deadline, this timer is *not* unref'd: the caller asked
       // to wait, and the promise must settle within `timeoutMs` even when the
-      // loop has nothing else to do.
-      setTimeout(() => {
+      // loop has nothing else to do. It is cleared when an answer arrives
+      // first, so a settled wait leaves nothing behind.
+      w.timer = setTimeout(() => {
         const i = waiters.indexOf(w);
         if (i >= 0) waiters.splice(i, 1);
         resolve();

@@ -505,6 +505,46 @@ export async function runDoctor(): Promise<Check[]> {
     /* a home that cannot be read is reported by the other checks */
   }
 
+  // 40.2: the performance budget, as the doctor sees it. The measurement
+  // belongs to `termcrab perf` (a doctor run must not boot a gateway and run a
+  // turn); this check reads what that command wrote and says how old it is,
+  // because a number from last month is a fact about last month.
+  try {
+    const { perfStatus } = await import('../core/perf.js');
+    const p = perfStatus();
+    if (!p.exists) {
+      checks.push({
+        id: 'perf',
+        label: 'performance budget',
+        status: 'info',
+        detail: 'not measured on this home yet',
+        fix: 'termcrab perf',
+      });
+    } else {
+      const staleDays = p.ageMs === null ? null : p.ageMs / 86_400_000;
+      const worst = p.worst ? `${p.worst.key} ${Math.round(p.worst.value)}/${p.worst.max} (${p.worst.pct}%)` : 'nothing to compare';
+      const host = p.machine ? `${p.machine.platform}/${p.machine.arch}` : 'unknown host';
+      const over = p.over.length > 0;
+      const stale = staleDays !== null && staleDays >= 30;
+      checks.push({
+        id: 'perf',
+        label: 'performance budget',
+        status: over ? 'warn' : stale ? 'info' : 'ok',
+        detail:
+          `measured ${p.age} on ${host} · worst ${worst}` +
+          (over ? ` · OVER: ${p.over.join(', ')}` : '') +
+          (p.skipped.length ? ` · ${p.skipped.length} metric(s) not measured` : ''),
+        fix: over
+          ? 'see docs/PERFORMANCE.md for the metric that is over, then: termcrab perf'
+          : stale
+            ? 'this measurement is a month old: termcrab perf'
+            : undefined,
+      });
+    }
+  } catch {
+    /* a home without a perf snapshot is the common case, not a problem */
+  }
+
   // Voice / TTS
   try {
     const { resolveTts } = await import('../mobile/tts.js');
