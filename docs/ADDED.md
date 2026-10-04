@@ -1,7 +1,7 @@
 # Everything added to TermCrab — start to finish
 
 One inventory of what was built, from the first commit (2026-09-29) to `v0.78.0` (2026-10-04).
-Ordered by the project's own record, not by memory: **115 commits · 96 releases · 50 batches**.
+Ordered by the project's own record, not by memory: **117 commits · 98 releases · 51 batches**.
 
 **How to verify any line below** — every claim here has a source you can open:
 
@@ -54,7 +54,7 @@ Roughly fifteen releases of front-end work, all against the same single-file, de
 - `0.17.0` composer + providers · `0.18.0` providers stay in sync · `0.19.0` black theme, icon sidebar, smarter composer · `0.20.0`/`0.20.1` models page + composer model picker, current provider shows your own name · `0.21.0`–`0.21.2` save button, visible model icon, saving actually reaches the backend.
 - `0.22.0` memory page redesign · `0.23.0` homepage becomes the agent's home · `0.23.1` no more silent empty replies · `0.24.0` tools page redesign · `0.25.0`/`0.25.1` tools catalog tab + toggle fix · `0.26.0` every catalog tool became real.
 
-## 4. The batch era — batches `1` → `50`
+## 4. The batch era — batches `1` → `51`
 
 This is where every change starts carrying a proof: a commit, a test, and a number. One line per batch.
 
@@ -106,6 +106,7 @@ This is where every change starts carrying a proof: a commit, a test, and a numb
 | 44 | `109e7e7` | **The audit's second pass**: a test that let the machine's load decide its verdict is pinned; `scripts/test-files.mjs` declares one deadline per group (heavy measurement files 600 s, everything else 60 s) after proving node's flag **overrides** a test's own deadline — the trap that made two heavy files look flaky. `v0.76.2`. |
 | 46 | (this commit) | **The read-only command layer**: `src/gateway/chat-reports.ts` — 16 report functions + `/help`, clamped to 24 lines, secrets redacted by name; one `CHAT_COMMANDS` list (27) serves `/help`, `GET /api/slash` and the registered Telegram Bot menu; `/config set` limited to a whitelist; `/new`//`clear` from a chat resets the real session |
 | 47 | (this commit) | **The control half, one dispatcher**: `src/gateway/chat-control.ts` — `/stop` (this session only), `/steer`, `/queue` (four modes, saves `agent.queueMode`), `/sessions rename|purge`, `/update` (check in chat, apply names the terminal), `/backup` (`tar.gz` + document), `/watch add|list|rm`; `runSharedCommand()` is what both `handleChannelMessage` and `POST /api/slash` call; the panel chat intercepts `/…` |
+| 51 | (this commit) | **Telegram's tail, and the end of the ❌ register**: `/suite-time`, `/work [full]` (the tracker as a document), `/say` (a real voice note through `speakToFile` → ffmpeg → `sendVoice`), voice replies (`channels.telegram.voiceReplies`), `/embeddings setup` behind an inline confirm, `/controlui` as a `web_app` button from `gateway.publicUrl`, and forum topics keyed `telegram:<chatId>:<threadId>`; audit **CLI 50 / Telegram 52 / Web 51, missing cells 0 of 71** |
 | 50 | (this commit) | **The web panel's builder half**: `GET/PUT /api/bootstrap` (SOUL/IDENTITY/USER by name, paths pinned, 32 KB cap), `POST /api/backup` + `GET /api/backups` + `POST /api/restore` (dry-run, then the archive name typed back), `GET /api/service` (read-only card with the exact command), `POST /api/transcribe` (same whisper path as the CLI); audit **CLI 50 / Telegram 45 / Web 51, gaps 7** — the web row has no ❌ left |
 | 49 | (this commit) | **The web panel's quick gaps**: `GET /api/sessions?q=` (the CLI's ranked chat search, snippets included) + a search box on the Chats tab; `GET /api/context` serving the prompt-section report into the Debug view; `GET/POST /api/embeddings` — the provider picker writes `memory.embedProvider` and the offline-model install runs behind `confirm:true`; `/api/queue` + `/api/steer` delegating to the shared verbs, with a composer mode chip and a steer box that appears while a turn runs; the audit moves to **CLI 50 / Telegram 45 / Web 48, gaps 11** |
 | 48 | (this commit) | **The Telegram interaction layer**: `sendMessage(…, buttons?)` → `reply_markup.inline_keyboard`, `answerCallbackQuery`, `editMessageReplyMarkup`, `setMyCommands`, `sendVoice`, `callback_query` in `allowed_updates`; approvals arrive in the chat with `✅ Allow` / `🚫 Deny` calling the same `resolveApproval()` as the panel and CLI and emitting `approval:decided`; the audit re-measured **CLI 50 / Telegram 45 / Web 42, gaps 12** |

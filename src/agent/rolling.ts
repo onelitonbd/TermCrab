@@ -63,6 +63,23 @@ export function rollingSessionKey(config: Config, opts: RollingOptions): string 
   return opts.fallback;
 }
 
+/**
+ * 51.4 — the session key a Telegram message lands in. A forum topic is a
+ * conversation of its own (`telegram:<chatId>:<threadId>`), so two topics in
+ * one group keep two threads; a plain group keeps exactly the key it had, and
+ * `scoping: 'user'` still keys by person.
+ */
+export function telegramSessionKey(opts: {
+  chatId: string | number;
+  userId?: string | number;
+  threadId?: number;
+  scoping?: 'chat' | 'user';
+}): string {
+  const base =
+    opts.scoping === 'user' && opts.userId ? `telegram:u:${opts.userId}` : `telegram:${opts.chatId}`;
+  return opts.threadId ? `${base}:${opts.threadId}` : base;
+}
+
 export interface RollOutcome {
   rolled: boolean;
   /** Where yesterday (or whenever) went. */

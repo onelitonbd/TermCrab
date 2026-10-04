@@ -83,7 +83,7 @@ export const CAPABILITIES = [
   { area: 'context', name: 'Dreaming / idle consolidation', cli: [P(CLI_SRC, "case 'dream'")], tg: [P(CR, "case '/dream'")], web: [P(PANEL_SRC, '/api/dream')] },
   { area: 'context', name: 'Context report: what the model is sent', cli: [P(CLI_SRC, "case 'context'")], tg: [P(SERVER_SRC, "text === '/context'")], web: [P(SERVER_SRC, "'/api/context'"), P(PANEL_SRC, 'ctxTable')] },
   { area: 'context', name: 'Embeddings: status', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(CR, "case '/embeddings'")], web: [P(SERVER_SRC, 'embeddingsStatus'), P(PANEL_SRC, 'embStatus')] },
-  { area: 'context', name: 'Embeddings: setup / switch provider', cli: { probes: [P(HELP_SRC, 'embeddings')], partial: 'the install runs in the terminal; the provider switch exists here too' }, tg: { missing: 'not available' }, web: [P(SERVER_SRC, 'embeddingsSetup'), P(PANEL_SRC, "action: 'install'")] },
+  { area: 'context', name: 'Embeddings: setup / switch provider', cli: { probes: [P(HELP_SRC, 'embeddings')], partial: 'the install runs in the terminal; the provider switch exists here too' }, tg: [P(SERVER_SRC, "text === '/embeddings setup'"), P(SERVER_SRC, 'emb:setup'), P(CR, 'embeddingsSetupReport')], web: [P(SERVER_SRC, 'embeddingsSetup'), P(PANEL_SRC, "action: 'install'")] },
   { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: { partial: '"remember …" writes USER.md; SOUL/IDENTITY are not editable from chat' }, web: [P(SERVER_SRC, "'/api/bootstrap'"), P(PANEL_SRC, 'idFiles')] },
 
   // --------------------------------------------------------------- tools
@@ -104,7 +104,7 @@ export const CAPABILITIES = [
 
   // ---------------------------------------------------------------- voice
   { area: 'mobile', name: 'Dictation (speech → text)', cli: [P(CLI_SRC, "case 'wake'")], tg: [P(TG_SRC, 'voice')], web: [P(PANEL_SRC, '/api/listen')] },
-  { area: 'mobile', name: 'Text to speech', cli: [P(CLI_SRC, "case 'say'")], tg: { missing: 'no voice replies from the bot' }, web: [P(PANEL_SRC, '/api/say')] },
+  { area: 'mobile', name: 'Text to speech', cli: [P(CLI_SRC, "case 'say'")], tg: [P(CR, 'sayReport'), P(SERVER_SRC, 'speak: true'), P(TG_SRC, 'sendVoice')], web: [P(PANEL_SRC, '/api/say')] },
   { area: 'mobile', name: 'Transcribe a voice file', cli: [P(CLI_SRC, "case 'transcribe'")], tg: [P(TG_SRC, 'voice')], web: [P(SERVER_SRC, "'/api/transcribe'"), P(PANEL_SRC, 'trFile')] },
   { area: 'mobile', name: 'Wake word loop', cli: [P(CLI_SRC, "case 'wake'")], tg: null, web: [P(PANEL_SRC, '/api/wake')] },
 
@@ -118,8 +118,8 @@ export const CAPABILITIES = [
   { area: 'ops', name: 'Security audit (findings + fixes)', cli: [P(CLI_SRC, "case 'security'")], tg: [P(CR, "case '/security'")], web: { partial: 'the shared text is served, but no panel view yet (batch 50)' } },
   { area: 'ops', name: 'Secrets: named keys, audit', cli: [P(CLI_SRC, "case 'auth'")], tg: [P(CR, "case '/auth'")], web: { partial: 'names via /api/slash; no panel view yet (batch 50)' } },
   { area: 'ops', name: 'Performance budget + history', cli: [P(CLI_SRC, "case 'perf'")], tg: [P(CR, "case '/perf'")], web: [P(PANEL_SRC, '/api/perf')] },
-  { area: 'ops', name: "Suite clock (the tests' own record)", cli: { partial: 'npm run test:time; not a termcrab command' }, tg: { missing: 'not available' }, web: [P(PANEL_SRC, '/api/suite-time')] },
-  { area: 'ops', name: 'Work tracker: what is being built now', cli: { probes: [P(CLI_SRC, "case 'owner'")], note: 'termcrab owner + scripts/status.mjs' }, tg: { missing: 'not available' }, web: [P(PANEL_SRC, '/api/worklog')] },
+  { area: 'ops', name: "Suite clock (the tests' own record)", cli: { partial: 'npm run test:time; not a termcrab command' }, tg: [P(CR, "'/suite-time'"), P(CR, 'suiteTimeReport')], web: [P(PANEL_SRC, '/api/suite-time')] },
+  { area: 'ops', name: 'Work tracker: what is being built now', cli: { probes: [P(CLI_SRC, "case 'owner'")], note: 'termcrab owner + scripts/status.mjs' }, tg: [P(CR, "'/work'"), P(CR, 'workReport'), P(SERVER_SRC, "'/work full'")], web: [P(PANEL_SRC, '/api/worklog')] },
   { area: 'ops', name: 'Docs: the offline manual', cli: [P(CLI_SRC, "case 'docs'")], tg: [P(CR, "case '/docs'")], web: [P(PANEL_SRC, '/api/docs')] },
 
   // ------------------------------------------------------------ channels
@@ -129,9 +129,9 @@ export const CAPABILITIES = [
   { area: 'channels', name: 'Media in / out (photos, voice, files)', cli: { partial: 'in: attach only in the panel' }, tg: [P(TG_SRC, 'sendDocument')], web: { probes: [P(PANEL_SRC, 'attachFile')], partial: 'in: attach (text types); out: send_file as a path' } },
   { area: 'channels', name: 'Telegram inline buttons (rich messages)', cli: null, tg: [P(API_SRC, 'inline_keyboard'), P(TG_SRC, 'editMessageReplyMarkup')], web: null },
   { area: 'channels', name: 'Registered Telegram command menu (setMyCommands)', cli: null, tg: [P(API_SRC, 'setMyCommands'), P(SERVER_SRC, 'registerCommands')], web: null },
-  { area: 'channels', name: 'Panel inside Telegram (mini app)', cli: null, tg: { missing: 'OpenClaw has /controlui; we do not' }, web: null },
-  { area: 'channels', name: 'Voice replies in Telegram', cli: null, tg: { missing: 'the bot replies in text only' }, web: null },
-  { area: 'channels', name: 'Group / forum topics → separate sessions', cli: null, tg: { missing: 'no forum-topic routing; group rooms only' }, web: null },
+  { area: 'channels', name: 'Panel inside Telegram (mini app)', cli: null, tg: [P(SERVER_SRC, "text === '/controlui'"), P(TG_SRC, 'sendWebApp'), P(SERVER_SRC, 'gateway.publicUrl')], web: null },
+  { area: 'channels', name: 'Voice replies in Telegram', cli: null, tg: [P(TG_SRC, 'voiceReplies'), P(TG_SRC, 'speakOut'), P(CR, 'channels.telegram.voiceReplies')], web: null },
+  { area: 'channels', name: 'Group / forum topics → separate sessions', cli: null, tg: [P(SERVER_SRC, 'telegramSessionKey'), P(TG_SRC, 'message_thread_id')], web: null },
 ];
 
 function read(file) {

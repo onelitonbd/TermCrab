@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.81.0 - 2026-10-04
+
+**The ❌ register is empty.** Batch 51 closed the last seven cells in the three-surface audit — every one
+of them Telegram — so CLI, Telegram and the web panel each answer for all 71 capabilities the audit
+measures. What is left is the honest middle: named ◐ cells, each with a reason.
+
+- **`/suite-time` and `/work`.** The tests' own clock answers in the chat from the same
+  `suite-time.json` the panel's `/api/suite-time` serves (wall clock, cases, files, the slowest three,
+  the budget, and a warning when the recorded run was over it). `/work` renders WORKLOG.md's Now and Next
+  blocks for a phone — bullets and table rows both, evidence column left to the file — and `/work full`
+  attaches the whole tracker as a document.
+- **Voice, both directions.** `/say <text>` sends a real voice note: the new `speakToFile()` writes
+  espeak/say output and pipes it through `ffmpeg`/`opusenc` into OGG/Opus, and the channel sends it with
+  `sendVoice`. A machine with no engine still delivers the words plus the install hint. A voice note that
+  arrives gets a voice note back when `channels.telegram.voiceReplies` is on (default off; the key is in
+  the chat's `/config` whitelist), spoken up to 600 characters with the rest as text.
+- **`/embeddings setup` and `/controlui`.** The install asks first — an inline **Install and probe**
+  button whose press runs the CLI's own `embeddingsSetup()` and reports its steps. `/controlui` sends the
+  panel address as an inline `web_app` button, built from the new `gateway.publicUrl`; with no address, or
+  a loopback one a phone cannot open, it refuses in plain words and names the exact config line.
+- **Forum topics are conversations.** `message_thread_id` travels with the message and keys the session
+  through `telegramSessionKey()` as `telegram:<chatId>:<threadId>`. Two topics in one group keep two
+  threads; a plain group's key is byte-for-byte what it was, and scoping `user` still keys by person.
+
+**Proof:** `test/tier3t.test.ts` — 5 tests, 15 subtests, all green: the two reports (numbers, ids, the
+attachment naming a real file), the panel reaching both through the same dispatcher, `/say` with an OGG
+reply → one `sendVoice` and no duplicate text, no engine → the words plus the hint, a plain reply never
+synthesized, a voice note in with the setting on and off, the five session-key shapes plus the channel
+passing the topic through, the `web_app`/`callback_data` conversion, and the mini-app refusals. The audit's
+Telegram row moves to **52 ✅ / 14 ◐ / 0 ❌** (`CLI 50 / Telegram 52 / Web 51, missing cells 0 of 71`,
+`--check` green). Full suite **1083 pass · 0 fail · 3 skip · 109 files · 1086 cases** (170.0 s of a 240 s
+budget), coverage 87.08 / 77.55 / 86.85 on fingerprint `0dfc3a3707d6ecfb`, census 100% of 170 in-scope
+checks.
+
+
+- TODO: what changed, and why it matters to somebody on a phone.
+
 ## 0.80.0 - 2026-10-04
 
 **The web panel has no missing cell left.** Batch 50 closed the four flows that still ended in a shell —

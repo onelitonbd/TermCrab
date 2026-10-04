@@ -58,7 +58,7 @@ import { lastDigestSummary, QueueFullError, QueuedTurn, SessionQueue, SessionSto
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
-import { escapeHtml, TelegramChannel } from '../channels/telegram.js';
+import { escapeHtml, TelegramChannel, type IncomingContext } from '../channels/telegram.js';
 import { makeIntake } from '../channels/intake.js';
 import { contextReport, renderContext } from '../agent/context.js';
 import { toProviderMessages } from '../agent/loop.js';
@@ -90,7 +90,13 @@ import { bootStatus, installBootScript, isTermux } from '../mobile/boot.js';
 import { runDoctor } from '../mobile/doctor.js';
 import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
-import { listConversations, registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
+import {
+  listConversations,
+  registerDocumentSender,
+  registerSender,
+  registerVoiceSender,
+  recordInbound,
+} from '../channels/conversations.js';
 import { formatRoomHistory } from '../channels/rooms.js';
 import { buildBoard } from '../agent/board.js';
 import { docsSiteFreshness, ensureDocsSite } from '../docs/site.js';
@@ -98,7 +104,15 @@ import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/teleg
 import { perfStatus, suiteTimeStatus } from '../core/perf.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
-import { CHAT_COMMANDS, runReportCommand } from './chat-reports.js';
+import {
+  CHAT_COMMANDS,
+  controlUiReport,
+  embeddingsSetupReport,
+  runReportCommand,
+  sayReport,
+  workReport,
+  type ReportResult,
+} from './chat-reports.js';
 import { queueCommand, runControlCommand, sessionsPurgeCommand, sessionsRenameCommand, steerCommand, type ControlDeps } from './chat-control.js';
 import { embeddingsSetup, embeddingsStatus } from '../agent/embed-setup.js';
 import { planRestore, restoreBackup, writeBackup } from '../core/backup.js';
@@ -116,7 +130,7 @@ import { formatSessionHits, searchSessions } from '../agent/session-search.js';
 import { healthLine, runHealth } from '../agent/run-health.js';
 import { buildPresence, presenceLine, withSummary, type Presence, type PresenceChannelInput } from './presence.js';
 import { KNOWN_EVENTS, describeTrigger, planTriggers, triggerMessage, triggerSession, watcherMatches, type TriggerPayload } from './triggers.js';
-import { rollingLine, rollingSessionKey } from '../agent/rolling.js';
+import { rollingLine, rollingSessionKey, telegramSessionKey } from '../agent/rolling.js';
 import { detectSandbox, sandboxSetting } from '../agent/sandbox.js';
 import { addIntent, listIntents, removeIntent } from '../agent/intents.js';
 import { generateImage } from '../media/image.js';
@@ -570,7 +584,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       },
       getOffset: () => readTelegramState().offset,
       setOffset: (n) => writeTelegramState(n),
-      onMessage: async (_userId, chatId, text, displayName) => {
+      onMessage: async (_userId, chatId, text, displayName, ctx) => {
         // Remember where proactive messages should go.
         if (config.channels.telegram && config.channels.telegram.notifyChatId !== chatId) {
           config.channels.telegram.notifyChatId = chatId;
@@ -584,11 +598,24 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             /* non-fatal */
           }
         }
-        return handleChannelMessage('telegram', chatId, text, _userId, displayName);
+        // 51.2/51.4: the context travels with the text — a forum topic and a
+        // voice note both change what the answer should be.
+        return handleMessage('telegram', chatId, text, _userId, displayName, ctx);
       },
       // 48.3 — an approval answered from the chat. The same resolveApproval()
       // the panel and the CLI call, so all three doors end in one decision.
       onCallback: async (_userId, chatId, data, queryId) => {
+        // 51.2 — `/embeddings setup` asks first, then installs. The confirm is
+        // a button because installing a package is not something to discover
+        // after the fact; the same `embeddingsSetup()` the CLI and the panel run.
+        if (data === 'emb:setup') {
+          void queryId;
+          const r = await embeddingsSetup();
+          const steps = r.steps?.length ? `\n     ${r.steps.join('\n     ')}` : '';
+          return r.ok
+            ? `🧠 embeddings ready${steps}`
+            : `⚠️ embeddings setup failed: ${r.error || 'unknown error'}${steps}`;
+        }
         const [action, id] = data.split(':');
         if ((action !== 'approve' && action !== 'deny') || !id) {
           return 'that button is no longer attached to anything';
@@ -651,6 +678,10 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     const tg = telegram;
     registerDocumentSender('telegram', async (address, filePath, caption) => {
       await tg.sendDocument(Number(address), filePath, caption);
+    });
+    // 51.2 — and so do voice notes: the same door, a different envelope.
+    registerVoiceSender('telegram', async (address, filePath, caption) => {
+      await tg.sendVoice(Number(address), filePath, caption);
     });
     // 48.3 — human-in-the-loop, in the chat where the work was asked for.
     // OpenClaw approves exec from Telegram (`channels.telegram.execApprovals.*`);
@@ -928,6 +959,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   announcePresence('started');
 
   /** Shared inbound handler for text channels (telegram/whatsapp). */
+  /** 51.2 — text, plus "say it out loud" when the surface can. */
+  type ChannelAnswer = string | { text: string; speak?: boolean };
   /**
    * 46/47 — the single place a surface's text becomes an answer from the *shared*
    * layer. Telegram, the panel's chat, the command palette and (through the same
@@ -950,27 +983,95 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     channel: string,
     chatId: string | number,
     sessionId: string,
-  ): Promise<{ ok: true; text: string } | { ok: false; error: string } | null> {
+  ): Promise<ReportResult | null> {
     const control = await runControlCommand(text, controlDepsFor(sessionId, channel, chatId));
     if (control) return control;
-    return runReportCommand(text, { agent, skills, proposals: () => listProposals() });
+    // 51.5: the mini-app report needs the address a phone can reach.
+    return runReportCommand(text, {
+      agent,
+      skills,
+      proposals: () => listProposals(),
+      publicUrl: config.gateway.publicUrl,
+    });
   }
 
-  async function handleChannelMessage(
+  /**
+   * 51.2 — what the telegram-only commands answer with. Each one either needs
+   * the Bot API (a button, a voice note, an attachment) or is a confirm that
+   * only makes sense where the buttons are; everything else goes through the
+   * shared dispatcher, so the words stay identical on all three surfaces.
+   */
+  async function telegramSpecial(
+    text: string,
+    chatId: string | number,
+    sessionId: string,
+  ): Promise<ChannelAnswer | null> {
+    if (!telegram) return null;
+    const tg = telegram;
+    const num = Number(chatId);
+
+    if (text === '/controlui' || text.startsWith('/controlui ')) {
+      const report = controlUiReport(config.gateway.publicUrl);
+      const url = (config.gateway.publicUrl ?? '').trim().replace(/\/+$/, '');
+      if (!report.ok) return { text: `⚠️ ${report.error}` };
+      // A button that opens nothing must not be sent: the report already says
+      // what is missing, so the refusal goes out as text.
+      if (!url || /^https?:\/\/(127\.0\.0\.1|localhost)\b/i.test(url)) return { text: report.text };
+      await tg.sendWebApp(num, report.text, '🦀 Open the panel', url);
+      return { text: '' };
+    }
+
+    if (text === '/embeddings setup') {
+      const report = embeddingsSetupReport();
+      if (!report.ok) return { text: `⚠️ ${report.error}` };
+      await tg.sendButtons(num, report.text, [[{ text: '⬇️ Install and probe', data: 'emb:setup' }]]);
+      return { text: '' };
+    }
+
+    if (text.startsWith('/say ') || text === '/say') {
+      const report = sayReport(text.slice('/say'.length));
+      if (!report.ok) return { text: `⚠️ ${report.error}` };
+      return { text: report.text, speak: true };
+    }
+
+    if (text === '/work full') {
+      const report = workReport(true);
+      if (!report.ok) return { text: `⚠️ ${report.error}` };
+      if (report.attach) {
+        try {
+          await tg.sendDocument(num, report.attach.file, report.attach.caption);
+        } catch (err) {
+          log.warn('telegram worklog attach failed:', err instanceof Error ? err.message : err);
+        }
+      }
+      return { text: report.text };
+    }
+    void sessionId;
+    return null;
+  }
+
+  async function handleMessage(
     channel: ChannelName,
     chatId: string | number,
     text: string,
     userId: string | number,
     displayName: string,
-  ): Promise<string> {
+    ctx?: IncomingContext,
+  ): Promise<ChannelAnswer> {
     recordInbound(channel, String(chatId), text);
     // 28.1: the owner's own conversations share one rolling main session;
     // 28.3: with channels.telegram.scoping = 'user' the key is the person, not
     // the room, so their DM and their mentions follow them between chats.
     const group = channel === 'telegram' && Number(chatId) < 0;
+    // 51.4: a forum topic is a conversation of its own — the same group with
+    // two topics keeps two threads, and a plain group's key is unchanged.
     const scoping = config.channels?.telegram?.scoping ?? 'chat';
     const fallbackSession =
-      scoping === 'user' && userId ? `${channel}:u:${userId}` : `${channel}:${chatId}`;
+      channel === 'telegram'
+        ? telegramSessionKey({ chatId, userId, ...(ctx?.threadId ? { threadId: ctx.threadId } : {}), scoping })
+        : scoping === 'user' && userId
+          ? `${channel}:u:${userId}`
+          : `${channel}:${chatId}`;
     const baseSession = rollingSessionKey(config, {
       fallback: fallbackSession,
       channel,
@@ -1030,9 +1131,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     // shared dispatcher, so Telegram, the panel's chat and the palette answer
     // with the same words (and the CLI's own data). /help moved there too — one
     // list means the Bot menu and this text cannot drift apart.
+    // 51.2/51.5: the commands that need the Bot API itself (a voice note, a
+    // Web App button, an install confirm). They answer for Telegram only; every
+    // other surface gets the shared words below.
+    if (channel === 'telegram') {
+      const special = await telegramSpecial(text, chatId, baseSession);
+      if (special) return special;
+    }
     {
       const shared = await runSharedCommand(text, channel, chatId, baseSession);
-      if (shared) return shared.ok ? shared.text : `⚠️ ${shared.error}`;
+      if (shared) {
+        if (!shared.ok) return `⚠️ ${shared.error}`;
+        // 51.2 — /say and anything else that asked to be spoken.
+        return shared.speak ? { text: shared.text, speak: true } : shared.text;
+      }
     }
     if (text === '/usage') {
       const day = usageForDay();
@@ -1169,6 +1281,16 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     void displayName;
     return result;
   }
+
+  /** The text half, for the channels whose API only takes text. */
+  const textOf = (answer: ChannelAnswer): string => (typeof answer === 'string' ? answer : answer.text);
+  const handleChannelMessage = (
+    channel: ChannelName,
+    chatId: string | number,
+    text: string,
+    userId: string | number,
+    displayName: string,
+  ): Promise<string> => handleMessage(channel, chatId, text, userId, displayName).then(textOf);
 
   // ---- Outbox flush (offline tolerance) ----
   const outboxTimer = setInterval(() => {

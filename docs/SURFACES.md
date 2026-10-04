@@ -52,12 +52,19 @@ absent ones (queue modes are `config set agent.queueMode`, not a live control).
 **inline keyboards** and a registered **Bot menu**. Every text message goes
 through `handleChannelMessage()` in `src/gateway/server.ts`, which since batch 46
 calls one shared dispatcher (`src/gateway/chat-reports.ts` +
-`src/gateway/chat-control.ts`) — so the chat understands **27 commands**
+`src/gateway/chat-control.ts`) — so the chat understands **31 commands**
 (`/help` shows them and `setMyCommands` registers them) and shares the exact
 code the CLI and the panel's palette run. Approvals arrive as
 `🔐 <tool> wants to run` with `✅ Allow` / `🚫 Deny` buttons that call the same
-`resolveApproval()` as the panel and the CLI. Was 24 ✅ / 28 ❌; now **45 ✅,
-14 ◐, 7 ❌**.
+`resolveApproval()` as the panel and the CLI. Batch 51 closed the tail: the
+suite clock and the work tracker answer as reports (`/suite-time`, `/work
+[full]` — the whole file as a document), `/say` sends a **real voice note**
+(`speakToFile()` → espeak/say → ffmpeg/opusenc → `sendVoice`), a voice message
+gets a voice reply when `channels.telegram.voiceReplies` is on, `/embeddings
+setup` runs behind an **inline confirm**, `/controlui` opens the panel as a
+`web_app` button built from `gateway.publicUrl`, and a **forum topic** is its
+own session (`telegram:<chatId>:<threadId>`). Was 24 ✅ / 28 ❌, then 45 ✅ / 7 ❌;
+now **52 ✅, 14 ◐, 0 ❌**.
 
 **Web panel — the good surface with fewer holes.** `ui/index.html` has 11 views
 (`chat, status, board, providers, models, memory, tools, logs, debug, work,
@@ -83,12 +90,14 @@ Batches 46–48 proved the shape: one dispatcher, three callers.
 | surface | ✅ direct | ◐ narrower door | ❌ missing | — n/a |
 |---|---|---|---|---|
 | CLI / TUI | 50 | 15 | **0** | 6 |
-| Telegram | 45 | 14 | **7** | 5 |
+| Telegram | 52 | 14 | **0** | 5 |
 | Web panel | 51 | 15 | **0** | 5 |
 
-7 of 71 rows have at least one ❌, and **every one of them is Telegram**: `/suite-time`,
-`/work`, `/embeddings setup`, voice replies, `/say`, the mini app and forum
-topics — batch 51's whole scope. The web panel has no missing cell left.
+**No row has a ❌ on any surface: 0 of 71 rows have at least one ❌.** Batch 51 closed the last seven (all Telegram:
+`/suite-time`, `/work`, `/embeddings setup`, voice replies, `/say`, the mini app,
+forum topics), so what is left is the honest middle — 44 named ◐ cells whose
+reason is written out below, and batch 52 walks the ones that are half-doors
+rather than deliberate terminal jobs.
 
 By area (rows each): gateway 17 · ops 12 · channels 9 · context 8 · tools 7 ·
 sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
@@ -99,75 +108,75 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 |---|---|---|---|---|---|
 | gateway | Chat: send text, stream the answer | ✅ | ✅ | ✅ |  |
 | gateway | Stop a running turn | ✅ | ✅ | ✅ |  |
-| gateway | Queue modes (steer/followup/collect/interrupt) | ◐ | ✅ | ✅ | cli: config set agent.queueMode only |
+| gateway | Queue modes (steer/followup/collect/interrupt) | ◐ | ✅ | ✅ | config set agent.queueMode only |
 | gateway | Approvals (human-in-the-loop) | ✅ | ✅ | ✅ |  |
 | gateway | Devices: pair, list, revoke | ✅ | ✅ | ✅ |  |
 | gateway | Presence: who can reach the agent now | ✅ | ✅ | ✅ |  |
 | gateway | Usage/cost: tokens per day | ✅ | ✅ | ✅ |  |
 | gateway | Run health: which turn is stuck | ✅ | ✅ | ✅ |  |
-| gateway | Run identity + wait for a run | ✅ | — | ◐ | tg: this surface cannot carry it by nature; web: run ids are shown; no wait control |
-| gateway | Events: what the bus emitted | ✅ | — | ✅ | tg: this surface cannot carry it by nature |
+| gateway | Run identity + wait for a run | ✅ | — | ◐ | run ids are shown; no wait control |
+| gateway | Events: what the bus emitted | ✅ | — | ✅ |  |
 | gateway | Logs: console lines with levels | ✅ | ✅ | ✅ |  |
 | gateway | Config: read and set | ✅ | ✅ | ✅ |  |
 | gateway | Board: everything in flight | ✅ | ✅ | ✅ |  |
-| gateway | Canvas / A2UI widgets | ◐ | ◐ | ✅ | cli: the canvas tool the agent can call; no command; tg: the agent can call canvas; nothing renders in Telegram |
+| gateway | Canvas / A2UI widgets | ◐ | ◐ | ✅ | the canvas tool the agent can call; no command |
 | gateway | Multi-agent routing (@name, per-surface) | ✅ | ✅ | ✅ |  |
 | gateway | Health/status at a glance | ✅ | ✅ | ✅ |  |
 | gateway | Slash commands typed into the chat | ✅ | ✅ | ✅ |  |
-| agent | Tool activity visible while it works | ✅ | ◐ | ✅ | tg: only the typing indicator; tool names never shown |
-| agent | Progress drafts / partial answers | ◐ | ◐ | ✅ | cli: streams deltas; no draft markers; tg: the reply arrives whole; no live edit |
-| agent | Subagents: spawn, list, read results | ✅ | ◐ | ✅ | tg: via sessions_spawn tool in chat |
-| agent | Steering a live run | ◐ | ✅ | ✅ | cli: config mode=steer only |
+| agent | Tool activity visible while it works | ✅ | ◐ | ✅ | only the typing indicator; tool names never shown |
+| agent | Progress drafts / partial answers | ◐ | ◐ | ✅ | streams deltas; no draft markers |
+| agent | Subagents: spawn, list, read results | ✅ | ◐ | ✅ | via sessions_spawn tool in chat |
+| agent | Steering a live run | ◐ | ✅ | ✅ | config mode=steer only |
 | sessions | List / switch conversations | ✅ | ✅ | ✅ |  |
 | sessions | Search across conversations | ✅ | ✅ | ✅ |  |
 | sessions | Show one transcript | ✅ | ✅ | ✅ |  |
-| sessions | Rename / purge / export | ✅ | ✅ | ◐ | web: purge exists; no rename/export |
-| sessions | Start a fresh conversation | ✅ | ✅ | ✅ | web: the chat resets the session; the palette keeps its view action |
+| sessions | Rename / purge / export | ✅ | ✅ | ◐ | purge exists; no rename/export |
+| sessions | Start a fresh conversation | ✅ | ✅ | ✅ |  |
 | context | Memory: browse what it knows | ✅ | ✅ | ✅ |  |
 | context | Memory: search it | ✅ | ✅ | ✅ |  |
-| context | Memory: write a fact by hand | ◐ | ◐ | ✅ | cli: memory user <line> writes USER.md only; tg: say "remember …" and the agent calls the tool |
+| context | Memory: write a fact by hand | ◐ | ◐ | ✅ | memory user <line> writes USER.md only |
 | context | Dreaming / idle consolidation | ✅ | ✅ | ✅ |  |
 | context | Context report: what the model is sent | ✅ | ✅ | ✅ |  |
 | context | Embeddings: status | ✅ | ✅ | ✅ |  |
-| context | Embeddings: setup / switch provider | ◐ | ❌ | ✅ | cli: the install runs in the terminal; the provider switch exists here too; tg: not available |
-| context | Identity files (SOUL/IDENTITY/USER bootstrap) | ✅ | ◐ | ✅ | tg: "remember …" writes USER.md; SOUL/IDENTITY are not editable from chat |
-| tools | Tool catalog: what the agent can do | ◐ | ◐ | ✅ | cli: context lists schemas; no catalog command; tg: ask in chat and the agent answers |
-| tools | Tool toggles (enable/disable a tool) | ◐ | ◐ | ◐ | cli: config set agent.allowExec etc.; tg: config only; web: catalog shows active/planned; no toggle |
-| tools | Shell / files / web tools in conversation | ◐ | ◐ | ◐ | cli: the agent's own exec/read/web tools; tg: the agent's own tools in a turn; web: the agent's own tools in a turn |
-| tools | Browser automation | ✅ | ◐ | ◐ | tg: agent tool in chat; web: agent tool in chat; no browser panel |
-| tools | Image generation | ✅ | ◐ | ◐ | tg: agent tool in chat; web: agent tool in chat; no button |
-| tools | Send a file back to a chat | ◐ | ✅ | ◐ | cli: needs a channel to send into; web: send_file reaches the panel as a path, not a download |
-| tools | Document extraction (PDF/DOCX/XLSX in) | ◐ | ✅ | ◐ | cli: no command; agent reads text files only; web: attach accepts text types only |
-| skills | Skills: list / import / create / proposals | ✅ | ◐ | ✅ | tg: list + proposals; approve/import stay in the terminal |
-| automation | Cron jobs: list / add / run | ✅ | ◐ | ✅ | tg: list; adding stays in the terminal or the panel |
+| context | Embeddings: setup / switch provider | ◐ | ✅ | ✅ | the install runs in the terminal; the provider switch exists here too |
+| context | Identity files (SOUL/IDENTITY/USER bootstrap) | ✅ | ◐ | ✅ | "remember …" writes USER.md; SOUL/IDENTITY are not editable from chat |
+| tools | Tool catalog: what the agent can do | ◐ | ◐ | ✅ | context lists schemas; no catalog command |
+| tools | Tool toggles (enable/disable a tool) | ◐ | ◐ | ◐ | config set agent.allowExec etc. |
+| tools | Shell / files / web tools in conversation | ◐ | ◐ | ◐ | the agent's own exec/read/web tools |
+| tools | Browser automation | ✅ | ◐ | ◐ | agent tool in chat |
+| tools | Image generation | ✅ | ◐ | ◐ | agent tool in chat |
+| tools | Send a file back to a chat | ◐ | ✅ | ◐ | needs a channel to send into |
+| tools | Document extraction (PDF/DOCX/XLSX in) | ◐ | ✅ | ◐ | no command; agent reads text files only |
+| skills | Skills: list / import / create / proposals | ✅ | ◐ | ✅ | list + proposals; approve/import stay in the terminal |
+| automation | Cron jobs: list / add / run | ✅ | ◐ | ✅ | list; adding stays in the terminal or the panel |
 | automation | Heartbeat: run a self-check now | ✅ | ✅ | ✅ |  |
-| automation | Watchers / file triggers | ◐ | ✅ | ◐ | cli: config set only; web: presence counts them; nothing to edit |
+| automation | Watchers / file triggers | ◐ | ✅ | ◐ | config set only |
 | automation | Standing orders | ✅ | ✅ | ✅ |  |
 | mobile | Dictation (speech → text) | ✅ | ✅ | ✅ |  |
-| mobile | Text to speech | ✅ | ❌ | ✅ | tg: no voice replies from the bot |
+| mobile | Text to speech | ✅ | ✅ | ✅ |  |
 | mobile | Transcribe a voice file | ✅ | ✅ | ✅ |  |
-| mobile | Wake word loop | ✅ | — | ✅ | tg: this surface cannot carry it by nature |
+| mobile | Wake word loop | ✅ | — | ✅ |  |
 | ops | Doctor: find and fix problems | ✅ | ✅ | ✅ |  |
-| ops | Update: check / apply / rollback | ✅ | ◐ | ✅ | tg: check from chat; apply is terminal-only until the confirm lands (48) |
+| ops | Update: check / apply / rollback | ✅ | ◐ | ✅ | check from chat; apply is terminal-only until the confirm lands (48) |
 | ops | Backup / restore the home | ✅ | ✅ | ✅ |  |
 | ops | Disk usage | ✅ | ✅ | ✅ |  |
-| ops | Install as a service | ✅ | — | ◐ | tg: this surface cannot carry it by nature; web: the card shows status + the exact command; installing stays in a terminal on purpose |
-| ops | Boot autostart (Termux:Boot) | ✅ | — | ✅ | tg: this surface cannot carry it by nature; web: a "Start at boot" button with termux detection |
-| ops | Security audit (findings + fixes) | ✅ | ✅ | ◐ | web: the shared text is served, but no panel view yet (batch 50) |
-| ops | Secrets: named keys, audit | ✅ | ✅ | ◐ | web: names via /api/slash; no panel view yet (batch 50) |
+| ops | Install as a service | ✅ | — | ◐ | the card shows status + the exact command; installing stays in a terminal on purpose |
+| ops | Boot autostart (Termux:Boot) | ✅ | — | ✅ |  |
+| ops | Security audit (findings + fixes) | ✅ | ✅ | ◐ | the shared text is served, but no panel view yet (batch 50) |
+| ops | Secrets: named keys, audit | ✅ | ✅ | ◐ | names via /api/slash; no panel view yet (batch 50) |
 | ops | Performance budget + history | ✅ | ✅ | ✅ |  |
-| ops | Suite clock (the tests' own record) | ◐ | ❌ | ✅ | cli: npm run test:time; not a termcrab command; tg: not available |
-| ops | Work tracker: what is being built now | ✅ | ❌ | ✅ | cli: termcrab owner + scripts/status.mjs; tg: not available |
+| ops | Suite clock (the tests' own record) | ◐ | ✅ | ✅ | npm run test:time; not a termcrab command |
+| ops | Work tracker: what is being built now | ✅ | ✅ | ✅ |  |
 | ops | Docs: the offline manual | ✅ | ✅ | ✅ |  |
-| channels | Rooms: what was said while unaddressed | ✅ | ✅ | ◐ | web: room_history tool in chat; no view |
-| channels | Inbox: files people sent | ◐ | ✅ | ◐ | cli: inbox_list/read tools in a turn; web: tools in chat; no inbox view |
-| channels | Typing indicator | — | ✅ | ✅ | cli: this surface cannot carry it by nature |
-| channels | Media in / out (photos, voice, files) | ◐ | ✅ | ◐ | cli: in: attach only in the panel; web: in: attach (text types); out: send_file as a path |
-| channels | Telegram inline buttons (rich messages) | — | ✅ | — | cli: this surface cannot carry it by nature; web: this surface cannot carry it by nature |
-| channels | Registered Telegram command menu (setMyCommands) | — | ✅ | — | cli: this surface cannot carry it by nature; web: this surface cannot carry it by nature |
-| channels | Panel inside Telegram (mini app) | — | ❌ | — | cli: this surface cannot carry it by nature; tg: OpenClaw has /controlui; we do not; web: this surface cannot carry it by nature |
-| channels | Voice replies in Telegram | — | ❌ | — | cli: this surface cannot carry it by nature; tg: the bot replies in text only; web: this surface cannot carry it by nature |
-| channels | Group / forum topics → separate sessions | — | ❌ | — | cli: this surface cannot carry it by nature; tg: no forum-topic routing; group rooms only; web: this surface cannot carry it by nature |
+| channels | Rooms: what was said while unaddressed | ✅ | ✅ | ◐ | room_history tool in chat; no view |
+| channels | Inbox: files people sent | ◐ | ✅ | ◐ | inbox_list/read tools in a turn |
+| channels | Typing indicator | — | ✅ | ✅ |  |
+| channels | Media in / out (photos, voice, files) | ◐ | ✅ | ◐ | in: attach only in the panel |
+| channels | Telegram inline buttons (rich messages) | — | ✅ | — |  |
+| channels | Registered Telegram command menu (setMyCommands) | — | ✅ | — |  |
+| channels | Panel inside Telegram (mini app) | — | ✅ | — |  |
+| channels | Voice replies in Telegram | — | ✅ | — |  |
+| channels | Group / forum topics → separate sessions | — | ✅ | — |  |
 
 ## 4. Gap register — what is missing where, and how each one gets built
 
@@ -193,17 +202,17 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | W8 | service card | 50 | `GET /api/service` serves `serviceStatus()` + the plan and the exact command; the panel never executes it |
 | W9b | transcribe upload | 50 | `POST /api/transcribe` writes the bytes inside `$TCRAB_HOME/state/uploads` and calls the same `transcribeFile()` the CLI does |
 
-### 4.1 Telegram: the 7 cells left
+### 4.1 Closed by batch 51 — Telegram's tail (the last seven ❌ in the audit)
 
-| # | missing cell | how it gets built | batch |
-|---|---|---|---|
-| T18b | `/suite-time` — the tests' own clock | one more report line from `scripts/suite-time.mjs`'s record, same clamp | 51 |
-| T18c | `/work` — the work tracker | render `WORKLOG.md`'s Now block as ≤ 24 lines; a `/work full` that sends the file as a document | 51 |
-| T8 | `/embeddings setup` — switch provider | the provider list the CLI prints, then a two-step: bot shows a keyboard, tapping a provider asks for confirmation and writes the same config | 51 |
-| T22 | Voice replies | `sendVoice` (already in the API seam) for `/say` and for replies to voice messages when `voice.replyWithVoice` is on; OGG/Opus via the existing TTS chain | 51 |
-| T23 | Panel inside Telegram (mini app) | `/controlui` returns the panel URL when `gateway.publicUrl` is set, as an inline `web_app` button; refuses plainly when it is not | 51 |
-| T24 | Forum topics → separate sessions | key the session by `message_thread_id` when present (`telegram:<chatId>:<threadId>`) so each topic is its own conversation | 51 |
-| T22b | `/say` shortcut in chat | `/say <text>` → `sendVoice`; `/say off` for text again | 51 |
+| id | cell | how it works now |
+|---|---|---|
+| T18b | `/suite-time` | `suiteTimeReport()` reads the same `suite-time.json` the panel's `/api/suite-time` serves: wall clock, cases, files, the slowest three, the budget, and a warning when the recorded run was over it — clamped like every chat report |
+| T18c | `/work` | `workReport()` renders WORKLOG.md's **Now** and **Next** blocks (bullets *and* table rows, evidence column left to the file); `/work full` attaches the whole tracker as a document through `sendDocument()` |
+| T8 | `/embeddings setup` | a description of the install, then an inline **Install and probe** button; the `emb:setup` callback runs the CLI's own `embeddingsSetup()` and reports its steps — nothing installs before the press |
+| T22 | Voice replies | a voice note in, a voice note back when `channels.telegram.voiceReplies` is on (default off; the key is in the chat's `/config` whitelist). The reply is spoken up to 600 characters, the rest goes out as text, and a machine with no engine keeps the words plus the install hint |
+| T22b | `/say` | `/say <text>` → `speakToFile()` (espeak/say → ffmpeg/opusenc) → `sendVoice`; OGG/Opus as a voice note, anything else as a document, and never at the cost of the text |
+| T23 | Mini app | `/controlui` sends the panel address with an inline `web_app` button when `gateway.publicUrl` is set; with no address — or a loopback one — it refuses in plain words and names the exact config line |
+| T24 | Forum topics | `message_thread_id` travels with the message (`IncomingContext`) and keys the session through `telegramSessionKey()` as `telegram:<chatId>:<threadId>`; scoping `user` still keys by person, and a plain group's key is unchanged |
 
 Narrower doors that stay (not ❌ because the surface *can* carry them and the
 door is named): `/update apply` (terminal on purpose until an inline confirm
@@ -260,13 +269,14 @@ Each row was one batch, in dependency order; every batch keeps the repo's rules
 | 48 | inline keyboards, callbacks, `setMyCommands`, approvals in chat | Telegram | T2, T20, T21 | **done** |
 | 49 | panel gaps, quick half: sessions search, context view, embeddings picker, queue/steer | web | W1, W2, W3, C4 (half) | **done** |
 | 50 | panel gaps, builder half: identity editor, backup/restore, service card, transcribe upload | web (+ API) | W4, W5, W8, W9b | **done** |
-| 51 | voice replies, `/say`, `/suite-time`, `/work`, `/embeddings setup`, mini app, forum topics | Telegram | T8, T18b, T18c, T22, T22b, T23, T24 | next |
-| 52 | CLI promotions: `tools`, `canvas`, `watch`, `queue`/`steer`, memory add, status numbers | CLI | C1–C7 | queued |
+| 51 | voice replies, `/say`, `/suite-time`, `/work`, `/embeddings setup`, mini app, forum topics | Telegram | T8, T18b, T18c, T22, T22b, T23, T24 | **done** |
+| 52 | the named ◐s: panel inbox/rooms/watchers/tool toggles, panel security+secrets, Telegram skills/cron authoring, CLI `suite-time`/`work`, session rename/export | web + Telegram + CLI | the half-doors in §4.2/§4.3 | next |
 
 Note the ordering: the CLI started complete, so 46–48 lifted Telegram — that is
-where 28 of the 38 missing cells lived. Batches 49–50 close the web row, 51 the
-Telegram tail, 52 the CLI ◐s. After 52 every ✅/◐ in §3 must be a deliberate
-"narrower door" note, never a hole.
+where 28 of the 38 missing cells lived. Batches 49–50 closed the web row, 51 the
+Telegram tail (the ❌ register is now empty on all three), 52 the ◐s that are
+half-doors rather than deliberate terminal jobs. After 52 every ◐ in §3 must be
+a deliberate "narrower door" note, never a hole.
 
 ## 7. Keeping this true
 

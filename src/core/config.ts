@@ -77,6 +77,13 @@ export interface Config {
      * Omitted = 60/minute with a burst of 10.
      */
     rateLimit?: { perMinute: number; burst: number };
+    /**
+     * 51.5 — where this gateway can be reached from *outside* the machine
+     * (a tunnel address, a LAN IP). Only used to build the Telegram mini-app
+     * button: `/controlui` needs an https URL a phone can open, and a loopback
+     * address is useless there. Unset = the command says so.
+     */
+    publicUrl?: string;
   };
   /**
    * `logs/termcrab.jsonl` (23.2/23.3): rotate at `maxMB` megabytes, keep
@@ -224,6 +231,11 @@ export interface Config {
       transcribeVoice?: boolean;
       /** Describe a photo that arrives with a model that can see (default true). */
       describePhotos?: boolean;
+      /**
+       * 51.3 — answer a voice note with a voice note (default false: text is
+       * what a chat is for, and speaking costs a TTS engine + ffmpeg).
+       */
+      voiceReplies?: boolean;
     };
     whatsapp?: {
       enabled: boolean;

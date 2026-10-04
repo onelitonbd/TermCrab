@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { TelegramApi } from './api.js';
+import { TelegramApi, type TelegramButton } from './api.js';
 import { log } from '../core/logger.js';
 import { recordRoomMessage } from './rooms.js';
 import { outboxAck, outboxFail, outboxMarkSending, outboxPending, outboxPush } from '../mobile/outbox.js';
+import { speakToFile, type VoiceFileResult } from '../mobile/tts.js';
+import { home } from '../core/paths.js';
 import { escapeHtml, mdToTelegramHtml } from './markdown.js';
 import type { ArrivalInfo } from './intake.js';
 import {
@@ -26,11 +28,40 @@ export interface TelegramCfg {
   groupPolicy?: 'mention' | 'all';
   /** Largest file accepted from a chat (MB). */
   maxFileMb?: number;
+  /** 51.3 — a voice note in gets a voice note back (needs TTS + ffmpeg). */
+  voiceReplies?: boolean;
+}
+
+/**
+ * 51.2 — what a surface can tell the channel about an inbound message that is
+ * not in its text: which forum topic it came from, and whether it was spoken.
+ */
+export interface IncomingContext {
+  /** Telegram's `message_thread_id` — a forum topic inside a group. */
+  threadId?: number;
+  /** The message was a voice note, so a voice reply is possible. */
+  voice?: boolean;
+}
+
+/**
+ * 51.2 — a reply that is not only text. `speak: true` asks the channel to send
+ * the text as a voice note (`/say`, the wake loop); a channel without a voice
+ * API falls back to the text, which is why the text is always there.
+ */
+export interface ChannelReply {
+  text: string;
+  speak?: boolean;
 }
 
 export interface TelegramDeps {
   cfg: TelegramCfg;
-  onMessage: (userId: number, chatId: number, text: string, displayName: string) => Promise<string>;
+  onMessage: (
+    userId: number,
+    chatId: number,
+    text: string,
+    displayName: string,
+    ctx?: IncomingContext,
+  ) => Promise<string | ChannelReply>;
   /**
    * 48.1 — a button press. Same allowlist as a message, and the answer is sent
    * back through the same send path; returning the text to show keeps the
@@ -53,10 +84,17 @@ export interface TelegramDeps {
         | 'editMessageReplyMarkup'
         | 'setMyCommands'
         | 'sendVoice'
+        | 'sendDocument'
       >
     >;
   /** Test seam: where an incoming file lands (default: workspace/inbox). */
   saveFile?: (file: IncomingFile) => Promise<SavedFile> | SavedFile;
+  /**
+   * 51.2 — how a reply becomes a spoken file (default: `speakToFile` into
+   * `<home>/state/voice`). Injectable so a test can prove the send path
+   * without a sound card.
+   */
+  speakFile?: (text: string, dir: string) => Promise<VoiceFileResult>;
   /**
    * What the agent is told when a file arrives (16.1–16.3). Defaults to the
    * plain "saved to …" sentence; the gateway passes `makeIntake(config)` so a
@@ -67,6 +105,12 @@ export interface TelegramDeps {
 
 /** Telegram forgets a typing indicator after ~5s, so long turns re-send it. */
 export const TYPING_REFRESH_MS = 4000;
+
+/** How much of a long answer is spoken before the rest goes out as text. */
+export const VOICE_CHARS = 600;
+/** Said when a voice reply was wanted and no engine could produce one. */
+export const VOICE_HINT =
+  'voice needs a TTS engine (espeak-ng) and ffmpeg for OGG/Opus — Termux: pkg install espeak-ng ffmpeg';
 
 export function chunkText(text: string, size = 3900): string[] {
   if (text.length <= size) return [text];
@@ -268,13 +312,28 @@ export class TelegramChannel {
   async sendButtons(
     chatId: number,
     text: string,
-    buttons: { text: string; data: string }[][],
+    buttons: TelegramButton[][],
   ): Promise<boolean> {
     try {
       await this.api.sendMessage(chatId, mdToTelegramHtml(text), buttons);
       return true;
     } catch (err) {
       log.warn('telegram button send failed:', err instanceof Error ? err.message : err);
+      return false;
+    }
+  }
+
+  /**
+   * 51.5 — the panel as a Telegram Web App. `web_app` buttons are opened by the
+   * client, so this is the one button that needs no callback: the address is
+   * the gateway's own `gateway.publicUrl`.
+   */
+  async sendWebApp(chatId: number, text: string, label: string, url: string): Promise<boolean> {
+    try {
+      await this.api.sendMessage(chatId, mdToTelegramHtml(text), [[{ text: label, webApp: url }]]);
+      return true;
+    } catch (err) {
+      log.warn('telegram web_app send failed:', err instanceof Error ? err.message : err);
       return false;
     }
   }
@@ -307,7 +366,12 @@ export class TelegramChannel {
     await send.call(this.api, chatId, safeFileName(path.basename(filePath), 'voice.ogg'), bytes, caption);
   }
 
-  private async handleUpdate(update: TelegramUpdate): Promise<void> {
+  /**
+   * One update, start to finish. Public on purpose: the poll loop is the only
+   * caller in production, and a test can drive a single message (a forum
+   * topic, a voice note) without standing up a network loop.
+   */
+  async handleUpdate(update: TelegramUpdate): Promise<void> {
     // 48.1 — a button press is not a message: it carries the chat, the presser
     // and the data the button was created with (an approval id, a confirm).
     if (update.callback_query) {
@@ -319,6 +383,14 @@ export class TelegramChannel {
     const userId = msg.from?.id ?? 0;
     const chatId = msg.chat.id;
     const name = msg.from?.username || msg.from?.first_name || String(userId);
+    // 51.4/51.2 — everything the *text* does not carry: the forum topic and
+    // whether this was spoken. The session key and the reply shape both use it.
+    const ctx: IncomingContext = {
+      ...(typeof msg.message_thread_id === 'number' && msg.message_thread_id > 0
+        ? { threadId: msg.message_thread_id }
+        : {}),
+      ...(msg.voice ? { voice: true } : {}),
+    };
 
     if (this.deps.cfg.allowedUserIds.length > 0 && !this.deps.cfg.allowedUserIds.includes(userId)) {
       log.warn(`telegram: rejected message from non-allowlisted user ${userId}`);
@@ -334,13 +406,13 @@ export class TelegramChannel {
         await this.send(chatId, `📎 I did not take that file: ${incoming.reason}`);
         return;
       }
-      let question: string;
+      let question: string | ChannelReply;
       try {
-        question = await this.withTyping(chatId, () => this.deps.onMessage(userId, chatId, incoming.text, name));
+        question = await this.withTyping(chatId, () => this.deps.onMessage(userId, chatId, incoming.text, name, ctx));
       } catch (err) {
         question = `⚠️ ${err instanceof Error ? err.message : String(err)}`;
       }
-      if (question) await this.send(chatId, question);
+      await this.reply(chatId, question, ctx);
       return;
     }
 
@@ -368,25 +440,65 @@ export class TelegramChannel {
       });
       if (policy !== 'all' && !addressed) return;
       const stripped = mention ? text.replace(mention, ' ').trim() : text;
-      let reply: string;
+      let reply: string | ChannelReply;
       try {
         reply = await this.withTyping(chatId, () =>
-          this.deps.onMessage(userId, chatId, stripped || text, name),
+          this.deps.onMessage(userId, chatId, stripped || text, name, ctx),
         );
       } catch (err) {
         reply = `⚠️ ${err instanceof Error ? err.message : String(err)}`;
       }
-      if (reply) await this.send(chatId, reply);
+      await this.reply(chatId, reply, ctx);
       return;
     }
 
-    let reply: string;
+    let reply: string | ChannelReply;
     try {
-      reply = await this.withTyping(chatId, () => this.deps.onMessage(userId, chatId, text, name));
+      reply = await this.withTyping(chatId, () => this.deps.onMessage(userId, chatId, text, name, ctx));
     } catch (err) {
       reply = `⚠️ ${err instanceof Error ? err.message : String(err)}`;
     }
-    if (reply) await this.send(chatId, reply);
+    await this.reply(chatId, reply, ctx);
+  }
+
+  /**
+   * 51.2/51.3 — send the reply, spoken when the answer is meant to be heard:
+   * the sender asked with `/say`, or a voice note came in and
+   * `channels.telegram.voiceReplies` is on. A reply that cannot be spoken keeps
+   * its text and says why, so a missing binary never eats an answer.
+   */
+  private async reply(chatId: number, reply: string | ChannelReply, ctx: IncomingContext): Promise<void> {
+    const text = typeof reply === 'string' ? reply : reply.text;
+    if (!text) return;
+    const asked = typeof reply !== 'string' && reply.speak === true;
+    if (!asked && !(ctx.voice === true && this.deps.cfg.voiceReplies === true)) {
+      await this.send(chatId, text);
+      return;
+    }
+    const voiced = await this.speakOut(chatId, text);
+    if (!voiced) await this.send(chatId, `${text}\n\n🔇 ${VOICE_HINT}`);
+  }
+
+  /**
+   * The spoken half: synthesize `<home>/state/voice`, send OGG/Opus as a voice
+   * note and anything else as a file (Telegram only plays OGG/Opus as voice).
+   * Long answers speak the first `VOICE_CHARS` and send the rest as text.
+   */
+  private async speakOut(chatId: number, text: string): Promise<boolean> {
+    const head = text.slice(0, VOICE_CHARS);
+    const tail = text.length > VOICE_CHARS ? text.slice(VOICE_CHARS) : '';
+    try {
+      const synth = this.deps.speakFile ?? ((t: string, dir: string) => speakToFile(t, dir));
+      const r = await synth(head, path.join(home(), 'state', 'voice'));
+      if (!r.ok || !r.file) return false;
+      if (r.ogg) await this.sendVoice(chatId, r.file);
+      else await this.rawSendDocument(chatId, r.file, '🔊 spoken reply (no ffmpeg — raw audio, not a voice note)');
+    } catch (err) {
+      log.warn('telegram voice reply failed:', err instanceof Error ? err.message : err);
+      return false;
+    }
+    if (tail) await this.send(chatId, tail);
+    return true;
   }
 
   /** `@ourbot` (or `/cmd@ourbot`) as written in the message, if present. */
@@ -483,6 +595,8 @@ export interface TelegramUpdate {
     chat: { id: number; type?: string };
     from?: { id: number; username?: string; first_name?: string };
     reply_to_message?: { from?: { id: number; username?: string; is_bot?: boolean } };
+    /** 51.4 — the forum topic this message belongs to. */
+    message_thread_id?: number;
     photo?: { file_id: string; file_size?: number; width?: number; height?: number }[];
     document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
     voice?: { file_id: string; file_size?: number; mime_type?: string };

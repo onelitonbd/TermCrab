@@ -5,7 +5,8 @@ import { configPath } from '../core/paths.js';
 import { formatLogRecord, structuredLog } from '../core/structured-log.js';
 import { diskBudgetBytes, diskKeepDays, diskUsage } from '../core/disk.js';
 import { buildBoard, formatBoard } from '../agent/board.js';
-import { perfStatus } from '../core/perf.js';
+import { perfStatus, suiteTimeStatus } from '../core/perf.js';
+import { PACKAGE_ROOT } from '../core/paths.js';
 import { runDoctor, renderChecks } from '../mobile/doctor.js';
 import { auditSecrets, formatFindings } from '../agent/security.js';
 import { securityAudit } from '../agent/security.js';
@@ -39,7 +40,21 @@ import { listAgents } from '../agent/prompt.js';
 export const CHAT_REPORT_LIMIT = 24;
 
 export type ReportResult =
-  | { ok: true; text: string }
+  | {
+      ok: true;
+      text: string;
+      /**
+       * 51.2 — speak this text instead of sending it, where the surface has a
+       * voice API (Telegram's sendVoice). The text stays, so a surface without
+       * one still answers.
+       */
+      speak?: boolean;
+      /**
+       * 51.1 — a file to attach (the whole WORKLOG for `/work full`). The
+       * surface sends it when it can, and the text explains the rest.
+       */
+      attach?: { file: string; caption?: string };
+    }
   | { ok: false; error: string };
 
 const ok = (text: string): ReportResult => ({ ok: true, text });
@@ -117,6 +132,7 @@ export const CHAT_SET_KEYS = new Set([
   'agent.compactThreshold',
   'memory.embeddings',
   'channels.telegram.groupPolicy',
+  'channels.telegram.voiceReplies',
 ]);
 
 export function configReport(key?: string): ReportResult {
@@ -295,6 +311,152 @@ export function devicesReport(): ReportResult {
 }
 
 /** `/embeddings` — which embedder memory search will use, and why. */
+/** `/suite-time` — the tests' own clock, the same record the panel reads (41.3). */
+export function suiteTimeReport(): ReportResult {
+  const st = suiteTimeStatus();
+  if (!st.exists) {
+    return ok('🕐 the suite has never been timed here\n     record it: npm run test:time');
+  }
+  const lines = [
+    `🕐 suite: ${(st.wallMs / 1000).toFixed(1)} s · ${st.cases} case(s) · ${st.files} file(s)`,
+    `     recorded ${st.age} (${st.at ?? '?'})`,
+    `     budget ${(st.budgetWallMs / 1000).toFixed(0)} s wall, ${(st.budgetFileMs / 1000).toFixed(0)} s per file`,
+  ];
+  if (st.over) lines.push('     ⚠️ the recorded run was over its budget');
+  if (st.slowest.length) {
+    lines.push('     slowest:');
+    for (const s of st.slowest.slice(0, 3)) lines.push(`       ${s.file} ${(s.ms / 1000).toFixed(1)} s`);
+  }
+  return ok(clampLines(lines).join('\n'));
+}
+
+/** For `/work full`: where the tracker lives, so the chat can attach it. */
+export function worklogPath(): string {
+  return path.join(PACKAGE_ROOT, 'WORKLOG.md');
+}
+
+/**
+ * `/work` — what is being built right now, straight from WORKLOG.md, and
+ * `/work full` hands the whole file over as an attachment. The tracker writes
+ * its steps as a table (`| 50.1 | … |`), so the renderer reads both shapes: a
+ * bullet stays a bullet, a table row becomes `50.1 the step · ✔ done`, and the
+ * evidence column (the longest one) is left to the file itself.
+ */
+export function workReport(full = false): ReportResult {
+  let markdown = '';
+  try {
+    markdown = fs.readFileSync(worklogPath(), 'utf8');
+  } catch {
+    return ok('📋 no WORKLOG.md in this install — the tracker lives in the repository');
+  }
+
+  /** A section's title line and its rows, however the tracker wrote them. */
+  const section = (heading: string, stop: string): { title: string; rows: string[] } => {
+    const i = markdown.indexOf(heading);
+    if (i < 0) return { title: '', rows: [] };
+    const titleEnd = markdown.indexOf('\n', i);
+    const title = markdown
+      .slice(i, titleEnd < 0 ? undefined : titleEnd)
+      .replace(/^#+\s*/, '')
+      .replace(/^\d+\.\s*[A-Za-z]+\s*(—|-)?\s*/, '')
+      .trim();
+    const j = markdown.indexOf(stop, titleEnd < 0 ? i : titleEnd);
+    const body = markdown.slice(titleEnd < 0 ? i : titleEnd, j < 0 ? undefined : j).split('\n');
+    const rows: string[] = [];
+    for (let n = 0; n < body.length; n++) {
+      const line = body[n]!.trim();
+      if (line.startsWith('- ')) {
+        rows.push(line.slice(2).slice(0, 200));
+        continue;
+      }
+      if (!line.startsWith('|')) continue;
+      // A markdown table header is the row above its `|---|---|` line, and the
+      // tracker has more than one table per section, so this is checked per row.
+      const below = body.slice(n + 1).find((l) => l.trim() !== '')?.trim() ?? '';
+      if (/^\|[-\\s:|]+\|$/.test(below)) continue;
+      const cells = line.split('|').slice(1, -1).map((c) => c.trim());
+      if (!cells.length || /^-{2,}$/.test(cells[0]!)) continue;
+      // id · step · status, and the long evidence cell only when there is room.
+      const kept = cells.length >= 3 ? [cells[0], cells[1], cells[2]] : cells;
+      rows.push(kept.join(' · ').replace(/\s+/g, ' ').slice(0, 200));
+    }
+    return { title, rows };
+  };
+
+  // The leftovers block (the owner's two actions) sits inside §3; the chat
+  // report stops at it, because those are not steps of a batch.
+  const leftovers = markdown.includes('What remains outside a batch');
+  const now = section('## 2. Now', '## 3.');
+  const next = section('## 3. Next', leftovers ? 'What remains outside a batch' : '## 4. Done');
+  const lines = [`📋 WORKLOG.md — ${now.title || 'what is being built'}`];
+  for (const row of now.rows) lines.push(`  ${row}`);
+  if (next.rows.length) {
+    lines.push(`  next — ${next.title.replace(/^Next\s*—\s*/, '')}`);
+    for (const row of next.rows.slice(0, 6)) lines.push(`  ${row}`);
+  }
+  const updated = /^\*\*Updated:\*\*\s*(.+)$/m.exec(markdown)?.[1]?.trim();
+  if (updated) lines.push(`  updated ${updated}`);
+  lines.push(
+    full
+      ? `  the whole file (${(markdown.length / 1024).toFixed(1)} KB) is attached as WORKLOG.md`
+      : '  the whole file: /work full',
+  );
+  return full
+    ? { ok: true, text: clampLines(lines, 30).join('\n'), attach: { file: worklogPath(), caption: 'WORKLOG.md — the whole tracker' } }
+    : ok(clampLines(lines, 30).join('\n'));
+}
+
+/**
+ * `/say <text>` — a spoken reply, where the surface can send one. The text is
+ * the words to speak: Telegram turns it into a voice note, the panel's chat
+ * shows it, and the CLI still has `termcrab say` for the machine's speakers.
+ */
+export function sayReport(text: string): ReportResult {
+  const clean = text.trim();
+  if (!clean) return fail('usage: /say <text to speak>');
+  if (clean.length > 1500) return fail(`say: ${clean.length} characters is too long to speak (1500 max)`);
+  return { ok: true, text: clean, speak: true };
+}
+
+/**
+ * `/controlui` — the panel as a Telegram Web App (51.5). Needs an address a
+ * phone can reach, so it is built from `gateway.publicUrl`; a loopback address
+ * is refused with the exact config line, because a button that opens
+ * 127.0.0.1 on a phone opens nothing.
+ */
+export function controlUiReport(publicUrl?: string): ReportResult {
+  const url = (publicUrl ?? '').trim().replace(/\/+$/, '');
+  if (!url) {
+    return ok(
+      [
+        '📱 no public address is configured, so a button would open nothing on a phone',
+        '     set one: termcrab config set gateway.publicUrl https://your-tunnel-host',
+        '     (a tunnel, a LAN IP or a reverse proxy — /controlui needs https for the Web App)',
+      ].join('\n'),
+    );
+  }
+  if (/^https?:\/\/(127\.0\.0\.1|localhost)\b/i.test(url)) {
+    return ok(`📱 ${url} is this machine's loopback address — a phone cannot open it\n     set gateway.publicUrl to the address your phone reaches`);
+  }
+  return ok([`📱 the panel lives at ${url}`, '     the button below opens it inside Telegram'].join('\n'));
+}
+
+/** `/embeddings setup` — what the install does, before the confirm button. */
+export function embeddingsSetupReport(): ReportResult {
+  const cfg = loadConfig();
+  const plan = embedderPlan(cfg);
+  if (!plan.kind) {
+    return ok('🧠 embeddings are off — turn them on first: /config set memory.embeddings true');
+  }
+  return ok(
+    [
+      `🧠 embeddings setup — installing the local engine and the model (~30 MB once), then probing it`,
+      '     the confirm button below runs the same code as `termcrab embeddings setup`',
+      '     (the provider switch itself stays: /embeddings)',
+    ].join('\n'),
+  );
+}
+
 export function embeddingsReport(): ReportResult {
   const cfg = loadConfig();
   const plan = embedderPlan(cfg);
@@ -427,6 +589,10 @@ export const CHAT_COMMANDS: { cmd: string; args: string; description: string }[]
   { cmd: '/docs', args: '[name]', description: 'The offline manual' },
   { cmd: '/skills', args: '', description: 'Skills and proposals' },
   { cmd: '/cron', args: '', description: 'Scheduled jobs' },
+  { cmd: '/suite-time', args: '', description: "The tests' own clock" },
+  { cmd: '/work', args: '[full]', description: 'What is being built now' },
+  { cmd: '/say', args: '<text>', description: 'Send it as a voice note' },
+  { cmd: '/controlui', args: '', description: 'Open the panel inside Telegram' },
 ];
 
 /** The text `/help` prints — one list, also used to register the Bot menu. */
@@ -444,6 +610,8 @@ export function helpText(): string {
 export interface ReportDeps {
   /** The AgentCtx a dream run needs (the panel's /api/dream uses it too). */
   agent: unknown;
+  /** 51.5 — `gateway.publicUrl`, for the mini-app button. */
+  publicUrl?: string;
   skills: { list: () => { name: string; description: string; origin: string }[] };
   proposals?: () => { name: string; reason?: string }[];
 }
@@ -488,7 +656,16 @@ export async function runReportCommand(text: string, deps: ReportDeps): Promise<
     case '/devices':
       return devicesReport();
     case '/embeddings':
-      return embeddingsReport();
+      return rest[0] === 'setup' ? embeddingsSetupReport() : embeddingsReport();
+    case '/suite-time':
+    case '/suite':
+      return suiteTimeReport();
+    case '/work':
+      return workReport(rest[0] === 'full');
+    case '/say':
+      return sayReport(arg);
+    case '/controlui':
+      return controlUiReport(deps.publicUrl);
     case '/dream': {
       if (arg === 'now' || arg === 'run') {
         // Fire-and-forget, exactly like the panel: consolidation can take

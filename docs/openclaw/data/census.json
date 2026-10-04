@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T14:56:28.954Z",
+ "measured": "2026-10-04T16:42:24.018Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 51,
+  "BETTER": 52,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 169,
+ "inScope": 170,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1572"
+    "detail": "1 match(es): src/gateway/server.ts:1694"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1574"
+    "detail": "2 match(es): src/gateway/server.ts:1696"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:348"
+    "detail": "1 match(es): src/gateway/server.ts:362"
    }
   },
   {
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:388"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:400"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:3000"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:3122"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1363"
+    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1485"
    }
   },
   {
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:733, src/core/config.ts:700"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:733, src/core/config.ts:712"
    }
   },
   {
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1766, src/mobile/doctor.ts:622"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1888, src/mobile/doctor.ts:622"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1802"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1924"
    }
   },
   {
@@ -646,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "764 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "774 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -784,7 +784,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/rolling.ts:80"
+    "detail": "1 match(es): src/agent/rolling.ts:97"
    }
   },
   {
@@ -805,7 +805,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:757"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:788"
    }
   },
   {
@@ -1534,7 +1534,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:43, src/channels/matrix.ts:34, src/channels/telegram.ts:43"
+    "detail": "4 match(es): src/channels/api.ts:66, src/channels/matrix.ts:34, src/channels/telegram.ts:74"
    }
   },
   {
@@ -1573,7 +1573,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:616, src/mobile/doctor.ts:427"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:643, src/mobile/doctor.ts:427"
    }
   },
   {
@@ -1744,7 +1744,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1037"
+    "detail": "1 match(es): src/gateway/server.ts:1149"
    }
   },
   {
@@ -1763,7 +1763,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/channels/api.ts:115, src/channels/telegram.ts:47"
+    "detail": "4 match(es): src/channels/api.ts:138, src/channels/telegram.ts:78"
    }
   },
   {
@@ -1782,7 +1782,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "12 match(es): src/agent/toolbox.ts:21, src/channels/api.ts:137, src/channels/conversations.ts:92"
+    "detail": "15 match(es): src/agent/toolbox.ts:21, src/channels/api.ts:160, src/channels/conversations.ts:73"
    }
   },
   {
@@ -1962,7 +1962,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:452"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:466"
    }
   },
   {
@@ -2376,7 +2376,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "71 match(es): src/agent/loop.ts:232, src/agent/routing.ts:22, src/channels/telegram.ts:302"
+    "detail": "72 match(es): src/agent/loop.ts:232, src/agent/routing.ts:22, src/channels/telegram.ts:48"
    }
   },
   {
@@ -2433,7 +2433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/security.ts:143, src/core/config.ts:72, src/gateway/auth.ts:20"
+    "detail": "11 match(es): src/agent/security.ts:143, src/core/config.ts:72, src/gateway/auth.ts:20"
    }
   },
   {
@@ -2861,7 +2861,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/channels/intake.ts:21, src/cli.ts:57, src/gateway/server.ts:106"
+    "detail": "8 match(es): src/channels/intake.ts:21, src/cli.ts:57, src/gateway/server.ts:120"
    }
   },
   {
@@ -3264,7 +3264,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1518"
+    "detail": "1 match(es): src/gateway/server.ts:1640"
    }
   },
   {
@@ -3390,6 +3390,26 @@
   },
   {
    "area": "ops",
+   "capability": "Every capability reaches every surface (51.x)",
+   "openclaw": "a feature only one surface can reach",
+   "verdict": "BETTER",
+   "evidence": "The three-surface audit ends this batch with no missing cell: Telegram gains /suite-time (the tests' own clock, read from the same record the panel serves), /work [full] (WORKLOG.md rendered for a phone, the whole file attached as a document), /say (a real voice note — speakToFile() writes espeak/say output and pipes it through ffmpeg/opusenc into OGG/Opus, sendVoice delivers it), voice replies (channels.telegram.voiceReplies; a spoken answer up to 600 characters, still delivered as text when no engine exists), /embeddings setup behind an inline confirm that runs the CLI's own embeddingsSetup(), /controlui as a web_app button built from gateway.publicUrl, and forum topics as sessions of their own (telegram:<chatId>:<threadId>). The register: CLI 50 / Telegram 52 / Web 51, missing cells 0 of 71.",
+   "probe": {
+    "file": "test/tier3t.test.ts",
+    "pattern": "51.1",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): test/tier3t.test.ts:72"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "The panel is whole (50.x)",
    "openclaw": "a web surface that ends in the terminal",
    "verdict": "BETTER",
@@ -3445,7 +3465,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/chat-reports.ts:402"
+    "detail": "1 match(es): src/gateway/chat-reports.ts:561"
    }
   },
   {
@@ -3466,7 +3486,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es) (min 3): src/gateway/server.ts:948"
+    "detail": "3 match(es) (min 3): src/gateway/server.ts:981"
    }
   },
   {
@@ -3486,7 +3506,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/api.ts:69"
+    "detail": "3 match(es): src/channels/api.ts:14"
    }
   },
   {

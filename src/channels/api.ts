@@ -1,5 +1,28 @@
 /** Minimal Telegram Bot API client on global fetch - zero dependencies. */
 
+/**
+ * 48.1/51.5 — an inline button. `data` comes back as a callback_query; a
+ * `webApp` opens a URL as a Telegram Web App (the panel inside Telegram), which
+ * is a client-side action and never reaches the bot.
+ */
+export interface TelegramButton {
+  text: string;
+  data?: string;
+  webApp?: string;
+}
+
+/** Turn our buttons into the Bot API's `inline_keyboard` shape. */
+export function inlineKeyboard(buttons: TelegramButton[][]): Record<string, unknown>[][] {
+  return buttons.map((row) =>
+    row.map((b) => {
+      const out: Record<string, unknown> = { text: b.text };
+      if (b.data !== undefined) out.callback_data = b.data;
+      if (b.webApp) out.web_app = { url: b.webApp };
+      return out;
+    }),
+  );
+}
+
 export class TelegramApi {
   /**
    * `baseUrl` exists for two reasons: a self-hosted Bot API server, and the
@@ -58,7 +81,7 @@ export class TelegramApi {
   sendMessage(
     chatId: number,
     html: string,
-    buttons?: { text: string; data: string }[][],
+    buttons?: TelegramButton[][],
   ): Promise<unknown> {
     const payload: Record<string, unknown> = {
       chat_id: chatId,
@@ -66,7 +89,7 @@ export class TelegramApi {
       parse_mode: 'HTML',
       disable_web_page_preview: true,
     };
-    if (buttons?.length) payload.reply_markup = { inline_keyboard: buttons };
+    if (buttons?.length) payload.reply_markup = { inline_keyboard: inlineKeyboard(buttons) };
     return this.call('sendMessage', payload, 20_000);
   }
 
@@ -83,10 +106,10 @@ export class TelegramApi {
    * Replace the buttons under a message (or drop them) once it has been
    * answered — a decided approval must not still look pressable.
    */
-  editMessageReplyMarkup(chatId: number, messageId: number, buttons: { text: string; data: string }[][] = []): Promise<unknown> {
+  editMessageReplyMarkup(chatId: number, messageId: number, buttons: TelegramButton[][] = []): Promise<unknown> {
     return this.call(
       'editMessageReplyMarkup',
-      { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: buttons } },
+      { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: inlineKeyboard(buttons) } },
       10_000,
     );
   }

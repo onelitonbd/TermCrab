@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-04T15:23:11.790Z",
+  "at": "2026-10-04T17:07:27.457Z",
   "source": "checkout",
   "bench": "/home/user/claw/scripts/bench.mjs",
   "machine": {
@@ -10,21 +10,21 @@
     "totalMemMb": 3940
   },
   "metrics": {
-    "installMs": 286,
-    "coldStartMs": 146,
+    "installMs": 303,
+    "coldStartMs": 160,
     "idleRssMb": 75,
-    "restartMs": 190,
-    "turnMs": 118,
+    "restartMs": 186,
+    "turnMs": 111,
     "panelKb": 342,
-    "panelMs": 3.7,
-    "roomWriteMs": 32,
-    "outboxDrainMs": 326,
-    "telegramPollMs": 66,
-    "docsMs": 52.4,
-    "docsKb": 2868,
-    "searchMs": 8,
-    "queueDrainMs": 54,
-    "queueWakeMs": 1,
+    "panelMs": 4,
+    "roomWriteMs": 35,
+    "outboxDrainMs": 365,
+    "telegramPollMs": 78,
+    "docsMs": 57.3,
+    "docsKb": 2870,
+    "searchMs": 10.4,
+    "queueDrainMs": 52,
+    "queueWakeMs": 0,
     "subagentFanoutMs": 41
   },
   "ceilings": {
