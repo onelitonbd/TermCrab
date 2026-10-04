@@ -86,6 +86,8 @@ users' runtime.
 | `src/agent/ask.ts` | ask_user: the agent poses a question, the operator answers from the UI |
 | `src/agent/context.ts` | The context a turn really sends, and what to do about its size (19.1-19.4) |
 | `src/agent/dream.ts` | Dream pass: replays recent sessions and distils durable facts into memory |
+| `src/agent/embed-provider.ts` | Which embedder is live, and why (32.1) |
+| `src/agent/embed-remote.ts` | Embeddings from an endpoint instead of a 23 MB local model (32.1) |
 | `src/agent/embed-setup.ts` | Embedding-model setup for memory search: status, install, and the checks the doctor reports (`termcrab embeddings ...`) |
 | `src/agent/embed.ts` | Optional embedding search |
 | `src/agent/exec-guard.ts` | Running a shell command on someone's phone is the sharpest thing this agent does (22.1) |
@@ -128,7 +130,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/backup.ts` | One-tar backup/restore of a home, manifest inside (31) |

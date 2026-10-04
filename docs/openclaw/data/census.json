@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-03T23:55:23.079Z",
+ "measured": "2026-10-04T00:05:01.824Z",
  "tally": {
-  "WORKING": 95,
+  "WORKING": 96,
   "BETTER": 14,
-  "PARTIAL": 23,
+  "PARTIAL": 22,
   "BROKEN": 0,
   "ABSENT": 0
  },
- "coverage": 90,
+ "coverage": 91,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 105,
+ "effortLeft": 101,
  "areas": [
   "agent",
   "automation",
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1359"
+    "detail": "1 match(es): src/gateway/server.ts:1362"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1361"
+    "detail": "2 match(es): src/gateway/server.ts:1364"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:301"
+    "detail": "1 match(es): src/gateway/server.ts:302"
    }
   },
   {
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:361"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:375"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2369"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2372"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1180"
+    "detail": "4 match(es): src/gateway/server.ts:1183"
    }
   },
   {
@@ -298,7 +298,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:301"
+    "detail": "1 match(es): src/gateway/server.ts:302"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1189, src/command-help.ts:181"
+    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1191, src/command-help.ts:219"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:258, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:264, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:248"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:254"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:162, src/gateway/server.ts:1553, src/mobile/doctor.ts:545"
+    "detail": "5 match(es): src/cli.ts:168, src/gateway/server.ts:1556, src/mobile/doctor.ts:538"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:321"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:359"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1289, src/gateway/server.ts:1589"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1291, src/gateway/server.ts:1592"
    }
   },
   {
@@ -644,7 +644,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "595 match(es): src/agent/dream.ts:151, src/agent/embed-setup.ts:70, src/agent/exec-guard.ts:178"
+    "detail": "615 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:17"
    }
   },
   {
@@ -803,7 +803,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:660"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:663"
    }
   },
   {
@@ -841,7 +841,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2401"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2429"
    }
   },
   {
@@ -999,26 +999,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:417, src/cli.ts:2339"
+    "detail": "5 match(es): src/agent/memory.ts:401, src/agent/tools.ts:417, src/cli.ts:2367"
    }
   },
   {
    "area": "context",
    "capability": "Embedding providers",
    "openclaw": "OpenAI, Voyage, Gemini, Ollama, local GGUF, FTS-only",
-   "verdict": "PARTIAL",
-   "evidence": "local transformers.js only (Xenova/all-MiniLM-L6-v2), optional install",
+   "verdict": "WORKING",
+   "evidence": "Three routes, chosen in one place (src/agent/embed-provider.ts) and reported by `termcrab embeddings status` with the model and its price: the local transformers.js model when its package is installed (offline, no key), any OpenAI-compatible /embeddings endpoint (OpenAI, OpenRouter, and the self-hosted ones a Termux user actually has - Ollama, llama.cpp, LM Studio, which need no key at all), or Gemini batchEmbedContents with the key in a header. `memory.embedProvider = auto|local|openai|gemini` plus `embedModel`/`embedBaseUrl`; auto prefers the local model and otherwise uses the chat provider the user already configured, so smart search is one config value away instead of a 23 MB download. Errors name the host and the status and redact the key, a broken endpoint falls back to lexical search with the reason logged, and `termcrab embeddings test <text>` embeds a string end to end and prints the dimension. Voyage and GGUF files are not implemented; an OpenAI-compatible GGUF server (llama.cpp) is covered by the openai route. Pinned by test/tier2u.test.ts (10 cases, incl. a real local HTTP endpoint and a semantic hit no word match could find)",
    "probe": {
-    "pattern": "transformers",
+    "file": "src/agent/embed-provider.ts",
+    "pattern": "export async function resolveEmbedder",
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "18 match(es): src/agent/embed-setup.ts:11, src/agent/embed.ts:8, src/core/config.ts:283"
+    "detail": "1 match(es): src/agent/embed-provider.ts:147"
    }
   },
   {
@@ -1172,7 +1173,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/tools.ts:17, src/gateway/server.ts:47, src/providers/mcp.ts:31"
+    "detail": "4 match(es): src/agent/tools.ts:17, src/gateway/server.ts:48, src/providers/mcp.ts:31"
    }
   },
   {
@@ -1524,7 +1525,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:547, src/mobile/doctor.ts:405"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:550, src/mobile/doctor.ts:406"
    }
   },
   {
@@ -1543,7 +1544,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/discord.ts:72, src/gateway/server.ts:51"
+    "detail": "3 match(es): src/channels/discord.ts:72, src/gateway/server.ts:52"
    }
   },
   {
@@ -1562,7 +1563,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/slack.ts:44, src/gateway/server.ts:52"
+    "detail": "3 match(es): src/channels/slack.ts:44, src/gateway/server.ts:53"
    }
   },
   {
@@ -1581,7 +1582,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/signal.ts:59, src/gateway/server.ts:53"
+    "detail": "3 match(es): src/channels/signal.ts:59, src/gateway/server.ts:54"
    }
   },
   {
@@ -1600,7 +1601,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/sms.ts:39, src/gateway/server.ts:54"
+    "detail": "3 match(es): src/channels/sms.ts:39, src/gateway/server.ts:55"
    }
   },
   {
@@ -1619,7 +1620,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/matrix.ts:43, src/gateway/server.ts:55"
+    "detail": "3 match(es): src/channels/matrix.ts:43, src/gateway/server.ts:56"
    }
   },
   {
@@ -1695,7 +1696,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:898"
+    "detail": "1 match(es): src/gateway/server.ts:901"
    }
   },
   {
@@ -1913,7 +1914,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:46, src/gateway/server.ts:403"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:46, src/gateway/server.ts:406"
    }
   },
   {
@@ -2128,7 +2129,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "101 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:245"
+    "detail": "101 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:251"
    }
   },
   {
@@ -2147,7 +2148,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:56"
+    "detail": "1 match(es): src/cli.ts:57"
    }
   },
   {
@@ -2166,7 +2167,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "53 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "55 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2185,7 +2186,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:390, src/command-help.ts:459"
+    "detail": "2 match(es): src/cli.ts:392, src/command-help.ts:497"
    }
   },
   {
@@ -2223,7 +2224,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:39, src/command-help.ts:237"
+    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:40, src/command-help.ts:275"
    }
   },
   {
@@ -2280,7 +2281,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:71, src/gateway/auth.ts:20, src/gateway/server.ts:301"
+    "detail": "5 match(es): src/core/config.ts:71, src/gateway/auth.ts:20, src/gateway/server.ts:302"
    }
   },
   {
@@ -2396,7 +2397,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "31 match(es): src/agent/embed-setup.ts:3, src/agent/run-health.ts:100, src/agent/status.ts:191"
+    "detail": "32 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
    }
   },
   {
@@ -2455,7 +2456,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/core/schema.ts:298"
+    "detail": "1 match(es): src/core/schema.ts:309"
    }
   },
   {
@@ -2552,7 +2553,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:270"
+    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:271"
    }
   },
   {
@@ -2571,7 +2572,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2798"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2801"
    }
   },
   {
@@ -2590,7 +2591,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:387, src/gateway/server.ts:84"
+    "detail": "6 match(es): src/cli.ts:30, src/command-help.ts:425, src/gateway/server.ts:85"
    }
   },
   {
@@ -2647,7 +2648,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "31 match(es): src/agent/embed-setup.ts:3, src/agent/run-health.ts:100, src/agent/status.ts:191"
+    "detail": "32 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
    }
   },
   {
@@ -2666,7 +2667,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "38 match(es): src/channels/intake.ts:9, src/channels/media.ts:26, src/cli.ts:52"
+    "detail": "38 match(es): src/channels/intake.ts:9, src/channels/media.ts:26, src/cli.ts:53"
    }
   },
   {
@@ -2886,7 +2887,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "82 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "83 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

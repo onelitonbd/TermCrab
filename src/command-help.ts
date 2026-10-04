@@ -312,9 +312,17 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'embeddings',
-    usage: 'embeddings [status | setup]',
-    summary: 'smart memory search (optional, offline-capable)',
-    flags: ['status  what is installed and cached', 'setup   download the optional model'],
+    usage: 'embeddings [status | setup | test [text]] [--json]',
+    summary: 'smart memory search: the local model, or your provider\u2019s embedding endpoint',
+    flags: [
+      'status         which embedder is live, the model, its price, and the fix when there is none',
+      'setup          install and download the optional local model (~23 MB, offline, no key)',
+      'test [text]    embed one string end to end and print the dimension — proof, not a promise',
+      'memory.embedProvider = auto | local | openai | gemini   (auto: local if installed, else your chat provider)',
+      'memory.embedModel / memory.embedBaseUrl                override the model or point at your own endpoint',
+    ],
+    example: 'termcrab embeddings test "the crab likes rice"',
+    json: '{packageInstalled, enabled, indexVectors, modelCached, provider, model, costNote, blocker?, summary}',
   },
   {
     cmd: 'memory',

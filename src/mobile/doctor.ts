@@ -11,6 +11,7 @@ import { INSTALL_HINTS, detectSandbox, sandboxSetting } from '../agent/sandbox.j
 import { home, configPath, pidPath, PACKAGE_ROOT } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
+import { embedderPlan } from '../agent/embed-provider.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -445,14 +446,9 @@ export async function runDoctor(): Promise<Check[]> {
       : 'disabled (termcrab config set dream.enabled true)',
   });
 
-  // v0.4: optional embedding index (hybrid search) - core stays zero-dep without it
-  let embeddingsPkg = false;
-  try {
-    const { transformersInstalled } = await import('../agent/embed.js');
-    embeddingsPkg = await transformersInstalled();
-  } catch {
-    embeddingsPkg = false;
-  }
+  // Hybrid search (32.1): local model, the provider's embedding endpoint, or
+  // lexical search only — the plan says which, without doing any I/O.
+  const plan = embedderPlan(cfg);
   let vectors = 0;
   try {
     const idxFile = path.join(home(), 'memory', 'index.jsonl');
@@ -465,14 +461,11 @@ export async function runDoctor(): Promise<Check[]> {
   checks.push({
     id: 'embeddings',
     label: 'embedding search (hybrid memory)',
-    status: embeddingsPkg && cfg.memory?.embeddings !== false ? 'ok' : 'info',
-    detail: embeddingsPkg
-      ? `${vectors} vector(s) indexed${cfg.memory?.embeddings === false ? ' (memory.embeddings=false)' : ''}`
-      : 'lexical only (optional)',
-    fix:
-      embeddingsPkg || cfg.memory?.embeddings === false
-        ? undefined
-        : 'npm install @huggingface/transformers  (semantic memory search)',
+    status: plan.kind && !plan.blocker ? 'ok' : plan.kind ? 'warn' : 'info',
+    detail: plan.kind
+      ? `${plan.kind} · ${plan.model} · ${vectors} vector(s) indexed`
+      : `${plan.note}${vectors ? ` · ${vectors} vector(s) indexed` : ''}`,
+    fix: plan.blocker,
   });
 
   // Voice / TTS

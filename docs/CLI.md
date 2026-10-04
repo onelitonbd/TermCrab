@@ -103,6 +103,8 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab backup [file.tar] --json` | `{file, format, formatVersion, createdAt, release, schemaVersion, files, bytes, platform, node}` |
 | `termcrab restore <file.tar> --json` | `{restored, bytes, movedTo, from, schema:{from,to,migrated}}` · `--dry-run` → `{dryRun, manifest, files:[{rel,bytes,exists}], tooNew}` |
 | `termcrab schema --json` | `{current, home, stamp:{version,updatedAt,applied,release}, from, to, applied, adopted, backupDir}` · `--dry-run` lists steps without writing |
+| `termcrab embeddings status --json` | `{packageInstalled, enabled, indexVectors, modelCached, provider, model, costNote, blocker?, summary}` |
+| `termcrab embeddings test [text] --json` | `{ok, provider, model, dims, ms, chars, preview}` — embeds one string through whatever provider the config selects |
 | `termcrab doctor --json` | `{checks:[…], failed}` — including the shell-sandbox mode this device can offer |
 | `termcrab run "…" --json` | `{turnId, sessionId, status, …}` |
 | `termcrab run --wait <id> --json` | the finished run: `{runId, status, output, error, durationMs, tokensIn, tokensOut}` |

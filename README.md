@@ -17,7 +17,7 @@ with zero native dependencies and mobile-first power management.
 🔊 It speaks       →  termcrab say / voice skill (Termux TTS + STT)
 💤 It sleeps on it  →  dreaming: idle/charging cycles distill chats into long-term memory
 🧠 It thinks local  →  tiered inference: on-device model for light tasks, cloud for heavy
-🔎 It finds meaning →  optional semantic memory search (`npm install @huggingface/transformers`)
+🔎 It finds meaning →  semantic memory search (your own key, or a ~23 MB local model)
 📦 It just runs     →  zero runtime dependencies, no proot, no systemd needed
 ```
 \* WhatsApp = optional extension: `npm install baileys` (see [docs/WHATSAPP.md](docs/WHATSAPP.md))
@@ -122,7 +122,7 @@ termcrab cron           manage schedules: ls | add --schedule "0 8 * * *" --prom
 termcrab skills         list / show / import / new skills (OpenClaw-style SKILL.md folders)
 termcrab sessions       ls / export <id> / rename / purge --older-than N (chat history)
 termcrab agents         ls / new <name> --template brief|teacher|researcher
-termcrab embeddings     status / setup — smart memory search (optional, offline-capable)
+termcrab embeddings     status / setup / test — smart memory search (local or via your provider)
 termcrab transcribe <f> audio file → text, offline (optional whisper.cpp)
 termcrab import openclaw  bring an old OpenClaw setup across (preview first)
 termcrab memory         show / search memory (hybrid lexical + semantic when enabled)
@@ -225,15 +225,25 @@ termcrab dream --force   # skip schedule + battery gates
 
 Trigger it from the control UI (💤 button) or `POST /api/dream`.
 
-### Semantic memory search 🔎 (optional)
+### Semantic memory search 🔎 (optional, two ways)
 
 ```bash
-npm install @huggingface/transformers   # optional extension, ~model download
-termcrab memory search "dark mode"      # now lexical + vector hybrid
+# 1. use the key you already have — no download, works immediately
+termcrab config set memory.embedProvider auto     # the default: local if installed, else your provider
+termcrab embeddings test "the crab likes rice"    # embed one string and print the dimension
+termcrab memory search "what does she eat?"       # finds "fried rice every morning"
+
+# 2. fully offline, no key, no per-search cost
+termcrab embeddings setup                         # installs the small local model (~23 MB)
 ```
 
-Without the package the core stays zero-dependency and search is purely lexical.
-Scored, human-readable index lives at `memory/index.jsonl`.
+`auto` prefers the local model when its package is installed and otherwise asks your chat
+provider's embedding endpoint (OpenAI, OpenRouter, Gemini, or a local llama.cpp/Ollama server —
+which needs no API key at all). `termcrab embeddings status` names the live one, the model and its
+price; `memory.embedProvider = local | openai | gemini` forces a route and
+`memory.embedModel` / `memory.embedBaseUrl` override the details. Core stays zero-dependency: with
+no provider configured, search is purely lexical — and it still works. The scored, human-readable
+index lives at `memory/index.jsonl`.
 
 Offline/manual model install (no Hub access needed): drop the model folder at
 `~/.termcrab/models/Xenova/all-MiniLM-L6-v2/` (config + tokenizer + `onnx/model_quantized.onnx`)

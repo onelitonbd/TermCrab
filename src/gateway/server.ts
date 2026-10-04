@@ -33,7 +33,8 @@ import { getRun } from '../core/tracing.js';
 import { buildTools } from '../agent/tools.js';
 import { runHeartbeatOnce, scheduleHeartbeat } from '../agent/heartbeat.js';
 import { MemoryStore } from '../agent/memory.js';
-import { EmbeddingIndex, tryLoadEmbedder } from '../agent/embed.js';
+import { EmbeddingIndex } from '../agent/embed.js';
+import { embedderPlan, resolveEmbedder } from '../agent/embed-provider.js';
 import { runDream, startDreamScheduler, readDreamState, dreamHistory } from '../agent/dream.js';
 import { countMemoryFacts } from '../agent/status.js';
 import { formatTokens, usageForDay } from '../core/usage.js';
@@ -302,18 +303,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     );
   }
 
-  // Optional embedding index (hybrid search) - only when @huggingface/transformers is installed.
+  // Hybrid search (32.1): the local model when its package is installed, the
+  // chat provider's embedding endpoint otherwise, lexical search when neither
+  // works — and the log always says which one it got.
   let embeddingIndex: EmbeddingIndex | undefined;
-  if (config.memory?.embeddings) {
-    try {
-      const embedder = await tryLoadEmbedder(path.join(home(), 'models'));
-      if (embedder) {
-        embeddingIndex = new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder);
-        log.info('memory: hybrid search enabled (embeddings)');
-      }
-    } catch {
-      log.info('memory: embeddings unavailable, lexical only');
+  try {
+    const { embedder, plan, error } = await resolveEmbedder(config, path.join(home(), 'models'));
+    if (embedder) {
+      embeddingIndex = new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder);
+      log.info(`memory: hybrid search enabled — ${plan.note}`);
+    } else if (config.memory?.embeddings !== false) {
+      log.info(`memory: lexical search only — ${plan.note}${error ? ` (${error})` : ''}`);
     }
+  } catch (err) {
+    log.info(`memory: embeddings unavailable, lexical only (${err instanceof Error ? err.message : String(err)})`);
   }
   const memory = new MemoryStore(undefined, embeddingIndex);
   const skills = new SkillStore(undefined, {

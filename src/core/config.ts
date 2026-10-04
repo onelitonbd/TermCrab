@@ -280,8 +280,22 @@ export interface Config {
     everyHours: number;
   };
   memory: {
-    /** Hybrid embedding search when @huggingface/transformers (or @xenova) is installed. */
+    /** Hybrid embedding search (lexical search always works; this adds vectors). */
     embeddings: boolean;
+    /**
+     * Where the vectors come from (32.1).
+     *   auto    — the local model if its package is installed, else the chat
+     *             provider's embedding endpoint, else lexical search only.
+     *   local   — the on-device model (offline, no key, no per-search cost).
+     *   openai  — any OpenAI-compatible /embeddings endpoint (OpenAI, Ollama,
+     *             llama.cpp, LM Studio, OpenRouter …).
+     *   gemini  — Google's batchEmbedContents.
+     */
+    embedProvider?: 'auto' | 'local' | 'openai' | 'gemini';
+    /** Model id to ask for; defaults to a small, cheap one per provider. */
+    embedModel?: string;
+    /** Endpoint to use instead of the chat provider's (e.g. http://127.0.0.1:8080/v1). */
+    embedBaseUrl?: string;
   };
   /**
    * Disk budget (batch 10). When the state directory grows past maxMb, the
@@ -329,7 +343,7 @@ export function defaults(): Config {
       apiKey: '',
     },
     dream: { enabled: true, everyHours: 24 },
-    memory: { embeddings: true },
+    memory: { embeddings: true, embedProvider: 'auto' },
     storage: { maxMb: 500, keepDays: 30, autoTrim: true },
     skills: { allow: [] },
     update: { checkOnStart: false },
@@ -660,6 +674,17 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       err('agent.sessionReset', `must be never, daily or idle:<minutes>, got ${JSON.stringify(reset)}`);
     }
     oneOf(agent, 'agent.', 'isolation', ['shared', 'isolated']);
+  }
+
+  const memory = objAt(root, 'memory', new Set(['embeddings', 'embedProvider', 'embedModel', 'embedBaseUrl']));
+  if (memory) {
+    bool(memory, 'memory.', 'embeddings');
+    oneOf(memory, 'memory.', 'embedProvider', ['auto', 'local', 'openai', 'gemini']);
+    str(memory, 'memory.', 'embedModel');
+    str(memory, 'memory.', 'embedBaseUrl');
+    if (memory.embedBaseUrl !== undefined && !/^https?:\/\//.test(String(memory.embedBaseUrl))) {
+      err('memory.embedBaseUrl', `must start with http:// or https://, got ${JSON.stringify(memory.embedBaseUrl)}`);
+    }
   }
 
   const security = objAt(root, 'security', new Set(['approvals']));

@@ -33,7 +33,8 @@ import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/
 import { nextRun, parseCron } from './cron/parser.js';
 import { listAgents, agentExists, sanitizeAgentName } from './agent/prompt.js';
 import { speak } from './mobile/tts.js';
-import { EmbeddingIndex, tryLoadEmbedder } from './agent/embed.js';
+import { EmbeddingIndex } from './agent/embed.js';
+import { resolveEmbedder } from './agent/embed-provider.js';
 import { formatTokens, usageForDay, type UsageDay } from './core/usage.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
@@ -48,7 +49,7 @@ import { SkillStore } from './skills/loader.js';
 import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
 import { SessionStore } from './agent/sessions.js';
 import { scaffoldSkill, scaffoldAgent, isSoulTemplate, SOUL_TEMPLATES } from './skills/scaffold.js';
-import { embeddingsStatus, embeddingsSetup } from './agent/embed-setup.js';
+import { embeddingsStatus, embeddingsSetup, embeddingsTest } from './agent/embed-setup.js';
 import { transcribeFile } from './mobile/whisper.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
@@ -96,7 +97,7 @@ Everyday extras:
   termcrab skills [list|import|new]  add extra abilities (skill folders, git repos)
   termcrab sessions [ls|search|show|export|reset|verify|purge|rename]  chats: find one, see what is in it, save it, clean old ones
   termcrab agents new <name> --template brief|teacher|researcher   starter personality
-  termcrab embeddings [status|setup] smart memory search (optional, offline-capable)
+  termcrab embeddings [status|setup|test] smart memory search (local or via your provider)
   termcrab transcribe <file>          turn a voice recording into text (offline, needs whisper.cpp)
   termcrab import openclaw [--apply] bring your old OpenClaw setup over (preview first!)
   termcrab cron [ls|add ...]         schedule jobs that repeat ("0 8 * * *" = 8am daily)
@@ -279,15 +280,11 @@ async function makeMemoryStore(): Promise<MemoryStore> {
 }
 
 async function buildMemoryStore(config: ReturnType<typeof loadConfig>): Promise<MemoryStore> {
-  let index: EmbeddingIndex | undefined;
-  if (config.memory?.embeddings) {
-    try {
-      const embedder = await tryLoadEmbedder(path.join(home(), 'models'));
-      if (embedder) index = new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder);
-    } catch {
-      /* lexical-only fallback */
-    }
-  }
+  // One decision point for every surface (32.1): local model when the package
+  // is installed, the chat provider's embedding endpoint otherwise, lexical
+  // search when neither works — with the reason recorded, never guessed at.
+  const { embedder } = await resolveEmbedder(config, path.join(home(), 'models'));
+  const index = embedder ? new EmbeddingIndex(path.join(memoryDir(), 'index.jsonl'), embedder) : undefined;
   return new MemoryStore(memoryDir(), index);
 }
 
@@ -2284,8 +2281,34 @@ export async function main(argv: string[]): Promise<void> {
       const [sub = 'status'] = rest;
       if (sub === 'status') {
         const st = embeddingsStatus();
+        if (machine) {
+          emitJson('embeddings', st);
+          return;
+        }
         console.log(`🔍 smart memory search: ${st.summary}`);
+        console.log(`   provider: ${st.provider || 'none'}${st.model ? ` · ${st.model}` : ''}${st.costNote ? ` · ${st.costNote}` : ''}`);
         console.log(`   package: ${st.packageInstalled ? 'installed' : 'not installed'} · model: ${st.modelCached ? 'cached' : 'not downloaded'} · vectors: ${st.indexVectors}`);
+        if (st.blocker && !st.provider) console.log(`   next: ${st.blocker}`);
+        return;
+      }
+      if (sub === 'test') {
+        // Prove the pipe end to end: one real embedding, through whatever
+        // provider the config names, with the dimension printed.
+        const text = rest.slice(1).filter((a) => !a.startsWith('-')).join(' ').trim() || 'The crab prefers fried rice for breakfast.';
+        const r = await embeddingsTest(text);
+        if (machine) {
+          emitJson('embeddings', { action: 'test', ...r });
+          if (!r.ok) process.exitCode = 1;
+          return;
+        }
+        if (!r.ok) {
+          console.error(`❌ ${r.error}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`✅ ${r.provider} · ${r.model}`);
+        console.log(`   embedded ${r.chars} character(s) in ${r.ms} ms → ${r.dims} dimensions`);
+        console.log(`   vector starts: [${r.preview}]`);
         return;
       }
       if (sub === 'setup') {
@@ -2303,7 +2326,7 @@ export async function main(argv: string[]): Promise<void> {
         }
         return;
       }
-      console.error('usage: termcrab embeddings [status|setup]');
+      console.error('usage: termcrab embeddings [status|setup|test [text]]');
       process.exitCode = 1;
       return;
     }
