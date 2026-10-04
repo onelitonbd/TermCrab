@@ -264,21 +264,21 @@
     {
       "command": "embeddings",
       "line": 2907,
-      "runs": 4
+      "runs": 6
     },
     {
       "command": "context",
-      "line": 2961,
+      "line": 2967,
       "runs": 1
     },
     {
       "command": "memory",
-      "line": 2981,
+      "line": 2987,
       "runs": 6
     },
     {
       "command": "config",
-      "line": 3117,
+      "line": 3123,
       "runs": 5
     }
   ],
@@ -327,7 +327,7 @@
     },
     {
       "command": "boot",
-      "line": 3103,
+      "line": 3109,
       "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
       "instead": "test/tier2w.test.ts"
     }
@@ -365,7 +365,7 @@
     "backup": 2,
     "restore": 3,
     "schema": 3,
-    "embeddings": 4,
+    "embeddings": 6,
     "bootstrap": 3,
     "service": 1,
     "subagents": 3,

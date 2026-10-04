@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { home, memoryDir, PACKAGE_ROOT } from '../core/paths.js';
 import { loadConfig } from '../core/config.js';
 import { log } from '../core/logger.js';
-import { transformersInstalled, tryLoadEmbedder } from './embed.js';
+import { transformersInstalled, tryLoadEmbedder, type IndexInfo } from './embed.js';
 import { embedderPlan, localPackagePresent, resolveEmbedder } from './embed-provider.js';
 import { EMBED_PRICES } from './embed-remote.js';
 
@@ -25,6 +25,16 @@ export interface EmbeddingsStatus {
   packageInstalled: boolean;
   enabled: boolean;
   indexVectors: number;
+  /** Vectors made by a different provider/model than the live one (35.4). */
+  staleVectors: number;
+  /** Vectors whose size the live model cannot compare at all (35.4). */
+  mismatchedVectors: number;
+  /** Which provider(s)/model(s) built what is on disk now. */
+  indexBuiltBy: string[];
+  /** Every vector size present in the index (more than one means a mix). */
+  indexDimensions: number[];
+  /** What it says about itself: re-embed, or nothing. */
+  indexNote: string | null;
   modelCached: boolean;
   /** Which embedder is live: local | openai | gemini | '' (lexical only). */
   provider: string;
@@ -52,6 +62,41 @@ export function embeddingsStatus(): EmbeddingsStatus {
   } catch {
     /* unreadable index - report 0 */
   }
+  // The index records what made each vector (35.4), so a model change is visible
+  // instead of quietly returning worse answers.
+  // Default to *nothing known* — a torn or unreadable index must not be counted
+  // as vectors, it must be zero with no claim attached.
+  let info: IndexInfo = { vectors: 0, stale: 0, mismatched: 0, dimensions: [], builtBy: [], current: '', note: null };
+  try {
+    const rows = fs
+      .readFileSync(idx, 'utf8')
+      .split('\n')
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l) as { vec?: number[]; provider?: string; model?: string })
+      .filter((r) => Array.isArray(r.vec));
+    const want = plan.kind ? `${plan.kind}:${plan.model}` : '';
+    const dims = [...new Set(rows.map((r) => r.vec!.length))];
+    info = {
+      vectors: rows.length,
+      stale: rows.filter((r) => (r.provider || r.model) && `${r.provider ?? '?'}:${r.model ?? '?'}` !== want).length,
+      // Without asking the model for a vector we cannot know its size; what we
+      // *can* see is an index holding more than one size, which is the state
+      // that produces silent non-comparisons if nobody says so.
+      mismatched: dims.length > 1 ? rows.filter((r) => r.vec!.length !== dims[0]).length : 0,
+      dimensions: dims.sort((a, b) => a - b),
+      builtBy: [...new Set(rows.filter((r) => r.provider || r.model).map((r) => `${r.provider ?? '?'}:${r.model ?? '?'}`))].sort(),
+      current: want,
+      note: null,
+    };
+    info.note =
+      info.stale > 0
+        ? `${info.stale} of ${info.vectors} vector(s) were made by another model — re-embed: termcrab embeddings setup`
+        : info.mismatched > 0
+          ? `the index holds vectors of ${dims.join(' and ')} dimensions — rows that do not match the model in use are skipped in search, not scored as unrelated`
+          : null;
+  } catch {
+    /* an unreadable index reports as empty */
+  }
   const modelCached = fs.existsSync(MODEL_DIR());
   const price = EMBED_PRICES[plan.model];
   const costNote = price ? `$${price.usdPerM}/1M tokens (${price.note})` : '';
@@ -65,10 +110,19 @@ export function embeddingsStatus(): EmbeddingsStatus {
   } else {
     summary = `${plan.note}${plan.blocker ? `. ${plan.blocker}` : ''}`;
   }
+  if (info.note) summary = `${summary}. ${info.note}`;
   return {
     packageInstalled,
     enabled,
-    indexVectors,
+    // Counted from the rows that parsed: a torn line is not a vector, and
+    // reporting it as one is exactly the kind of quiet inflation this batch is
+    // removing.
+    indexVectors: info.vectors,
+    staleVectors: info.stale,
+    mismatchedVectors: info.mismatched,
+    indexBuiltBy: info.builtBy,
+    indexDimensions: info.dimensions,
+    indexNote: info.note,
     modelCached,
     provider: plan.kind ?? '',
     model: plan.kind ? plan.model : '',

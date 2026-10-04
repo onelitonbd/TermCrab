@@ -2915,6 +2915,12 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         console.log(`🔍 smart memory search: ${st.summary}`);
         console.log(`   provider: ${st.provider || 'none'}${st.model ? ` · ${st.model}` : ''}${st.costNote ? ` · ${st.costNote}` : ''}`);
         console.log(`   package: ${st.packageInstalled ? 'installed' : 'not installed'} · model: ${st.modelCached ? 'cached' : 'not downloaded'} · vectors: ${st.indexVectors}`);
+        if (st.indexVectors) {
+          const dims = st.indexDimensions?.length ? ` · ${st.indexDimensions.join('/')} dimensions` : '';
+          const by = st.indexBuiltBy?.length ? ` · built by ${st.indexBuiltBy.join(', ')}` : '';
+          console.log(`   index: ${st.indexVectors} vector(s)${dims}${by}`);
+        }
+        if (st.indexNote) console.log(`   ⚠️  ${st.indexNote}`);
         if (st.blocker && !st.provider) console.log(`   next: ${st.blocker}`);
         return;
       }

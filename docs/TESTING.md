@@ -23,9 +23,9 @@ zero runtime dependencies means zero test-time dependencies too.
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **86.82%** of the lines in `src/` are executed by the
-suite (77.35% of branches, 86.68% of functions), across
-**969 test cases in 94 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-04:** **86.91%** of the lines in `src/` are executed by the
+suite (77.4% of branches, 86.88% of functions), across
+**985 test cases in 95 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
@@ -39,7 +39,7 @@ suite (77.35% of branches, 86.68% of functions), across
 | `channels/signal.js` | 51.54% |
 | `mobile/notify.js` | 55.17% |
 | `mobile/boot.js` | 55.56% |
-| `channels/cli.js` | 57.81% |
+| `channels/cli.js` | 57.93% |
 | `channels/api.js` | 58.11% |
 | `core/friendly.js` | 58.59% |
 

@@ -52,10 +52,10 @@ actually runs it through the built binary. The number below is a recording, not 
 | `termcrab rooms` | line 2726 | 4 |
 | `termcrab browser` | line 2806 | 5 |
 | `termcrab transcribe` | line 2873 | 1 |
-| `termcrab embeddings` | line 2907 | 4 |
-| `termcrab context` | line 2961 | 1 |
-| `termcrab memory` | line 2981 | 6 |
-| `termcrab config` | line 3117 | 5 |
+| `termcrab embeddings` | line 2907 | 6 |
+| `termcrab context` | line 2967 | 1 |
+| `termcrab memory` | line 2987 | 6 |
+| `termcrab config` | line 3123 | 5 |
 
 ## Not run by the suite — and what covers it instead
 

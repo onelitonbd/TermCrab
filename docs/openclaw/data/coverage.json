@@ -1,16 +1,16 @@
 {
   "measuredAt": "2026-10-04",
-  "fingerprint": "876aea3297215f93",
+  "fingerprint": "eb856225b988e968",
   "floor": 80,
-  "tests": 969,
-  "pass": 964,
+  "tests": 985,
+  "pass": 980,
   "fail": 0,
   "skipped": 5,
-  "testFiles": 94,
+  "testFiles": 95,
   "source": {
-    "lines": 86.82,
-    "branches": 77.35,
-    "functions": 86.68
+    "lines": 86.91,
+    "branches": 77.4,
+    "functions": 86.88
   },
   "all": {
     "lines": 0,
@@ -84,8 +84,8 @@
     {
       "dir": "channels",
       "file": "cli.js",
-      "lines": 57.81,
-      "branches": 22.34,
+      "lines": 57.93,
+      "branches": 22.46,
       "functions": 63.75
     },
     {
@@ -105,9 +105,9 @@
   ],
   "best": [
     "ask.js",
-    "embed-remote.js",
     "exec-guard.js",
     "intents.js",
-    "rolling.js"
+    "rolling.js",
+    "sandbox.js"
   ]
 }

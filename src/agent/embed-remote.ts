@@ -69,6 +69,8 @@ export function remoteEmbedder(cfg: RemoteEmbedCfg, fetchImpl: FetchLike = fetch
   const model = cfg.model || REMOTE_DEFAULTS[cfg.kind].model;
   const timeoutMs = cfg.timeoutMs ?? 20_000;
 
+  let seenDim: number | undefined;
+
   const call = async (url: string, headers: Record<string, string>, body: unknown): Promise<Response> => {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), timeoutMs);
@@ -118,12 +120,21 @@ export function remoteEmbedder(cfg: RemoteEmbedCfg, fetchImpl: FetchLike = fetch
 
   return {
     name: `${cfg.kind}:${model}`,
+    provider: cfg.kind,
+    model,
+    // The size is learned from the first real answer rather than assumed: an
+    // OpenAI-compatible endpoint can serve several embedding models. It is then
+    // recorded on every row, so a later model change is visible (35.4).
+    get dim(): number | undefined {
+      return seenDim;
+    },
     async embed(texts: string[]): Promise<number[][]> {
       if (!texts.length) return [];
       const vectors = await embedOnce(texts);
       if (vectors.some((v) => !v || !v.length)) throw new Error('embeddings: the endpoint returned an empty vector');
       const dim = vectors[0]!.length;
       if (vectors.some((v) => v.length !== dim)) throw new Error('embeddings: the endpoint returned vectors of different sizes');
+      seenDim = dim;
       return vectors;
     },
   };
