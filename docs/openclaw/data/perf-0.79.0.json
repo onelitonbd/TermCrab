@@ -1,0 +1,127 @@
+{
+  "at": "2026-10-04T14:50:35.967Z",
+  "source": "checkout",
+  "bench": "/home/user/claw/scripts/bench.mjs",
+  "machine": {
+    "node": "v22.22.3",
+    "platform": "linux",
+    "arch": "x64",
+    "cpus": 2,
+    "totalMemMb": 3940
+  },
+  "metrics": {
+    "installMs": 252,
+    "coldStartMs": 133,
+    "idleRssMb": 74,
+    "restartMs": 162,
+    "turnMs": 85,
+    "panelKb": 332,
+    "panelMs": 3,
+    "roomWriteMs": 32,
+    "outboxDrainMs": 279,
+    "telegramPollMs": 59,
+    "docsMs": 49.8,
+    "docsKb": 2867,
+    "searchMs": 7.3,
+    "queueDrainMs": 52,
+    "queueWakeMs": 1,
+    "subagentFanoutMs": 41
+  },
+  "ceilings": {
+    "installMs": {
+      "max": 20000,
+      "unit": "ms"
+    },
+    "coldStartMs": {
+      "max": 1500,
+      "unit": "ms"
+    },
+    "idleRssMb": {
+      "max": 130,
+      "unit": "MB"
+    },
+    "restartMs": {
+      "max": 2500,
+      "unit": "ms"
+    },
+    "turnMs": {
+      "max": 5000,
+      "unit": "ms"
+    },
+    "panelKb": {
+      "max": 700,
+      "unit": "KB"
+    },
+    "panelMs": {
+      "max": 250,
+      "unit": "ms"
+    },
+    "coldInstallMs": {
+      "max": 60000,
+      "unit": "ms"
+    },
+    "coldCheckoutMs": {
+      "max": 90000,
+      "unit": "ms"
+    },
+    "roomWriteMs": {
+      "max": 1500,
+      "unit": "ms"
+    },
+    "outboxDrainMs": {
+      "max": 1500,
+      "unit": "ms"
+    },
+    "telegramPollMs": {
+      "max": 2000,
+      "unit": "ms"
+    },
+    "docsMs": {
+      "max": 1500,
+      "unit": "ms"
+    },
+    "docsKb": {
+      "max": 4000,
+      "unit": "KB"
+    },
+    "searchMs": {
+      "max": 200,
+      "unit": "ms"
+    },
+    "queueDrainMs": {
+      "max": 500,
+      "unit": "ms"
+    },
+    "queueWakeMs": {
+      "max": 120,
+      "unit": "ms"
+    },
+    "subagentFanoutMs": {
+      "max": 600,
+      "unit": "ms"
+    },
+    "firstRunMs": {
+      "max": 30000,
+      "unit": "ms"
+    },
+    "rebuildMs": {
+      "max": 8000,
+      "unit": "ms"
+    }
+  },
+  "over": [],
+  "skipped": [
+    "coldInstallMs",
+    "coldCheckoutMs",
+    "firstRunMs",
+    "rebuildMs"
+  ],
+  "load": {
+    "load1": 0,
+    "cpus": 2,
+    "perCpu": 0
+  },
+  "suspect": false,
+  "release": "0.79.0",
+  "__note": "measured on the machine in `machine`; the ceilings and their reasons live in docs/PERFORMANCE.md"
+}

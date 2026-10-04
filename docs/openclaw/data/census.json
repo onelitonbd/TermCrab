@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T14:27:13.844Z",
+ "measured": "2026-10-04T14:50:17.740Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 49,
+  "BETTER": 50,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 167,
+ "inScope": 168,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1522"
+    "detail": "1 match(es): src/gateway/server.ts:1538"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1524"
+    "detail": "2 match(es): src/gateway/server.ts:1540"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:313"
+    "detail": "1 match(es): src/gateway/server.ts:314"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2671"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2803"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1313"
+    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1329"
    }
   },
   {
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1716, src/mobile/doctor.ts:622"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1732, src/mobile/doctor.ts:622"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1752"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1528, src/gateway/server.ts:1768"
    }
   },
   {
@@ -646,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "738 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "751 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -805,7 +805,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:722"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:723"
    }
   },
   {
@@ -1573,7 +1573,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:581, src/mobile/doctor.ts:427"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:582, src/mobile/doctor.ts:427"
    }
   },
   {
@@ -1744,7 +1744,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:987"
+    "detail": "1 match(es): src/gateway/server.ts:1003"
    }
   },
   {
@@ -1962,7 +1962,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:417"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:418"
    }
   },
   {
@@ -2120,7 +2120,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): ui/index.html:2758"
+    "detail": "2 match(es): ui/index.html:2778"
    }
   },
   {
@@ -2180,7 +2180,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): ui/index.html:2765"
+    "detail": "2 match(es): ui/index.html:2785"
    }
   },
   {
@@ -2220,7 +2220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2771"
+    "detail": "1 match(es): ui/index.html:2791"
    }
   },
   {
@@ -3264,7 +3264,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1468"
+    "detail": "1 match(es): src/gateway/server.ts:1484"
    }
   },
   {
@@ -3305,7 +3305,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es) (min 2): ui/index.html:7094"
+    "detail": "2 match(es) (min 2): ui/index.html:7351"
    }
   },
   {
@@ -3390,6 +3390,26 @@
   },
   {
    "area": "ops",
+   "capability": "The panel's quick gaps, closed (49.x)",
+   "openclaw": "a web surface that shows less than the terminal",
+   "verdict": "BETTER",
+   "evidence": "Search across every chat is GET /api/sessions?q= (the CLI's ranked search, snippets included); the prompt-context report is GET /api/context and renders biggest-section-first in Debug; the embedding-provider picker writes memory.embedProvider and runs the offline-model install as one background job behind confirm:true; and /api/queue + /api/steer call the same queueCommand()/steerCommand() the chat dispatcher serves, so the composer's mode chip and steer box cannot drift from Telegram or the CLI.",
+   "probe": {
+    "file": "test/tier3r.test.ts",
+    "pattern": "49.1",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): test/tier3r.test.ts:60"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "The reports a chat can run (46.1)",
    "openclaw": "the CLI is the only place the numbers appear",
    "verdict": "BETTER",
@@ -3426,7 +3446,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es) (min 3): src/gateway/server.ts:898"
+    "detail": "3 match(es) (min 3): src/gateway/server.ts:914"
    }
   },
   {

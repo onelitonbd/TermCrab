@@ -61,11 +61,15 @@ code the CLI and the panel's palette run. Approvals arrive as
 
 **Web panel — the good surface with fewer holes.** `ui/index.html` has 11 views
 (`chat, status, board, providers, models, memory, tools, logs, debug, work,
-settings`) and 57 `/api/*` endpoints, including things Telegram has never heard
+settings`) and 61 `/api/*` endpoints, including things Telegram has never heard
 of: approvals with Allow/Deny cards, devices, canvas, crons, skills, doctor with
-fixes, perf, suite clock, worklog, docs. **42 ✅, 18 ◐, 6 ❌.** Since batch 47 the
+fixes, perf, suite clock, worklog, docs. **48 ✅, 14 ◐, 4 ❌.** Since batch 47 the
 chat box itself runs the shared dispatcher (`ui:!fromChat` → `POST /api/slash`),
-so `/status` typed into the panel chat is a command, not a prompt.
+so `/status` typed into the panel chat is a command, not a prompt; batch 49 added
+the four things the panel was still borrowing from the terminal — a ranked
+**search across every chat**, the **prompt-context report** in Debug, the
+**embedding-provider picker** next to the on/off switch, and a **queue-mode chip
+plus a steer box** in the composer.
 
 **Shared backend, three doors.** Everything the CLI does is a library call
 inside the same process the gateway runs; everything Telegram and the panel do
@@ -78,10 +82,10 @@ Batches 46–48 proved the shape: one dispatcher, three callers.
 |---|---|---|---|---|
 | CLI / TUI | 50 | 15 | **0** | 6 |
 | Telegram | 45 | 14 | **7** | 5 |
-| Web panel | 42 | 18 | **6** | 5 |
+| Web panel | 48 | 14 | **4** | 5 |
 
-12 of 71 rows have at least one ❌. The 13 missing cells by surface:
-**Telegram 7, web 6** (one row — *Embeddings: setup* — is missing on both).
+11 of 71 rows have at least one ❌. The 11 missing cells by surface:
+**Telegram 7, web 4** (one row — *Embeddings: setup* — is missing on Telegram only).
 
 By area (rows each): gateway 17 · ops 12 · channels 9 · context 8 · tools 7 ·
 sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
@@ -92,7 +96,7 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 |---|---|---|---|---|---|
 | gateway | Chat: send text, stream the answer | ✅ | ✅ | ✅ |  |
 | gateway | Stop a running turn | ✅ | ✅ | ✅ |  |
-| gateway | Queue modes (steer/followup/collect/interrupt) | ◐ | ✅ | ◐ | cli: config set agent.queueMode only; web: queues by default; no mode control yet |
+| gateway | Queue modes (steer/followup/collect/interrupt) | ◐ | ✅ | ✅ | cli: config set agent.queueMode only |
 | gateway | Approvals (human-in-the-loop) | ✅ | ✅ | ✅ |  |
 | gateway | Devices: pair, list, revoke | ✅ | ✅ | ✅ |  |
 | gateway | Presence: who can reach the agent now | ✅ | ✅ | ✅ |  |
@@ -110,19 +114,19 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | agent | Tool activity visible while it works | ✅ | ◐ | ✅ | tg: only the typing indicator; tool names never shown |
 | agent | Progress drafts / partial answers | ◐ | ◐ | ✅ | cli: streams deltas; no draft markers; tg: the reply arrives whole; no live edit |
 | agent | Subagents: spawn, list, read results | ✅ | ◐ | ✅ | tg: via sessions_spawn tool in chat |
-| agent | Steering a live run | ◐ | ✅ | ◐ | cli: config mode=steer only; web: no steer affordance in the UI yet |
+| agent | Steering a live run | ◐ | ✅ | ✅ | cli: config mode=steer only |
 | sessions | List / switch conversations | ✅ | ✅ | ✅ |  |
-| sessions | Search across conversations | ✅ | ✅ | ❌ | web: no session search in the panel |
+| sessions | Search across conversations | ✅ | ✅ | ✅ |  |
 | sessions | Show one transcript | ✅ | ✅ | ✅ |  |
-| sessions | Rename / purge / export | ✅ | ❌ | ◐ | tg: probe no longer matches; web: purge exists; no rename/export |
+| sessions | Rename / purge / export | ✅ | ✅ | ◐ | web: purge exists; no rename/export |
 | sessions | Start a fresh conversation | ✅ | ✅ | ✅ | web: the chat resets the session; the palette keeps its view action |
 | context | Memory: browse what it knows | ✅ | ✅ | ✅ |  |
 | context | Memory: search it | ✅ | ✅ | ✅ |  |
 | context | Memory: write a fact by hand | ◐ | ◐ | ✅ | cli: memory user <line> writes USER.md only; tg: say "remember …" and the agent calls the tool |
 | context | Dreaming / idle consolidation | ✅ | ✅ | ✅ |  |
-| context | Context report: what the model is sent | ✅ | ✅ | ◐ | web: not exposed — the Debug view shows events, not prompt sizes |
-| context | Embeddings: status | ✅ | ✅ | ◐ | web: an on/off switch for memory.embeddings, not the model status |
-| context | Embeddings: setup / switch provider | ◐ | ❌ | ❌ | cli: CLI command only; tg: not available; web: not available |
+| context | Context report: what the model is sent | ✅ | ✅ | ✅ |  |
+| context | Embeddings: status | ✅ | ✅ | ✅ |  |
+| context | Embeddings: setup / switch provider | ◐ | ❌ | ✅ | cli: the install runs in the terminal; the provider switch exists here too; tg: not available |
 | context | Identity files (SOUL/IDENTITY/USER bootstrap) | ✅ | ◐ | ❌ | tg: "remember …" writes USER.md; SOUL/IDENTITY are not editable from chat; web: a SOUL.md badge on agents; no editor |
 | tools | Tool catalog: what the agent can do | ◐ | ◐ | ✅ | cli: context lists schemas; no catalog command; tg: ask in chat and the agent answers |
 | tools | Tool toggles (enable/disable a tool) | ◐ | ◐ | ◐ | cli: config set agent.allowExec etc.; tg: config only; web: catalog shows active/planned; no toggle |
@@ -177,6 +181,10 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | T19/C3 | watchers | 47 | `/watch add|list|rm` persists `config.watchers` |
 | T21 | Bot command menu | 48 | `setMyCommands(CHAT_COMMANDS)` at gateway start, tolerated when the API refuses |
 | W9 (half) | slash commands in the panel chat | 47 | the chat box posts `ui:!fromChat` to `POST /api/slash` and renders the answer |
+| W1 | search across conversations | 49 | `GET /api/sessions?q=` runs the same ranked search as `termcrab sessions search` (snippets included) and the Chats tab asks for it |
+| W2 | context report | 49 | `GET /api/context` serves the same `contextReport()` the CLI prints; the Debug view renders sections biggest-first |
+| W3 | embedding provider | 49 | `GET/POST /api/embeddings` reads `embeddingsStatus()` and writes `memory.embedProvider`; the install runs as one background job the picker polls |
+| C4 (half) | queue mode + steer | 49 | `/api/queue` and `/api/steer` call the same `queueCommand()`/`steerCommand()` the chat dispatcher serves; the composer gets a mode chip and a steer box that appears while a turn runs |
 
 ### 4.1 Telegram: the 7 cells left
 
@@ -195,20 +203,18 @@ door is named): `/update apply` (terminal on purpose until an inline confirm
 exists), `/skills` approve (terminal keeps the write), `/cron` add (panel or
 terminal), tool-output visibility, drafts.
 
-### 4.2 Web panel: the 6 cells left
+### 4.2 Web panel: the 4 cells left
 
 | # | missing cell | how it gets built | batch |
 |---|---|---|---|
-| W1 | Session search | a search box on the chat rail backed by `GET /api/sessions?q=` (the CLI's search already exists in core) | 49 |
-| W3 | Embeddings setup | a provider/model picker next to the existing on/off toggle, using the setup code `termcrab embeddings` runs | 49 |
 | W4 | Identity file editor | `GET/PUT /api/bootstrap` for SOUL.md / IDENTITY.md / USER.md with size limits and paths pinned inside `TCRAB_HOME`, one textarea per file | 50 |
 | W5 | Backup / restore | `POST /api/backup` (creates and offers the archive) and a restore upload with a typed confirmation; reuses the CLI's backup module | 50 |
 | W8 | Service card | show `service status` output and a copy-able install command (Termux/systemd); no remote execution | 50 |
 | W9b | Transcribe upload | audio drop zone → `POST /api/transcribe` (reuses the CLI path) | 50 |
 
-The 18 ◐ cells on the web row are named in §3; the ones worth promoting are
-context sizes (W2, already API-served), a steer affordance in the chat (queue
-modes), and the security/secrets text the shared dispatcher already produces.
+The 14 ◐ cells on the web row are named in §3; the ones worth promoting next are
+tool toggles (C1), the security/secrets text with its fix buttons, and the
+`rooms`/`schema` corners.
 
 ### 4.3 CLI: the 15 ◐ cells (nothing is missing)
 
@@ -251,8 +257,8 @@ Each row was one batch, in dependency order; every batch keeps the repo's rules
 | 46 | shared command layer, read-only half | Telegram + web | T4–T8, T11–T13, T16–T18 | **done** |
 | 47 | control half + slash in the panel chat | Telegram + web | T1, T9, T10, T14 (half), T15, T19, W9 (half) | **done** |
 | 48 | inline keyboards, callbacks, `setMyCommands`, approvals in chat | Telegram | T2, T20, T21 | **done** |
-| 49 | panel gaps, quick half: sessions search, context view, embeddings picker | web | W1, W3 | next |
-| 50 | panel gaps, builder half: identity editor, backup/restore, service card, transcribe upload | web (+ API) | W4, W5, W8, W9b | queued |
+| 49 | panel gaps, quick half: sessions search, context view, embeddings picker, queue/steer | web | W1, W2, W3, C4 (half) | **done** |
+| 50 | panel gaps, builder half: identity editor, backup/restore, service card, transcribe upload | web (+ API) | W4, W5, W8, W9b | next |
 | 51 | voice replies, `/say`, `/suite-time`, `/work`, `/embeddings setup`, mini app, forum topics | Telegram | T8, T18b, T18c, T22, T22b, T23, T24 | queued |
 | 52 | CLI promotions: `tools`, `canvas`, `watch`, `queue`/`steer`, memory add, status numbers | CLI | C1–C7 | queued |
 

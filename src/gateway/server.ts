@@ -99,7 +99,8 @@ import { perfStatus, suiteTimeStatus } from '../core/perf.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { CHAT_COMMANDS, runReportCommand } from './chat-reports.js';
-import { runControlCommand, sessionsPurgeCommand, sessionsRenameCommand, type ControlDeps } from './chat-control.js';
+import { queueCommand, runControlCommand, sessionsPurgeCommand, sessionsRenameCommand, steerCommand, type ControlDeps } from './chat-control.js';
+import { embeddingsSetup, embeddingsStatus } from '../agent/embed-setup.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
 import { listAsks, answer as answerAsk } from '../agent/ask.js';
 import { getProgress } from '../agent/progress.js';
@@ -720,6 +721,21 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   // panel, on a phone and in the terminal at once; each attachment is one
   // viewer, and the count is on GET /api/sessions.
   const sessionViewers = new Map<string, Set<unknown>>();
+
+  /**
+   * 49.3 — the embedding provider picker's state. `EMBED_PROVIDERS` is the same
+   * list `embedderPlan()` understands (auto | local | openai | gemini), and a
+   * running install is one background job per gateway, reported through
+   * `GET /api/embeddings` until it finishes.
+   */
+  const EMBED_PROVIDERS = ['auto', 'local', 'openai', 'gemini'] as const;
+  let embedInstall: {
+    running: boolean;
+    startedAt: number | null;
+    steps: string[];
+    ok: boolean | null;
+    error: string | null;
+  } = { running: false, startedAt: null, steps: [], ok: null, error: null };
 
   /** The presence picture for this process, built from what it already owns. */
   function presenceNow(): Presence {
@@ -1848,13 +1864,27 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           // 28.2: who is attached, alongside what exists — a client can see
           // that the same conversation is open somewhere else.
           const running = new Map(agentQueue.listRunning().map((r) => [r.sessionId, r]));
-          json(res, 200, {
-            sessions: sessions.list().map((s) => ({
-              ...s,
-              viewers: sessionViewers.get(s.id)?.size ?? 0,
-              running: running.get(s.id)?.turnId ?? null,
-            })),
-          });
+          const listed = sessions.list().map((s) => ({
+            ...s,
+            viewers: sessionViewers.get(s.id)?.size ?? 0,
+            running: running.get(s.id)?.turnId ?? null,
+          }));
+          // 49.1 — the same ranked search the CLI runs (`sessions search`),
+          // offered to the panel: the rail asks `?q=` and gets hits with the
+          // words marked, not a filtered list of names.
+          const q = (new URL(req.url ?? '/', 'http://localhost').searchParams.get('q') ?? '').trim();
+          if (q) {
+            const hits = searchSessions(q, { limit: 12 }, sessions).map((h) => ({
+              sessionId: h.sessionId,
+              role: h.role,
+              when: h.when,
+              part: h.part,
+              snippet: h.snippet,
+            }));
+            json(res, 200, { query: q, hits, sessions: listed });
+            return;
+          }
+          json(res, 200, { sessions: listed });
           return;
         }
 
@@ -1926,6 +1956,108 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           else if (r === 'not-found') json(res, 404, { error: 'no chat found with that id' });
           else if (r === 'exists') json(res, 409, { error: 'a chat with the new name already exists' });
           else json(res, 400, { error: 'new name may only contain letters, digits, - _ . :' });
+          return;
+        }
+
+        // 49.2 — the prompt-section report (`termcrab context`), for the Debug view.
+        if (req.method === 'GET' && pathname === '/api/context') {
+          const params = new URL(req.url ?? '/', 'http://localhost').searchParams;
+          const sid =
+            params.get('session')?.trim() ||
+            rollingSessionKey(config, { fallback: 'web:main', channel: 'web', chatId: 'main' });
+          const report = contextReport({
+            config,
+            memory,
+            skills,
+            sessionId: sid,
+            channel: params.get('channel')?.trim() || 'web',
+            messages: toProviderMessages(sessions.readHot(sid, 400)),
+            toolCount: (await buildTools({ config, memory, skills })).length,
+          });
+          json(res, 200, { ...report, sessionId: sid });
+          return;
+        }
+
+        // 49.3 — the embedding provider, next to the on/off switch. The status
+        // comes from the same function `termcrab embeddings status` prints and
+        // the switch writes the same config key the CLI writes.
+        if (req.method === 'GET' && pathname === '/api/embeddings') {
+          json(res, 200, {
+            ...embeddingsStatus(),
+            setting: (config.memory?.embedProvider as string) ?? 'auto',
+            providers: [...EMBED_PROVIDERS],
+            install: embedInstall,
+          });
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/embeddings') {
+          const body = await readJsonBody(req);
+          if (body?.action === 'install') {
+            if (body.confirm !== true) {
+              json(res, 400, {
+                error:
+                  'installing the offline model downloads a package (~10 MB) and a model (~23 MB) — resend with confirm:true, or run: termcrab embeddings setup',
+              });
+              return;
+            }
+            if (embedInstall.running) {
+              json(res, 409, { error: 'an install is already running', install: embedInstall });
+              return;
+            }
+            embedInstall = { running: true, startedAt: Date.now(), steps: [], ok: null, error: null };
+            const state = embedInstall;
+            void embeddingsSetup()
+              .then((r) => {
+                state.running = false;
+                state.steps = r.steps;
+                state.ok = r.ok;
+                state.error = r.ok ? null : (r.error ?? 'setup failed without a message');
+              })
+              .catch((err: unknown) => {
+                state.running = false;
+                state.ok = false;
+                state.error = err instanceof Error ? err.message : String(err);
+              });
+            json(res, 202, { ok: true, started: true, install: embedInstall });
+            return;
+          }
+          const provider = String(body?.provider ?? '');
+          if (!(EMBED_PROVIDERS as readonly string[]).includes(provider)) {
+            json(res, 400, { error: `provider must be one of: ${EMBED_PROVIDERS.join(', ')}` });
+            return;
+          }
+          config.memory = { ...config.memory, embedProvider: provider as (typeof EMBED_PROVIDERS)[number] };
+          saveConfig(config);
+          json(res, 200, { ok: true, provider, status: embeddingsStatus() });
+          return;
+        }
+
+        // 49.4 — the queue mode and steering, from the same verbs the chat
+        // dispatcher serves (`/queue`, `/steer`), so the panel cannot drift.
+        if (req.method === 'GET' && pathname === '/api/queue') {
+          const webSession = rollingSessionKey(config, { fallback: 'web:main', channel: 'web', chatId: 'main' });
+          const r = queueCommand(controlDepsFor(webSession, 'web', 'main'));
+          json(res, 200, {
+            mode: agentQueue.getMode(),
+            running: agentQueue.listRunning().length,
+            text: r.ok ? r.text : '',
+          });
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/queue') {
+          const body = await readJsonBody(req);
+          const webSession = rollingSessionKey(config, { fallback: 'web:main', channel: 'web', chatId: 'main' });
+          const r = queueCommand(controlDepsFor(webSession, 'web', 'main'), typeof body?.mode === 'string' ? body.mode : '');
+          if (r.ok) json(res, 200, { ok: true, mode: agentQueue.getMode(), message: r.text });
+          else json(res, 400, { ok: false, error: r.error });
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/steer') {
+          const body = await readJsonBody(req);
+          const webSession = rollingSessionKey(config, { fallback: 'web:main', channel: 'web', chatId: 'main' });
+          const r = steerCommand(controlDepsFor(webSession, 'web', 'main'), String(body?.text ?? ''));
+          if (r.ok) json(res, 200, { ok: true, message: r.text });
+          else json(res, 400, { ok: false, error: r.error });
           return;
         }
 

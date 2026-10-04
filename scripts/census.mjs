@@ -622,6 +622,9 @@ check('ops', 'Three surfaces, one product (45.1)', 'the backend is not a surface
 check('ops', 'The audit cannot rot (45.2)', 'a report written once and never true again', 'BETTER',
   'The audit is checked twice: `--check` re-runs every probe against the source (a moved command fails the suite with the file and pattern), and the same test parses the JSON and compares it with the scoreboard table in docs/SURFACES.md, so the numbers cannot drift from what the scanner sees. Row shape is enforced too: every capability carries a verdict for all three surfaces, and every ❌ or ◐ must say why.',
   { file: 'test/surface-audit.test.ts', pattern: '45.3', expect: 'present' }, 0);
+check('ops', "The panel's quick gaps, closed (49.x)", 'a web surface that shows less than the terminal', 'BETTER',
+  'Search across every chat is GET /api/sessions?q= (the CLI\'s ranked search, snippets included); the prompt-context report is GET /api/context and renders biggest-section-first in Debug; the embedding-provider picker writes memory.embedProvider and runs the offline-model install as one background job behind confirm:true; and /api/queue + /api/steer call the same queueCommand()/steerCommand() the chat dispatcher serves, so the composer\'s mode chip and steer box cannot drift from Telegram or the CLI.',
+  { file: 'test/tier3r.test.ts', pattern: '49.1', expect: 'present' }, 0);
 check('ops', 'The reports a chat can run (46.1)', 'the CLI is the only place the numbers appear', 'BETTER',
   'Sixteen reports and /help live in src/gateway/chat-reports.ts, clamped to 24 lines and with secrets redacted by name; one CHAT_COMMANDS list (27 entries) is what /help prints, what GET /api/slash serves and what setMyCommands registers as the Telegram Bot menu — so a report is written once and reaches every surface.',
   { file: 'src/gateway/chat-reports.ts', pattern: 'export const CHAT_COMMANDS', expect: 'present' }, 0);

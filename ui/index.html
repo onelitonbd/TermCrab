@@ -690,6 +690,10 @@
     font-weight: 600;
     opacity: 0.7;
   }
+  #steerRow { display: flex; gap: 6px; padding: 0 2px 6px; }
+  #steerRow input { flex: 1; }
+  .qModeBtn { padding: 0 8px; }
+  .qModeBtn select { cursor: pointer; }
   #composerProgress .progSpinner {
     width: 14px; height: 14px;
     border: 2px solid var(--line-strong);
@@ -2605,6 +2609,17 @@
           <button type="button" data-emb="0">Lexical only</button>
         </div>
         <div class="pNote" id="engNote" style="margin-top: 10px"></div>
+        <div class="memSearchRow" style="margin-top: 10px">
+          <select id="embProvider" title="Embedding provider">
+            <option value="auto">Auto — best available</option>
+            <option value="local">Local model — offline, no key</option>
+            <option value="openai">OpenAI embeddings</option>
+            <option value="gemini">Gemini embeddings</option>
+          </select>
+          <button id="embProviderSave" class="ghost go" type="button">Save provider</button>
+          <button id="embInstall" class="ghost" type="button">Prepare offline model</button>
+        </div>
+        <div class="pNote" id="embStatus" style="margin-top: 8px"></div>
       </div>
       <div class="memSectionLabel">MEMORY FILE</div>
       <div class="setCard">
@@ -2677,6 +2692,11 @@
 
     <div class="memPane" id="tlPane-chats" hidden>
       <div class="memSectionLabel">SAVED CHATS</div>
+      <div class="memSearchRow" style="margin-bottom:8px">
+        <input type="text" id="sessSearch" placeholder="search every chat by words…" maxlength="80" />
+        <button id="sessSearchClear" class="ghost" type="button">Clear</button>
+      </div>
+      <div id="sessHits" class="listCol" hidden></div>
       <div id="sessList" class="listCol"><div class="nx">loading…</div></div>
       <div class="tlForm">
         <div class="pBar">
@@ -2893,6 +2913,14 @@
           <input type="checkbox" id="debugAuto" checked /> Auto-refresh
         </label>
       </div>
+      <div class="setCard" style="margin-bottom:12px">
+        <div class="pBar" style="margin-bottom:8px">
+          <span class="tlCardHead">PROMPT CONTEXT</span>
+          <span class="sp"></span>
+          <button id="ctxRefresh" class="ghost" type="button">Refresh</button>
+        </div>
+        <div id="ctxTable" class="pNote">loading…</div>
+      </div>
       <pre id="debugView" style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,monospace"></pre>
     </div>
   </section>
@@ -2908,6 +2936,10 @@
     <span id="progWait" class="progWait hidden"></span>
   </div>
   <div id="composerBox">
+    <div id="steerRow" class="hidden">
+      <input type="text" id="steerInput" placeholder="steer the running turn…" maxlength="300" />
+      <button id="steerSend" class="ghost" type="button">Steer</button>
+    </div>
     <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
     <div class="composerRow">
       <button id="attachBtn" class="iconBtn" type="button" title="Attach a text file" aria-label="Attach a file">
@@ -2921,6 +2953,15 @@
             <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
+        <label class="iconBtn qModeBtn" title="What a message does while the agent is working" style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--muted);font-size:10px;letter-spacing:.06em">QUEUE</span>
+          <select id="queueSel" aria-label="Queue mode" style="border:0;background:transparent;font:inherit;color:inherit">
+            <option value="followup">followup</option>
+            <option value="steer">steer</option>
+            <option value="collect">collect</option>
+            <option value="interrupt">interrupt</option>
+          </select>
+        </label>
         <button id="thinkingBtn" class="iconBtn thinkingBtn" type="button" title="Thinking level: Auto" aria-label="Thinking level: Auto" aria-haspopup="dialog" aria-expanded="false">
           <span class="modOn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>
@@ -5807,6 +5848,7 @@
       if (pane) pane.hidden = t !== name;
     }
     if (name === 'overview' || name === 'dreams') { refreshMem(); refreshDreams(); }
+    if (name === 'msettings') refreshEmbeddings();
   }
   function showDTab(name) {
     document.querySelectorAll('[data-dtab]').forEach((b) => b.classList.toggle('on', b.dataset.dtab === name));
@@ -6025,6 +6067,65 @@
   };
 
   // Settings > engine: instant config write, no restart.
+  // 49.3 — the embedding provider: status from the same function
+  // `termcrab embeddings status` prints, and the picker writes the same config
+  // key the CLI writes. Installing the offline model is one background job the
+  // gateway reports on (`install` in the status payload).
+  let embInstallTimer = null;
+  async function refreshEmbeddings() {
+    const note = $('embStatus');
+    if (!note) return;
+    try {
+      const st = await api('/api/embeddings');
+      const sel = $('embProvider');
+      if (sel && st.setting) sel.value = st.setting;
+      const on = st.enabled !== false;
+      const bits = [
+        st.summary || (on ? 'smart search on' : 'smart search off'),
+        `provider: ${st.provider || 'none'}${st.model ? ' · ' + st.model : ''}`,
+        st.packageInstalled ? 'offline package installed' : 'offline package not installed',
+      ];
+      if (st.blocker) bits.push('⚠️ ' + st.blocker);
+      if (st.install && st.install.running) bits.push('installing the offline model…');
+      note.textContent = bits.join(' · ');
+      if (st.install && st.install.running && !embInstallTimer) {
+        embInstallTimer = setInterval(refreshEmbeddings, 3000);
+      }
+      if (st.install && !st.install.running && embInstallTimer) {
+        clearInterval(embInstallTimer); embInstallTimer = null;
+        if (st.install.steps && st.install.steps.length) bits.push(st.install.steps.join(' → '));
+        note.textContent = bits.join(' · ');
+      }
+    } catch (e) {
+      note.textContent = 'embeddings status failed: ' + e.message;
+    }
+  }
+  if ($('embProviderSave')) {
+    $('embProviderSave').onclick = async () => {
+      try {
+        const r = await api('/api/embeddings', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ provider: $('embProvider').value }),
+        });
+        $('embStatus').textContent = `provider → ${r.provider}`;
+        refreshEmbeddings();
+      } catch (e) { $('embStatus').textContent = 'could not save: ' + e.message; }
+    };
+  }
+  if ($('embInstall')) {
+    $('embInstall').onclick = async () => {
+      if (!confirm('Download the offline model? One-time: a package (~10 MB) and the model (~23 MB).')) return;
+      try {
+        await api('/api/embeddings', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'install', confirm: true }),
+        });
+        $('embStatus').textContent = 'installing the offline model…';
+        refreshEmbeddings();
+      } catch (e) { $('embStatus').textContent = 'could not start: ' + e.message; }
+    };
+  }
+
   document.querySelectorAll('#segEngine button').forEach((b) => {
     b.onclick = async () => {
       try {
@@ -6705,6 +6806,69 @@
       }
     } catch (e) { $('sessList').innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
   }
+  // 49.1 — search every chat by words: the rail asks `GET /api/sessions?q=`
+  // and the server answers with ranked hits (the same search `termcrab sessions
+  // search` runs), snippet included. Empty query = the normal list.
+  let sessSearchTimer = null;
+  function renderSessHits(query, hits) {
+    const box = $('sessHits');
+    box.innerHTML = '';
+    box.hidden = false;
+    $('sessList').hidden = true;
+    const head = document.createElement('div');
+    head.className = 'memSectionLabel';
+    head.textContent = hits.length ? `${hits.length} match(es) for “${query}”` : '';
+    if (!hits.length) {
+      box.innerHTML = '<div class="nx">no chat matches “' + query.replace(/[<>&]/g, '') + '”</div>';
+      return;
+    }
+    box.appendChild(head);
+    for (const h of hits) {
+      const row = document.createElement('div');
+      row.className = 'sessRow';
+      const id = document.createElement('span');
+      id.className = 'id';
+      id.textContent = sessionLabel(h.sessionId);
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      const when = h.when ? new Date(h.when).toISOString().slice(0, 10) : '';
+      meta.textContent = `${h.role} · ${when}${h.part === 'archive' ? ' · archived' : ''}`;
+      const snip = document.createElement('span');
+      snip.className = 'meta';
+      snip.style.cssText = 'flex:1;white-space:normal';
+      snip.textContent = h.snippet || '';
+      const sp = document.createElement('span'); sp.className = 'sp';
+      const open = document.createElement('button');
+      open.className = 'ghost'; open.textContent = 'Open';
+      open.onclick = () => { $('session').value = h.sessionId; loadSession(h.sessionId); switchView('chat'); };
+      row.append(id, meta, snip, sp, open);
+      box.appendChild(row);
+    }
+  }
+  async function runSessSearch(q) {
+    if (!q) {
+      $('sessHits').hidden = true;
+      $('sessHits').innerHTML = '';
+      $('sessList').hidden = false;
+      return;
+    }
+    try {
+      const data = await api('/api/sessions?q=' + encodeURIComponent(q));
+      renderSessHits(q, data.hits || []);
+    } catch (e) {
+      $('sessHits').hidden = false;
+      $('sessHits').innerHTML = '<div class="nx">search failed: ' + e.message + '</div>';
+    }
+  }
+  if ($('sessSearch')) {
+    $('sessSearch').oninput = () => {
+      clearTimeout(sessSearchTimer);
+      const q = $('sessSearch').value.trim();
+      sessSearchTimer = setTimeout(() => runSessSearch(q), 250);
+    };
+    $('sessSearchClear').onclick = () => { $('sessSearch').value = ''; runSessSearch(''); };
+  }
+
   $('sessExport').onclick = async () => {
     const sel = $('session').value;
     if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
@@ -6862,7 +7026,48 @@
     } catch (e) {
       view.textContent = 'failed to load events: ' + e.message;
     }
+    loadContext();
   }
+
+  // 49.2 — the prompt-section report (`termcrab context`), biggest section
+  // first, so "why is the prompt so big" has a visible answer.
+  async function loadContext() {
+    const box = $('ctxTable');
+    if (!box) return;
+    try {
+      const d = await api('/api/context?session=' + encodeURIComponent(currentSession()));
+      const kb = (n) => (n / 1024).toFixed(1) + ' KB';
+      box.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'pNote';
+      head.textContent = `${kb(d.totalBytes)} total · ${d.tools.count} tool(s) · ${d.history.messages} message(s) · ${d.memory.facts}/${d.memory.totalFacts} facts`;
+      box.appendChild(head);
+      const table = document.createElement('table');
+      table.className = 'ctxTable';
+      table.style.cssText = 'width:100%;border-collapse:collapse;margin-top:8px;font-size:12px';
+      for (const s of d.sections || []) {
+        const tr = document.createElement('tr');
+        const a = document.createElement('td');
+        a.textContent = s.name;
+        const b = document.createElement('td');
+        b.style.cssText = 'text-align:right;white-space:nowrap';
+        b.textContent = kb(s.bytes);
+        tr.append(a, b);
+        table.appendChild(tr);
+      }
+      box.appendChild(table);
+      if ((d.notes || []).length) {
+        const note = document.createElement('div');
+        note.className = 'pNote';
+        note.style.marginTop = '6px';
+        note.textContent = (d.notes || []).join(' · ');
+        box.appendChild(note);
+      }
+    } catch (e) {
+      box.textContent = 'context failed: ' + e.message;
+    }
+  }
+  if ($('ctxRefresh')) $('ctxRefresh').addEventListener('click', loadContext);
 
   // ---- Slash menu ----
   let slashCommands = [];
@@ -6989,12 +7194,14 @@
     const p = $('composerProgress');
     if (!p) return;
     p.classList.remove('hidden');
+    showSteerRow(true);
     const t = p.querySelector('.progText');
     if (t) t.textContent = text;
   }
   function hideComposerProgress() {
     const p = $('composerProgress');
     if (p) p.classList.add('hidden');
+    showSteerRow(false);
   }
 
   /** Real queue state for the composer chip: "N waiting" (0 means idle). */
@@ -7013,6 +7220,56 @@
       if (p && !state.busy) p.classList.add('hidden');
     }
   }
+  /**
+   * 49.4 — the queue mode and steering, from the same verbs the chat dispatcher
+   * serves: the select writes `agent.queueMode` through `/queue`, the steer box
+   * feeds the running turn through `/steer`. The row appears while a turn is
+   * running, which is exactly when steering means something.
+   */
+  async function loadQueueMode() {
+    if (!$('queueSel')) return;
+    try {
+      const q = await api('/api/queue');
+      $('queueSel').value = q.mode || 'followup';
+    } catch { /* the chip keeps its last value */ }
+  }
+  if ($('queueSel')) {
+    $('queueSel').onchange = async () => {
+      try {
+        const r = await api('/api/queue', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mode: $('queueSel').value }),
+        });
+        addMsg('sys', r.message || `queue mode → ${$('queueSel').value}`);
+      } catch (e) {
+        addMsg('sys', 'queue mode not saved: ' + e.message);
+        loadQueueMode();
+      }
+    };
+  }
+  async function sendSteer() {
+    const inp = $('steerInput');
+    const text = (inp && inp.value.trim()) || '';
+    if (!text) return;
+    try {
+      const r = await api('/api/steer', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      inp.value = '';
+      addMsg('sys', r.message || 'steered');
+    } catch (e) { addMsg('sys', 'steer failed: ' + e.message); }
+  }
+  if ($('steerSend')) {
+    $('steerSend').onclick = sendSteer;
+    $('steerInput').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); sendSteer(); } });
+  }
+  function showSteerRow(show) {
+    const row = $('steerRow');
+    if (row) row.classList.toggle('hidden', !show);
+  }
+  loadQueueMode();
+
   function showComposerError(msg) {
     const e = $('composerError');
     if (!e) return;

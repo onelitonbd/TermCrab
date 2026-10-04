@@ -47,7 +47,7 @@ export const CAPABILITIES = [
   // ------------------------------------------------------------- gateway
   { area: 'gateway', name: 'Chat: send text, stream the answer', cli: [P(CLI_SRC, "case 'agent'")], tg: [P(TG_SRC, 'sendMessage')], web: [P(PANEL_SRC, "api\\('/api/chat'"), P(PANEL_SRC, "addEventListener\\('delta'")] },
   { area: 'gateway', name: 'Stop a running turn', cli: [P(CLI_SRC, "case 'stop'")], tg: [P(CT, "case '/stop'")], web: [P(PANEL_SRC, '/api/stop')] },
-  { area: 'gateway', name: 'Queue modes (steer/followup/collect/interrupt)', cli: { partial: 'config set agent.queueMode only' }, tg: [P(CT, "case '/queue'")], web: { partial: 'queues by default; no mode control yet' } },
+  { area: 'gateway', name: 'Queue modes (steer/followup/collect/interrupt)', cli: { partial: 'config set agent.queueMode only' }, tg: [P(CT, "case '/queue'")], web: [P(SERVER_SRC, "'/api/queue'"), P(PANEL_SRC, 'queueSel')] },
   { area: 'gateway', name: 'Approvals (human-in-the-loop)', cli: [P(CLI_SRC, "case 'approvals'")], tg: [P(SERVER_SRC, 'sendButtons'), P(SERVER_SRC, 'approve:')], web: [P(PANEL_SRC, '/api/approvals'), P(PANEL_SRC, "addEventListener\\('approval'")] },
   { area: 'gateway', name: 'Devices: pair, list, revoke', cli: [P(CLI_SRC, "case 'pair'"), P(CLI_SRC, "case 'devices'")], tg: [P(CR, "case '/devices'")], web: [P(PANEL_SRC, '/api/devices')] },
   { area: 'gateway', name: 'Presence: who can reach the agent now', cli: [P(CLI_SRC, "case 'presence'")], tg: [P(SERVER_SRC, 'presenceLine')], web: [P(PANEL_SRC, '/api/presence')] },
@@ -67,11 +67,11 @@ export const CAPABILITIES = [
   { area: 'agent', name: 'Tool activity visible while it works', cli: [P(TUI_SRC, 'tool')], tg: { partial: 'only the typing indicator; tool names never shown' }, web: [P(PANEL_SRC, "addEventListener\\('tool:start'")] },
   { area: 'agent', name: 'Progress drafts / partial answers', cli: { probes: [P(TUI_SRC, 'delta')], partial: 'streams deltas; no draft markers' }, tg: { partial: 'the reply arrives whole; no live edit' }, web: [P(PANEL_SRC, "addEventListener\\('draft'")] },
   { area: 'agent', name: 'Subagents: spawn, list, read results', cli: [P(CLI_SRC, "case 'subagents'")], tg: { partial: 'via sessions_spawn tool in chat' }, web: [P(PANEL_SRC, '/api/subagents')] },
-  { area: 'agent', name: 'Steering a live run', cli: { partial: 'config mode=steer only' }, tg: [P(CT, "case '/steer'")], web: { partial: 'no steer affordance in the UI yet' } },
+  { area: 'agent', name: 'Steering a live run', cli: { partial: 'config mode=steer only' }, tg: [P(CT, "case '/steer'")], web: [P(SERVER_SRC, "'/api/steer'"), P(PANEL_SRC, 'steerInput')] },
 
   // ------------------------------------------------------------ sessions
   { area: 'sessions', name: 'List / switch conversations', cli: [P(CLI_SRC, "case 'sessions'")], tg: [P(SERVER_SRC, "text === '/sessions'")], web: [P(PANEL_SRC, '/api/sessions')] },
-  { area: 'sessions', name: 'Search across conversations', cli: [P(CLI_SRC, 'search')], tg: [P(SERVER_SRC, '/sessions search')], web: { missing: 'no session search in the panel' } },
+  { area: 'sessions', name: 'Search across conversations', cli: [P(CLI_SRC, 'search')], tg: [P(SERVER_SRC, '/sessions search')], web: [P(SERVER_SRC, 'searchSessions'), P(PANEL_SRC, "api\\('/api/sessions\\?q='")] },
   { area: 'sessions', name: 'Show one transcript', cli: [P(HELP_SRC, 'export')], tg: [P(SERVER_SRC, '/sessions show')], web: [P(PANEL_SRC, '/api/sessions/')] },
   { area: 'sessions', name: 'Rename / purge / export', cli: [P(CLI_SRC, 'purge'), P(CLI_SRC, 'rename')], tg: [P(CT, 'sessionsRenameCommand'), P(CT, 'sessionsPurgeCommand')], web: { partial: 'purge exists; no rename/export' } },
   { area: 'sessions', name: 'Start a fresh conversation', cli: [P(CLI_SRC, "case 'agent'")], tg: [P(SERVER_SRC, "text === '/new'")], web: { probes: [P(SERVER_SRC, "sessions\\.reset\\(sid\\)")], note: 'the chat resets the session; the palette keeps its view action' } },
@@ -81,9 +81,9 @@ export const CAPABILITIES = [
   { area: 'context', name: 'Memory: search it', cli: [P(CLI_SRC, 'search')], tg: [P(SERVER_SRC, '/memory search')], web: [P(PANEL_SRC, '/api/memory/search')] },
   { area: 'context', name: 'Memory: write a fact by hand', cli: { partial: 'memory user <line> writes USER.md only' }, tg: { partial: 'say "remember …" and the agent calls the tool' }, web: [P(PANEL_SRC, '/api/memory/remember')] },
   { area: 'context', name: 'Dreaming / idle consolidation', cli: [P(CLI_SRC, "case 'dream'")], tg: [P(CR, "case '/dream'")], web: [P(PANEL_SRC, '/api/dream')] },
-  { area: 'context', name: 'Context report: what the model is sent', cli: [P(CLI_SRC, "case 'context'")], tg: [P(SERVER_SRC, "text === '/context'")], web: { partial: 'not exposed — the Debug view shows events, not prompt sizes' } },
-  { area: 'context', name: 'Embeddings: status', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(CR, "case '/embeddings'")], web: { partial: 'an on/off switch for memory.embeddings, not the model status' } },
-  { area: 'context', name: 'Embeddings: setup / switch provider', cli: { probes: [P(HELP_SRC, 'embeddings')], partial: 'CLI command only' }, tg: { missing: 'not available' }, web: { missing: 'not available' } },
+  { area: 'context', name: 'Context report: what the model is sent', cli: [P(CLI_SRC, "case 'context'")], tg: [P(SERVER_SRC, "text === '/context'")], web: [P(SERVER_SRC, "'/api/context'"), P(PANEL_SRC, 'ctxTable')] },
+  { area: 'context', name: 'Embeddings: status', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(CR, "case '/embeddings'")], web: [P(SERVER_SRC, 'embeddingsStatus'), P(PANEL_SRC, 'embStatus')] },
+  { area: 'context', name: 'Embeddings: setup / switch provider', cli: { probes: [P(HELP_SRC, 'embeddings')], partial: 'the install runs in the terminal; the provider switch exists here too' }, tg: { missing: 'not available' }, web: [P(SERVER_SRC, 'embeddingsSetup'), P(PANEL_SRC, "action: 'install'")] },
   { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: { partial: '"remember …" writes USER.md; SOUL/IDENTITY are not editable from chat' }, web: { missing: 'a SOUL.md badge on agents; no editor' } },
 
   // --------------------------------------------------------------- tools

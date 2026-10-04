@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.79.0 - 2026-10-04
+
+**The panel stops borrowing from the terminal.** Batch 49: four things the web panel could only do by
+walking to a shell, now on the page — and two audit rows that said "missing" turned into probes.
+
+- **Search across every chat.** `GET /api/sessions?q=` runs the same ranked search as
+  `termcrab sessions search` (term weights, recency, snippets with the matched words marked); an empty
+  query returns the plain list exactly as before. The Chats tab gets a search box and a hit list, with a
+  clear "no chat matches" state.
+- **The prompt-context report.** `GET /api/context` serves `contextReport()` — the section sizes sorted
+  biggest-first, totals, tool count, history and the notes (memory over budget, prunable tool results).
+  The Debug view renders it as a table, so "why is the prompt so big" has an answer on the same page as
+  the event log.
+- **The embedding-provider picker.** `GET /api/embeddings` returns the status `termcrab embeddings status`
+  prints plus the four choices (`auto | local | openai | gemini`); `POST` writes `memory.embedProvider`
+  after validating it. "Prepare offline model" starts the real setup (package + model download) as one
+  background job the picker polls — and it refuses to start without `confirm:true`, because it downloads.
+- **Queue mode and steering.** `/api/queue` (read/write) and `/api/steer` delegate to the same
+  `queueCommand()`/`steerCommand()` the Telegram/CLI dispatcher serves, so the mode chip and the steer box
+  cannot drift from the other surfaces. The steer box appears exactly while a turn is running.
+
+**Proof:** `test/tier3r.test.ts` — 4 cases, all driven through the HTTP surface the panel uses: a seeded
+two-chat search finds the right one and reports the miss; the context sections are ordered and the totals
+are real; the provider round-trips through `loadConfig()` and a bad provider is refused; the queue mode
+writes `agent.queueMode`, a bad mode is refused, and steering with nothing running answers in the shared
+dispatcher's own words. `scripts/surface-audit.mjs` moves to **CLI 50 / Telegram 45 / Web 48, gaps 11**
+(web was 42 ✅ / 6 ❌), with `--check` green; `test/surface-audit.test.ts` 3 pass; the full suite
+**1064 pass · 0 fail · 3 skip · 107 files · 1067 cases** (162.1 s of a 240 s budget), coverage
+87.4 / 77.41 / 87.06 on fingerprint `d7cc05b2138a3e8b`, census 100% of 168 in-scope checks.
+
+
+- TODO: what changed, and why it matters to somebody on a phone.
+
 ## 0.78.0 - 2026-10-04
 
 **One dispatcher, three doors — Telegram and the panel chat grow up.** The audit in v0.77.0 said Telegram was
