@@ -38,6 +38,15 @@ import {
   suiteTimeStatus,
 } from '../src/core/perf.js';
 
+/**
+ * 44.2 — the CLI spawns below authorize 120 s of work each. The runner's flag
+ * wins over a test's own deadline (asserted in test/tier3n.test.ts), so what
+ * actually protects them is `scripts/test-files.mjs`, which only the daily
+ * `npm test` uses; this option is what a direct `node --test dist/test/tier3l.test.js`
+ * gets instead.
+ */
+const HEAVY = { timeout: 300_000 } as const;
+
 const ROOT = process.cwd();
 const CLI = path.join(ROOT, 'dist/src/bin/termcrab.js');
 
@@ -114,7 +123,7 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
 
 // ------------------------------------------------------------------- 41.1
 
-test('41.1 every ceiling has a fix line, and the doc, the CLI and the panel say the same thing', async () => {
+test('41.1 every ceiling has a fix line, and the doc, the CLI and the panel say the same thing', HEAVY, async () => {
   const keys = Object.keys(PERF_CEILINGS);
   assert.equal(Object.keys(PERF_ADVICE).length, keys.length, 'one fix line per ceiling, no strays');
   for (const key of keys) {
@@ -163,7 +172,7 @@ test('41.1 every ceiling has a fix line, and the doc, the CLI and the panel say 
 
 // ------------------------------------------------------------------- 41.2
 
-test('41.2 perf --compare puts this run next to a saved measurement', async () => {
+test('41.2 perf --compare puts this run next to a saved measurement', HEAVY, async () => {
   const then = snapshot({
     at: '2026-10-01T00:00:00.000Z',
     metrics: { coldStartMs: 100, turnMs: 90, docsMs: 40, searchMs: 7 },
@@ -303,7 +312,7 @@ test('41.3 the suite clock reaches the panel, from the record and never from a r
 
 // ------------------------------------------------------------------- 41.4
 
-test('41.4 a measurement taken on a busy machine is flagged, and --save refuses it', async () => {
+test('41.4 a measurement taken on a busy machine is flagged, and --save refuses it', HEAVY, async () => {
   const keys = ['load1', 'cpus', 'perCpu'];
   assert.deepEqual(Object.keys(perfLoad()), keys, 'the load reading has one shape');
   process.env.TCRAB_PERF_LOAD = '12';

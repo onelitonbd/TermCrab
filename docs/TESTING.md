@@ -6,7 +6,30 @@ One command runs everything:
 npm test                 # builds the test build, then runs every test file (≈70s here)
 node scripts/coverage.mjs --run    # the same run, with coverage recorded (≈80s)
 node scripts/cli-coverage.mjs --run  # the same run, measuring which CLI commands were dispatched
+node scripts/test-files.mjs        # how the suite is split, and why (44.2)
 ```
+
+## One deadline per group (44.2)
+
+node's runner cancels a test that outlives `--test-timeout`, and **the flag overrides a test's own
+`{ timeout }` option** (asserted in `test/tier3n.test.ts`, against a throwaway file — the test that
+documents the trap is the test that would catch it coming back). Two files here *measure* rather than
+assert: `tier3i` runs the real bench and the gates around it, `tier3j` runs a real `npm install` from an
+empty cache. Their children were always given 300–600 s; the tests around them were given 60 s, so on a
+loaded machine — or on a phone, which is the target device — they were cancelled while the work was
+still running and the file came back `not ok` with **zero failing assertions**. That is the worst kind
+of red: it looks like a flake and teaches people to re-run instead of read.
+
+So `scripts/test-files.mjs` declares the split in one place, and `npm test` runs through it:
+
+- **fast group** (everything else): `--test-timeout=60000`, so a genuinely hung test still fails quickly;
+- **heavy group** (`tier3i`, `tier3j`, each named with the reason): `--test-timeout=600000`, because that
+  is what their children were already authorized to take.
+
+`npm test`, the coverage recording, the CLI-coverage recording and the suite clock all read that file, so
+four runners cannot drift apart. The recording runs take the generous deadline for the whole run (a
+cancelled test would be *recorded* as a failure that never happened); the wall-clock budget below is the
+alarm for "the suite got slow", and it is untouched.
 
 While working on one thing, skip the wait:
 
@@ -33,24 +56,24 @@ dominating the run fails the suite instead of being noticed a month later.
 
 _Measured 2026-10-04 on node v22.22.3 — `node scripts/suite-time.mjs --run` re-measures, `--check` fails when the run is over its budget._
 
-The whole suite: **101 files, 1034 test cases, 149.2 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
+The whole suite: **102 files, 1037 test cases, 144.1 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
 
 | slowest file | time |
 |---|---|
-| `tier3j.test.js` | 34.3 s |
-| `tier3i.test.js` | 28.5 s |
-| `tier2c.test.js` | 4.6 s |
-| `tier2.test.js` | 4.5 s |
-| `tier2x.test.js` | 3.0 s |
+| `tier3j.test.js` | 35.0 s |
+| `tier3i.test.js` | 27.3 s |
+| `tier2.test.js` | 4.3 s |
+| `tier2c.test.js` | 4.2 s |
+| `tier0.test.js` | 2.7 s |
 
 <!-- END SUITE TIME -->
 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **87.33%** of the lines in `src/` are executed by the
-suite (77.58% of branches, 87.13% of functions), across
-**1034 test cases in 101 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-04:** **87.43%** of the lines in `src/` are executed by the
+suite (77.57% of branches, 87.07% of functions), across
+**1037 test cases in 102 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
@@ -65,7 +88,7 @@ suite (77.58% of branches, 87.13% of functions), across
 | `mobile/notify.ts` | 55.17% |
 | `mobile/boot.ts` | 55.56% |
 | `core/friendly.ts` | 58.59% |
-| `channels/cli.ts` | 60.36% |
+| `channels/cli.ts` | 59.84% |
 | `mobile/onboard.ts` | 61.44% |
 
 Those are the files the suite touches least. They are named here on purpose: on a phone, the

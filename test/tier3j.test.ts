@@ -28,6 +28,18 @@ import {
 } from '../src/core/perf.js';
 
 const ROOT = process.cwd();
+/**
+ * 44.2 — the deadline this file may give itself.
+ *
+ * The tests below spawn work with 300–600 s child timeouts (a real `npm install`,
+ * the real bench). node's runner cancels a test that outlives `--test-timeout`,
+ * and **the CLI flag overrides these options** — so what actually keeps them
+ * alive is the grouped runner in `scripts/test-files.mjs` (heavy files get
+ * 600 s, everything else keeps 60 s). These options are the deadline for the
+ * case where the file is run on its own, with no flag at all.
+ */
+const HEAVY = { timeout: 300_000 } as const;
+
 const CLI = path.join(ROOT, 'dist/src/bin/termcrab.js');
 
 function tmpHome(prefix: string): string {
@@ -283,7 +295,7 @@ test('39.1 the panel sees the trend through the gateway, and reads it in the mar
 
 // ------------------------------------------------------------------- 39.2
 
-test('39.2 one memory search over 10 000 vectors is measured, budgeted, and stays a scan', async () => {
+test('39.2 one memory search over 10 000 vectors is measured, budgeted, and stays a scan', HEAVY, async () => {
   const { PERF_CEILINGS } = await import('../src/core/perf.js');
   const search = (PERF_CEILINGS as Record<string, { max: number; unit: string; why: string }>).searchMs;
   assert.ok(search, 'searchMs has a ceiling');
@@ -356,7 +368,7 @@ test('39.2 one memory search over 10 000 vectors is measured, budgeted, and stay
 
 // ------------------------------------------------------------------- 39.3
 
-test('39.3 the docs page has a budget: build time and the file a phone has to hold', async () => {
+test('39.3 the docs page has a budget: build time and the file a phone has to hold', HEAVY, async () => {
   const { PERF_CEILINGS } = await import('../src/core/perf.js');
   const ceilings = PERF_CEILINGS as Record<string, { max: number; unit: string; why: string }>;
   assert.ok(ceilings.docsMs && ceilings.docsMs.max >= 200, 'docsMs has a real ceiling');
@@ -398,7 +410,7 @@ test('39.3 the docs page has a budget: build time and the file a phone has to ho
 
 // ------------------------------------------------------------------- 39.4
 
-test('39.4 the loops a phone feels have ceilings, and the bench measures them in a throwaway home', async () => {
+test('39.4 the loops a phone feels have ceilings, and the bench measures them in a throwaway home', HEAVY, async () => {
   const { PERF_CEILINGS } = await import('../src/core/perf.js');
   const ceilings = PERF_CEILINGS as Record<string, { max: number; unit: string; why: string }>;
   for (const key of ['roomWriteMs', 'outboxDrainMs', 'telegramPollMs']) {
@@ -463,7 +475,7 @@ test('39.4 the loops a phone feels have ceilings, and the bench measures them in
 
 // ------------------------------------------------------------------- 39.5
 
-test('39.5 a cold checkout is measured from nothing: empty cache, no node_modules, install to first answer', async () => {
+test('39.5 a cold checkout is measured from nothing: empty cache, no node_modules, install to first answer', HEAVY, async () => {
   const { PERF_CEILINGS } = await import('../src/core/perf.js');
   const ceilings = PERF_CEILINGS as Record<string, { max: number; unit: string; why: string }>;
   for (const key of ['coldInstallMs', 'coldCheckoutMs']) {

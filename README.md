@@ -32,26 +32,26 @@ _Measured 2026-10-04 on Node v22.22.3 — re-run `node scripts/bench.mjs` and ex
 
 | what | measured | budget (the alarm) | why it matters on a phone |
 |---|---|---|---|
-| `npm install` (zero runtime deps, `--omit=dev`) | 238 ms | 20000 ms | the slow step that never happens |
-| cold start (`termcrab version`) | 137 ms | 1500 ms | every CLI call pays it |
-| idle RSS (gateway, offline brain) | 74 MB | 130 MB | an old phone has ~2 GB, and the OS kills hogs |
-| stop + start again (`supervisor`) | 165 ms | 2500 ms | a restart must be invisible |
-| one real turn (message → answer, offline) | 92 ms | 5000 ms | loudness of the whole loop |
+| `npm install` (zero runtime deps, `--omit=dev`) | 223 ms | 20000 ms | the slow step that never happens |
+| cold start (`termcrab version`) | 113 ms | 1500 ms | every CLI call pays it |
+| idle RSS (gateway, offline brain) | 72 MB | 130 MB | an old phone has ~2 GB, and the OS kills hogs |
+| stop + start again (`supervisor`) | 159 ms | 2500 ms | a restart must be invisible |
+| one real turn (message → answer, offline) | 84 ms | 5000 ms | loudness of the whole loop |
 | the panel itself (one HTML file, no build step) | 320 KB | 700 KB | no framework decided by accident |
-| the gateway serving that panel (`GET /`) | 3 ms | 250 ms | the shell has to appear before any /api call |
-| 24 turns through one session queue | 53 ms | 500 ms | the queue's own overhead while the agent is busy |
+| the gateway serving that panel (`GET /`) | 3.1 ms | 250 ms | the shell has to appear before any /api call |
+| 24 turns through one session queue | 52 ms | 500 ms | the queue's own overhead while the agent is busy |
 | the worst gap between queued turns (24 in one lane) | 0 ms | 120 ms | the wake-up a person feels behind a busy session |
 | four subagents spawned together (40 ms each) | 41 ms | 600 ms | four slots must be parallel, not a polite queue |
-| one memory search over 10,000 vectors | 4.6 ms | 200 ms | a chatty month of memory must stay instant |
-| the offline docs page, built (60 docs) | 43.7 ms | 1500 ms | the panel's rebuild button must stay a blink |
-| the built docs page on disk | 2790 KB | 4000 KB | one HTML file a phone has to hold |
-| a chatty group: 200 messages into one room | 22 ms | 1500 ms | every message pays the trim that keeps the room bounded |
-| a queue that was owed: 200 messages queued, acked, swept | 222 ms | 1500 ms | a phone that was offline has to flush without a stall |
-| 50 poll cycles of 50 updates (local stub) | 68 ms | 2000 ms | the plumbing between Telegram and our handlers |
-| first run from a fresh checkout (`./termcrab`, compiles) | 5596 ms | 30000 ms | the one wait a new user pays, once |
-| rebuild after a `git pull` (incremental) | 1742 ms | 8000 ms | how long "pull, then run" keeps you |
-| a cold checkout: `npm install` (empty npm cache) | 713 ms | 60000 ms | three dev packages, zero runtime ones — on mobile data this is the whole download |
-| a cold checkout, end to end (install → `./termcrab` answers) | 6724 ms | 90000 ms | the complete first contact, measured from nothing |
+| one memory search over 10,000 vectors | 4.9 ms | 200 ms | a chatty month of memory must stay instant |
+| the offline docs page, built (60 docs) | 42.4 ms | 1500 ms | the panel's rebuild button must stay a blink |
+| the built docs page on disk | 2794 KB | 4000 KB | one HTML file a phone has to hold |
+| a chatty group: 200 messages into one room | 23 ms | 1500 ms | every message pays the trim that keeps the room bounded |
+| a queue that was owed: 200 messages queued, acked, swept | 229 ms | 1500 ms | a phone that was offline has to flush without a stall |
+| 50 poll cycles of 50 updates (local stub) | 59 ms | 2000 ms | the plumbing between Telegram and our handlers |
+| first run from a fresh checkout (`./termcrab`, compiles) | 5272 ms | 30000 ms | the one wait a new user pays, once |
+| rebuild after a `git pull` (incremental) | 1780 ms | 8000 ms | how long "pull, then run" keeps you |
+| a cold checkout: `npm install` (empty npm cache) | 702 ms | 60000 ms | three dev packages, zero runtime ones — on mobile data this is the whole download |
+| a cold checkout, end to end (install → `./termcrab` answers) | 6414 ms | 90000 ms | the complete first contact, measured from nothing |
 
 <!-- END BENCH -->
 

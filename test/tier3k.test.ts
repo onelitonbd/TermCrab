@@ -229,7 +229,18 @@ test('40.3 the docs page carries its own footer, on every surface', async () => 
 test('40.4 perf --save files the measurement by release, and says what it replaced', async () => {
   const home = tmpHome('t404save-');
   const saves = tmpHome('t404saves-');
-  const env = { TCRAB_HOME: home, TCRAB_PERF_SAVE_DIR: saves, NO_COLOR: '1', TCRAB_PERF_BENCH: fakeBench() };
+  // 44.1 — this test is about *saving*, so the machine's own load must not
+  // decide it: on a busy box (a phone usually is) batch 41's rule refuses the
+  // save and this test goes red for a reason that has nothing to do with
+  // saving. Pin the load, exactly as the rule's own test does. Found by running
+  // the suite under two CPU burners: 40.4 was the one red test.
+  const env = {
+    TCRAB_HOME: home,
+    TCRAB_PERF_SAVE_DIR: saves,
+    NO_COLOR: '1',
+    TCRAB_PERF_BENCH: fakeBench(),
+    TCRAB_PERF_LOAD: '0',
+  };
 
   const first = await runNodeAsync([CLI, 'perf', '--save', '--json'], 120_000, env);
   assert.equal(first.code, 0, `perf --save: ${first.stderr}`);

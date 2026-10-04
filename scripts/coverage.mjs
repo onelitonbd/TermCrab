@@ -143,7 +143,12 @@ function run() {
   try {
     text = execFileSync(
       process.execPath,
-      ['--test', '--test-timeout=60000', '--experimental-test-coverage', ...testFiles()],
+      // 44.2 — a *recording* must never be cancelled mid-test: node's flag wins
+      // over a test's own deadline, and a cancelled heavy test would land in the
+      // record as a failure that never happened. The daily `npm test` splits the
+      // heavy files out instead (scripts/test-files.mjs); a recording is a
+      // deliberate, occasional run, so it takes one generous deadline.
+      ['--test', '--experimental-test-coverage', '--test-timeout=600000', ...testFiles()],
       {
         cwd: ROOT,
         encoding: 'utf8',

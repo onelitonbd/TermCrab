@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.76.2 - 2026-10-04
+
+**The audit's second pass: two more real defects, both in the test infrastructure — and both the kind that teach people to shrug.**
+
+- **A test whose verdict depended on the machine's mood.** With the box deliberately loaded (what a phone looks like all day), `40.4 perf --save` went red. Nothing about saving had broken: batch 41 added the rule that `--save` refuses on a busy machine, and this test let the machine's real load decide an outcome it never meant to test — on a phone it would fail *by design*, for the wrong reason. It now pins `TCRAB_PERF_LOAD: '0'`, exactly as the busy-rule's own test does, so its verdict is about saving and nothing else.
+- **Two files were cancelled while their work was still running.** `tier3i` and `tier3j` *measure*: the real bench, and a real `npm install` from an empty cache, with child timeouts of 300–600 s. But node's runner cancels a *test* at `--test-timeout`, and — verified, and now asserted — **the CLI flag overrides a test's own `{ timeout }` option**. So on a loaded machine those tests were cancelled mid-measurement and the file came back `not ok` with **zero failing assertions**: the worst kind of red, because it looks like a flake and teaches people to re-run instead of read. Reproduced deterministically with `--test-timeout=8000` (`# fail 0`, `# cancelled 1`, file `not ok`).
+- **One deadline per group, declared once.** `scripts/test-files.mjs` names the split — the heavy group (`tier3i`, `tier3j`, each with its reason) gets 10 minutes because that is what their children were already authorized to take; everything else keeps 60 seconds, so a genuinely hung test still fails quickly. `npm test`, the coverage recording, the CLI-coverage recording and the suite clock all read that one file, so four runners cannot drift apart. The wall-clock budget (240 s) is untouched and remains the alarm for "the suite got slow".
+- **The trap is now a test, not a comment.** `test/tier3n.test.ts` (3 cases) asserts the split (every built file appears exactly once, the heavy files really do spawn minutes-long work, the deadlines differ on purpose), proves the flag-overrides-option behaviour against a throwaway file — with the exact shape that made this look like a flake (`cancelled 1`, `fail 0`) — and checks that `npm test` and all three recordings use the declared numbers.
+- Also in this release: the tracker's own test now accepts a small batch (batch 44 is two rows; the guarantee is "never empty", not "padded to four").
+- Tests: **1037 cases over 102 files**; census **100%** of 162 in-scope checks (WORKING 117 · **BETTER 44** · PARTIAL 1 — the CI push), drift 0; coverage **87.43%** of `src/` lines (floor 80, fingerprint `fe3c7162f9761392`); the suite clock records **102 files · 1037 cases · 144.1 s** (budget 240 s). Release **0.76.2**, following `v0.76.1`.
+
+
 ## 0.76.1 - 2026-10-04
 
 **A defect the closing audit found — and the flake it was hiding behind.** The last full-suite runs had one red test among 1034: `33.5 dictation runs a real recognizer`, which passes 3/3 when run alone. A test that only fails under load is the kind of thing a project leans on as "flaky" — it was not noise.

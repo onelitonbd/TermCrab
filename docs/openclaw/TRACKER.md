@@ -10,10 +10,10 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ১০০%।** ১৭৮টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ৪২টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **এখনকার স্কোর: ১০০%।** ১৮০টা ক্যাপাবিলিটির মধ্যে ১১৭টা পুরো কাজ করে (WORKING), ৪৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
 - **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~১০ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
-- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৭৮টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
+- **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৮০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
 
 - **তাই সিদ্ধান্ত:** সব লাইনে ম্যাচ করো না। **ফোন-ফার্স্ট লাইনে জিতে যাও**, বাকিটার জন্য দরজা খোলা রাখো (plugin API), আর বাকি জিনিসগুলো consciously "later" লিস্টে ফেলে দাও — সেটাও এই ডকুমেন্টে লেখা আছে, যাতে ভুলে না যাও।
@@ -53,12 +53,12 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 | Verdict | Count | Meaning |
 |---|---:|---|
 | ✅ WORKING | 117 | wired and observable |
-| 🏅 BETTER | 42 | TermCrab is ahead of OpenClaw here |
+| 🏅 BETTER | 44 | TermCrab is ahead of OpenClaw here |
 | 🟡 PARTIAL | 1 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
-| | **160** | in-scope capabilities (178 measured in total) |
+| | **162** | in-scope capabilities (180 measured in total) |
 
 **Capability score 100%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 131 | ~10d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 133 | ~10d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 160 | ~13d | in-scope only |
+| **total** | 162 | ~13d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -201,7 +201,7 @@ Out of scope, and why:
 | Transcription | realtime transcription service | ✅ WORKING | offline transcription of any audio file through whisper.cpp: findWhisperBin looks on PATH (whisper-cli, whisper) then in the usual checkout builds, findWhisperModel prefers tiny > base > small > large and honours --model and WHISPER_MODEL, transcribeFile spawns the documented argv (-m <model> -f <file> -np [-l lang]), never throws, and answers a missing engine or model with the exact install/download sentence. Voice notes arriving on a channel are transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone (src/channels/intake.ts), and `termcrab transcribe <file> --json` is the same path on the command line with an envelope (it used to print a friendly line instead). Realtime here means phrase-by-phrase: continuous listening emits each phrase as the recognizer returns it (stt:result over SSE) and restarts immediately after it; what is not attempted is partial-hypothesis streaming ASR (words appearing while you are still speaking). test/tier2y.test.ts drives a fake whisper-cli end to end (happy path, argv, CLI JSON, the transcript reaching the agent prompt, missing model, engine failure, deadline) | parity | — |
 | Native GUI / foreground service | desktop apps + node apps | 🚫 OUT OF SCOPE | no companion app; a persistent notification is the closest — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 
-### ops — 98% (31 in-scope checks, 1 out of scope)
+### ops — 98% (33 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -226,6 +226,8 @@ Out of scope, and why:
 | The suite's clock on the phone (41.3) | CI dashboards on a web service | 🏅 BETTER | GET /api/suite-time serves the last recorded suite run (docs/openclaw/data/suite-time.json, written by npm run test:time): wall clock, file and case counts, the five slowest files, the budgets and whether the run was over — read-only and cheap, because it reads a recording and never runs the suite. The panel's Work page prints `(99 files · 1024 cases · 165.5 s of 240.0 s · slowest tier3j 40.4 s · recorded 7 min ago)`, so "the tests got slow" is a visible fact on the phone. Pinned by test/tier3l.test.ts 41.3 (fabricated record, over-budget flag, the repository's own record, a real gateway) | parity | — |
 | A bad measurement is refused (41.4) | n/a | 🏅 BETTER | Every snapshot records what the machine was carrying (`load: {load1, cpus, perCpu}`, `suspect`); above 1 per CPU every timing is an upper bound, not a measurement of the code. `termcrab perf` prints it, perfStatus() carries it, the doctor repeats it with a fix line, and `--save` **refuses** — a misleading number committed to the repository outlives the machine that made it; `--trust` overrides and the file records the load. TCRAB_PERF_LOAD exists so the rule itself is tested without making a machine busy (test/tier3l.test.ts 41.4: the boundary at exactly 1.0, the refusal writing nothing, the trusted save carrying suspect + perCpu, the doctor's line) | parity | — |
 | The docs budget where the docs line is (41.5) | n/a | 🏅 BETTER | The panel's docs note (release, doc/section counts, size, freshness) now also quotes the docs page's own budget from the /api/perf snapshot: `build 43 ms of 1500 · 2777 KB of 4000 KB`, read once and shared, so the two places a person looks quote one measurement. perfStatus() carries metrics and budget for every ceiling, and the test asserts the panel reads those exact fields (test/tier3l.test.ts 41.5) | parity | — |
+| A load-dependent test is a defect too (44.1) | n/a | 🏅 BETTER | Running the suite under two CPU burners turned 40.4 red — not because saving broke, but because batch 41 added the busy-machine rule and the *test* used the machine's real load to decide an outcome it did not mean to test (on a phone, which is usually busy, `perf --save` refuses by design). The test now pins the load exactly as the rule's own test does, so its verdict is about saving and nothing else. Pinned by test/tier3k.test.ts 40.4 (TCRAB_PERF_LOAD: 0 in the env) | parity | — |
+| One deadline per group (44.2) | a suite that re-runs until it is green | 🏅 BETTER | node cancels a test at `--test-timeout` and **the CLI flag overrides the test's own `{ timeout }`** — so the two measuring files (`tier3i`: the real bench; `tier3j`: a real npm install) were cancelled on a loaded machine while their children were still working, and came back `not ok` with zero failing assertions. scripts/test-files.mjs declares the split once (heavy: 600 s with the reason; fast: 60 s so a hung test still fails quickly), `npm test`, the coverage recording, the CLI recording and the suite clock all read it, and test/tier3n.test.ts asserts the override against a throwaway file — so the reason the split exists cannot quietly stop being true | parity | — |
 | The closing numbers, read back (42.1) | n/a | 🏅 BETTER | Every number the tracker quotes — the census score, the suite counts, the coverage floor and fingerprint, the CLI command coverage, the suite clock, the performance budget — is *produced* in docs/openclaw/data/*.json. scripts/final-numbers.mjs loads those files, prints each number with the file it came from, and `--check` (and test/tier3m.test.ts 42.1) refuses when WORKLOG.md's numbers line no longer quotes them, in the Bengali digits the tracker is written in. A quoted number that nobody re-derives is a number that will one day be wrong | parity | — |
 | The owner handover, declared once (42.2) | an issue tracker with nobody assigned | 🏅 BETTER | After the closing batch exactly two actions need a token or a push, and they live in ONE place: src/core/owner.ts declares each action's commands, what it closes, what to expect and where the proof lands; `termcrab owner` prints them, `docs/OWNER.md` is the long version, and test/tier3m.test.ts 42.2 asserts every declared command still appears on the page under its own heading. The handover cannot say one thing on the phone and another in the docs | parity | — |
 | The queue can end (42.3) | a roadmap that only grows | 🏅 BETTER | WORKLOG.md §3 can now be the sentence **Queue empty.** instead of another batch, and the tracker test accepts that only when every row is finished or in progress and none is stranded at a todo nobody will start; scripts/status.mjs prints `queue empty…` instead of a count of zero, and test/tier3m.test.ts 42.3 asserts both the human line and the --json flags. New batches are written when the owner asks for one or something real breaks — not because the table looks empty | parity | — |

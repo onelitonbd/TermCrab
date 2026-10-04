@@ -96,7 +96,9 @@ function run() {
   fs.writeFileSync(log, '');
   process.stderr.write('running the full suite with the coverage hook set (≈80s)…\n');
   try {
-    execFileSync(process.execPath, ['--test', '--test-timeout=60000', ...listTests()], {
+    // 44.2 — a cancelled test runs no command, so a tight deadline would quietly
+    // shrink the recorded coverage. The daily `npm test` keeps the tight one.
+    execFileSync(process.execPath, ['--test', '--test-timeout=600000', ...listTests()], {
       cwd: ROOT,
       stdio: ['ignore', 'ignore', 'inherit'],
       env: { ...process.env, TCRAB_CLI_COVERAGE: log },

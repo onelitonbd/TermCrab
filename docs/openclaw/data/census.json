@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T09:50:13.934Z",
+ "measured": "2026-10-04T11:14:59.736Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 42,
+  "BETTER": 44,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 160,
+ "inScope": 162,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -3310,6 +3310,46 @@
   },
   {
    "area": "ops",
+   "capability": "A load-dependent test is a defect too (44.1)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "Running the suite under two CPU burners turned 40.4 red — not because saving broke, but because batch 41 added the busy-machine rule and the *test* used the machine's real load to decide an outcome it did not mean to test (on a phone, which is usually busy, `perf --save` refuses by design). The test now pins the load exactly as the rule's own test does, so its verdict is about saving and nothing else. Pinned by test/tier3k.test.ts 40.4 (TCRAB_PERF_LOAD: 0 in the env)",
+   "probe": {
+    "file": "test/tier3k.test.ts",
+    "pattern": "TCRAB_PERF_LOAD",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): test/tier3k.test.ts:242"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "One deadline per group (44.2)",
+   "openclaw": "a suite that re-runs until it is green",
+   "verdict": "BETTER",
+   "evidence": "node cancels a test at `--test-timeout` and **the CLI flag overrides the test's own `{ timeout }`** — so the two measuring files (`tier3i`: the real bench; `tier3j`: a real npm install) were cancelled on a loaded machine while their children were still working, and came back `not ok` with zero failing assertions. scripts/test-files.mjs declares the split once (heavy: 600 s with the reason; fast: 60 s so a hung test still fails quickly), `npm test`, the coverage recording, the CLI recording and the suite clock all read it, and test/tier3n.test.ts asserts the override against a throwaway file — so the reason the split exists cannot quietly stop being true",
+   "probe": {
+    "file": "scripts/test-files.mjs",
+    "pattern": "export function plan",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): scripts/test-files.mjs:59"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "The closing numbers, read back (42.1)",
    "openclaw": "n/a",
    "verdict": "BETTER",
@@ -3325,7 +3365,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): scripts/final-numbers.mjs:190"
+    "detail": "1 match(es): scripts/final-numbers.mjs:203"
    }
   },
   {
@@ -3466,7 +3506,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): docs/TESTING.md:87"
+    "detail": "1 match(es): docs/TESTING.md:110"
    }
   },
   {

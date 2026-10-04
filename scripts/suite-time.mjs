@@ -208,7 +208,10 @@ function runSuite() {
   try {
     execFileSync(
       process.execPath,
-      ['--test', '--test-timeout=60000', `--test-reporter=${SELF}`, ...files],
+      // 44.2 — same rule as the coverage recording: a cancelled heavy test would
+      // be recorded as a failure that never happened. The budget gate below is
+      // what tells a person the suite got slow.
+      ['--test', '--test-timeout=600000', `--test-reporter=${SELF}`, ...files],
       { cwd: ROOT, env: { ...process.env, TCRAB_SUITE_EVENTS: eventsFile }, stdio: ['ignore', 'inherit', 'inherit'] },
     );
   } catch (err) {
