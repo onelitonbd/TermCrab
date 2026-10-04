@@ -44,35 +44,34 @@
 
 ---
 
-## 2. Now — batch 39: the numbers a phone feels while using it (this commit)
+## 2. Now — batch 40: the surfaces keep their own promises (this commit)
 
-Batch 38 carried the budget to the CLI, the panel, the terminal and the suite's own clock; `v0.72.0`
-is tagged and published. Batch 39 measures the parts of the product that only a person using it can
-feel — search over a real index, the docs page being built, the Telegram loop on a chatty group, and
-the very first clone-to-first-answer path.
+Batch 39 measured what a phone feels; `v0.73.0` is tagged and published. Batch 40 makes the same
+discipline reach the two surfaces that have been describing themselves in words — the panel's own
+weight, and the doctor that a person runs when something feels slow.
 
 | # | Step | Status | Evidence |
 |---|---|---|---|
-| 39.1 | A history, not just a snapshot | ✔ done | every `termcrab perf` run appends one line to `state/perf-history.jsonl` (**newest 60**, oldest dropped). With two or more runs the command prints the movement — `coldStartMs ↑ 46% over 4 run(s) (100 ms → 146 ms)` — and the panel shows it through `GET /api/perf` (`runs`, `trend`, `lastOverAt`). `↑` = slower or bigger (worse for every metric here); a move under **3% reads as flat**, so jitter is not mistaken for a regression. `TCRAB_PERF_HISTORY` points the series elsewhere, a torn line is not a run, and `describeTrend()` is one implementation for the CLI and the panel. `test/tier3j.test.ts` 39.1 (4 cases: the append/bound/torn-line file, the trend semantics, three **real CLI runs** — one, two, three recorded — and the env override, plus a real gateway) |
-| 39.2 | Memory search gets a budget | ✔ done | `searchMs` — **one search over 10 000 vectors** (about a year of memory on a phone) with a **200 ms** ceiling, measured with a deterministic local pseudo-embedder so the number is *our* filter/cosine/sort and not somebody's API. Measured: **~7 ms** (p90 8.4 ms over 10 000 rows). `test/tier3j.test.ts` 39.2 builds the real 10 000-row index, asserts the top hit is the queried row, that the median is inside the ceiling, that the bench and `termcrab perf` report it, and that `docs/PERFORMANCE.md` says what the number does **not** claim (not a remote embedder's latency, not a phone's speed) |
-| 39.3 | The docs page gets a budget | ✔ done | `docsMs` (**1500 ms**) and `docsKb` (**4000 KB**) — the two numbers that matter for the offline page: how long a rebuild takes (`termcrab docs rebuild`, the panel's rebuild button) and the one file a phone has to hold. Measured: **49 ms** and **2754 KB**. The doc points at what keeps it small (`docs/openclaw/data` excluded — 47 MB of raw crawl) and adds both to the "when a ceiling trips" list. `test/tier3j.test.ts` 39.3 |
-| 39.4 | The Telegram loop gets a budget | ✔ done | three loops a person feels, measured in a throwaway `TCRAB_HOME` and against a local Bot API stub: **`roomWriteMs`** (~180 ms — 200 group messages into one room at its cap, every append paying the read-and-trim that keeps the log bounded to 200 messages / 64 KB), **`outboxDrainMs`** (~257 ms — 200 owed messages queued, claimed, acked, swept: a phone that was offline must flush without a stall) and **`telegramPollMs`** (~63 ms — 50 poll cycles of 50 updates through the real `TelegramApi`). Ceilings 1500/1500/2000 ms. `test/tier3j.test.ts` 39.4 also asserts the room really stays bounded at `ROOM_MAX_MESSAGES` |
-| 39.5 | The cold checkout, from nothing | ✔ done | the first contact a new person pays, measured with no shortcuts: a copy of the tree with **no `dist/`, no `node_modules`, and an isolated npm cache** (so it cannot freeload on this machine), then `npm install` and `./termcrab version` (which compiles). Measured: **install 735 ms, end to end 6.35 s**. Ceilings **60 s / 90 s**; `--first-run` is what measures them. `test/tier3j.test.ts` 39.5 runs the real cold path (real npm, real launcher) and asserts both numbers, both ceilings, and that the fast `termcrab perf` lists them as *skipped* rather than zero |
+| 40.1 | The panel's own budget | ☐ todo | the panel HTML and the gateway's first byte get ceilings, so the Work page cannot become heavy by accident |
+| 40.2 | Doctor reports the measurement | ☐ todo | `termcrab doctor` says how old `state/perf.json` is and whether anything was over, next to the other checks |
+| 40.3 | The docs page's footer, on every surface | ☐ todo | the built docs page shows its release and build time in its own footer, matching `docs status` and the panel |
+| 40.4 | `termcrab perf --save` into the tracker | ☐ todo | the measurement is checked into `docs/openclaw/data/` by release, so "how fast was 0.73" is answerable offline |
+| 40.5 | The queue's numbers | ☐ todo | turn queue depth, wait time and subagent slots get ceilings — the parts that make a phone feel slow while it is busy |
 
-### What batch 39 is *not*
+### What batch 40 is *not*
 
-- Not a claim that a phone is fast. Every ceiling is measured on the box that runs the suite, and `docs/PERFORMANCE.md` says what the numbers are not.
-- Not a benchmark of a provider: everything offline (`mock` brain), so a number is about this code.
+- Not a new measurement system: every number it adds reuses `scripts/bench.mjs` and `PERF_CEILINGS`, so there is still exactly one place a ceiling is declared.
+- Not a promise about a busy phone: the ceilings stay regression alarms on the machine that runs the suite, and the panel says which machine it measured on.
 
-## 3. Next — batch 40: the surfaces keep their own promises
+## 3. Next — batch 41: the surfaces people use when something is wrong
 
 | # | Step | Status | Acceptance test |
 |---|---|---|---|
-| 40.1 | The panel's own budget | ☐ todo | the panel HTML and the gateway's first byte get ceilings, so the Work page cannot become heavy by accident |
-| 40.2 | Doctor reports the measurement | ☐ todo | `termcrab doctor` says how old `state/perf.json` is and whether anything was over, next to the other checks |
-| 40.3 | The docs page says when it was built — on every surface | ☐ todo | the docs page's own footer shows the release and the age, matching `docs status` and the panel |
-| 40.4 | `termcrab perf --save` in the tracker | ☐ todo | the measurement is checked into `docs/openclaw/data/` by release, so "how fast was 0.72" is answerable offline |
-| 40.5 | The queue's numbers | ☐ todo | turn queue depth, wait time and subagent slots get ceilings — the parts that make a phone feel slow while it is busy |
+| 41.1 | The panel names the slowest thing | ☐ todo | the Work page links the worst metric to the fix line for it, from the same table `docs/PERFORMANCE.md` carries |
+| 41.2 | `termcrab perf --compare` | ☐ todo | the current run against a saved one: what got slower, by how much, with the ceiling of each — offline and deterministic |
+| 41.3 | The suite's clock in the panel | ☐ todo | `state/` gets the last suite time and the panel shows it, so "the tests got slow" is visible without a shell |
+| 41.4 | A bad measurement is refused | ☐ todo | a snapshot measured while another heavy process ran is flagged (CPU count, load average), and `--save` says so rather than committing a misleading number |
+| 41.5 | The docs page's own budget in the panel | ☐ todo | the Work page's docs line shows `docsMs`/`docsKb` next to the release, from the same snapshot |
 
 ### 35.3 What is left, and why — verdicts, not promises
 
