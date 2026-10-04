@@ -1,5 +1,5 @@
 {
- "measured": "2026-10-04T11:14:59.736Z",
+ "measured": "2026-10-04T11:53:08.741Z",
  "tally": {
   "WORKING": 117,
   "BETTER": 44,
@@ -3536,7 +3536,7 @@
    "capability": "Documentation site",
    "openclaw": "full docs site, thousands of pages",
    "verdict": "WORKING",
-   "evidence": "termcrab docs builds docs/ into ONE self-contained HTML page (58 docs, 297 sections, ~2.7 MB, 80 ms) that opens offline from the phone file manager and is served at GET /docs; search hits every ## section, and the markdown is rendered by the panel's own renderer sliced verbatim out of ui/index.html (byte-identity asserted), so there is no second implementation to drift. Not thousands of separate pages, and no per-version archive: one file, rebuilt when a source changes (mtime stamp), with generated crawl data excluded by path - reported in the page's nav, not dropped silently",
+   "evidence": "termcrab docs builds docs/ into ONE self-contained HTML page (61 docs, 329 sections, ~2.8 MB, ~80 ms) that opens offline from the phone file manager and is served at GET /docs; search hits every ## section, and the markdown is rendered by the panel's own renderer sliced verbatim out of ui/index.html (byte-identity asserted), so there is no second implementation to drift. Not thousands of separate pages, and no per-version archive: one file, rebuilt when a source changes (mtime stamp), with generated crawl data excluded by path - reported in the page's nav, not dropped silently",
    "probe": {
     "paths": [
      "src/docs/site.ts",

@@ -281,7 +281,15 @@ test('36.4 the page says which release it is and when it was built', { concurren
     assert.match(site.html, new RegExp(`<meta name="release" content="${pkg.version.replace(/\./g, '\\.')}">`));
     assert.match(site.html, /<span id="stampVersion">\d+\.\d+\.\d+<\/span>/);
     assert.match(site.html, /built 2026-10-04 12:34 UTC/);
-    assert.match(site.html, /58 docs, \d+ sections/, 'the header says what is inside');
+    // The count is read from the page's own meta, not hard-coded: a new document
+    // (docs/ADDED.md) must not be able to make this line lie or break — what is
+    // asserted is that the header and the machine-readable count agree.
+    const metaCount = /<meta name="docs-count" content="(\d+)"/.exec(site.html)?.[1];
+    assert.ok(metaCount, 'the page declares its doc count');
+    assert.ok(
+      site.html.includes(`${metaCount} docs, `),
+      `the header says what is inside (${metaCount} docs)`,
+    );
   });
 
   await t.test('an explicit release overrides it, so a rebuilt old page can say so', () => {
