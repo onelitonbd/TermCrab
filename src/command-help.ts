@@ -366,14 +366,15 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'docs',
-    usage: 'docs [build | rebuild | path] [--keep] [--json]',
+    usage: 'docs [build | rebuild | status | path] [--keep] [--json]',
     summary: 'every doc as one offline HTML page — searchable, zero-dependency, rendered by the panel\'s own markdown renderer',
     flags: [
       'build          build it if it is stale (the default), reusing the file otherwise',
       'rebuild        build it again even if it looks fresh',
       '--keep         also write docs-site-<release>.html and keep the last 5 releases',
+      'status         is the page still what is on disk? release, age, and what changed since (38.4)',
       'path           just print where the file is',
-      '--json         {file, bytes, docs, sections, builtAt, rebuilt}',
+      '--json         {file, bytes, docs, sections, builtAt, rebuilt} (status adds release, age, staleDocs, stale, kept)',
     ],
     example: 'termcrab docs && echo "open: $(termcrab docs path)"',
     json: '{file, bytes, docs, sections, builtAt, rebuilt}',

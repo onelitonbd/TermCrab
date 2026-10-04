@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T04:38:25.214Z",
+ "measured": "2026-10-04T06:21:08.765Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 18,
+  "BETTER": 23,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 136,
+ "inScope": 141,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1426"
+    "detail": "1 match(es): src/gateway/server.ts:1435"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1428"
+    "detail": "2 match(es): src/gateway/server.ts:1437"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:310"
+    "detail": "1 match(es): src/gateway/server.ts:311"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2542"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2551"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1233"
+    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1234"
    }
   },
   {
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1620, src/mobile/doctor.ts:575"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1629, src/mobile/doctor.ts:575"
    }
   },
   {
@@ -530,7 +530,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:483"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:494"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1656"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1665"
    }
   },
   {
@@ -646,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "719 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "722 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -805,7 +805,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:671"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:672"
    }
   },
   {
@@ -843,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3070"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3138"
    }
   },
   {
@@ -1001,7 +1001,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3008"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:3076"
    }
   },
   {
@@ -1553,7 +1553,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:558, src/mobile/doctor.ts:427"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:559, src/mobile/doctor.ts:427"
    }
   },
   {
@@ -1724,7 +1724,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:918"
+    "detail": "1 match(es): src/gateway/server.ts:919"
    }
   },
   {
@@ -1942,7 +1942,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:414"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:415"
    }
   },
   {
@@ -2105,6 +2105,46 @@
   },
   {
    "area": "surfaces",
+   "capability": "The budget on the panel (38.2)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "GET /api/perf returns perfStatus() — age in words, measured/total, the worst metric (furthest along its ceiling, with the percentage), the over list, the machine — read from state/perf.json that `termcrab perf` wrote. The route never measures anything (a measurement boots a gateway and runs a turn, and the Work page asks on every refresh); with nothing measured yet it says \"never measured\" instead of showing zeros. humanAge has one implementation (src/core/format.ts) shared with the docs freshness. Pinned by test/tier3i.test.ts 38.2 (the never-measured case, a real gateway, a snapshot read back as \"1 min ago\", the panel markup)",
+   "probe": {
+    "file": "ui/index.html",
+    "pattern": "perfNote",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): ui/index.html:2765"
+   }
+  },
+  {
+   "area": "surfaces",
+   "capability": "Docs freshness on the terminal (38.4)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "`termcrab docs status [--json]` prints the release the offline docs page describes, how long ago it was built, whether a doc changed since and which per-release copies exist — from the same docsSiteFreshness() the panel reads, so the terminal, the panel and the tests cannot disagree. Exit 0 either way: a stale page is a fact, not an error, and the sentence names the fix (`termcrab docs rebuild`). Pinned by test/tier3i.test.ts 38.4 (never built, built, an edited doc reported as stale without failing, --json fields, the help entry and docs/CLI.md)",
+   "probe": {
+    "file": "src/cli.ts",
+    "pattern": "sub === 'status'",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "4 match(es): src/cli.ts:2136"
+   }
+  },
+  {
+   "area": "surfaces",
    "capability": "Web control UI",
    "openclaw": "React+Vite dashboard, rebuilt in 2.0",
    "verdict": "WORKING",
@@ -2120,7 +2160,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2767"
+    "detail": "1 match(es): ui/index.html:2770"
    }
   },
   {
@@ -2219,7 +2259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "80 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "82 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2238,7 +2278,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:621"
+    "detail": "2 match(es): src/cli.ts:436, src/command-help.ts:632"
    }
   },
   {
@@ -2626,7 +2666,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2971"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2980"
    }
   },
   {
@@ -2948,6 +2988,66 @@
   },
   {
    "area": "ops",
+   "capability": "The budget as a command (38.1)",
+   "openclaw": "benchmarks you have to remember to run",
+   "verdict": "BETTER",
+   "evidence": "`termcrab perf [--full] [--json]` runs scripts/bench.mjs — the same measurements the suite gate runs, never a second implementation — prints every number next to its ceiling, writes state/perf.json (numbers + the machine: node/platform/arch/cpus/mem + which ceilings the run did not measure), and exits 1 when anything is over. The ceilings live once, in src/core/perf.ts (PERF_CEILINGS), and bench.mjs imports them from the built file, so the alarm in the suite and the alarm on the phone cannot drift. A checkout without scripts/bench.mjs gets one sentence instead of a stack trace. Pinned by test/tier3i.test.ts 38.1 (envelope + snapshot, human table, a fake bench via TCRAB_PERF_BENCH proving exit 1, the missing-script path)",
+   "probe": {
+    "file": "src/core/perf.ts",
+    "pattern": "export function measurePerf",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/core/perf.ts:83"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "A suite with a clock (38.3)",
+   "openclaw": "no timing discipline",
+   "verdict": "BETTER",
+   "evidence": "npm run test:time runs the whole suite once with a per-file reporter, records docs/openclaw/data/suite-time.json (wall clock, every file, the five slowest, the budget) and refuses (exit 1) a run over its ceiling (whole run 240 s, no file over 90 s); the slowest files are named in docs/TESTING.md in a generated block, so \"the suite got slow\" is a failing check rather than a feeling. `--check` reads the record without running anything, which is what test/tier3i.test.ts 38.3 asserts (plus the summariser semantics: nested durations do not double-count, a fabricated over-budget record names both the wall and the file)",
+   "probe": {
+    "file": "scripts/suite-time.mjs",
+    "pattern": "export const SUITE_BUDGETS",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): scripts/suite-time.mjs:36"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "The owner's two minutes, written down (38.5)",
+   "openclaw": "a README and hope",
+   "verdict": "BETTER",
+   "evidence": "docs/OWNER.md is the short list of things only the person holding the phone can do — the CI push (with the exact four commands and what it closes: the last PARTIAL census row), the live Telegram smoke with --record (and the evidence file with a token fingerprint instead of a token), one real turn through the wizard, and the panel on the phone with the token rule — each with the command, what it should print, and the evidence it leaves. test/tier3i.test.ts 38.5 extracts every `termcrab <command>` on the page and asserts it exists in src/command-help.ts and in `termcrab help`, so the page cannot rot into instructions that no longer run",
+   "probe": {
+    "file": "docs/OWNER.md",
+    "pattern": "npm run ci:install",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): docs/OWNER.md:15"
+   }
+  },
+  {
+   "area": "ops",
    "capability": "Performance budget with an alarm (37.1)",
    "openclaw": "benchmarks exist, nothing enforces them",
    "verdict": "BETTER",
@@ -2963,7 +3063,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): scripts/bench.mjs:58"
+    "detail": "1 match(es): scripts/bench.mjs:67"
    }
   },
   {
@@ -2983,7 +3083,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): docs/TESTING.md:62"
+    "detail": "1 match(es): docs/TESTING.md:87"
    }
   },
   {

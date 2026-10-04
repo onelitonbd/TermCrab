@@ -446,7 +446,7 @@ test('34.8 the two ways in: termcrab docs, and GET /docs', { concurrency: false 
   await t.test('the CLI proves it is a real command, not an unknown one', () => {
     const help = cli(['help', 'docs']);
     assert.equal(help.code, 0, help.stderr);
-    assert.match(help.stdout, /docs \[build \| rebuild \| path\]/);
+    assert.match(help.stdout, /docs \[build \| rebuild \| status \| path\]/);
     const bad = cli(['docs', 'nonsense']);
     assert.equal(bad.code, 1, 'an unknown subcommand is an error');
   });

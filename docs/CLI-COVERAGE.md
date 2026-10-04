@@ -11,7 +11,7 @@ actually runs it through the built binary. The number below is a recording, not 
 
 | Command | In `src/cli.ts` | Times run |
 |---|---|---|
-| `termcrab help` | line 409 | 16 |
+| `termcrab help` | line 409 | 18 |
 | `termcrab completion` | line 429 | 3 |
 | `termcrab version` | line 446 | 7 |
 | `termcrab gateway` | line 485 | 9 |
@@ -47,16 +47,16 @@ actually runs it through the built binary. The number below is a recording, not 
 | `termcrab sessions` | line 2349 | 13 |
 | `termcrab subagents` | line 2554 | 3 |
 | `termcrab agents` | line 2615 | 6 |
-| `termcrab docs` | line 2698 | 8 |
-| `termcrab security` | line 2735 | 4 |
-| `termcrab board` | line 2758 | 2 |
-| `termcrab rooms` | line 2773 | 4 |
-| `termcrab browser` | line 2853 | 5 |
-| `termcrab transcribe` | line 2920 | 1 |
-| `termcrab embeddings` | line 2954 | 6 |
-| `termcrab context` | line 3014 | 1 |
-| `termcrab memory` | line 3034 | 6 |
-| `termcrab config` | line 3170 | 5 |
+| `termcrab docs` | line 2698 | 14 |
+| `termcrab security` | line 2764 | 4 |
+| `termcrab board` | line 2787 | 2 |
+| `termcrab rooms` | line 2802 | 4 |
+| `termcrab browser` | line 2882 | 5 |
+| `termcrab transcribe` | line 2949 | 1 |
+| `termcrab embeddings` | line 2983 | 6 |
+| `termcrab context` | line 3043 | 1 |
+| `termcrab memory` | line 3063 | 6 |
+| `termcrab config` | line 3199 | 5 |
 
 ## Not run by the suite — and what covers it instead
 

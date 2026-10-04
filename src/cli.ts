@@ -2709,6 +2709,35 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         console.log(file);
         return;
       }
+      if (sub === 'status') {
+        // 38.4: the third surface sees what the panel sees (37.2) — the same
+        // docsSiteFreshness(), so the terminal, the Work page and the tests
+        // cannot disagree about whether the page is current.
+        const { docsSiteFreshness } = await import('./docs/site.js');
+        const f = docsSiteFreshness();
+        if (machine) {
+          emitJson('docs', f);
+          return;
+        }
+        if (!f.exists) {
+          console.log(`📖 no docs page yet — build it: termcrab docs\n   would be: ${f.file}`);
+          return;
+        }
+        const size = `${Math.round(f.bytes / 1024)} KB`;
+        const line =
+          f.staleDocs > 0
+            ? `${f.staleDocs} doc(s) changed since — rebuild: termcrab docs rebuild`
+            : f.releaseBehind
+              ? `built for release ${f.release || 'unknown'}, this project is ${f.currentRelease} — rebuild: termcrab docs rebuild`
+              : 'up to date';
+        console.log(
+          `📖 ${f.docs} docs, ${f.sections} sections, ${size} · release ${f.release || 'unknown'} · built ${f.age} · ${line}\n   ${f.file}${
+            f.kept.length ? `\n   kept: ${f.kept.map((k) => path.basename(k)).join(', ')}` : ''
+          }`,
+        );
+        // A stale page is not an error — it is a fact, and rebuilding is a choice.
+        return;
+      }
       if (sub === 'build' || sub === 'rebuild') {
         // `--keep` also writes docs-site-<release>.html, so the docs as of a
         // release stay readable after the next one changes them (36.3).
@@ -2727,7 +2756,7 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         }
         return;
       }
-      console.error('usage: termcrab docs [build | rebuild | path] [--keep] [--json]');
+      console.error('usage: termcrab docs [build | rebuild | status | path] [--keep] [--json]');
       process.exitCode = 1;
       return;
     }

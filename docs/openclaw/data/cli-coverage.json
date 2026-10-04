@@ -60,7 +60,7 @@
     {
       "command": "help",
       "line": 409,
-      "runs": 16
+      "runs": 18
     },
     {
       "command": "completion",
@@ -240,51 +240,51 @@
     {
       "command": "docs",
       "line": 2698,
-      "runs": 8
+      "runs": 14
     },
     {
       "command": "security",
-      "line": 2735,
+      "line": 2764,
       "runs": 4
     },
     {
       "command": "board",
-      "line": 2758,
+      "line": 2787,
       "runs": 2
     },
     {
       "command": "rooms",
-      "line": 2773,
+      "line": 2802,
       "runs": 4
     },
     {
       "command": "browser",
-      "line": 2853,
+      "line": 2882,
       "runs": 5
     },
     {
       "command": "transcribe",
-      "line": 2920,
+      "line": 2949,
       "runs": 1
     },
     {
       "command": "embeddings",
-      "line": 2954,
+      "line": 2983,
       "runs": 6
     },
     {
       "command": "context",
-      "line": 3014,
+      "line": 3043,
       "runs": 1
     },
     {
       "command": "memory",
-      "line": 3034,
+      "line": 3063,
       "runs": 6
     },
     {
       "command": "config",
-      "line": 3170,
+      "line": 3199,
       "runs": 5
     }
   ],
@@ -333,7 +333,7 @@
     },
     {
       "command": "boot",
-      "line": 3156,
+      "line": 3185,
       "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
       "instead": "test/tier2w.test.ts"
     }
@@ -349,7 +349,7 @@
     "wait": 1,
     "stop": 2,
     "version": 7,
-    "help": 16,
+    "help": 18,
     "not-a-command": 3,
     "completion": 3,
     "status": 3,
@@ -386,7 +386,7 @@
     "agent": 1,
     "heartbeat": 2,
     "wake": 1,
-    "docs": 8,
+    "docs": 14,
     "perf": 5
   }
 }

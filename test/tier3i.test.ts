@@ -628,3 +628,193 @@ test('38.2 the panel reads the last measurement — and says so when there is no
     else process.env.TCRAB_TELEGRAM_RUNS = previous.runs;
   }
 });
+
+// ------------------------------------------------------------------- 38.3
+
+test('38.3 the suite has a clock: a recorded run, per-file numbers, and a budget that fails', async () => {
+  // bench and suite-time are both .mjs scripts outside the test tsconfig, so a
+  // real Node process is asked for their behaviour — which also proves the
+  // module is importable by a stranger.
+  const probe = `
+    import('./scripts/suite-time.mjs').then((m) => {
+      const rows = m.summarizeEvents([
+        { file: '/x/a.test.js', name: 'one', nesting: 0, ms: 10, status: 'pass' },
+        { file: '/x/a.test.js', name: 'child', nesting: 1, ms: 99, status: 'pass' },
+        { file: '/x/a.test.js', name: 'two', nesting: 0, ms: 30, status: 'fail' },
+        { file: '/x/b.test.js', name: 'three', nesting: 0, ms: 5, status: 'pass' },
+      ]);
+      const fabricated = m.buildRecord({ wallMs: 1000000, events: [{ file: '/x/a.test.js', name: 'one', nesting: 0, ms: 999999, status: 'pass' }] });
+      console.log(JSON.stringify({
+        budget: m.SUITE_BUDGETS,
+        rows: rows.map((r) => [r.file, Math.round(r.ms), r.cases, r.topTests, r.fail]),
+        over: fabricated.over,
+        block: m.renderDocBlock(fabricated),
+      }));
+    });`;
+  const probed = JSON.parse(
+    execFileSync(process.execPath, ['--input-type=module', '-e', probe], { cwd: ROOT, encoding: 'utf8', timeout: 60_000 }),
+  ) as {
+    budget: { wallMs: { max: number }; fileMs: { max: number } };
+    rows: [string, number, number, number, number][];
+    over: string[];
+    block: string;
+  };
+  assert.ok(probed.budget.wallMs.max > 30_000, 'the wall ceiling is a real number of seconds');
+  assert.ok(probed.budget.fileMs.max > 10_000, 'and so is the per-file one');
+
+  // The summariser: top-level durations add up per file, nested ones do not
+  // double-count, and a failure is counted where it is reported.
+  assert.deepEqual(
+    probed.rows,
+    [
+      ['a.test.js', 40, 3, 2, 1],
+      ['b.test.js', 5, 1, 1, 0],
+    ],
+    'one row per file, sorted slowest first',
+  );
+  assert.deepEqual(probed.over, ['wallMs', 'a.test.js'], 'over-budget runs name both the wall and the file');
+  assert.ok(probed.block.includes('a.test.js'), 'and the doc block names the slowest file');
+
+  // The recorded run — the real suite — is inside its budget.
+  const record = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'docs/openclaw/data/suite-time.json'), 'utf8'),
+  ) as {
+    totalFiles: number;
+    totalTests: number;
+    wallMs: number;
+    budget: { wallMs: number; fileMs: number };
+    over: string[];
+    slowest: { file: string; ms: number }[];
+    files: { file: string; ms: number }[];
+  };
+  assert.ok(record.totalFiles >= 90, `every test file is in the record, got ${record.totalFiles}`);
+  assert.ok(record.totalTests >= 900, `and every test case, got ${record.totalTests}`);
+  assert.ok(record.wallMs > 1000 && record.wallMs <= record.budget.wallMs, `the run took ${record.wallMs} ms`);
+  assert.deepEqual(record.over, [], 'nothing is over budget');
+  assert.equal(record.slowest.length, 5, 'the five slowest files are named');
+  const times = record.slowest.map((f) => f.ms);
+  assert.deepEqual([...times].sort((a, b) => b - a), times, 'sorted slowest first');
+  for (const file of record.files) {
+    assert.ok(file.ms <= record.budget.fileMs, `no file is over ${record.budget.fileMs} ms`);
+  }
+
+  // The doc carries the same numbers, generated.
+  const doc = fs.readFileSync(path.join(ROOT, 'docs/TESTING.md'), 'utf8');
+  assert.match(doc, /BEGIN SUITE TIME/, 'the clock block is in docs/TESTING.md');
+  assert.match(doc, /npm run test:time/, 'and says how to re-measure');
+  for (const f of record.slowest) {
+    assert.ok(doc.includes(f.file), `the doc names ${f.file}`);
+  }
+  assert.ok(doc.includes(String(record.totalTests)), 'and carries the test-case count');
+
+  // --check is the gate: it reads the record, and refuses a run that was over.
+  const check = await runNodeAsync(['scripts/suite-time.mjs', '--check'], 60_000);
+  assert.equal(check.code, 0, `--check passes on the recorded run: ${check.stderr}`);
+  assert.match(check.stdout, /files, \d+ test cases in/);
+
+  const fake = path.join(tmpHome('t383record-'), 'suite-time.json');
+  fs.writeFileSync(fake, JSON.stringify({ ...record, over: ['wallMs'], wallMs: 999_999 }));
+  const straggler = await runNodeAsync(['scripts/suite-time.mjs', '--check'], 60_000, { TCRAB_SUITE_TIME: fake });
+  assert.equal(straggler.code, 1, 'a fabricated over-budget record fails the check');
+  assert.match(straggler.stderr, /over budget: wallMs/);
+
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as { scripts: Record<string, string> };
+  assert.match(pkg.scripts['test:time'] ?? '', /suite-time\.mjs --run/, 'npm run test:time is the way in');
+});
+
+// ------------------------------------------------------------------- 38.4
+
+test('38.4 the terminal sees what the panel sees: termcrab docs status', async () => {
+  const home = tmpHome('t384cli-');
+  const cli = path.join(ROOT, 'dist/src/bin/termcrab.js');
+  const env = { TCRAB_HOME: home, NO_COLOR: '1' };
+
+  const before = await runNodeAsync([cli, 'docs', 'status'], 60_000, env);
+  assert.equal(before.code, 0, 'nothing built yet is not an error');
+  assert.match(before.stdout, /no docs page yet — build it: termcrab docs/);
+  assert.match(before.stdout, new RegExp(path.join(home, 'state', 'docs-site.html').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+
+  const built = await runNodeAsync([cli, 'docs'], 120_000, env);
+  assert.equal(built.code, 0, `build: ${built.stderr}`);
+
+  const after = await runNodeAsync([cli, 'docs', 'status'], 60_000, env);
+  assert.equal(after.code, 0);
+  assert.match(after.stdout, /📖 \d+ docs, \d+ sections, \d+ KB · release 0\.\d+\.\d+ · built just now · up to date/);
+
+  const json = await runNodeAsync([cli, 'docs', 'status', '--json'], 60_000, env);
+  assert.equal(json.code, 0, `--json: ${json.stderr}`);
+  const envelope = JSON.parse(json.stdout) as {
+    ok: boolean;
+    command: string;
+    data: { exists: boolean; stale: boolean; age: string; release: string; currentRelease: string; docs: number; kept: string[] };
+  };
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.command, 'docs');
+  assert.equal(envelope.data.exists, true);
+  assert.equal(envelope.data.stale, false, 'the page is current');
+  assert.equal(envelope.data.age, 'just now');
+  assert.equal(envelope.data.release, envelope.data.currentRelease, 'same release as the project');
+  assert.ok(envelope.data.docs >= 50);
+
+  // Edit a doc after the build: the terminal must say so, from the same
+  // function the panel calls, and still exit 0 (stale is a fact, not a failure).
+  const doc = path.join(ROOT, 'docs', 'TESTING.md');
+  const saved = fs.readFileSync(doc, 'utf8');
+  const later = new Date(Date.now() + 5_000);
+  try {
+    fs.appendFileSync(doc, '\n');
+    fs.utimesSync(doc, later, later);
+    const stale = await runNodeAsync([cli, 'docs', 'status', '--json'], 60_000, env);
+    assert.equal(stale.code, 0, 'a stale page is not an error');
+    const staleEnvelope = JSON.parse(stale.stdout) as { data: { stale: boolean; staleDocs: number } };
+    assert.equal(staleEnvelope.data.stale, true);
+    assert.ok(staleEnvelope.data.staleDocs >= 1, `the edited doc is counted, got ${staleEnvelope.data.staleDocs}`);
+    const human = await runNodeAsync([cli, 'docs', 'status'], 60_000, env);
+    assert.match(human.stdout, /\d+ doc\(s\) changed since — rebuild: termcrab docs rebuild/);
+  } finally {
+    fs.writeFileSync(doc, saved, 'utf8');
+  }
+
+  const help = await runNodeAsync([cli, 'help', 'docs'], 60_000, env);
+  assert.match(help.stdout, /status\s+is the page still what is on disk/, 'help lists the subcommand');
+  const cliDoc = fs.readFileSync(path.join(ROOT, 'docs/CLI.md'), 'utf8');
+  assert.match(cliDoc, /termcrab docs status/, 'docs/CLI.md documents it');
+});
+
+// ------------------------------------------------------------------- 38.5
+
+test('38.5 the owner\'s list names only commands that exist, and the things nobody else can do', () => {
+  const doc = fs.readFileSync(path.join(ROOT, 'docs/OWNER.md'), 'utf8');
+  for (const must of ['npm run ci:install', 'git push', 'smoke:telegram', '-- --record', './termcrab onboard', './termcrab doctor', './termcrab gateway --host 0.0.0.0']) {
+    assert.ok(doc.includes(must), `the page carries the exact command: ${must}`);
+  }
+  assert.match(doc, /telegram-runs\.jsonl/, 'and says what evidence the Telegram run leaves');
+  assert.match(doc, /today and becomes `WORKING`/, 'and what the CI push closes');
+  assert.match(doc, /fingerprint.*never the token/s, 'and that the recorded line is safe to commit');
+  assert.match(doc, /npm run ci:install/, 'the CI section has the one-liner');
+
+  // Every `termcrab <command>` on the page must be a command the CLI knows, or
+  // this page rots into instructions that no longer run (the same rule the
+  // skills library follows).
+  const help = execFileSync(process.execPath, [path.join(ROOT, 'dist/src/bin/termcrab.js'), 'help'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, NO_COLOR: '1', TCRAB_HOME: tmpHome('t385help-') },
+  });
+  const commands = new Set(
+    [...fs.readFileSync(path.join(ROOT, 'src/command-help.ts'), 'utf8').matchAll(/cmd: '([a-z0-9-]+)'/g)].map((m) => m[1]),
+  );
+  const named = new Set(
+    [...doc.matchAll(/`?\.?\/?termcrab ([a-z][a-z0-9-]*)/g)].map((m) => m[1]).filter((c) => c !== 'help'),
+  );
+  assert.ok(named.size >= 5, `the page names several commands, got ${[...named].join(', ')}`);
+  for (const cmd of named) {
+    assert.ok(commands.has(cmd), `docs/OWNER.md names \`termcrab ${cmd}\`, which must exist in command-help.ts`);
+    assert.match(help, new RegExp(`\\b${cmd}\\b`), `and appear in termcrab help (${cmd})`);
+  }
+
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  assert.match(readme, /docs\/OWNER\.md/, 'the README links the page');
+  const cliDoc = fs.readFileSync(path.join(ROOT, 'docs/CLI.md'), 'utf8');
+  assert.ok(typeof cliDoc === 'string');
+});

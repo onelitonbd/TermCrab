@@ -359,6 +359,7 @@ Gateway API: [docs/API.md](docs/API.md) ·
 Web panel: [docs/PANEL.md](docs/PANEL.md) ·
 Testing and coverage: [docs/TESTING.md](docs/TESTING.md) ·
 Performance budget: [docs/PERFORMANCE.md](docs/PERFORMANCE.md) ·
+The owner's two minutes: [docs/OWNER.md](docs/OWNER.md) ·
 CLI command coverage: [docs/CLI-COVERAGE.md](docs/CLI-COVERAGE.md) ·
 Termux guide: [docs/TERMUX.md](docs/TERMUX.md) ·
 Product plan: [PRODUCT.md](PRODUCT.md) ·
