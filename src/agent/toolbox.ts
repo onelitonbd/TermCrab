@@ -34,7 +34,9 @@ import {
 import { suggest, dismiss, listSuggestions } from './suggestions.js';
 import { getProgress, updateProgress, clearProgress } from './progress.js';
 import { ask } from './ask.js';
-import { listTasks, getTask, waitForTasks } from './tasks.js';
+import { listTasks, getTask, taskLine, waitForTasks } from './tasks.js';
+import { listAgents } from './prompt.js';
+import { proposeSkill } from '../skills/proposals.js';
 import {
   listSecrets,
   setSecret,
@@ -747,9 +749,9 @@ export function extraTools(env: ToolEnv): Tool[] {
     if (!env.sessions) throw new Error('sessions are unavailable in this context');
     return env.sessions;
   };
-  const spawn = (sessionId: string, prompt: string) => {
+  const spawn = (sessionId: string, prompt: string, opts?: { agent?: string; cwd?: string; label?: string; scratch?: boolean }) => {
     if (!env.spawnTask) throw new Error('background spawning is unavailable in this context');
-    return env.spawnTask(sessionId, prompt);
+    return env.spawnTask(sessionId, prompt, opts);
   };
 
   tools.push({
@@ -900,22 +902,41 @@ export function extraTools(env: ToolEnv): Tool[] {
   tools.push({
     def: {
       name: 'sessions_spawn',
-      description: 'Spawn a subagent: run a prompt in its own session in the background; returns the task id.',
+      description:
+        'Spawn a subagent: run a prompt in its own session in the background; returns the task id. ' +
+        'Optionally as a named agent (@name) and/or in its own scratch directory, so parallel tasks cannot collide.',
       schema: {
         type: 'object',
         properties: {
           prompt: { type: 'string' },
           sessionId: { type: 'string', description: 'target session (default: a fresh one)' },
           label: { type: 'string', description: 'short label for the task list' },
+          agent: { type: 'string', description: 'run as a named agent (workspace/agents/<name>/SOUL.md)' },
+          scratch: { type: 'boolean', description: 'give the task its own working directory under workspace/subagents/' },
         },
         required: ['prompt'],
       },
     },
     async execute(args) {
       const sid = argStr(args, 'sessionId', false) || `sub:${Date.now().toString(36)}`;
-      const task = spawn(sid, argStr(args, 'prompt'));
-      if (args.label) task.label = String(args.label).slice(0, 80);
-      return `spawned subagent task ${task.id} (session ${sid}) — poll subagents or call agents_wait`;
+      const agent = argStr(args, 'agent', false) || undefined;
+      if (agent && !listAgents().includes(agent.toLowerCase())) {
+        throw new Error(`unknown agent "${agent}" — known: ${listAgents().join(', ') || '(none yet)'}`);
+      }
+      const label = args.label ? String(args.label).slice(0, 80) : undefined;
+      try {
+        const task = spawn(sid, argStr(args, 'prompt'), {
+          ...(agent ? { agent: agent.toLowerCase() } : {}),
+          ...(label ? { label } : {}),
+          ...(args.scratch === true ? { scratch: true } : {}),
+        });
+        const where = [task.sessionId, task.agent ? `@${task.agent}` : '', task.cwd ? `in ${task.cwd}` : ''].filter(Boolean).join(' · ');
+        return `spawned subagent task ${task.id} (${where}) — poll subagents or call agents_wait`;
+      } catch (err) {
+        // The cap is a policy, not a crash: say what is running and what to do.
+        if (err instanceof Error && err.name === 'TaskLimitError') return err.message;
+        throw err;
+      }
     },
   });
   tools.push({
@@ -936,8 +957,8 @@ export function extraTools(env: ToolEnv): Tool[] {
         const t = getTask(argStr(args, 'id'));
         if (!t) throw new Error('task not found');
         return [
-          `${t.id} · ${t.status}${t.label ? ` · ${t.label}` : ''}`,
-          `session: ${t.sessionId}`,
+          taskLine(t),
+          `session: ${t.sessionId}${t.agent ? ` · agent: @${t.agent}` : ''}${t.cwd ? ` · cwd: ${t.cwd}` : ''}`,
           `prompt: ${t.prompt.slice(0, 200)}`,
           t.status === 'running' ? `running since ${new Date(t.started).toLocaleTimeString()}` : '',
           t.error ? `error: ${t.error}` : '',
@@ -948,7 +969,7 @@ export function extraTools(env: ToolEnv): Tool[] {
       if (!list.length) return 'no subagent tasks yet';
       return list
         .slice(-20)
-        .map((t) => `${t.id} ${t.status}${t.label ? ` (${t.label})` : ''} -> ${t.sessionId} · ${t.prompt.slice(0, 70).replace(/\n/g, ' ')}`)
+        .map((t) => `${taskLine(t)} · ${t.prompt.slice(0, 60).replace(/\n/g, ' ')}`)
         .join('\n');
     },
   });
@@ -988,7 +1009,7 @@ export function extraTools(env: ToolEnv): Tool[] {
     async execute() {
       const running = listTasks().filter((t) => t.status === 'running');
       if (!running.length) return 'nothing pending — turn can end';
-      return `ending turn with ${running.length} task(s) still running: ${running.map((t) => `${t.id}(${t.sessionId})`).join(', ')} — poll with subagents or agents_wait later`;
+      return `ending turn with ${running.length} task(s) still running: ${running.map((t) => `${t.id}(${t.sessionId})`).join(', ')} — poll with subagents or agents_wait later; each result is also noted in this session`;
     },
   });
 
@@ -1149,7 +1170,8 @@ export function extraTools(env: ToolEnv): Tool[] {
       schema: {
         type: 'object',
         properties: {
-          action: { type: 'string', enum: ['create', 'update', 'check', 'repair'] },
+          action: { type: 'string', enum: ['create', 'update', 'check', 'repair', 'propose'] },
+          reason: { type: 'string', description: 'propose: why this skill should exist (the owner reads it)' },
           name: { type: 'string', description: 'lowercase-with-dashes' },
           description: { type: 'string' },
           content: { type: 'string', description: 'full SKILL.md incl. frontmatter (create/update)' },
@@ -1163,6 +1185,25 @@ export function extraTools(env: ToolEnv): Tool[] {
       if (!name) throw new Error('bad skill name');
       const file = path.join(userSkillsDir(), name, 'SKILL.md');
       const exists = fs.existsSync(file);
+      if (action === 'propose') {
+        // 33.3: the agent proposes, a person decides. The proposal is written
+        // to skills/_proposals/ and cannot load until it is approved.
+        const r = proposeSkill({
+          name,
+          description: (typeof args.description === 'string' && args.description) || `Skill ${name}`,
+          content: typeof args.content === 'string' ? args.content : '',
+          ...(typeof args.reason === 'string' ? { reason: args.reason } : {}),
+          source: `session ${env.sessionId ?? 'unknown'} · run ${env.runSource ?? ''}`.trim(),
+        });
+        if (!r.ok) throw new Error(r.error ?? 'could not write the proposal');
+        return (
+          `proposed skill ${name}${r.replaced ? ' (replacing an earlier proposal of the same name)' : ''} — ` +
+          `it is NOT live yet. The owner approves with: termcrab skills proposals approve ${name}` +
+          (r.proposal?.replacesLive
+            ? `. NOTE: a live skill named ${name} already exists; approving it needs --force, so say in your reason why it should replace what is there`
+            : '')
+        );
+      }
       if (action === 'create' || action === 'update') {
         if (action === 'create' && exists) throw new Error(`skill exists: ${name} (use update)`);
         let content = argStr(args, 'content');

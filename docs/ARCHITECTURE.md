@@ -99,6 +99,7 @@ users' runtime.
 | `src/agent/progress.ts` | Per-session progress card the agent maintains and the UI shows |
 | `src/agent/prompt.ts` | system prompt (SOUL + memory + skills index + env) |
 | `src/agent/rolling.ts` | One rolling main session for the owner, daily, archived (28.1) |
+| `src/agent/routing.ts` | Which agent answers on which surface (33.2) |
 | `src/agent/run-health.ts` | "Why is it stuck?" (23.1) The data to answer that already exists in three places — the queue knows which turns are running and since when, the run trace know… |
 | `src/agent/sandbox.ts` | bubblewrap/proot around every shell command, or an honest refusal (30) |
 | `src/agent/secrets.ts` | Protected credentials: values are only returned on explicit request (audited) |
@@ -107,6 +108,7 @@ users' runtime.
 | `src/agent/session-view.ts` | What belongs to one conversation (21.4): `termcrab sessions show <id>` |
 | `src/agent/sessions.ts` | JSONL transcripts + compaction + SessionQueue (FIFO) + replay |
 | `src/agent/status.ts` | `termcrab status`: live state from the running gateway, with a disk-read fallback when the panel is down |
+| `src/agent/subagents.ts` | Scratch space for subagents (33.1) |
 | `src/agent/suggestions.ts` | Follow-up task cards suggested by the agent; the operator dismisses them |
 | `src/agent/tasks.ts` | Background subagent tasks: spawned turns tracked to completion |
 | `src/agent/tool-schema.ts` | Check a tool call's arguments before the tool runs (22.2) |
@@ -130,7 +132,7 @@ users' runtime.
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
-| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\\\\\\\\\\\\\\\\\\\\\\\\|zsh\\\\\\\\\\\\\\\\\\\\\\\\|fish` (13.3, 13.4) |
+| `src/command-help.ts` | One table behind `termcrab help <cmd>`, `<cmd> --help` and `completion bash\|zsh\|fish` (13.3, 13.4) |
 | `src/core/approvals.ts` | Human-in-the-loop approvals |
 | `src/core/auth-profiles.ts` | Named API keys stored outside config.json (state/auth-profiles.json, mode 0600, audited) and resolved where the provider is built (27.3). |
 | `src/core/backup.ts` | One-tar backup/restore of a home, manifest inside (31) |
@@ -195,6 +197,7 @@ users' runtime.
 | `src/providers/types.ts` | ChatRequest/ChatResult/Provider contract |
 | `src/skills/importer.ts` | import from folder/git URL |
 | `src/skills/loader.ts` | SkillStore: discovery, override, prompt index |
+| `src/skills/proposals.ts` | Skills the agent wrote for itself, held in `_proposals/` until a person approves or rejects them (33.3) |
 | `src/skills/registry.ts` | ClawHub-compatible search/install/publish |
 | `src/skills/scaffold.ts` | skill templates |
 | `src/tui/app.ts` | The alternate screen, raw keys, live turns and the attach stream (29) |

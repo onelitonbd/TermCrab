@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T00:28:55.113Z",
+ "measured": "2026-10-04T01:09:19.319Z",
  "tally": {
-  "WORKING": 99,
+  "WORKING": 105,
   "BETTER": 14,
-  "PARTIAL": 19,
+  "PARTIAL": 13,
   "BROKEN": 0,
   "ABSENT": 0
  },
- "coverage": 92,
+ "coverage": 95,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 92,
+ "effortLeft": 72,
  "areas": [
   "agent",
   "automation",
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1362"
+    "detail": "1 match(es): src/gateway/server.ts:1382"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1364"
+    "detail": "2 match(es): src/gateway/server.ts:1384"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:302"
+    "detail": "1 match(es): src/gateway/server.ts:306"
    }
   },
   {
@@ -163,7 +163,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:375"
+    "detail": "5 match(es): src/cli.ts:15, src/core/config.ts:388"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2372"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2451"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1183"
+    "detail": "4 match(es): src/gateway/server.ts:1203"
    }
   },
   {
@@ -220,7 +220,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:704, src/core/approvals.ts:135"
+    "detail": "2 match(es): src/agent/loop.ts:737, src/core/approvals.ts:135"
    }
   },
   {
@@ -247,19 +247,19 @@
    "area": "gateway",
    "capability": "Multi-agent routing",
    "openclaw": "per-agent workspace, session, store",
-   "verdict": "PARTIAL",
-   "evidence": "workspace/agents/<name>/SOUL.md + parseAgentPrefix (src/gateway/server.ts:48)",
+   "verdict": "WORKING",
+   "evidence": "a named agent is workspace/agents/<name>/SOUL.md and it now has a route: agents.routes.<surface> says who answers on web, telegram, cli, cron, voice, wake or subagent, with the precedence stated in one line (explicit @prefix or --as wins, then the route, then the main agent). resolveRoute returns the decision plus a problem when config names an agent that does not exist — the turn still runs as the main agent and the reason is in the log, in `termcrab agents routes` and on the panel (GET /api/agents returns agents and routes; PUT /api/agents/routes sets one). Each agent keeps its own session namespace, so a routed Telegram message and the same agent used with --as are one history, not two. The route is stored in config, so it survives a restart and is readable. test/tier2x.test.ts 33.2 covers precedence, a broken route, config validation naming the exact surface, and the CLI round-trip. Not attempted: per-agent model/store overrides (agent.scoped* settings), because one brain with several personalities is what the owner asked for",
    "probe": {
-    "pattern": "listAgents",
+    "pattern": {},
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "15 match(es): src/agent/prompt.ts:93, src/agent/status.ts:11, src/cli.ts:34"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:694, src/core/config.ts:700"
    }
   },
   {
@@ -298,7 +298,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:302"
+    "detail": "1 match(es): src/gateway/server.ts:306"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:442, src/cli.ts:1208, src/command-help.ts:244"
+    "detail": "11 match(es): src/agent/loop.ts:475, src/cli.ts:1336, src/command-help.ts:248"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:268, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:272, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:258"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:262"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:172, src/gateway/server.ts:1556, src/mobile/doctor.ts:555"
+    "detail": "5 match(es): src/cli.ts:176, src/gateway/server.ts:1576, src/mobile/doctor.ts:555"
    }
   },
   {
@@ -452,7 +452,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/loop.ts:653"
+    "detail": "1 match(es): src/agent/loop.ts:686"
    }
   },
   {
@@ -472,7 +472,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:533"
+    "detail": "2 match(es): src/agent/loop.ts:566"
    }
   },
   {
@@ -491,7 +491,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/loop.ts:400"
+    "detail": "5 match(es): src/agent/loop.ts:433"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:392"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:417"
    }
   },
   {
@@ -548,7 +548,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/loop.ts:516, src/agent/sessions.ts:1190"
+    "detail": "2 match(es): src/agent/loop.ts:549, src/agent/sessions.ts:1190"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1308, src/gateway/server.ts:1592"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1436, src/gateway/server.ts:1612"
    }
   },
   {
@@ -594,19 +594,20 @@
    "area": "agent",
    "capability": "Subagents",
    "openclaw": "sessions_spawn, agents_wait, lanes, worktrees",
-   "verdict": "PARTIAL",
-   "evidence": "sessions_spawn/agents_wait/sessions_yield in src/agent/toolbox.ts:798+",
+   "verdict": "WORKING",
+   "evidence": "a subagent is a turn the agent starts and does not wait for: sessions_spawn takes prompt|sessionId|label|agent|scratch, the child writes to its own session (namespaced by the agent it runs as, so its history is its own), and the parent is told once, in one line, when it settles ([subagent <id>] … appended to the parent session, role system — so every surface sees the result without polling). A cap refuses instead of piling up: past agent.maxSubagents (default 4) spawnTask throws TaskLimitError naming the running ids and the setting, and the tool answers in prose rather than blowing up the turn. A deadline (agent.subagentTimeoutSec, default 15 min) marks a task `timeout` — not `error` — and a late answer cannot resurrect it. Task ids, status (running/done/error/timeout), elapsed time, the agent, and the scratch dir are visible from `termcrab subagents [list|show|clear]` and GET /api/subagents, and a scratch task gets workspace/subagents/<id>/ so two tasks never fight over file names. test/tier2x.test.ts 33.1 pins the cap, the timeout (including the late answer), the onFinish note firing exactly once, the scratch dir and its prune, plus the CLI. Not attempted: git worktrees (the owner never asked for one and a phone has no second checkout to spare) and cross-process task persistence, because a restarted gateway has no subagents to report",
    "probe": {
-    "pattern": "sessions_spawn",
+    "file": "src/agent/subagents.ts",
+    "pattern": "export function ensureSubagentDir",
     "expect": "present"
    },
-   "effort": 6,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:902"
+    "detail": "1 match(es): src/agent/subagents.ts:24"
    }
   },
   {
@@ -644,7 +645,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "622 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:18"
+    "detail": "668 match(es): src/agent/dream.ts:151, src/agent/embed-provider.ts:139, src/agent/embed-remote.ts:18"
    }
   },
   {
@@ -762,7 +763,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/agent/toolbox.ts:757, src/agent/tools.ts:211"
+    "detail": "2 match(es): src/agent/toolbox.ts:759, src/agent/tools.ts:215"
    }
   },
   {
@@ -803,7 +804,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:663"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:667"
    }
   },
   {
@@ -841,7 +842,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2501"
+    "detail": "4 match(es): src/agent/loop.ts:356, src/agent/sessions.ts:842, src/cli.ts:2750"
    }
   },
   {
@@ -999,7 +1000,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:417, src/cli.ts:2439"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:421, src/cli.ts:2688"
    }
   },
   {
@@ -1097,7 +1098,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:662, src/agent/tools.ts:212"
+    "detail": "3 match(es): src/agent/context.ts:43, src/agent/toolbox.ts:664, src/agent/tools.ts:216"
    }
   },
   {
@@ -1116,7 +1117,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:70, src/agent/tools.ts:209"
+    "detail": "4 match(es): src/agent/context.ts:42, src/agent/toolbox.ts:72, src/agent/tools.ts:213"
    }
   },
   {
@@ -1135,7 +1136,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "22 match(es): src/agent/prompt.ts:39, src/agent/toolbox.ts:1518, src/agent/tools.ts:541"
+    "detail": "22 match(es): src/agent/prompt.ts:39, src/agent/toolbox.ts:1559, src/agent/tools.ts:545"
    }
   },
   {
@@ -1193,7 +1194,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "64 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "65 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -1256,7 +1257,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "45 match(es) (min 45): src/agent/toolbox.ts:249"
+    "detail": "45 match(es) (min 45): src/agent/toolbox.ts:251"
    }
   },
   {
@@ -1315,7 +1316,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/prompt.ts:260, src/agent/tools.ts:210"
+    "detail": "3 match(es): src/agent/prompt.ts:260, src/agent/tools.ts:214"
    }
   },
   {
@@ -1334,7 +1335,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1148, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "33 match(es): src/agent/toolbox.ts:1169, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -1353,26 +1354,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/skills/loader.ts:75"
+    "detail": "3 match(es): src/skills/loader.ts:79"
    }
   },
   {
    "area": "skills",
    "capability": "Agent-authored skills",
    "openclaw": "skill-workshop review flow",
-   "verdict": "PARTIAL",
-   "evidence": "skill_workshop tool (toolbox.ts) + scaffold.ts",
+   "verdict": "WORKING",
+   "evidence": "the agent can write a skill for itself but cannot install one: skill_workshop action=propose writes skills/_proposals/<name>/ (SKILL.md + PROPOSAL.json with the description, the agent's own reason, the session it came from and the time), and the loader skips every `_`- or `.`-prefixed folder, so a proposal can never reach the prompt — including a half-written one. The decision is a person's, in the surface they are already using: `termcrab skills proposals list|show|approve|reject` and POST /api/skills/proposals (GET lists). Approve moves the folder to skills/<name>/ and stamps decided/decidedAt on the record; a live skill of the same name is not replaced unless the decision is explicitly made (--force, force:true), and the list warns before that. Reject keeps the text and the reason in skills/_rejected/<name>/REJECTED.md, so \"we decided against this\" is distinguishable from \"never seen\". test/tier2x.test.ts 33.3 covers the loader skip, the revision-replaces-earlier behavior, the live-collision refusal, the rejection record, the CLI walk (list → show → approve) and the panel API",
    "probe": {
-    "pattern": "skill_workshop",
+    "file": "src/skills/proposals.ts",
+    "pattern": "export function proposeSkill",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1147"
+    "detail": "1 match(es): src/skills/proposals.ts:82"
    }
   },
   {
@@ -1526,7 +1528,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:550, src/mobile/doctor.ts:407"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:554, src/mobile/doctor.ts:407"
    }
   },
   {
@@ -1678,7 +1680,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:206"
+    "detail": "2 match(es): src/channels/telegram.ts:25, src/core/config.ts:211"
    }
   },
   {
@@ -1697,7 +1699,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:901"
+    "detail": "1 match(es): src/gateway/server.ts:905"
    }
   },
   {
@@ -1836,7 +1838,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "22382 match(es): src/agent/loop.ts:341"
+    "detail": "23340 match(es): src/agent/loop.ts:341"
    }
   },
   {
@@ -1915,7 +1917,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:46, src/gateway/server.ts:406"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:50, src/gateway/server.ts:410"
    }
   },
   {
@@ -1934,7 +1936,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "104 match(es): src/agent/loop.ts:226, src/agent/prompt.ts:20, src/agent/rolling.ts:5"
+    "detail": "117 match(es): src/agent/loop.ts:226, src/agent/prompt.ts:20, src/agent/rolling.ts:5"
    }
   },
   {
@@ -2012,26 +2014,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1019"
+    "detail": "1 match(es): src/agent/toolbox.ts:1040"
    }
   },
   {
    "area": "automation",
    "capability": "Scheduled delivery to channels",
    "openclaw": "deliver cron output to a chat",
-   "verdict": "PARTIAL",
-   "evidence": "cron runs a prompt in a session; delivery routing is manual",
+   "verdict": "WORKING",
+   "evidence": "a job now says where its result goes: cron add --deliver telegram|panel|none (unset = every configured surface, which is what happened before), `cron ls` shows it and the choice is stored in crons.json. The scheduler does not know which surfaces exist — it decides when and hands the target to the gateway, which sends to the paired Telegram chat, emits cron-output on the bus for the panel, or does neither; deliver:none still records the run, the transcript and a daily-log line saying it went nowhere. The same tick resolves which agent runs the job (job.agent, then agents.routes.cron, then main) and logs the reason when a route names an agent that does not exist. test/tier2x.test.ts 33.4 drives all five cases through cronTick with a spy deliver and asserts the transcripts (helper:cron:<id> vs cron:<id>) and the CLI round-trip, including the refusal of a nonsense target and an unknown agent",
    "probe": {
-    "pattern": "deliver",
+    "file": "src/cron/scheduler.ts",
+    "pattern": "CronTarget",
     "expect": "present"
    },
-   "effort": 2,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "21 match(es): src/agent/heartbeat.ts:25, src/agent/prompt.ts:20, src/channels/picker.ts:10"
+    "detail": "3 match(es): src/cron/scheduler.ts:18"
    }
   },
   {
@@ -2130,7 +2133,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "103 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:255"
+    "detail": "104 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:259"
    }
   },
   {
@@ -2149,7 +2152,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:57"
+    "detail": "1 match(es): src/cli.ts:61"
    }
   },
   {
@@ -2168,7 +2171,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "58 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "68 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2187,7 +2190,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:409, src/command-help.ts:530"
+    "detail": "2 match(es): src/cli.ts:413, src/command-help.ts:555"
    }
   },
   {
@@ -2225,7 +2228,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "66 match(es): src/agent/loop.ts:226, src/cli.ts:40, src/command-help.ts:300"
+    "detail": "69 match(es): src/agent/loop.ts:226, src/agent/routing.ts:22, src/cli.ts:43"
    }
   },
   {
@@ -2282,7 +2285,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:71, src/gateway/auth.ts:20, src/gateway/server.ts:302"
+    "detail": "5 match(es): src/core/config.ts:72, src/gateway/auth.ts:20, src/gateway/server.ts:306"
    }
   },
   {
@@ -2340,7 +2343,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "14 match(es): src/agent/prompt.ts:265, src/agent/secrets.ts:16, src/agent/toolbox.ts:43"
+    "detail": "14 match(es): src/agent/prompt.ts:265, src/agent/secrets.ts:16, src/agent/toolbox.ts:45"
    }
   },
   {
@@ -2359,7 +2362,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/agent/toolbox.ts:1148, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
+    "detail": "33 match(es): src/agent/toolbox.ts:1169, src/core/frontmatter.ts:4, src/migrate/openclaw.ts:22"
    }
   },
   {
@@ -2573,7 +2576,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2801"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2880"
    }
   },
   {
@@ -2592,7 +2595,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/cli.ts:30, src/command-help.ts:122, src/gateway/server.ts:85"
+    "detail": "7 match(es): src/cli.ts:30, src/command-help.ts:122, src/gateway/server.ts:89"
    }
   },
   {
@@ -2611,7 +2614,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "64 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "65 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -2656,38 +2659,39 @@
    "area": "mobile",
    "capability": "Voice STT/TTS",
    "openclaw": "whisper + TTS providers",
-   "verdict": "PARTIAL",
-   "evidence": "src/mobile/{tts,tts-stream,stt,whisper}.ts — termux-api + optional whisper.cpp",
+   "verdict": "WORKING",
+   "evidence": "both directions are proven against real executables of the engines own shape, not asserted: test/tier2y.test.ts puts a fake termux-speech-to-text / termux-tts-speak / espeak-ng / whisper-cli first on PATH and runs the whole path. Speech out: speak() walks one candidate chain (termux-tts-speak, espeak-ng, espeak, spd-say, say), passes the trimmed text as a single argument, names the backend it used, and returns one sentence naming what to install when there is none; speakStream resolves the same chain (it used to hardcode espeak, which fails on macOS), chunks long text at sentence boundaries (<=200 chars) and calls the backend once per chunk, in order, reporting stt:chunk events for the panel; /api/say and /api/say/stream serve both, and `termcrab say <text> --json` is the same path (say used to swallow the words --json). Speech in: listenOnce takes the first recognized phrase, settles at the deadline instead of hanging, and continuous mode (POST /api/listen/start, /api/listen/stop) emits each phrase as it is recognized and restarts after a 250 ms pause so a silent recognizer cannot spin the battery down. Limits stated: the recognizer is the platform one (Termux:API on Android) so dictation is Android-only, and a machine with no TTS backend gets the install sentence, not a fallback voice",
    "probe": {
-    "pattern": "whisper",
+    "file": "src/mobile/tts.ts",
+    "pattern": "export function resolveTtsSync",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "38 match(es): src/channels/intake.ts:9, src/channels/media.ts:26, src/cli.ts:53"
+    "detail": "1 match(es): src/mobile/tts.ts:55"
    }
   },
   {
    "area": "mobile",
    "capability": "Transcription",
    "openclaw": "realtime transcription service",
-   "verdict": "PARTIAL",
-   "evidence": "a voice note that arrives is transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone, and an engine that is missing is a sentence with the install steps (16.3, src/channels/intake.ts) — plus termcrab transcribe for any file on disk. Still not realtime (no live stream while you are talking): that is what keeps this PARTIAL",
+   "verdict": "WORKING",
+   "evidence": "offline transcription of any audio file through whisper.cpp: findWhisperBin looks on PATH (whisper-cli, whisper) then in the usual checkout builds, findWhisperModel prefers tiny > base > small > large and honours --model and WHISPER_MODEL, transcribeFile spawns the documented argv (-m <model> -f <file> -np [-l lang]), never throws, and answers a missing engine or model with the exact install/download sentence. Voice notes arriving on a channel are transcribed into the message the agent answers, capped at 5 MB so a long recording is not chewed up on the phone (src/channels/intake.ts), and `termcrab transcribe <file> --json` is the same path on the command line with an envelope (it used to print a friendly line instead). Realtime here means phrase-by-phrase: continuous listening emits each phrase as the recognizer returns it (stt:result over SSE) and restarts immediately after it; what is not attempted is partial-hypothesis streaming ASR (words appearing while you are still speaking). test/tier2y.test.ts drives a fake whisper-cli end to end (happy path, argv, CLI JSON, the transcript reaching the agent prompt, missing model, engine failure, deadline)",
    "probe": {
-    "pattern": "transcribe",
+    "pattern": "transcribeFile",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "26 match(es): src/channels/inbox.ts:113, src/channels/intake.ts:21, src/channels/telegram.ts:43"
+    "detail": "5 match(es): src/channels/intake.ts:21, src/cli.ts:57, src/mobile/whisper.ts:107"
    }
   },
   {
@@ -2889,7 +2893,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "85 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "87 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

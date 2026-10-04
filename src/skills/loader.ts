@@ -42,6 +42,10 @@ function scan(root: string, origin: 'builtin' | 'user'): Map<string, Skill> {
   }
   for (const e of entries) {
     if (!e.isDirectory()) continue;
+    // A `_` prefix is reserved for folders that are not live skills —
+    // `_proposals` (33.3) and `_rejected` are decisions waiting or made, and a
+    // half-written proposal must never reach the prompt.
+    if (e.name.startsWith('_') || e.name.startsWith('.')) continue;
     const skill = readSkillDir(path.join(root, e.name), origin);
     if (skill) out.set(skill.name, skill);
   }

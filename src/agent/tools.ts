@@ -41,7 +41,11 @@ export interface ToolEnv {
   /** Where this run came from, recorded on every fact it writes. */
   runSource?: string;
   /** Spawn a background subagent turn (wired by the agent loop). */
-  spawnTask?: (sessionId: string, prompt: string) => import('./tasks.js').Task;
+  spawnTask?: (
+    sessionId: string,
+    prompt: string,
+    opts?: { agent?: string; cwd?: string; label?: string; scratch?: boolean },
+  ) => import('./tasks.js').Task;
   /** MCP clients keyed by server name (wired by the agent loop). */
   mcpClients?: Map<string, McpClient>;
 }

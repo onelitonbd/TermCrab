@@ -377,12 +377,45 @@ async function runTurnUnfenced(ctx: AgentCtx, opts: RunOpts, owner: string): Pro
     memoryOrigin,
     runSource: `${opts.channel ?? 'cli'}${opts.user ? ` u:${opts.user}` : ''} · session:${opts.sessionId} · run:${sessionId}`,
     providerLabel: providerLabel(ctx.config),
-    spawnTask: (sid, prompt) =>
-      spawnBgTask({
-        run: (s2, p2) => runTurn(ctx, { sessionId: s2, userMessage: p2, channel: 'subagent' }),
+    // 33.1: a subagent runs as an optional named agent, in an optional scratch
+    // directory, under a concurrency cap and a deadline — and when it settles,
+    // one line lands in the parent session so every surface sees the result
+    // without anybody polling for it.
+    spawnTask: (sid, prompt, spawnOpts) => {
+      // `runTurn` namespaces the session with the agent name itself, so the id
+      // handed to the child stays unprefixed — `coder:coder:…` would split one
+      // agent's history in two.
+      return spawnBgTask({
+        run: (s2, p2, runOpts) =>
+          runTurn(ctx, {
+            sessionId: s2,
+            userMessage: p2,
+            channel: 'subagent',
+            ...(runOpts?.agent ? { agent: runOpts.agent } : {}),
+          }),
         sessionId: sid,
         prompt,
-      }),
+        ...(spawnOpts?.label ? { label: spawnOpts.label } : {}),
+        ...(spawnOpts?.agent ? { agent: spawnOpts.agent } : {}),
+        ...(spawnOpts?.scratch ? { scratch: true } : {}),
+        maxConcurrent: Math.max(1, ctx.config.agent.maxSubagents ?? 4),
+        timeoutMs: Math.max(10_000, (ctx.config.agent.subagentTimeoutSec ?? 900) * 1000),
+        onFinish: (task) => {
+          const where = task.agent ? ` as @${task.agent}` : '';
+          const what =
+            task.status === 'done'
+              ? `finished in ${Math.round((task.elapsedMs ?? 0) / 1000)}s — read it with the subagents tool (id ${task.id})`
+              : `${task.status}: ${task.error ?? 'no output'}`;
+          const note =
+            `[subagent ${task.id}${where}${task.label ? ` · ${task.label}` : ''}] ${what}`.slice(0, 500);
+          try {
+            ctx.sessions.append(opts.sessionId, { role: 'system', content: note, ts: Date.now() });
+          } catch {
+            /* a parent session that cannot be written is reported elsewhere */
+          }
+        },
+      });
+    },
   };
   const tools = [...(await buildTools(toolEnv)), ...(ctx.tools ?? [])];
   const toolMap = new Map(tools.map((t) => [t.def.name, t]));

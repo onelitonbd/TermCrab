@@ -17,6 +17,15 @@ export interface CronJob {
   critical: boolean;
   /** Fire once then auto-disable (reminders). */
   oneShot?: boolean;
+  /** Named agent this job runs as (33.2; falls back to agents.routes.cron). */
+  agent?: string;
+  /**
+   * Where the output goes when the job finishes (33.4):
+   *   telegram — the paired chat
+   *   panel    — the web panel's notifications and the daily log (default)
+   *   none     — the run is recorded, nothing is delivered
+   */
+  deliver?: 'telegram' | 'panel' | 'none';
   createdAt: number;
 }
 
@@ -42,7 +51,15 @@ export function saveCrons(jobs: CronJob[]): void {
   fs.writeFileSync(file(), `${JSON.stringify(jobs, null, 2)}\n`, 'utf8');
 }
 
-export function addCron(input: { name: string; schedule: string; prompt: string; critical?: boolean; oneShot?: boolean }): CronJob {
+export function addCron(input: {
+  name: string;
+  schedule: string;
+  prompt: string;
+  critical?: boolean;
+  oneShot?: boolean;
+  agent?: string;
+  deliver?: 'telegram' | 'panel' | 'none';
+}): CronJob {
   parseCron(input.schedule); // validates, throws CronParseError
   if (!input.prompt.trim()) throw new CronParseError('prompt is required');
   const jobs = loadCrons();
@@ -54,6 +71,8 @@ export function addCron(input: { name: string; schedule: string; prompt: string;
     enabled: true,
     critical: Boolean(input.critical),
     oneShot: Boolean(input.oneShot),
+    ...(input.agent ? { agent: input.agent.trim().toLowerCase() } : {}),
+    ...(input.deliver ? { deliver: input.deliver } : {}),
     createdAt: Date.now(),
   };
   jobs.push(job);

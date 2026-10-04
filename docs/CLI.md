@@ -64,11 +64,17 @@ to leave · `PgDn` back to the newest line. Commands: `/sessions` (arrow-select)
 | `termcrab sessions export <id> --json` | `{id, file, bytes}` |
 | `termcrab sessions purge --older-than <days> --json` | `{purged, freedBytes, olderThanDays}` |
 | `termcrab sessions rename <old> <new> --json` | `{from, to, renamed}` |
+| `termcrab say <text> --json` | `{spoken, backend, chars}` — which device backend spoke (termux-tts-speak / espeak-ng / say), and on failure what to install |
+| `termcrab transcribe <file> --json` | `{file, text, engine, model, ms}` — offline whisper.cpp transcription, or an error naming the missing engine or model |
 | `termcrab skills ls --json` | `{count, skills:[{name, origin, description}]}` |
 | `termcrab skills import <src> --json` | `{source, count, results:[{name, action}]}` |
 | `termcrab skills new <name> --json` | `{created, path}` |
-| `termcrab cron ls --json` | `{count, jobs:[{id, name, schedule, enabled, critical, nextRun, prompt}]}` |
-| `termcrab cron add … --json` | `{job, nextRun}` |
+| `termcrab skills proposals --json` | `{count, proposals:[{name, description, reason, source, by, createdAt, path, replacesLive}], rejected:[{name, reason, decidedAt}]}` — skills the agent wrote for itself, waiting for a yes; nothing here is live, and `approve … --force` is needed to replace an existing skill |
+| `termcrab cron ls --json` | `{count, jobs:[{id, name, schedule, enabled, critical, nextRun, prompt, agent, deliver}]}` — `deliver` is `telegram`, `panel`, `none`, or `all` (unset) |
+| `termcrab cron add … --json` | `{job, nextRun}` — `--agent <name>` runs the job as that agent, `--deliver telegram\|panel\|none` says where its result goes |
+| `termcrab subagents --json` | `{count, running, tasks:[{id, sessionId, prompt, label, agent, cwd, status, started, finished, elapsedMs, output, error}]}` — status is running / done / error / timeout |
+| `termcrab subagents scratch --json` | `{count, dirs:[{id, path, files, bytes, modified}], freed?}` — one working directory per task under `workspace/subagents/`; `--prune` deletes the old ones |
+| `termcrab agents routes --json` | `{routes:[{surface, agent, source:'config'\|'default', problem?}]}` — which agent answers on web, telegram, cli, cron, voice, wake, subagent |
 | `termcrab cron rm <id> --json` | `{removed}` |
 | `termcrab memory show --json` | `{text, facts, totalFacts, bytes, budget, stats, files}` |
 | `termcrab memory search <q> --json` | `{query, count, hits:[{file, line, score, snippet, origin, when, source, semantic}]}` — ranked (BM25 + exact phrase + 30-day recency), and every hit says where it came from |

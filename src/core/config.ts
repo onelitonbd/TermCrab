@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { configPath, ensureLayout, home } from './paths.js';
+import { ROUTABLE_SURFACES } from '../agent/routing.js';
 
 export interface ProviderCfg {
   /**
@@ -102,6 +103,10 @@ export interface Config {
      *   off            — never sandbox (the pre-30 behaviour), recorded in the run.
      */
     sandbox?: 'auto' | 'require' | 'off';
+    /** How many subagent tasks may run at once (33.1; default 4). */
+    maxSubagents?: number;
+    /** Deadline for one subagent task, seconds (33.1; default 900). */
+    subagentTimeoutSec?: number;
     /** Keep the network reachable inside the sandbox (default false: no network). */
     sandboxNetwork?: boolean;
     /** Extra directories a sandboxed command may write to (the workspace is always one). */
@@ -308,6 +313,14 @@ export interface Config {
     autoTrim: boolean;
   };
   /**
+   * Multi-agent routing (33.2): which named agent answers on which surface.
+   * An explicit `--as`/`@prefix` still wins; surfaces with no route use the
+   * main agent. `termcrab agents routes` prints the resolved table.
+   */
+  agents?: {
+    routes?: Record<string, string>;
+  };
+  /**
    * Which skills the agent may use at all. Empty means "every skill the roots
    * contain" (the default); a non-empty list is an allow-list, so a skill that
    * arrives from a git repo or a migrated setup cannot reach the prompt until
@@ -508,6 +521,7 @@ const KNOWN_TOP = new Set([
   'localProvider',
   'dream',
   'memory',
+  'agents',
   'skills',
   'dashboard',
   'update',
@@ -632,6 +646,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       'execTimeoutSec',
       'execDenyPatterns',
       'execAllowDangerous',
+      'maxSubagents',
+      'subagentTimeoutSec',
       'sandbox',
       'sandboxNetwork',
       'sandboxWrites',
@@ -658,6 +674,8 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
     numIn(agent, 'agent.', 'compactThreshold', 5, 10_000, true);
     numIn(agent, 'agent.', 'memoryBudget', 0, 1_000_000, true);
     numIn(agent, 'agent.', 'parallelTools', 1, 8);
+    numIn(agent, 'agent.', 'maxSubagents', 1, 16, true);
+    numIn(agent, 'agent.', 'subagentTimeoutSec', 10, 86_400, true);
     numIn(agent, 'agent.', 'turnBudgetSec', 0, 86_400);
     numIn(agent, 'agent.', 'idleSec', 0, 3_600);
     bool(agent, 'agent.', 'rollingSession');
@@ -674,6 +692,28 @@ export function validateConfig(raw: unknown): ConfigProblem[] {
       err('agent.sessionReset', `must be never, daily or idle:<minutes>, got ${JSON.stringify(reset)}`);
     }
     oneOf(agent, 'agent.', 'isolation', ['shared', 'isolated']);
+  }
+
+  const agents = objAt(root, 'agents', new Set(['routes']));
+  if (agents) {
+    // Validated by hand rather than through objAt, because the message path
+    // has to read `agents.routes.<surface>` and objAt derives it from the key.
+    const routes = agents.routes;
+    if (routes !== undefined && routes !== null) {
+      const entries = typeof routes === 'object' && !Array.isArray(routes) ? Object.entries(routes) : null;
+      if (!entries) {
+        err('agents.routes', `must be a JSON object, got ${Array.isArray(routes) ? 'array' : typeof routes}`);
+      }
+      for (const [surface, agent] of entries ?? []) {
+        if (typeof agent !== 'string' || !/^[a-z0-9][a-z0-9-_]{0,63}$/.test(agent.trim().toLowerCase())) {
+          err(`agents.routes.${surface}`, `must be a named agent (lowercase letters, digits, - or _), got ${JSON.stringify(agent)}`);
+        } else if (!ROUTABLE_SURFACES.includes(surface.trim().toLowerCase() as never)) {
+          // Not an error — a surface we do not have yet — but a route that can
+          // never fire should say so out loud.
+          warn(`agents.routes.${surface}`, `unknown surface (routes exist for: ${ROUTABLE_SURFACES.join(', ')})`);
+        }
+      }
+    }
   }
 
   const memory = objAt(root, 'memory', new Set(['embeddings', 'embedProvider', 'embedModel', 'embedBaseUrl']));

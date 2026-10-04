@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -23,6 +25,35 @@ export function resolveTts(has: (cmd: string) => boolean): TtsChoice | null {
     if (has(c.cmd)) return c;
   }
   return null;
+}
+
+/**
+ * PATH lookup without spawning `which`.
+ *
+ * Needed where a decision cannot be awaited (the streaming speaker starts
+ * synchronously). `$PREFIX/bin` — Termux's own bin — is checked first when
+ * PREFIX is set, because that is the copy the Termux:API app answers to.
+ */
+export function whichSync(cmd: string): string | null {
+  const dirs = [
+    ...(process.env.PREFIX ? [path.join(process.env.PREFIX, 'bin')] : []),
+    ...(process.env.PATH ?? '').split(path.delimiter),
+  ];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    const p = path.join(dir, cmd);
+    try {
+      if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+    } catch {
+      /* unreadable dir — keep looking */
+    }
+  }
+  return null;
+}
+
+/** The same chain as `speak()`, resolved without awaiting anything. */
+export function resolveTtsSync(): TtsChoice | null {
+  return resolveTts((cmd) => whichSync(cmd) !== null);
 }
 
 async function commandExists(cmd: string): Promise<boolean> {

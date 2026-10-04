@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'node:child_process';
+import { resolveTtsSync } from './tts.js';
 
 /**
  * TTS streaming: chunked synthesis for long text.
@@ -8,6 +9,8 @@ import { spawn, ChildProcess } from 'node:child_process';
 
 export interface TtsStreamResult {
   ok: boolean;
+  /** Which backend spoke (same chain as `termcrab say`). */
+  backend?: string;
   error?: string;
 }
 
@@ -44,7 +47,16 @@ export function splitForTts(text: string, maxChars = 200): string[] {
 export function speakStream(text: string, opts: TtsStreamOptions = {}): Promise<TtsStreamResult> {
   return new Promise((resolve) => {
     const chunks = splitForTts(text);
-    const bin = process.env.PREFIX ? `${process.env.PREFIX}/bin/termux-tts-speak` : 'espeak';
+    // Resolved through the same candidate chain as `speak()`: a desktop with
+    // espeak-ng or `say` must stream too, not fail because it is not Android
+    // (this used to pick `espeak` blindly, which is absent on macOS — 33.5).
+    const choice = resolveTtsSync();
+    if (!choice) {
+      resolve({ ok: false, error: 'no TTS backend found. On Termux: pkg install termux-api (+ Termux:API app). Desktop: install espeak-ng or say.' });
+      return;
+    }
+    const bin = choice.cmd;
+    const backend = choice.cmd;
     let idx = 0;
     let child: ChildProcess | undefined;
     let settled = false;
@@ -58,7 +70,7 @@ export function speakStream(text: string, opts: TtsStreamOptions = {}): Promise<
 
     const speakNext = (): void => {
       if (idx >= chunks.length) {
-        finish({ ok: true });
+        finish({ ok: true, backend });
         return;
       }
       const chunk = chunks[idx]!;
@@ -106,7 +118,7 @@ export interface ContinuousStt {
 
 export function startContinuousStt(
   onResult: (text: string) => void,
-  opts: { timeoutMs?: number } = {},
+  opts: { timeoutMs?: number; restartDelayMs?: number } = {},
 ): ContinuousStt {
   const bin = process.env.PREFIX ? `${process.env.PREFIX}/bin/termux-speech-to-text` : 'termux-speech-to-text';
   let running = true;
@@ -114,10 +126,28 @@ export function startContinuousStt(
   let timer: NodeJS.Timeout | undefined;
   let out = '';
 
+  let restart: NodeJS.Timeout | undefined;
+
   const cleanup = (): void => {
     running = false;
     if (timer) clearTimeout(timer);
+    if (restart) clearTimeout(restart);
     try { child?.kill(); } catch { /* already gone */ }
+  };
+
+  /**
+   * Restart the recognizer, but never immediately: a backend that returns
+   * nothing and exits at once would otherwise spin in a tight loop and eat the
+   * phone's battery. 250 ms is below the threshold a person notices between
+   * phrases and far above what a busy loop costs.
+   */
+  const again = (): void => {
+    if (!running || restart) return;
+    restart = setTimeout(() => {
+      restart = undefined;
+      listen();
+    }, opts.restartDelayMs ?? 250);
+    restart.unref?.();
   };
 
   const listen = (): void => {
@@ -133,8 +163,9 @@ export function startContinuousStt(
     timer = setTimeout(() => {
       // No speech in this window — restart
       try { child?.kill(); } catch { /* already gone */ }
-      if (running) listen();
+      again();
     }, opts.timeoutMs ?? 30_000);
+    timer.unref?.();
 
     child.stdout?.on('data', (b: Buffer) => {
       out += b.toString();
@@ -143,12 +174,12 @@ export function startContinuousStt(
         if (timer) clearTimeout(timer);
         onResult(line);
         try { child?.kill(); } catch { /* already gone */ }
-        if (running) listen();
+        again();
       }
     });
 
     child.on('close', () => {
-      if (running) listen();
+      again();
     });
 
     child.on('error', () => {

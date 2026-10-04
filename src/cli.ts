@@ -32,6 +32,9 @@ import { importSkills } from './skills/importer.js';
 import { addCron, loadCrons, removeCron, setCronEnabled, getCron } from './cron/store.js';
 import { nextRun, parseCron } from './cron/parser.js';
 import { listAgents, agentExists, sanitizeAgentName } from './agent/prompt.js';
+import { resolveRoute, routeTable, setRoute, ROUTABLE_SURFACES } from './agent/routing.js';
+import { clearTasks, listTasks as listSubagentTasks, taskLine as subagentLine, getTask as getSubagentTask } from './agent/tasks.js';
+import { listSubagentDirs, pruneSubagentDirs } from './agent/subagents.js';
 import { speak } from './mobile/tts.js';
 import { EmbeddingIndex } from './agent/embed.js';
 import { resolveEmbedder } from './agent/embed-provider.js';
@@ -49,6 +52,7 @@ import { SkillStore } from './skills/loader.js';
 import { AgentCtx, runTurn, providerLabel } from './agent/loop.js';
 import { SessionStore } from './agent/sessions.js';
 import { scaffoldSkill, scaffoldAgent, isSoulTemplate, SOUL_TEMPLATES } from './skills/scaffold.js';
+import { approveProposal, getProposal, listProposals, listRejected, rejectProposal } from './skills/proposals.js';
 import { embeddingsStatus, embeddingsSetup, embeddingsTest } from './agent/embed-setup.js';
 import { transcribeFile } from './mobile/whisper.js';
 import { dreamHistory } from './agent/dream.js';
@@ -588,13 +592,20 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     case 'say': {
-      const text = rest.join(' ').trim();
+      // `--json` is the envelope flag, not something to read out loud.
+      const text = rest.filter((a) => a !== '--json').join(' ').trim();
       if (!text) {
         console.error('usage: termcrab say <text>');
         process.exitCode = 1;
         return;
       }
       const result = await speak(text);
+      if (machine) {
+        // 33.5: one envelope, like every other command.
+        if (result.ok) emitJson('say', { spoken: true, backend: result.backend, chars: text.length });
+        else failJson('say', result.error ?? 'tts failed', 'Android: pkg install termux-api. Desktop: install espeak-ng or use macOS say');
+        return;
+      }
       if (result.ok) console.log(`🔊 spoke via ${result.backend}`);
       else {
         console.error(`tts failed: ${result.error}`);
@@ -679,6 +690,12 @@ export async function main(argv: string[]): Promise<void> {
         ? values.session || 'cli:main'
         : rollingSessionKey(ctx.config, { fallback: values.session || 'cli:main', channel: 'cli', chatId: 'main' });
       let currentAgent = values.as ? sanitizeAgentName(values.as) ?? undefined : undefined;
+      if (!values.as) {
+        // 33.2: agents.routes.cli decides who answers the terminal, when set.
+        const route = resolveRoute(ctx.config, 'cli', { known: listAgents() });
+        if (route.problem) console.error(`(routing: ${route.problem})`);
+        if (route.agent) currentAgent = route.agent;
+      }
       if (values.as && !currentAgent) {
         console.error(`invalid agent name: ${values.as} (use lowercase letters, digits, - or _)`);
         process.exitCode = 1;
@@ -764,6 +781,82 @@ export async function main(argv: string[]): Promise<void> {
     case 'skills': {
       const [sub = 'list', source] = rest;
       const store = new SkillStore(undefined, { allow: skillsAllow(loadConfig()) });
+      if (sub === 'proposals') {
+        // 33.3: the agent proposes, a person decides. Nothing here is live
+        // until it is approved — the loader skips '_'-prefixed folders.
+        const [action = 'list', name, ...restArgs] = rest.slice(1);
+        if (action === 'approve' || action === 'reject') {
+          if (!name) {
+            console.error(
+              action === 'approve'
+                ? 'usage: termcrab skills proposals approve <name> [--force]'
+                : 'usage: termcrab skills proposals reject <name> [reason]',
+            );
+            process.exitCode = 1;
+            return;
+          }
+          const force = restArgs.includes('--force') || rest.includes('--force');
+          const reason = restArgs.filter((a) => a !== '--force').join(' ');
+          const r = action === 'approve' ? approveProposal(name, { force }) : rejectProposal(name, reason);
+          if (machine) {
+            if (!r.ok) failJson('skills', r.error ?? 'could not decide', r.name);
+            emitJson('skills', { ...r, action: 'proposals' });
+            return;
+          }
+          if (!r.ok) {
+            console.error(`❌ ${r.error}`);
+            process.exitCode = 1;
+            return;
+          }
+          console.log(
+            r.action === 'approved'
+              ? `✅ approved ${r.name} — live now (${r.path})`
+              : `✅ rejected ${r.name} — kept with the reason in skills/_rejected/${r.name}/`,
+          );
+          return;
+        }
+        const proposals = listProposals();
+        if (action === 'show') {
+          const one = name ? getProposal(name) : null;
+          if (!one) {
+            console.error(`no such proposal: ${name ?? '(none given)'}`);
+            process.exitCode = 1;
+            return;
+          }
+          if (machine) {
+            emitJson('skills', { action: 'proposals', proposal: { ...one, content: fs.readFileSync(one.path, 'utf8') } });
+            return;
+          }
+          console.log(`📝 ${one.name} — ${one.description}`);
+          console.log(`   proposed by ${one.by}${one.source ? ` · ${one.source}` : ''} · ${new Date(one.createdAt).toLocaleString()}`);
+          console.log(`   why: ${one.reason}`);
+          console.log(`
+${fs.readFileSync(one.path, 'utf8')}`);
+          console.log(`
+   approve: termcrab skills proposals approve ${one.name}    reject: termcrab skills proposals reject ${one.name} <reason>`);
+          return;
+        }
+        const rejected = listRejected();
+        if (machine) {
+          emitJson('skills', { action: 'proposals', count: proposals.length, proposals, rejected });
+          return;
+        }
+        if (!proposals.length) {
+          console.log('no skill proposals waiting');
+        } else {
+          console.log(`${proposals.length} proposal(s) waiting for a decision:
+`);
+          for (const p of proposals) {
+            console.log(`  📝 ${p.name} — ${p.description}`);
+            console.log(`     ${p.reason}`);
+            if (p.replacesLive) console.log(`     ⚠ a live skill named ${p.name} exists; approving needs --force to replace it`);
+            console.log(`     approve: termcrab skills proposals approve ${p.name}   reject: termcrab skills proposals reject ${p.name} <reason>`);
+          }
+        }
+        if (rejected.length) console.log(`
+${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r.name).join(', ')}`);
+        return;
+      }
       if (sub === 'import') {
         if (!source) {
           console.error('usage: termcrab skills import <folder|git-url> [--force]');
@@ -932,7 +1025,17 @@ export async function main(argv: string[]): Promise<void> {
               } catch {
                 next = null;
               }
-              return { id: j.id, name: j.name, schedule: j.schedule, enabled: j.enabled, critical: Boolean(j.critical), nextRun: next, prompt: j.prompt };
+              return {
+                id: j.id,
+                name: j.name,
+                schedule: j.schedule,
+                enabled: j.enabled,
+                critical: Boolean(j.critical),
+                nextRun: next,
+                prompt: j.prompt,
+                agent: j.agent ?? null,
+                deliver: j.deliver ?? 'all',
+              };
             }),
           });
           return;
@@ -952,24 +1055,47 @@ export async function main(argv: string[]): Promise<void> {
             /* keep invalid */
           }
           const state = j.enabled ? 'on ' : 'off';
+          const bits = [
+            j.critical ? '[critical]' : '',
+            j.agent ? `@${j.agent}` : '',
+            j.deliver ? `→${j.deliver}` : '',
+          ].filter(Boolean);
           console.log(
-            `${state} ${j.id}  ${j.name.padEnd(18)} ${j.schedule.padEnd(14)} next: ${next}${j.critical ? ' [critical]' : ''}`,
+            `${state} ${j.id}  ${j.name.padEnd(18)} ${j.schedule.padEnd(14)} next: ${next}${bits.length ? ` ${bits.join(' ')}` : ''}`,
           );
         }
         return;
       }
       if (sub === 'add') {
         const opts = parseArgs({
-          args: rest.slice(1),
+          // `--json` is the envelope flag for every command; the option parser
+          // for this one must not treat it as a usage error (fixed in 33.4).
+          args: rest.slice(1).filter((a) => a !== '--json'),
           options: {
             schedule: { type: 'string' },
             prompt: { type: 'string' },
             name: { type: 'string' },
+            agent: { type: 'string' },
+            deliver: { type: 'string' },
             critical: { type: 'boolean', default: false },
           },
         }).values;
         if (!opts.schedule || !opts.prompt) {
-          console.error('usage: termcrab cron add --schedule "*/30 * * * *" --prompt "..." [--name x] [--critical]');
+          console.error(
+            'usage: termcrab cron add --schedule "*/30 * * * *" --prompt "..." [--name x] [--critical] [--agent <name>] [--deliver telegram|panel|none]',
+          );
+          process.exitCode = 1;
+          return;
+        }
+        const deliver = opts.deliver ? String(opts.deliver).toLowerCase() : undefined;
+        if (deliver && !['telegram', 'panel', 'none'].includes(deliver)) {
+          console.error(`--deliver must be telegram, panel or none (got "${opts.deliver}")`);
+          process.exitCode = 1;
+          return;
+        }
+        const jobAgent = opts.agent ? String(opts.agent).trim().toLowerCase() : undefined;
+        if (jobAgent && !listAgents().includes(jobAgent)) {
+          console.error(`no such agent: ${jobAgent} — create it with: termcrab agents new ${jobAgent}`);
           process.exitCode = 1;
           return;
         }
@@ -979,6 +1105,8 @@ export async function main(argv: string[]): Promise<void> {
             schedule: opts.schedule,
             prompt: opts.prompt,
             critical: opts.critical,
+            ...(jobAgent ? { agent: jobAgent } : {}),
+            ...(deliver ? { deliver: deliver as 'telegram' | 'panel' | 'none' } : {}),
           });
           const nx = nextRun(parseCron(job.schedule));
           if (machine) {
@@ -2292,12 +2420,119 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
+    case 'subagents': {
+      // 33.1: the same task list the agent sees, from the terminal.
+      const [sub = 'list', id] = rest;
+      if (sub === 'clear') {
+        const n = clearTasks();
+        const dirs = pruneSubagentDirs(0);
+        console.log(`✅ forgot ${n} finished task(s)${dirs.removed.length ? `, removed ${dirs.removed.length} scratch dir(s)` : ''}`);
+        return;
+      }
+      if (sub === 'scratch') {
+        // What parallel tasks left behind, and a way to reclaim it.
+        const prune = rest.includes('--prune');
+        const dirs = listSubagentDirs();
+        if (prune) {
+          const r = pruneSubagentDirs(0);
+          if (machine) {
+            emitJson('subagents', { action: 'prune', ...r });
+            return;
+          }
+          console.log(`✅ removed ${r.removed.length} scratch dir(s), ${Math.round(r.freedBytes / 1024)} KB`);
+          return;
+        }
+        if (machine) {
+          emitJson('subagents', { action: 'scratch', dirs });
+          return;
+        }
+        console.log(dirs.length ? dirs.map((d) => `  ${d.id}  ${d.files} file(s) · ${Math.round(d.bytes / 1024)} KB`).join('\n') : '(no scratch directories)');
+        return;
+      }
+      const tasks = listSubagentTasks();
+      if (machine) {
+        if (sub === 'show') {
+          const one = id ? getSubagentTask(id) : null;
+          if (!one) failJson('subagents', `no such task: ${id ?? '(none given)'}`);
+          emitJson('subagents', one);
+          return;
+        }
+        emitJson('subagents', { count: tasks.length, running: tasks.filter((t) => t.status === 'running').length, tasks });
+        return;
+      }
+      if (sub === 'show') {
+        const one = id ? getSubagentTask(id) : null;
+        if (!one) {
+          console.error(`no such task: ${id ?? '(none given)'}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(subagentLine(one));
+        console.log(`  prompt: ${one.prompt.slice(0, 300)}`);
+        if (one.error) console.log(`  error: ${one.error}`);
+        if (one.output) console.log(`\n${one.output.slice(0, 4000)}`);
+        return;
+      }
+      if (!tasks.length) {
+        console.log('no subagent tasks yet — the agent spawns them with the sessions_spawn tool');
+        return;
+      }
+      for (const t of tasks.slice(-20)) console.log(`  ${subagentLine(t)}`);
+      console.log(`\n  agent.maxSubagents=${loadConfig().agent.maxSubagents ?? 4} · agent.subagentTimeoutSec=${loadConfig().agent.subagentTimeoutSec ?? 900}`);
+      return;
+    }
     case 'agents': {
       const [sub = 'ls', name] = rest;
       if (sub === 'ls' || sub === 'list') {
         const agents = listAgents();
         console.log(agents.length ? agents.map((a) => ` @${a}`).join('\n') : '(no named agents yet)');
         if (!agents.length) console.log('  create one: termcrab agents new <name> --template brief');
+        return;
+      }
+      if (sub === 'routes') {
+        // 33.2: read or change which agent answers on which surface.
+        const [action, surface, agentName] = rest.slice(1);
+        if (action === 'set') {
+          if (!surface || !agentName) {
+            console.error('usage: termcrab agents routes set <surface> <agent>');
+            process.exitCode = 1;
+            return;
+          }
+          const known = listAgents();
+          if (!known.includes(agentName.toLowerCase())) {
+            console.error(`no such agent: ${agentName} — known: ${known.join(', ') || '(none)'}`);
+            process.exitCode = 1;
+            return;
+          }
+          const cfg = loadConfig();
+          setRoute(cfg, surface, agentName);
+          saveConfig(cfg);
+          console.log(`✅ ${surface.toLowerCase()} → @${agentName.toLowerCase()}`);
+          return;
+        }
+        if (action === 'clear') {
+          if (!surface) {
+            console.error('usage: termcrab agents routes clear <surface>');
+            process.exitCode = 1;
+            return;
+          }
+          const cfg = loadConfig();
+          setRoute(cfg, surface, null);
+          saveConfig(cfg);
+          console.log(`✅ ${surface.toLowerCase()} → the main agent`);
+          return;
+        }
+        const table = routeTable(loadConfig(), listAgents());
+        if (machine) {
+          emitJson('agents', { routes: table });
+          return;
+        }
+        console.log('surface      agent            source');
+        for (const r of table) {
+          const agent = r.agent ? `@${r.agent}` : `(main: ${loadConfig().agent.name})`;
+          console.log(`  ${r.surface.padEnd(11)} ${agent.padEnd(16)} ${r.source}${r.problem ? `  ⚠ ${r.problem}` : ''}`);
+        }
+        console.log(`\n  set one: termcrab agents routes set telegram <agent>    (surfaces: ${ROUTABLE_SURFACES.join(', ')})`);
         return;
       }
       if (sub === 'new') {
@@ -2332,13 +2567,27 @@ export async function main(argv: string[]): Promise<void> {
     case 'transcribe': {
       const file = rest.find((a) => !a.startsWith('--'));
       if (!file) {
-        console.error('usage: termcrab transcribe <audio-file> [--model <ggml-model>]');
+        console.error('usage: termcrab transcribe <audio-file> [--model <ggml-model>] [--json]');
         process.exitCode = 1;
         return;
       }
       const mIdx = rest.indexOf('--model');
-      console.log(`🎙️ transcribing ${file} (offline) ...`);
+      if (!machine) console.log(`🎙️ transcribing ${file} (offline) ...`);
       const r = await transcribeFile(file, { model: mIdx >= 0 ? rest[mIdx + 1] : undefined });
+      if (machine) {
+        // 33.5: the envelope promise holds here too — this command used to
+        // print a friendly line even with --json, which no script can parse.
+        if (!r.ok) failJson('transcribe', r.error ?? 'transcription failed', 'install whisper.cpp or pass --model <file>');
+        else
+          emitJson('transcribe', {
+            file,
+            text: r.text ?? '',
+            engine: r.engine ?? null,
+            model: r.model ?? null,
+            ms: r.ms ?? 0,
+          });
+        return;
+      }
       if (r.ok) {
         console.log(`\n${r.text}`);
         console.log(`\n(${((r.ms ?? 0) / 1000).toFixed(1)}s · ${path.basename(r.model ?? 'model')})`);

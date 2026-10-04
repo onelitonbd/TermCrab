@@ -38,7 +38,7 @@ The families a client can rely on:
 | `voice` | `wake`, `tts:chunk`, `stt:result` | the wake loop hears, speaks or transcribes | text, reason |
 | `canvas` | `canvas:update`, `canvas:remove` | a canvas document changes | canvas id, patch |
 | `channel` | `discord:message`, `matrix:message`, `signal:message`, `slack:message`, `sms:message` | a message arrives on a channel | channel, chat, userId, text |
-| `schedule` | `cron` | a scheduled job fires or is edited | job id, name, next run |
+| `schedule` | `cron`, `cron-output` | a scheduled job fires or is edited, or its result is delivered | job id, name, next run / delivered text |
 | `memory` | `dream` | memory is consolidated | file, count, by |
 | `panel` | `update`, `tasks`, `ask` | the panel reloads config, suggests a task, or asks a question | section, suggestions, question |
 | `presence` | `presence` | who can reach the agent changes (a client attaches or leaves, a device pairs) | `change` (`started`/`watch`/`unwatch`/`paired:<id>`), `watchers`, `summary` |

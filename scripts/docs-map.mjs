@@ -72,7 +72,9 @@ function blockDescriptions(doc) {
   if (a < 0 || b < 0) return out;
   for (const line of doc.slice(a, b).split('\n')) {
     const m = /^\|\s*`([^`]+)`\s*\|\s*(.*?)\s*\|\s*$/.exec(line);
-    if (m && m[2] && m[2] !== NEW_FILE_NOTE) out.set(m[1], m[2]);
+    // Un-escape what renderMap escapes, or every `--write` would add another
+    // layer of backslashes to a description that contains a pipe (fixed 33.4).
+    if (m && m[2] && m[2] !== NEW_FILE_NOTE) out.set(m[1], m[2].replace(/\\+\|/g, '|'));
   }
   return out;
 }

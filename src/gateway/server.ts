@@ -67,6 +67,10 @@ import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
 import { ChannelName } from '../channels/api.js';
 import { listAgents, sanitizeAgentName } from '../agent/prompt.js';
+import { resolveRoute, routeTable, setRoute } from '../agent/routing.js';
+import { listTasks as listSubagentTasks } from '../agent/tasks.js';
+import { listSubagentDirs } from '../agent/subagents.js';
+import { approveProposal, listProposals, listRejected, rejectProposal } from '../skills/proposals.js';
 import { notifyStatus, cancelStatusNotification } from '../mobile/notify.js';
 import { speak } from '../mobile/tts.js';
 import { WakeService } from './wake-service.js';
@@ -1002,13 +1006,19 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       log.warn(`rate limited ${channel}:${chatId} (${Math.ceil(chanBudget.retryAfterMs / 1000)}s)`);
       return rateLimitHint(chanBudget.retryAfterMs);
     }
-    const routed = parseAgentPrefix(text, listAgents());
+    // Precedence (33.2): an @prefix on the message, then agents.routes for this
+    // surface, then the main agent. A route naming an agent that does not exist
+    // is reported once per turn, not silently ignored.
+    const prefixed = parseAgentPrefix(text, listAgents());
+    const route = resolveRoute(agent.config, channel, { explicit: prefixed.agent, known: listAgents() });
+    if (route.problem) log.warn(`routing: ${route.problem}`);
+    const routedAgent = route.agent ?? undefined;
     const result = await runQueuedTurn(agent, {
       sessionId: baseSession,
-      userMessage: routed.text,
+      userMessage: prefixed.text,
       channel,
       user: userId ? String(userId) : undefined,
-      agent: routed.agent ?? undefined,
+      agent: routedAgent,
       onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
     });
     void userId;
@@ -1051,7 +1061,17 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     log.info('heartbeat output:', text.slice(0, 300));
   };
   const stopHeartbeat = scheduleHeartbeat(agent, notify);
-  const stopCron = startCronScheduler({ ctx: agent, deliver: notify });
+  // 33.4: a job's `deliver` decides which surfaces see the result. The gateway
+  // knows which of them exist, so the decision is made here, not in the store.
+  const deliverCron = async (text: string, target: 'telegram' | 'panel' | 'none' | 'all'): Promise<void> => {
+    const chatId = config.channels.telegram?.notifyChatId;
+    if (target !== 'panel' && telegram && chatId) await telegram.send(chatId, `⏲️ ${text}`);
+    if (target !== 'telegram') {
+      log.info('cron output:', text.slice(0, 300));
+      bus.emit({ type: 'cron-output', text: text.slice(0, 2000), at: Date.now() } as unknown as BusEvent);
+    }
+  };
+  const stopCron = startCronScheduler({ ctx: agent, deliver: deliverCron });
   const stopDream =
     config.dream?.enabled !== false ? startDreamScheduler(agent) : () => undefined;
   // One quiet update check at startup (opt-in via update.checkOnStart).
@@ -1621,7 +1641,66 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         }
 
         if (req.method === 'GET' && pathname === '/api/agents') {
-          json(res, 200, { agents: listAgents() });
+          // 33.2: the roster plus the routing table, so the panel can say who
+          // answers where instead of leaving it to a config file.
+          json(res, 200, { agents: listAgents(), routes: routeTable(config, listAgents()) });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/subagents') {
+          // 33.1: the same list the agent sees, plus what the scratch dirs hold.
+          const tasks = listSubagentTasks();
+          json(res, 200, {
+            count: tasks.length,
+            running: tasks.filter((t) => t.status === 'running').length,
+            tasks,
+            scratch: listSubagentDirs(),
+          });
+          return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/skills/proposals') {
+          // 33.3: proposals are visible in the panel; approving here is the
+          // same decision as the CLI, on the same files.
+          json(res, 200, { proposals: listProposals(), rejected: listRejected() });
+          return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/skills/proposals') {
+          const body = await readJsonBody(req);
+          const name = typeof body?.name === 'string' ? body.name : '';
+          const action = body?.action === 'approve' || body?.action === 'reject' ? body.action : '';
+          if (!name || !action) {
+            json(res, 400, { error: 'name and action (approve|reject) are required' });
+            return;
+          }
+          const r =
+            action === 'approve'
+              ? approveProposal(name, { force: body?.force === true })
+              : rejectProposal(name, typeof body?.reason === 'string' ? body.reason : '');
+          if (!r.ok) {
+            json(res, 404, { error: r.error ?? 'could not decide' });
+            return;
+          }
+          json(res, 200, { ...r, proposals: listProposals() });
+          return;
+        }
+
+        if (req.method === 'PUT' && pathname === '/api/agents/routes') {
+          const body = await readJsonBody(req);
+          const surface = typeof body?.surface === 'string' ? body.surface.trim().toLowerCase() : '';
+          const agentName = typeof body?.agent === 'string' ? body.agent.trim().toLowerCase() : '';
+          if (!surface) {
+            json(res, 400, { error: 'surface is required (web, telegram, cli, cron, voice, wake, subagent)' });
+            return;
+          }
+          if (agentName && !listAgents().includes(agentName)) {
+            json(res, 400, { error: `no such agent: ${agentName} — create one first (POST /api/agents)` });
+            return;
+          }
+          setRoute(config, surface, agentName || null);
+          saveConfig(config);
+          json(res, 200, { ok: true, routes: routeTable(config, listAgents()) });
           return;
         }
 

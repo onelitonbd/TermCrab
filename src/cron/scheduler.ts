@@ -6,11 +6,21 @@ import { bus, BusEvent } from '../gateway/events.js';
 import { AgentCtx, runQueuedTurn } from '../agent/loop.js';
 import { findDue, loadCronState, loadCrons, saveCronState, setCronEnabled } from './store.js';
 import { decideHeartbeat, readBattery } from '../mobile/power.js';
+import { resolveRoute } from '../agent/routing.js';
+import { listAgents } from '../agent/prompt.js';
 import { notify } from '../mobile/notify.js';
+
+/**
+ * Where a finished job's output goes. `undefined` on a job means "every surface
+ * that is configured", which is what the scheduler did before jobs could say
+ * (33.4); `none` records the run and delivers nothing.
+ */
+export type CronTarget = 'telegram' | 'panel' | 'none' | 'all';
 
 export interface CronRunnerDeps {
   ctx: AgentCtx;
-  deliver?: (text: string) => Promise<void>;
+  /** Delivery is the caller's business: it knows which surfaces exist. */
+  deliver?: (text: string, target: CronTarget) => Promise<void> | void;
   /** Injected in tests. */
   now?: () => Date;
 }
@@ -45,14 +55,22 @@ export async function cronTick(deps: CronRunnerDeps): Promise<string[]> {
 
     log.info(`cron "${job.name}" firing (${job.schedule})`);
     try {
+      // 33.2: a job can name its agent; otherwise the cron route decides.
+      const routed = resolveRoute(deps.ctx.config, 'cron', { explicit: job.agent ?? null, known: listAgents() });
+      if (routed.problem) log.warn(`cron "${job.name}": ${routed.problem}`);
       const output = await runQueuedTurn(deps.ctx, {
         sessionId: `cron:${job.id}`,
         userMessage: `[scheduled:${job.name}] ${job.prompt}`,
         channel: 'cron',
+        ...(routed.agent ? { agent: routed.agent } : {}),
         onEvent: (ev) => bus.emit({ ...ev, cron: job.name } as unknown as BusEvent),
       });
-      deps.ctx.memory.logDaily(`cron ${job.name}: ${output.slice(0, 200).replace(/\n/g, ' ')}`);
-      if (deps.deliver) await deps.deliver(`⏲️ ${job.name}\n${output}`);
+      const target: CronTarget = job.deliver ?? 'all';
+      deps.ctx.memory.logDaily(
+        `cron ${job.name} (${target === 'all' ? 'all surfaces' : target}): ${output.slice(0, 200).replace(/\n/g, ' ')}`,
+      );
+      if (deps.deliver && target !== 'none') await deps.deliver(`⏲️ ${job.name}\n${output}`, target);
+      else if (target === 'none') log.info(`cron "${job.name}": deliver:none — output recorded, not sent`);
       await notify(`⏰ ${job.name}`, output.slice(0, 120));
       ran.push(job.id);
       if (job.oneShot) setCronEnabled(job.id, false);
