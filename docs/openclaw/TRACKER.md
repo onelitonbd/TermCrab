@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৯৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১১০টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৮টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৪৮ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯৮%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১১৩টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৫টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৩৮ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 110 | wired and observable |
+| ✅ WORKING | 113 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 8 | exists, narrower than theirs |
+| 🟡 PARTIAL | 5 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 97%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 98%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~48d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~38d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~51d | in-scope only |
+| **total** | 132 | ~41d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -161,7 +161,7 @@ Out of scope, and why:
 | Dreaming / idle consolidation | idle-cycle log → memory distillation | ✅ WORKING | src/agent/dream.ts + CLI dream + /api/dream — a genuine TermCrab strength | parity | — |
 | Bootstrap file set | AGENTS, SOUL, IDENTITY, USER, BOOTSTRAP, MEMORY | ✅ WORKING | All six names are real files now (32.3). The first command that touches a new home writes workspace/SOUL.md, workspace/IDENTITY.md (pure settings, injected every turn), workspace/AGENTS.md (the surface -> agent table), workspace/BOOTSTRAP.md (the first-run note, injected into the prompt only while it exists, with the agent told to walk the owner through the two questions that matter and then delete it), memory/MEMORY.md and memory/USER.md - and only the missing ones: an existing file is never overwritten, `--force` is the documented exception. `termcrab bootstrap` shows the set and what is missing, the doctor reports it with the one-line fix, and the whole set travels in a backup. Pinned by test/tier2v.test.ts (6 cases, including a real first turn from an empty directory with no setup command) | parity | — |
 
-### gateway — 97% (16 in-scope checks)
+### gateway — 100% (16 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
@@ -178,7 +178,7 @@ Out of scope, and why:
 | Canvas / A2UI widgets | agent-driven UI widgets | ✅ WORKING | src/gateway/canvas.ts + /api/canvas: the `canvas` tool pushes an HTML widget, it is broadcast as canvas:update / canvas:remove over SSE, the panel renders it, and GET /api/canvas returns what exists (with remove). Deliberately not an A2UI typed component protocol — a widget is HTML the agent wrote; test/tier2n.test.ts pins the round-trip | parity | — |
 | Multi-agent routing | per-agent workspace, session, store | ✅ WORKING | a named agent is workspace/agents/<name>/SOUL.md and it now has a route: agents.routes.<surface> says who answers on web, telegram, cli, cron, voice, wake or subagent, with the precedence stated in one line (explicit @prefix or --as wins, then the route, then the main agent). resolveRoute returns the decision plus a problem when config names an agent that does not exist — the turn still runs as the main agent and the reason is in the log, in `termcrab agents routes` and on the panel (GET /api/agents returns agents and routes; PUT /api/agents/routes sets one). Each agent keeps its own session namespace, so a routed Telegram message and the same agent used with --as are one history, not two. The route is stored in config, so it survives a restart and is readable. test/tier2x.test.ts 33.2 covers precedence, a broken route, config validation naming the exact surface, and the CLI round-trip. Not attempted: per-agent model/store overrides (agent.scoped* settings), because one brain with several personalities is what the owner asked for | parity | — |
 | Presence | online/typing/presence events | ✅ WORKING | src/gateway/presence.ts derives one picture from stores that already exist: attached gateway watchers (bus subscribers = the panel, a phone, the CLI), channels configured-vs-running (server builds the rows from live objects, so a channel that failed to start cannot claim to run), paired devices with their last sighting, and people who actually wrote — each with a stated freshness ladder (<=2 min online, <=1 h recent, older idle, never seen unknown). Read by `termcrab presence [--json]`, GET /api/presence, the presence line in /api/status and the chat /status reply; presence changes are bus events (watcher attached/left, device paired, channels started), so a UI can react without polling. Typing indicators are already sent by the telegram channel (src/channels/telegram.ts); a per-keystroke typing protocol is not attempted. Pinned by test/tier2m.test.ts (24.1) | parity | — |
-| Remote access story | Tailscale, SSH, trusted proxy, TLS pinning | 🟡 PARTIAL | docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth | parity | 3 |
+| Remote access story | Tailscale, SSH, trusted proxy, TLS pinning | ✅ WORKING | the story is enforced, not just written down (34.5). Three mechanisms: the bind guard refuses to start a non-loopback gateway with no token (exit 1, not a warning — this is what makes the "a token is mandatory off your own device" claim true); every /api/* route authenticates with the master token or a paired per-device token (compared in constant time, revocable one device at a time) and the rate limiter answers 429 instead of queueing; and `termcrab security` judges the exposure from the live config — bound off-loopback is a warn, and a short/guessable/repeated-character token beside it is a fail with the fix, including the one-liner that generates a good token. docs/REMOTE.md names the recipes (Tailscale, SSH tunnel, trusted proxy) and states the structural limit: there is **no built-in TLS terminator**, so the bearer token is only as private as the network it crosses — put a tunnel or WireGuard in front, which is exactly what those recipes are, and docs/SECURITY.md repeats it so it cannot be missed. Pinned by test/tier3c.test.ts 34.5 (weak-token classification incl. the long-guessable-word case) and test/auth.test.ts (401 on every route). Limits stated: no TLS pinning, no nonce/replay protection (a bearer token over TLS is the design), and no proxy trust model — the tunnel is trusted wholesale, as the docs say. | parity | — |
 | Usage / token accounting | per-run, per-model, per-session | ✅ WORKING | providers parse `usage` (streaming + non-streaming; the offline mock reports deterministic numbers marked estimated) → the loop sums it across the tool loop, emits it on run:end and stores it on the assistant entry → TCRAB_HOME/usage/<day>.jsonl → GET /api/usage + `termcrab usage [--json]` + a per-turn footer and a daily pill in the panel. Cost appears only from configured prices or a dated snapshot, never invented. Pinned by test/usage.test.ts (9.1-9.4) | core | — |
 | Stuck-run diagnostics | stalled/stuck session notices, watchdogs | ✅ WORKING | src/agent/run-health.ts gives every running turn a verdict — working / slow / stuck / failing / queued — from the queue (started when), the run trace (last span, last tool call, provider error) and plain thresholds (60s slow, 5min stuck with nothing new). Each verdict carries a sentence to act on (`termcrab stop <session>`, `termcrab doctor`, retry smaller), surfaced by `termcrab runs`, GET /api/runs/health, the /status line in a chat and a `running turns` check in doctor. test/tier2l.test.ts 23.1 | later | — |
 
@@ -237,17 +237,17 @@ Out of scope, and why:
 | Auth profiles / credential store | named keys, per-profile provider/base/model | ✅ WORKING | src/core/auth-profiles.ts: termcrab auth add <name> --provider openai|anthropic|gemini --key <key> [--base-url] [--model] stores the key in state/auth-profiles.json (mode 0600, every use appended to state/auth-audit.log), config.json only carries provider.authProfile: "<name>", and resolveAuth() fills the key at the one place a provider is built (src/agent/loop.ts). A missing profile or one written for another vendor is a clear error, never an empty key. Pinned by test/tier2p.test.ts 27.3 (file mode, key never printed, mismatch and missing cases) | later | — |
 | MCP as tool source | MCP + ACP | ✅ WORKING | src/providers/mcp.ts wired at server.ts:345 | parity | — |
 
-### security — 86% (8 in-scope checks)
+### security — 100% (8 in-scope checks)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
 | Loopback-first bind | loopback + trusted proxy modes | ✅ WORKING | src/gateway/server.ts:257 | parity | — |
 | Token enforcement | token + pairing required | ✅ WORKING | one guard in front of every /api/* route: authenticate(config, extractAuth(req)) accepts the master token or a paired device token, and the same call is rate-limited per key (src/gateway/server.ts); an empty token keeps the documented loopback-only default; test/auth.test.ts samples 10 routes anonymously and asserts 401, test/tier2i.test.ts 20.4 does the same for /api/devices and the pair route | parity | — |
 | Sandboxing | sandbox modes, workspace roots, install policy | ✅ WORKING | src/agent/sandbox.ts fits a real isolation boundary around every shell command: bubblewrap when the device has it (read-only root, the workspace as the only writable path plus agent.sandboxWrites, a private /tmp and a throwaway HOME so ~/.ssh is not writable, --unshare-pid/ipc/uts, --die-with-parent, and no network unless agent.sandboxNetwork says otherwise), proot where unprivileged namespaces are blocked (userspace chroot, and it says plainly that proot cannot drop the network), and an honest sentence naming the package to install when there is neither. agent.sandbox picks the policy: auto (default) runs and writes [sandbox] ran without a sandbox into the transcript, require refuses with the fix rather than running with full access, off is the pre-30 behaviour and is recorded per run. The argv is built as an array and asserted flag by flag, never a shell string; `termcrab doctor` reports the mode, GET /api/status carries it and the panel shows it. Container images, per-tool policies and a filesystem-exfiltration guard beyond the writable-path fence are not implemented. Pinned by test/tier2s.test.ts 30.1-30.3 | later | — |
-| Secrets management | vault, SecretRef, 1Password, audit | 🟡 PARTIAL | src/agent/secrets.ts + config.json plaintext | parity | 4 |
+| Secrets management | vault, SecretRef, 1Password, audit | ✅ WORKING | keys live outside the config and the agent never sees them printed: named profiles in state/auth-profiles.json (mode 0600) plus state/secrets.json for tool secrets, read on request and never returned whole (`termcrab auth list` shows providers and whether a key is set, never the value), and every set/read appended to state/secrets-audit.log. 34.5 added the audit that makes the claim checkable: `termcrab auth audit` walks config.json, memory/ and state/ for key-shaped strings (OpenAI/GitHub/Slack/Google/AWS patterns and private-key blocks), reports where each one is with a masked preview (four characters at each end — the full value never reaches the report), knows the two files that are supposed to hold credentials and checks their mode instead of their content, says plainly which key is expected where (the Telegram bot token belongs in the config, and the fix is keeping the file 0600), and points at the exact command that moves a model key into a profile. Limits stated: no external vault and no SecretRef indirection into arbitrary tools — a key on a phone lives at 0600 on that phone, which is the property this project can actually guarantee; the threat the audit aims at is a key in a chat log, a prompt or a backup, not a compromised device. test/tier3c.test.ts 34.5 | parity | — |
 | Skill supply chain | signed manifests after ClawHavoc | 🏅 BETTER | no registry exists to poison; skills are local files | parity | — |
 | Dependency surface | large dependency tree, 1,142 advisories in 5 months | 🏅 BETTER | zero runtime dependencies — package.json has no "dependencies" key at all | parity | — |
-| Security audits / doctor | openclaw security audit, policy CLI | 🟡 PARTIAL | src/mobile/doctor.ts checks Termux-specific hazards, not policy | parity | 3 |
+| Security audits / doctor | openclaw security audit, policy CLI | ✅ WORKING | the policy half is real now (34.5): `termcrab security [audit] [--json]` derives findings from the live config object — exec policy (off = ok; on with agent.sandbox off = fail; require with no sandbox binary = fail), the approval gate (nothing gated while exec is open = warn, and the detail names which dangerous tools are not gated), the bind address (loopback = ok; off-loopback = warn, plus a fail when the token is short, a guessable word or one repeated character, with the exact fix line), webhook doors without an x-hook-token, the browser tool when enabled, and the mode of config.json. Every finding carries the fix, the worst one sorts first and a fail exits 1, so it works as a gate in a script. The doctor gained a `security` line that runs the same audit and names the command. Limits stated: the checks are about policy and file placement, not about a running attacker — no port scan, no TLS check (there is no built-in TLS; docs/SECURITY.md says the tunnel is the answer), and no per-route scope model. test/tier3c.test.ts 34.5 | parity | — |
 | Rate limiting / loop protection | bot-loop protection, caps | ✅ WORKING | src/gateway/ratelimit.ts: a token bucket per key (a device, the master token, or a peer address; per channel chat for messages) with `gateway.rateLimit = {perMinute, burst}` (default 60/10). A full bucket answers immediately — 429 {error, retryAfterMs, limit} + a `retry-after` header on the API, one sentence back into the chat for channels — instead of queueing more turns, and the limiter clamps nonsense config rather than blocking everything. test/tier2i.test.ts 20.3/20.4 | later | — |
 
 ### sessions — 100% (8 in-scope checks)

@@ -18,6 +18,36 @@
    (`?token=…` in the URL or `Authorization: Bearer …`). No token = turned
    away, even if the port is open.
 
+## What is enforced, and how to check it yourself (34.5)
+
+The rules above used to be documentation. They are now three mechanisms you can
+test without trusting this page:
+
+1. **The bind guard.** `termcrab gateway --host 0.0.0.0` with no `gateway.token`
+   refuses to start (exit 1) instead of quietly opening the API. This is not a
+   warning; the process does not come up.
+2. **The token is checked on every route, and its strength is audited.**
+   `termcrab security` fails when the panel is bound off-loopback *and* the token
+   is short, a guessable word, or one repeated character — the exact things a
+   person types when they are in a hurry to test from the sofa.
+3. **The audit reads the live config, not a table.** `termcrab security` prints
+   findings with the fix for each one, and exits 1 when any of them is a `fail`:
+
+   ```bash
+   termcrab security            # exec policy, sandbox, approvals, bind, tokens, browser, keys
+   termcrab security --json     # the same findings as data (for a script or the panel)
+   termcrab auth audit          # where the keys are, masked — config.json, memory/, state/
+   ```
+
+**What this does *not* do, said plainly:** there is no built-in TLS terminator.
+The token crosses the wire as a bearer header or a query parameter, so on a
+network you do not control, put a TLS terminator in front (a tunnel gives you
+one), or use Tailscale/WireGuard as above — an encrypted network is the thing
+that actually protects the token, and pretending a bearer token over plain HTTP
+on a café network is safe would be a lie. There is also no per-route scope: a
+paired device token can do anything the master token can, which is why
+revocation is per device (`termcrab devices revoke`).
+
 ## ✅ Recipe A — Tailscale (easiest, private)
 
 Your own private network; only your devices see it.

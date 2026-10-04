@@ -13,6 +13,7 @@ import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
 import { embedderPlan } from '../agent/embed-provider.js';
 import { bootstrapStatus } from '../core/bootstrap.js';
+import { securityAudit } from '../agent/security.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -131,6 +132,25 @@ export async function probeGatewayToken(cfg: Config, token: string): Promise<'ok
 export async function runDoctor(): Promise<Check[]> {
   const checks: Check[] = [];
   const cfg = loadConfig();
+
+  // Policy (34.5): the Termux checks below are about this device; this one is
+  // about what the agent is allowed to do. Findings are the same objects
+  // `termcrab security` prints, reduced to the worst line.
+  {
+    const findings = securityAudit({ config: cfg, sandboxAvailable: detectSandbox().isolated });
+    const fails = findings.filter((f) => f.level === 'fail');
+    const warns = findings.filter((f) => f.level === 'warn');
+    const worst = fails[0] ?? warns[0];
+    checks.push({
+      id: 'security',
+      label: 'security policy audit',
+      status: fails.length ? 'fail' : warns.length ? 'warn' : 'ok',
+      detail: fails.length || warns.length
+        ? `${fails.length} fail, ${warns.length} warn — worst: ${worst!.title}`
+        : 'exec policy, approvals, bind address, tokens and key placement all check out',
+      fix: worst ? 'termcrab security   (every finding carries its fix)' : undefined,
+    });
+  }
 
   // Node version
   checks.push({

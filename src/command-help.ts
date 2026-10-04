@@ -355,6 +355,17 @@ export const COMMANDS: CommandDoc[] = [
     example: 'termcrab agents routes set telegram crabby',
   },
   {
+    cmd: 'security',
+    usage: 'security [audit] [--json]',
+    summary: 'audit what this install actually allows (exec, sandbox, approvals, bind address, tokens, browser) and where your keys actually are — read-only, every finding carries its fix',
+    flags: [
+      'audit     the whole audit (this is the default)',
+      '--json    every finding as data: {counts, findings:[{id, level, title, detail, fix?}]} — exit 1 when something is a fail',
+    ],
+    example: 'termcrab security',
+    json: '{counts:{fail,warn,info,ok}, findings:[{id, level, title, detail, fix?}]}',
+  },
+  {
     cmd: 'board',
     usage: 'board [--limit <n>] [--json]',
     summary: 'one screen for everything in flight: live turns, subagent tasks, scheduled jobs and the cards the agent suggested',
@@ -462,9 +473,9 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'auth',
-    usage: 'auth [list | add <name> --provider <openai|anthropic|gemini> --key <key> [--base-url <url>] [--model <id>] | remove <name>]',
+    usage: 'auth [list | add <name> --provider <openai|anthropic|gemini> --key <key> [--base-url <url>] [--model <id>] | remove <name> | audit]',
     summary: 'named API keys stored in state/auth-profiles.json (mode 0600) so config.json never holds a secret',
-    flags: ['list             profile names, providers and whether a key is set (never the key)', 'add              store or replace one key', 'remove <name>    forget it', '--json           the same list as data'],
+    flags: ['list             profile names, providers and whether a key is set (never the key)', 'add              store or replace one key', 'remove <name>    forget it', 'audit            where the keys are: key-shaped strings in config.json, memory and state (masked), the credential stores and their file mode', '--json           the same list as data'],
     example: 'termcrab auth add work --provider anthropic --key sk-ant-…  &&  termcrab config set provider.authProfile work',
     json: '{count, profiles:[{id, provider, baseUrl, model, createdAt, updatedAt, hasKey}], message?}',
   },

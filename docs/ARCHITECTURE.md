@@ -105,6 +105,7 @@ users' runtime.
 | `src/agent/run-health.ts` | "Why is it stuck?" (23.1) The data to answer that already exists in three places — the queue knows which turns are running and since when, the run trace know… |
 | `src/agent/sandbox.ts` | bubblewrap/proot around every shell command, or an honest refusal (30) |
 | `src/agent/secrets.ts` | Protected credentials: values are only returned on explicit request (audited) |
+| `src/agent/security.ts` | Security audits: what the live config allows, and where key-shaped strings are (34.5) |
 | `src/agent/session-policy.ts` | When a conversation should start fresh (21.3) |
 | `src/agent/session-search.ts` | Search across past conversations: the transcripts on disk, ranked (21.2) |
 | `src/agent/session-view.ts` | What belongs to one conversation (21.4): `termcrab sessions show <id>` |

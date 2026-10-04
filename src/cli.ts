@@ -58,6 +58,8 @@ import { transcribeFile } from './mobile/whisper.js';
 import { browserStatus, CdpBrowser } from './agent/cdp.js';
 import { clearRoom, formatRoomHistory, listRooms, parseRoomKey, readRoom } from './channels/rooms.js';
 import { buildBoard, formatBoard } from './agent/board.js';
+import { auditSecrets, formatFindings, securityAudit } from './agent/security.js';
+import { detectSandbox } from './agent/sandbox.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
@@ -1752,6 +1754,16 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         console.log('  use one: termcrab config set provider.authProfile work');
         console.log('');
       };
+      if (sub === 'audit') {
+        // 34.5: where the keys actually are — names and places, never values.
+        const findings = auditSecrets({ config: loadConfig() });
+        if (machine) {
+          emitJson('auth', { findings });
+          return;
+        }
+        console.log(formatFindings(findings, 'Where your keys are'));
+        return;
+      }
       if (sub === 'add' || sub === 'set') {
         const id = args[1] ?? '';
         const provider = flagValue('--provider') ?? 'openai';
@@ -2619,6 +2631,29 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       }
       console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
       process.exitCode = 1;
+      return;
+    }
+
+    case 'security': {
+      // 34.5: what this install allows and where its keys are, from the live config.
+      // `--json` is the envelope flag, not a subcommand.
+      const sub = rest.filter((r) => r !== '--json')[0] ?? 'audit';
+      if (sub !== 'audit') {
+        console.error('usage: termcrab security [audit] [--json]');
+        process.exitCode = 1;
+        return;
+      }
+      const cfg = loadConfig();
+      const sandbox = detectSandbox();
+      const findings = securityAudit({ config: cfg, sandboxAvailable: sandbox.isolated });
+      if (machine) {
+        const counts = { fail: 0, warn: 0, info: 0, ok: 0 };
+        for (const f of findings) counts[f.level]++;
+        emitJson('security', { counts, findings });
+        return;
+      }
+      console.log(formatFindings(findings, `Security audit — ${providerLabel(cfg)}`));
+      if (findings.some((f) => f.level === 'fail')) process.exitCode = 1;
       return;
     }
 

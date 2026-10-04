@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T01:52:12.739Z",
+ "measured": "2026-10-04T02:00:45.447Z",
  "tally": {
-  "WORKING": 110,
+  "WORKING": 113,
   "BETTER": 14,
-  "PARTIAL": 8,
+  "PARTIAL": 5,
   "BROKEN": 0,
   "ABSENT": 0
  },
- "coverage": 97,
+ "coverage": 98,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 51,
+ "effortLeft": 41,
  "areas": [
   "agent",
   "automation",
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1215"
+    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1215"
    }
   },
   {
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:699, src/core/config.ts:700"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:701, src/core/config.ts:700"
    }
   },
   {
@@ -286,19 +286,20 @@
    "area": "gateway",
    "capability": "Remote access story",
    "openclaw": "Tailscale, SSH, trusted proxy, TLS pinning",
-   "verdict": "PARTIAL",
-   "evidence": "docs/REMOTE.md documents tunnels; bind guard exists (src/gateway/server.ts:257) but no enforced auth",
+   "verdict": "WORKING",
+   "evidence": "the story is enforced, not just written down (34.5). Three mechanisms: the bind guard refuses to start a non-loopback gateway with no token (exit 1, not a warning — this is what makes the \"a token is mandatory off your own device\" claim true); every /api/* route authenticates with the master token or a paired per-device token (compared in constant time, revocable one device at a time) and the rate limiter answers 429 instead of queueing; and `termcrab security` judges the exposure from the live config — bound off-loopback is a warn, and a short/guessable/repeated-character token beside it is a fail with the fix, including the one-liner that generates a good token. docs/REMOTE.md names the recipes (Tailscale, SSH tunnel, trusted proxy) and states the structural limit: there is **no built-in TLS terminator**, so the bearer token is only as private as the network it crosses — put a tunnel or WireGuard in front, which is exactly what those recipes are, and docs/SECURITY.md repeats it so it cannot be missed. Pinned by test/tier3c.test.ts 34.5 (weak-token classification incl. the long-guessable-word case) and test/auth.test.ts (401 on every route). Limits stated: no TLS pinning, no nonce/replay protection (a bearer token over TLS is the design), and no proxy trust model — the tunnel is trusted wholesale, as the docs say.",
    "probe": {
-    "pattern": {},
+    "file": "docs/REMOTE.md",
+    "pattern": "bind guard",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:308"
+    "detail": "1 match(es): docs/REMOTE.md:26"
    }
   },
   {
@@ -317,7 +318,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1394, src/command-help.ts:249"
+    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1396, src/command-help.ts:249"
    }
   },
   {
@@ -356,7 +357,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:277, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:279, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +376,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:267"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:269"
    }
   },
   {
@@ -432,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:181, src/gateway/server.ts:1588, src/mobile/doctor.ts:555"
+    "detail": "5 match(es): src/cli.ts:183, src/gateway/server.ts:1588, src/mobile/doctor.ts:575"
    }
   },
   {
@@ -529,7 +530,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:458"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:469"
    }
   },
   {
@@ -567,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1494, src/gateway/server.ts:1624"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1496, src/gateway/server.ts:1624"
    }
   },
   {
@@ -645,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "715 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "716 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -842,7 +843,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:2970"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:3005"
    }
   },
   {
@@ -1000,7 +1001,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:2908"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:2943"
    }
   },
   {
@@ -1532,7 +1533,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:556, src/mobile/doctor.ts:407"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:556, src/mobile/doctor.ts:427"
    }
   },
   {
@@ -2139,7 +2140,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "107 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:264"
+    "detail": "108 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:266"
    }
   },
   {
@@ -2158,7 +2159,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:64"
+    "detail": "1 match(es): src/cli.ts:66"
    }
   },
   {
@@ -2177,7 +2178,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "75 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "77 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2196,7 +2197,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:418, src/command-help.ts:596"
+    "detail": "2 match(es): src/cli.ts:420, src/command-help.ts:607"
    }
   },
   {
@@ -2291,7 +2292,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:72, src/gateway/auth.ts:20, src/gateway/server.ts:308"
+    "detail": "8 match(es): src/agent/security.ts:143, src/core/config.ts:72, src/gateway/auth.ts:20"
    }
   },
   {
@@ -2337,19 +2338,20 @@
    "area": "security",
    "capability": "Secrets management",
    "openclaw": "vault, SecretRef, 1Password, audit",
-   "verdict": "PARTIAL",
-   "evidence": "src/agent/secrets.ts + config.json plaintext",
+   "verdict": "WORKING",
+   "evidence": "keys live outside the config and the agent never sees them printed: named profiles in state/auth-profiles.json (mode 0600) plus state/secrets.json for tool secrets, read on request and never returned whole (`termcrab auth list` shows providers and whether a key is set, never the value), and every set/read appended to state/secrets-audit.log. 34.5 added the audit that makes the claim checkable: `termcrab auth audit` walks config.json, memory/ and state/ for key-shaped strings (OpenAI/GitHub/Slack/Google/AWS patterns and private-key blocks), reports where each one is with a masked preview (four characters at each end — the full value never reaches the report), knows the two files that are supposed to hold credentials and checks their mode instead of their content, says plainly which key is expected where (the Telegram bot token belongs in the config, and the fix is keeping the file 0600), and points at the exact command that moves a model key into a profile. Limits stated: no external vault and no SecretRef indirection into arbitrary tools — a key on a phone lives at 0600 on that phone, which is the property this project can actually guarantee; the threat the audit aims at is a key in a chat log, a prompt or a backup, not a compromised device. test/tier3c.test.ts 34.5",
    "probe": {
-    "pattern": "secrets",
+    "file": "src/agent/security.ts",
+    "pattern": "export function auditSecrets",
     "expect": "present"
    },
-   "effort": 4,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "14 match(es): src/agent/prompt.ts:265, src/agent/secrets.ts:16, src/agent/toolbox.ts:46"
+    "detail": "1 match(es): src/agent/security.ts:271"
    }
   },
   {
@@ -2395,19 +2397,20 @@
    "area": "security",
    "capability": "Security audits / doctor",
    "openclaw": "openclaw security audit, policy CLI",
-   "verdict": "PARTIAL",
-   "evidence": "src/mobile/doctor.ts checks Termux-specific hazards, not policy",
+   "verdict": "WORKING",
+   "evidence": "the policy half is real now (34.5): `termcrab security [audit] [--json]` derives findings from the live config object — exec policy (off = ok; on with agent.sandbox off = fail; require with no sandbox binary = fail), the approval gate (nothing gated while exec is open = warn, and the detail names which dangerous tools are not gated), the bind address (loopback = ok; off-loopback = warn, plus a fail when the token is short, a guessable word or one repeated character, with the exact fix line), webhook doors without an x-hook-token, the browser tool when enabled, and the mode of config.json. Every finding carries the fix, the worst one sorts first and a fail exits 1, so it works as a gate in a script. The doctor gained a `security` line that runs the same audit and names the command. Limits stated: the checks are about policy and file placement, not about a running attacker — no port scan, no TLS check (there is no built-in TLS; docs/SECURITY.md says the tunnel is the answer), and no per-route scope model. test/tier3c.test.ts 34.5",
    "probe": {
-    "pattern": "doctor",
+    "file": "src/agent/security.ts",
+    "pattern": "export function securityAudit",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "33 match(es): src/agent/embed-provider.ts:5, src/agent/embed-setup.ts:3, src/agent/run-health.ts:100"
+    "detail": "1 match(es): src/agent/security.ts:66"
    }
   },
   {
@@ -2563,7 +2566,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:272"
+    "detail": "7 match(es): src/agent/sandbox.ts:195, src/mobile/bionic.ts:39, src/mobile/doctor.ts:292"
    }
   },
   {
@@ -2899,7 +2902,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "90 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "91 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {
