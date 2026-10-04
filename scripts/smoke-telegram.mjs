@@ -10,6 +10,7 @@
  * message coming back.
  *
  *   TCRAB_TELEGRAM_TOKEN=123:ABC TCRAB_TELEGRAM_CHAT=456 npm run smoke:telegram
+ *   TCRAB_TELEGRAM_TOKEN=123:ABC // npm run smoke:telegram -- --record
  *
  * Rules it keeps:
  *   - the token is never printed, never written to a file, never put in a URL
@@ -22,6 +23,7 @@
  *     is proven here is our code and not a second curl-shaped implementation
  */
 import { TelegramApi } from '../dist/src/channels/api.js';
+import { describeTelegramRun, lastTelegramRuns, recordTelegramRun, tokenFingerprint } from '../dist/src/channels/telegram-runs.js';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -33,6 +35,10 @@ const token = flag('--token') || process.env.TCRAB_TELEGRAM_TOKEN || '';
 const chat = Number(flag('--chat') || process.env.TCRAB_TELEGRAM_CHAT || 0) || 0;
 const waitSec = Number(flag('--wait') ?? 30) || 30;
 const apiBase = process.env.TCRAB_TELEGRAM_API || 'https://api.telegram.org';
+// 37.4: `--record` writes the run into the evidence file — a live run that
+// leaves no trace is a story somebody has to remember. TCRAB_TELEGRAM_RUNS
+// points the file elsewhere in tests.
+const record = args.includes('--record');
 
 /** Never print a token, even by accident (a stray error string can carry one). */
 const redact = (s) => String(s).replaceAll(token || '\u0000', '«token»');
@@ -74,7 +80,9 @@ try {
   const before = await api.getUpdates(-1, 0);
   const lastId = before.length ? Math.max(...before.map((u) => u.update_id)) : 0;
 
-  const sent = await api.sendMessage(chat, '🦀 TermCrab smoke test — reply to me and this script will read it back.');
+  const sentText = '🦀 TermCrab smoke test — reply to me and this script will read it back.';
+  const sentAt = Date.now();
+  const sent = await api.sendMessage(chat, sentText);
   const messageId = sent?.message_id;
   say(`   sent message ${messageId ?? '?'} to chat ${chat}`);
 
@@ -91,6 +99,7 @@ try {
     }
   }
 
+  const repliedText = String(seen?.message?.text ?? '');
   if (seen) {
     const text = seen.message?.text ?? '(no text)';
     say(`   read back: “${String(text).slice(0, 120)}” from ${seen.message?.from?.username ?? seen.message?.from?.id}`);
@@ -98,6 +107,24 @@ try {
   } else {
     say(`telegram smoke: sent ok, no reply read within ${waitSec}s`);
     say('   the send half works; to check the read half, reply in Telegram and run again (or raise --wait)');
+  }
+
+  if (record) {
+    const file = recordTelegramRun({
+      at: new Date().toISOString(),
+      status: seen ? 'ok' : 'sent',
+      bot: String(me.username ?? me.id ?? 'unknown'),
+      api: new URL(apiBase).host,
+      chat,
+      messageId: typeof messageId === 'number' ? messageId : null,
+      sent: sentText.slice(0, 120),
+      reply: repliedText.slice(0, 120),
+      replyMs: seen ? Date.now() - sentAt : null,
+      token: tokenFingerprint(token, apiBase),
+    });
+    const written = lastTelegramRuns(1, file)[0];
+    say(`telegram smoke: recorded — ${written ? describeTelegramRun(written) : 'one run'}`);
+    say(`   evidence file: ${file}`);
   }
 } catch (err) {
   console.error(`telegram smoke: failed — ${redact(err instanceof Error ? err.message : err)}`);

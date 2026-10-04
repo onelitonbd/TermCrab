@@ -62,6 +62,32 @@ The code is printed by `termcrab pair`, lives 5 minutes and is single use.
 Wrong or expired codes answer `401` with a reason (`expired` / `unknown`), and
 the route is rate limited per IP, so a code cannot be brute-forced.
 
+### `GET /api/docs` — the offline docs page, and how fresh it is (34.8, 37.2)
+```json
+{ "file": "/…/state/docs-site.html", "exists": true, "bytes": 2765646, "docs": 58, "sections": 298,
+  "release": "0.71.0", "currentRelease": "0.71.0", "releaseBehind": false,
+  "builtAt": 1770000000000, "ageMs": 720000, "age": "12 min ago", "staleDocs": 0, "stale": false,
+  "kept": ["/…/state/docs-site-0.71.0.html"], "url": "/docs" }
+```
+Never builds: it reads the page's own build stamp and compares mtimes, so the panel can ask on every
+refresh. `stale` is true when a doc (or the panel HTML) changed after the build **or** the page
+describes an older release than `package.json`.
+
+### `POST /api/docs` — rebuild it now (37.2)
+Forces a build, keeps a per-release copy (`docs-site-<release>.html`, newest five — 36.3), and answers
+with the same freshness object (`rebuilt: true`).
+
+### `GET /api/telegram-runs` — the recorded live runs (37.4)
+```json
+{ "file": "docs/openclaw/data/telegram-runs.jsonl", "exists": true, "limit": 20,
+  "runs": [ { "at": "2026-10-04T05:20:00.000Z", "status": "ok", "bot": "crab_bot",
+              "api": "api.telegram.org", "chat": 99, "messageId": 501,
+              "sent": "🦀 TermCrab smoke test …", "reply": "hello crab", "replyMs": 900,
+              "token": "1a2b3c4d" } ] }
+```
+Newest first, capped at 20 lines; `token` is a fingerprint, never the token. Written only by
+`npm run smoke:telegram -- --record`.
+
 ### `GET /api/runs/health`
 ```json
 { "ok": true, "v": 1, "count": 1, "runs": [ { "sessionId": "web:main", "turnId": "…", "runId": "…", "verdict": "slow", "elapsedMs": 91000, "idleMs": 91000, "lastActivity": "in tool web_fetch for 2 minute(s)", "suggestion": "still inside tool web_fetch after 2 minute(s) — give it a minute, or stop it with: termcrab stop web:main" } ] }

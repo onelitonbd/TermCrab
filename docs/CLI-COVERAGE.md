@@ -13,8 +13,8 @@ actually runs it through the built binary. The number below is a recording, not 
 |---|---|---|
 | `termcrab help` | line 409 | 16 |
 | `termcrab completion` | line 429 | 3 |
-| `termcrab version` | line 446 | 2 |
-| `termcrab gateway` | line 485 | 3 |
+| `termcrab version` | line 446 | 5 |
+| `termcrab gateway` | line 485 | 5 |
 | `termcrab doctor` | line 526 | 3 |
 | `termcrab update` | line 562 | 3 |
 | `termcrab say` | line 623 | 1 |

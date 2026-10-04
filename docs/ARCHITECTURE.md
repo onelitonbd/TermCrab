@@ -132,6 +132,7 @@ users' runtime.
 | `src/channels/signal.ts` | Signal (optional, signal-cli) |
 | `src/channels/slack.ts` | Slack (optional, @slack/bolt) |
 | `src/channels/sms.ts` | SMS/MMS (optional, Twilio) |
+| `src/channels/telegram-runs.ts` | 37.4 — the record of runs that really happened |
 | `src/channels/telegram.ts` | long-poll loop, allowlist, chunking, outbox |
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |

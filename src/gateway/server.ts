@@ -93,7 +93,8 @@ import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
 import { listConversations, registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
 import { formatRoomHistory } from '../channels/rooms.js';
 import { buildBoard } from '../agent/board.js';
-import { docsSitePath, ensureDocsSite } from '../docs/site.js';
+import { docsSiteFreshness, ensureDocsSite } from '../docs/site.js';
+import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/telegram-runs.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -1376,6 +1377,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       // Work tracker: the panel renders WORKLOG.md so "what is being built right
       // now" lives on the same screen you test from. It also reports whether the
       // file still points at HEAD, so a stale tracker is visible, not silent.
+      if (req.method === 'GET' && pathname === '/api/telegram-runs') {
+        // 37.4: the recorded live runs, newest first. Evidence, not state: the
+        // Work page shows it so "we tested it on a real bot" is a fact with a
+        // timestamp instead of a claim.
+        const file = telegramRunsPath();
+        json(res, 200, {
+          file,
+          exists: fs.existsSync(file),
+          runs: lastTelegramRuns(10, file),
+          limit: RUN_LIMIT,
+        });
+        return;
+      }
+
       if (req.method === 'GET' && pathname === '/api/worklog') {
         const file = path.join(PACKAGE_ROOT, 'WORKLOG.md');
         if (!fs.existsSync(file)) {
@@ -2132,24 +2147,20 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         if (req.method === 'GET' && pathname === '/api/docs') {
           // 34.8: what the docs page is, without building it twice — the panel
           // shows size/counts and links to /docs.
-          const file = docsSitePath();
-          let exists = false;
-          let bytes = 0;
+          // 37.2: and *how fresh* it is — which release it describes, how long
+          // ago it was built, and whether a doc changed since. The panel asks
+          // this on every Work-page refresh, so it must never build.
+          json(res, 200, docsSiteFreshness());
+          return;
+        }
+        if (req.method === 'POST' && pathname === '/api/docs') {
+          // 37.2: one tap rebuilds, when the note says a doc changed.
           try {
-            const st = fs.statSync(file);
-            exists = true;
-            bytes = st.size;
-          } catch {
-            /* not built yet */
+            const r = ensureDocsSite({ force: true, keep: true });
+            json(res, 200, { ok: true, ...r, ...docsSiteFreshness() });
+          } catch (err) {
+            json(res, 500, { error: err instanceof Error ? err.message : String(err) });
           }
-          let docs = 0;
-          let sections = 0;
-          if (exists) {
-            const head = fs.readFileSync(file, 'utf8').slice(0, 4096);
-            docs = Number(/name="docs-count" content="(\d+)"/.exec(head)?.[1] ?? 0);
-            sections = Number(/name="docs-sections" content="(\d+)"/.exec(head)?.[1] ?? 0);
-          }
-          json(res, 200, { file, exists, bytes, docs, sections, url: '/docs' });
           return;
         }
         if (req.method === 'GET' && pathname === '/api/board') {

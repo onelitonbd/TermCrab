@@ -18,6 +18,9 @@ cd claw
 npm install          # fast
 npm run build        # the slow step on a phone: 1-3 min, silent while it runs
 ./termcrab onboard    # the launcher: builds on first run if you skipped the step above
+                      # (~1-2 min on a phone; later runs are instant, and after a
+                      #  `git pull` it recompiles incrementally, not from scratch — see
+                      #  docs/PERFORMANCE.md for the numbers and the ceilings)
 ```
 
 Get the bare `termcrab` command (after `npm install` alone there is none — that is

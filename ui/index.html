@@ -2755,6 +2755,11 @@
     <p class="pageNote">Every document in <code>docs/</code>, as one offline page with search:
       <a id="docsSiteLink" href="/docs" target="_blank" rel="noopener">open the docs site →</a>
       <span class="pNote" id="docsSiteNote"></span>
+      <button class="iconBtn" id="docsRebuild" type="button" hidden title="Rebuild the docs page"
+        style="display:inline-flex;vertical-align:middle">rebuild</button>
+    </p>
+    <p class="pageNote">Live Telegram runs, recorded by <code>npm run smoke:telegram -- --record</code>:
+      <span class="pNote" id="tgRuns"></span>
     </p>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
   </section>
@@ -7046,16 +7051,72 @@
   function stopLogAuto() { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
 
   // ---- The offline docs site (34.8): link + size, from the live gateway ----
+  // 37.2: and its freshness — the release it describes, how long ago it was
+  // built, and whether a doc changed since. A stale page offers one button.
   async function loadDocsSite() {
     const link = document.getElementById('docsSiteLink');
     const note = document.getElementById('docsSiteNote');
+    const rebuild = document.getElementById('docsRebuild');
     if (!link || !note) return;
     try {
       const d = await api('/api/docs');
       link.href = '/docs';
-      note.textContent = d && d.exists ? '(' + d.docs + ' docs · ' + Math.round(d.bytes / 1024) + ' KB, rebuilt when stale)' : '(build it: termcrab docs)';
+      if (!d || !d.exists) {
+        note.textContent = '(build it: termcrab docs)';
+        note.className = 'pNote';
+        if (rebuild) rebuild.hidden = false;
+        return;
+      }
+      const size = Math.round(d.bytes / 1024) + ' KB';
+      const counts = d.docs + ' docs · ' + d.sections + ' sections · ' + size;
+      const release = d.release ? 'v' + d.release : 'release unknown';
+      const paint = (extra, bad) => {
+        note.textContent = '(' + release + ' · ' + counts + ' · ' + extra + ')';
+        note.className = bad ? 'pNote err' : 'pNote';
+      };
+      if (d.staleDocs > 0) {
+        paint('built ' + d.age + ', ' + d.staleDocs + ' doc(s) changed since — rebuild', true);
+      } else if (d.releaseBehind) {
+        paint('built ' + d.age + ' for an older release — rebuild', true);
+      } else {
+        paint('built ' + d.age, false);
+      }
+      if (rebuild) {
+        rebuild.hidden = !d.stale;
+        rebuild.onclick = async () => {
+          rebuild.disabled = true;
+          try { await api('/api/docs', { method: 'POST' }); } catch (err) { /* the reload below says it */ }
+          rebuild.disabled = false;
+          await loadDocsSite();
+        };
+      }
     } catch (err) {
       note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+      if (rebuild) rebuild.hidden = true;
+    }
+  }
+
+  // ---- Live Telegram runs (37.4): evidence with a timestamp ----
+  async function loadTelegramRuns() {
+    const note = document.getElementById('tgRuns');
+    if (!note) return;
+    try {
+      const d = await api('/api/telegram-runs');
+      const runs = (d && d.runs) || [];
+      if (!runs.length) {
+        note.textContent = '(none recorded yet — the suite proves the client, this proves the bot)';
+        note.className = 'pNote';
+        return;
+      }
+      const last = runs[0];
+      const when = String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
+      const took = last.replyMs === null || last.replyMs === undefined ? 'no reply read' : 'reply in ' + (last.replyMs / 1000).toFixed(1) + ' s';
+      note.textContent = '(' + runs.length + ' recorded · last ' + when + ' · ' + last.status + ' · ' + took + ' · @' + last.bot + ')';
+      note.className = last.status === 'ok' ? 'pNote' : 'pNote err';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
     }
   }
 
@@ -7065,6 +7126,7 @@
     if (!box) return;
     try {
       void loadDocsSite();
+      void loadTelegramRuns();
       const w = await api('/api/worklog');
       const note = $('workFresh');
       if (note) {

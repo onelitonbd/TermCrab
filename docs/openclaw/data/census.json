@@ -1,14 +1,14 @@
 {
- "measured": "2026-10-04T04:21:53.231Z",
+ "measured": "2026-10-04T04:38:25.214Z",
  "tally": {
   "WORKING": 117,
-  "BETTER": 14,
+  "BETTER": 18,
   "PARTIAL": 1,
   "BROKEN": 0,
   "ABSENT": 0
  },
  "coverage": 100,
- "inScope": 132,
+ "inScope": 136,
  "outOfScope": 18,
  "effortLeft": 13,
  "areas": [
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1411"
+    "detail": "1 match(es): src/gateway/server.ts:1426"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1413"
+    "detail": "2 match(es): src/gateway/server.ts:1428"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:309"
+    "detail": "1 match(es): src/gateway/server.ts:310"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2531"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2542"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1232"
+    "detail": "5 match(es): src/agent/security.ts:173, src/gateway/server.ts:1233"
    }
   },
   {
@@ -433,7 +433,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1605, src/mobile/doctor.ts:575"
+    "detail": "5 match(es): src/cli.ts:185, src/gateway/server.ts:1620, src/mobile/doctor.ts:575"
    }
   },
   {
@@ -568,7 +568,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1641"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1518, src/gateway/server.ts:1656"
    }
   },
   {
@@ -646,7 +646,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "718 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
+    "detail": "719 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -805,7 +805,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:670"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:671"
    }
   },
   {
@@ -1519,6 +1519,26 @@
   },
   {
    "area": "channels",
+   "capability": "A live run leaves a record (37.4)",
+   "openclaw": "n/a — prose and screenshots",
+   "verdict": "BETTER",
+   "evidence": "npm run smoke:telegram -- --record appends one line to docs/openclaw/data/telegram-runs.jsonl: what was sent, what came back, how long the reply took, the bot, the chat, and a fingerprint of the token (sha256(api|token), first 8 hex) - never the token, which is what makes the file safe to commit. A skipped run records nothing; a run with no reply is recorded as `sent`, not dressed up as `ok`; the file keeps the newest 20. The panel Work page reads it (GET /api/telegram-runs, token-gated) with a timestamp. Mechanism tested end to end against the same fake Bot API the suite uses (test/tier3i.test.ts 37.4)",
+   "probe": {
+    "file": "src/channels/telegram-runs.ts",
+    "pattern": "export function recordTelegramRun",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): src/channels/telegram-runs.ts:83"
+   }
+  },
+  {
+   "area": "channels",
    "capability": "WhatsApp",
    "openclaw": "Baileys QR pairing",
    "verdict": "PARTIAL",
@@ -1533,7 +1553,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:557, src/mobile/doctor.ts:427"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:558, src/mobile/doctor.ts:427"
    }
   },
   {
@@ -1704,7 +1724,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:917"
+    "detail": "1 match(es): src/gateway/server.ts:918"
    }
   },
   {
@@ -1922,7 +1942,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:413"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:414"
    }
   },
   {
@@ -2065,6 +2085,26 @@
   },
   {
    "area": "surfaces",
+   "capability": "Docs page freshness in the panel (37.2)",
+   "openclaw": "docs site as a static afterthought",
+   "verdict": "BETTER",
+   "evidence": "The Work page says which release the offline docs page describes, how long ago it was built (just now / 12 min ago / 3 h ago), and whether a doc has been edited since; a stale note turns red and offers a rebuild button that POSTs /api/docs (forced build + a per-release copy). GET /api/docs reads the page build stamp and mtimes and never builds, so a panel refresh stays cheap; docsSiteFreshness() also watches the release, so a page from an older release is stale even with untouched files. Pinned by test/tier3i.test.ts 37.2 (unit + a real gateway)",
+   "probe": {
+    "file": "ui/index.html",
+    "pattern": "docsRebuild",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "2 match(es): ui/index.html:2758"
+   }
+  },
+  {
+   "area": "surfaces",
    "capability": "Web control UI",
    "openclaw": "React+Vite dashboard, rebuilt in 2.0",
    "verdict": "WORKING",
@@ -2080,7 +2120,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): ui/index.html:2762"
+    "detail": "1 match(es): ui/index.html:2767"
    }
   },
   {
@@ -2586,7 +2626,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2960"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2971"
    }
   },
   {
@@ -2644,6 +2684,26 @@
    "probeResult": {
     "state": "ok",
     "detail": "16 match(es): src/channels/discord.ts:4, src/channels/matrix.ts:4, src/channels/signal.ts:6"
+   }
+  },
+  {
+   "area": "mobile",
+   "capability": "First run timed and cut (37.3)",
+   "openclaw": "n/a",
+   "verdict": "BETTER",
+   "evidence": "The launcher compiles the checkout on first run. Two things changed: it now rebuilds when src/ or tsconfig.json is newer than the built entry (before, only a missing dist/ triggered a build, so `git pull` then `./termcrab` ran yesterday code, quietly), and the compile is incremental (tsconfig writes dist/.tsbuildinfo). Measured: cold 5.05 s, rebuild after touching a source 1.57 s on the dev box - the same ~3.4x ratio a phone sees. It prints `built in NNNN ms`, so the wait is never silent, and both numbers sit under ceilings in scripts/bench.mjs (firstRunMs 30000, rebuildMs 8000) enforced by test/tier3i.test.ts",
+   "probe": {
+    "file": "termcrab",
+    "pattern": "newer than the build",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): termcrab:28"
    }
   },
   {
@@ -2884,6 +2944,26 @@
    "probeResult": {
     "state": "ok",
     "detail": "found: WORKLOG.md, scripts/status.mjs"
+   }
+  },
+  {
+   "area": "ops",
+   "capability": "Performance budget with an alarm (37.1)",
+   "openclaw": "benchmarks exist, nothing enforces them",
+   "verdict": "BETTER",
+   "evidence": "scripts/bench.mjs measures the seven numbers the phone story rests on (install, cold start, idle RSS, restart, one turn, first run from a fresh checkout, rebuild after a pull) and `--budget` exits 1 when any of them crosses a ceiling declared in BUDGETS; docs/PERFORMANCE.md explains each ceiling, what to do when one trips (\"fix the cause, never edit the ceiling\"), and what the numbers are not. test/tier3i.test.ts runs the gate, tests the alarm against a fabricated over-budget number, and fails if the ceilings in the README block or in the doc drift from the code. npm run bench:budget is the one-liner",
+   "probe": {
+    "file": "scripts/bench.mjs",
+    "pattern": "export const BUDGETS",
+    "expect": "present"
+   },
+   "effort": 0,
+   "lane": "parity",
+   "scope": "in",
+   "why": "",
+   "probeResult": {
+    "state": "ok",
+    "detail": "1 match(es): scripts/bench.mjs:58"
    }
   },
   {

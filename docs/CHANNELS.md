@@ -190,6 +190,26 @@ your own number the first time.
 suite uses, which is how the script's own behaviour (the redaction, the exit codes, the read-back) is
 pinned without a network.
 
+### The run leaves a record (37.4)
+
+A live run that leaves no trace is a story somebody has to remember. Add `--record` and the script
+appends one line to **`docs/openclaw/data/telegram-runs.jsonl`**:
+
+```bash
+TCRAB_TELEGRAM_TOKEN=123:ABC npm run smoke:telegram -- --record
+```
+
+Each line is what was sent, what came back, how long the reply took, the bot, the chat, and a
+**fingerprint** of the token (the first 8 hex of `sha256(api|token)`) — never the token itself, which
+is what makes the file safe to commit and the `--record` flag safe to leave in a README. A skipped
+run records nothing, because nothing happened; a run that sent but was not answered is recorded as
+`sent` rather than dressed up as `ok`. The file keeps the newest 20 runs.
+
+The panel's Work page reads it (`GET /api/telegram-runs`, token-gated) and says, in one line, when
+the last live run was and whether a reply came back — so "it works on a real bot" carries a
+timestamp instead of a claim. The mechanism is tested against the same fake Bot API the suite uses
+(`test/tier3i.test.ts`); the first *real* line is written the first time you run the command above.
+
 ## Config worth knowing
 
 ```bash

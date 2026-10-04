@@ -13,6 +13,8 @@
     "noImplicitOverride": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "sourceMap": false,

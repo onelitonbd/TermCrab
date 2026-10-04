@@ -23,9 +23,9 @@ zero runtime dependencies means zero test-time dependencies too.
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-04:** **86.98%** of the lines in `src/` are executed by the
-suite (77.5% of branches, 87.01% of functions), across
-**999 test cases in 96 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-04:** **87.07%** of the lines in `src/` are executed by the
+suite (77.58% of branches, 87.1% of functions), across
+**1006 test cases in 97 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |

@@ -39,11 +39,23 @@ the markdown renderer between two comment markers (`==== markdown renderer … =
 renderer in this repository, not two, and a test asserts the slice is byte-identical to the file —
 change the panel's renderer and the docs page changes with it, or the build fails.
 
-The Work page links to it (`open the docs site →`), next to the size and doc count from
-`GET /api/docs`. `GET /docs` builds the page if a source changed and serves it; the same file is
+The Work page links to it (`open the docs site →`), next to the size, the doc count and — 37.2 — how
+fresh the page is: which release it describes, how long ago it was built, and whether a doc has been
+edited since (`GET /api/docs` reports it without building anything, so a panel refresh stays cheap).
+When something moved, the note turns red and a **rebuild** button appears; it `POST`s the same route,
+which forces a rebuild and keeps a per-release copy (36.3). The page never lies about being current,
+and it never rebuilds behind your back. `GET /docs` builds the page if a source changed and serves it; the same file is
 written to `state/docs-site.html` by `termcrab docs`, so it also opens straight from the phone's
 file manager with no server and no network. Search, navigation and the copy buttons are inline
 JavaScript and CSS in that one file — no CDN, no service worker, no fetch.
+
+## Live Telegram runs on the Work page (37.4)
+
+Under the docs note the Work page shows the record of runs that really happened on a real bot
+(`npm run smoke:telegram -- --record`, section 37.4 in `docs/CHANNELS.md`): when the last one was,
+whether a reply came back, and how long it took. It comes from `GET /api/telegram-runs`, and the
+file is `docs/openclaw/data/telegram-runs.jsonl` — committed evidence, with a token *fingerprint*
+instead of a token. No runs yet means the line says so; it never invents one.
 
 ## How it is tested (there is no browser in the build)
 

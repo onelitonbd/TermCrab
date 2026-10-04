@@ -466,6 +466,23 @@ export function docsSitePath(): string {
   return path.join(stateDir(), 'docs-site.html');
 }
 
+/** The build stamp the page carries in its <head>, read back from disk. */
+export interface SiteStamp {
+  docs: number;
+  sections: number;
+  builtAt: number;
+  release: string;
+}
+
+export function stampOf(head: string): SiteStamp {
+  return {
+    docs: Number(/name="docs-count" content="(\d+)"/.exec(head)?.[1] ?? 0),
+    sections: Number(/name="docs-sections" content="(\d+)"/.exec(head)?.[1] ?? 0),
+    builtAt: Number(/name="built-at" content="(\d+)"/.exec(head)?.[1] ?? 0),
+    release: /name="release" content="([^"]*)"/.exec(head)?.[1] ?? '',
+  };
+}
+
 export interface EnsureResult {
   file: string;
   bytes: number;
@@ -516,12 +533,8 @@ export function ensureDocsSite(opts: SiteOptions & { force?: boolean; out?: stri
     const st = fs.statSync(file);
     if (!opts.force && st.mtimeMs >= newest && st.size > 1024) {
       // Trust the cached page but report the numbers from its own build stamp.
-      const head = fs.readFileSync(file, 'utf8').slice(0, 4096);
-      const docs = Number(/name="docs-count" content="(\d+)"/.exec(head)?.[1] ?? 0);
-      const sections = Number(/name="docs-sections" content="(\d+)"/.exec(head)?.[1] ?? 0);
-      const builtAt = Number(/name="built-at" content="(\d+)"/.exec(head)?.[1] ?? 0);
-      const release = /name="release" content="([^"]*)"/.exec(head)?.[1] ?? '';
-      return { file, bytes: st.size, docs, sections, builtAt, rebuilt: false, release };
+      const stamp = stampOf(fs.readFileSync(file, 'utf8').slice(0, 4096));
+      return { file, bytes: st.size, ...stamp, rebuilt: false };
     }
   } catch {
     /* build it */
@@ -542,6 +555,136 @@ export function ensureDocsSite(opts: SiteOptions & { force?: boolean; out?: stri
     result.kept = keepReleaseCopy(built);
   }
   return result;
+}
+
+export interface DocsFreshness extends SiteStamp {
+  file: string;
+  exists: boolean;
+  bytes: number;
+  /** ms since the page was built; null when there is no page yet. */
+  ageMs: number | null;
+  /** `just now` / `12 min ago` / `3 h ago` / `2 d ago` — what a person reads. */
+  age: string;
+  /** Docs (and the panel HTML) edited after the page was built. */
+  staleDocs: number;
+  /** The version in package.json right now. */
+  currentRelease: string;
+  /** The page describes an older (or unknown) release. */
+  releaseBehind: boolean;
+  /** Something changed since the build: a doc, or the release. */
+  stale: boolean;
+  /** Per-release copies on disk, newest first. */
+  kept: string[];
+  url: string;
+}
+
+/** `12 min ago` — the shortest honest phrasing of an age. */
+export function humanAge(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return 'unknown';
+  const s = Math.round(ms / 1000);
+  if (s < 45) return 'just now';
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 36) return `${h} h ago`;
+  return `${Math.round(h / 24)} d ago`;
+}
+
+/**
+ * 37.2 — what the panel needs to say about the docs page without rebuilding it:
+ * which release it describes, how long ago it was built, and whether a doc has
+ * changed since. `stale` is the honest question ("is what I am looking at still
+ * what is on disk?"), which is why it watches the release too, not just mtimes.
+ */
+export function docsSiteFreshness(opts: SiteOptions = {}): DocsFreshness {
+  const root = opts.root ?? PACKAGE_ROOT;
+  const file = docsSitePath();
+  const currentRelease = releaseOf(root);
+  const kept = keptReleaseCopies();
+  const base: DocsFreshness = {
+    file,
+    exists: false,
+    bytes: 0,
+    docs: 0,
+    sections: 0,
+    builtAt: 0,
+    release: '',
+    ageMs: null,
+    age: 'never built',
+    staleDocs: 0,
+    currentRelease,
+    releaseBehind: false,
+    stale: true,
+    kept,
+    url: '/docs',
+  };
+  let head = '';
+  try {
+    const st = fs.statSync(file);
+    base.exists = true;
+    base.bytes = st.size;
+    head = fs.readFileSync(file, 'utf8').slice(0, 4096);
+  } catch {
+    return base;
+  }
+  Object.assign(base, stampOf(head));
+  base.builtAt = base.builtAt || 0;
+  base.ageMs = base.builtAt ? Math.max(0, Date.now() - base.builtAt) : null;
+  base.age = base.builtAt ? humanAge(base.ageMs ?? 0) : 'unknown when built';
+  base.releaseBehind = base.release !== currentRelease;
+
+  // What moved since the build: every doc we would embed, plus the panel HTML
+  // the renderer comes from. mtimes only — this runs on a panel refresh.
+  const docsRoot = docsRootOf(opts);
+  const exclude = opts.exclude ?? DEFAULT_EXCLUDES;
+  const ui = opts.uiPath ?? path.join(root, 'ui', 'index.html');
+  for (const candidate of [ui, ...markdownFiles(docsRoot, exclude)]) {
+    try {
+      if (fs.statSync(candidate).mtimeMs > base.builtAt) base.staleDocs += 1;
+    } catch {
+      /* a file we cannot stat cannot be called new */
+    }
+  }
+  base.stale = base.staleDocs > 0 || base.releaseBehind;
+  return base;
+}
+
+/** Every `.md` under the docs tree, minus the excluded folders. */
+function markdownFiles(dir: string, exclude: string[]): string[] {
+  const out: string[] = [];
+  const walk = (here: string, rel: string): void => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(here, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const next = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        if (exclude.some((x) => next === x || next.startsWith(`${x}/`))) continue;
+        walk(path.join(here, e.name), next);
+      } else if (e.name.endsWith('.md')) {
+        out.push(path.join(here, e.name));
+      }
+    }
+  };
+  walk(dir, '');
+  return out;
+}
+
+/** The per-release copies on disk, newest release first. */
+function keptReleaseCopies(): string[] {
+  const dir = path.dirname(docsSitePath());
+  try {
+    return fs
+      .readdirSync(dir)
+      .filter((f) => /^docs-site-\d+\.\d+\.\d+\.html$/.test(f))
+      .sort((a, b) => compareReleaseTags(b, a))
+      .map((f) => path.join(dir, f));
+  } catch {
+    return [];
+  }
 }
 
 /** Maximum per-release copies kept; the oldest goes first, like the logs. */
