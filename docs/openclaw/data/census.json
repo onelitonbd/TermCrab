@@ -1,16 +1,16 @@
 {
- "measured": "2026-10-04T01:44:13.077Z",
+ "measured": "2026-10-04T01:52:12.739Z",
  "tally": {
-  "WORKING": 108,
+  "WORKING": 110,
   "BETTER": 14,
-  "PARTIAL": 10,
+  "PARTIAL": 8,
   "BROKEN": 0,
   "ABSENT": 0
  },
- "coverage": 96,
+ "coverage": 97,
  "inScope": 132,
  "outOfScope": 18,
- "effortLeft": 57,
+ "effortLeft": 51,
  "areas": [
   "agent",
   "automation",
@@ -46,7 +46,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:1393"
+    "detail": "1 match(es): src/gateway/server.ts:1394"
    }
   },
   {
@@ -65,7 +65,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/server.ts:1395"
+    "detail": "2 match(es): src/gateway/server.ts:1396"
    }
   },
   {
@@ -104,7 +104,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:307"
+    "detail": "1 match(es): src/gateway/server.ts:308"
    }
   },
   {
@@ -182,7 +182,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2462"
+    "detail": "2 match(es): src/gateway/ratelimit.ts:69, src/gateway/server.ts:2491"
    }
   },
   {
@@ -201,7 +201,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/gateway/server.ts:1214"
+    "detail": "4 match(es): src/gateway/server.ts:1215"
    }
   },
   {
@@ -259,7 +259,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:698, src/core/config.ts:700"
+    "detail": "5 match(es): src/agent/routing.ts:10, src/cli.ts:699, src/core/config.ts:700"
    }
   },
   {
@@ -298,7 +298,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:307"
+    "detail": "1 match(es): src/gateway/server.ts:308"
    }
   },
   {
@@ -317,7 +317,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1340, src/command-help.ts:248"
+    "detail": "11 match(es): src/agent/loop.ts:483, src/cli.ts:1394, src/command-help.ts:249"
    }
   },
   {
@@ -356,7 +356,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:276, src/gateway/protocol.ts:31"
+    "detail": "8 match(es): src/agent/loop.ts:32, src/cli.ts:277, src/gateway/protocol.ts:31"
    }
   },
   {
@@ -375,7 +375,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:266"
+    "detail": "7 match(es): src/agent/heartbeat.ts:57, src/agent/loop.ts:34, src/cli.ts:267"
    }
   },
   {
@@ -432,7 +432,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/cli.ts:180, src/gateway/server.ts:1587, src/mobile/doctor.ts:555"
+    "detail": "5 match(es): src/cli.ts:181, src/gateway/server.ts:1588, src/mobile/doctor.ts:555"
    }
   },
   {
@@ -529,7 +529,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:446"
+    "detail": "141 match(es): src/agent/loop.ts:33, src/agent/sessions.ts:16, src/command-help.ts:458"
    }
   },
   {
@@ -567,7 +567,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1440, src/gateway/server.ts:1623"
+    "detail": "3 match(es): src/agent/sessions.ts:1287, src/cli.ts:1494, src/gateway/server.ts:1624"
    }
   },
   {
@@ -645,7 +645,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "698 match(es): src/agent/cdp.ts:53, src/agent/dream.ts:151, src/agent/embed-provider.ts:139"
+    "detail": "715 match(es): src/agent/board.ts:16, src/agent/cdp.ts:53, src/agent/dream.ts:151"
    }
   },
   {
@@ -804,7 +804,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "7 match(es) (min 5): src/gateway/server.ts:668"
+    "detail": "7 match(es) (min 5): src/gateway/server.ts:669"
    }
   },
   {
@@ -842,7 +842,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:2901"
+    "detail": "4 match(es): src/agent/loop.ts:362, src/agent/sessions.ts:842, src/cli.ts:2970"
    }
   },
   {
@@ -1000,7 +1000,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:2839"
+    "detail": "5 match(es): src/agent/memory.ts:405, src/agent/tools.ts:435, src/cli.ts:2908"
    }
   },
   {
@@ -1195,7 +1195,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "65 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "69 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -1532,7 +1532,7 @@
    "why": "user decision 2026-10-03: only three surfaces are supported — telegram, the web panel and the terminal (CLI/REPL). The code stays, is tested and keeps working if configured; no further work goes into it",
    "probeResult": {
     "state": "ok",
-    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:555, src/mobile/doctor.ts:407"
+    "detail": "3 match(es): src/channels/whatsapp.ts:8, src/gateway/server.ts:556, src/mobile/doctor.ts:407"
    }
   },
   {
@@ -1703,7 +1703,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/gateway/server.ts:915"
+    "detail": "1 match(es): src/gateway/server.ts:916"
    }
   },
   {
@@ -1921,26 +1921,27 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:411"
+    "detail": "8 match(es): src/agent/loop.ts:71, src/agent/tools.ts:51, src/gateway/server.ts:412"
    }
   },
   {
    "area": "automation",
    "capability": "Cron scheduler",
    "openclaw": "schedules, payloads, delivery, webhooks",
-   "verdict": "PARTIAL",
-   "evidence": "src/cron/{parser,store,scheduler}.ts, 5-field expressions",
+   "verdict": "WORKING",
+   "evidence": "five-field expressions with @macros (src/cron/parser.ts), a JSON store, and a 20s tick that grew the parts a phone needs (34.4): a job that became due while the device was asleep is caught up **once** on the next tick — the minutes missed inside a 24h window are counted and written into its history, never replayed one by one, and the first tick of a fresh state never bursts — a job still running is skipped as `skipped-overlap` instead of piling up on itself, a low-battery skip is recorded as `skipped-battery`, and every attempt lands in the job record (`lastRun`, `lastResult`, `lastError`, a consecutive-failure count that a success clears, the last five runs with durations). Failures are shown, never used to disable a job silently. Delivery and agent selection were 33.4 (`--deliver telegram|panel|none`, `--agent`, now also on POST /api/crons with validation before anything is written). Surfaces: `cron ls` prints the last result and the failure streak, `cron show <id>` prints one job in full. Limits stated: no payload templating language, no per-job timeout (a run is bounded by the model timeout), and inbound webhooks stay their own row. test/tier3b.test.ts 34.4",
    "probe": {
-    "pattern": "cron",
+    "file": "src/cron/store.ts",
+    "pattern": "export function findDue",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "117 match(es): src/agent/loop.ts:232, src/agent/prompt.ts:20, src/agent/rolling.ts:5"
+    "detail": "1 match(es): src/cron/store.ts:182"
    }
   },
   {
@@ -2006,19 +2007,20 @@
    "area": "automation",
    "capability": "Task board",
    "openclaw": "tasks, taskflow, workboard",
-   "verdict": "PARTIAL",
-   "evidence": "src/agent/tasks.ts + suggest_task/dismiss_task tools + /api/tasks",
+   "verdict": "WORKING",
+   "evidence": "one board for everything in flight (34.4): src/agent/board.ts merges four sources that each had a view of their own — live turns (run-health verdicts with a suggested action), subagent tasks (running/done/error/timeout, with elapsed time or an output excerpt), cron jobs (next run, last result, failure streak) and the agents suggestion cards — into one list with one status vocabulary (running, queued, scheduling, failed, done, suggested) ordered by urgency, and every card names where it came from. It reads only: the board cannot start, cancel or schedule anything. Surfaces: `termcrab board [--limit n] [--json]` and `GET /api/board`, the same object. Limits stated: no dependency graph between cards and no drag-to-reorder (a phone board is a status list, not a project planner), and the suggestion dismiss path stays `/api/tasks`. test/tier3b.test.ts 34.4",
    "probe": {
-    "pattern": "suggest_task",
+    "file": "src/agent/board.ts",
+    "pattern": "export function buildBoard",
     "expect": "present"
    },
-   "effort": 3,
+   "effort": 0,
    "lane": "parity",
    "scope": "in",
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/agent/toolbox.ts:1041"
+    "detail": "1 match(es): src/agent/board.ts:127"
    }
   },
   {
@@ -2137,7 +2139,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "106 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:263"
+    "detail": "107 match(es): src/agent/status.ts:73, src/channels/extract.ts:50, src/cli.ts:264"
    }
   },
   {
@@ -2156,7 +2158,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "1 match(es): src/cli.ts:63"
+    "detail": "1 match(es): src/cli.ts:64"
    }
   },
   {
@@ -2175,7 +2177,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "73 match(es): src/cli.ts:24, src/core/json-out.ts:30"
+    "detail": "75 match(es): src/cli.ts:24, src/core/json-out.ts:30"
    }
   },
   {
@@ -2194,7 +2196,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "2 match(es): src/cli.ts:417, src/command-help.ts:584"
+    "detail": "2 match(es): src/cli.ts:418, src/command-help.ts:596"
    }
   },
   {
@@ -2289,7 +2291,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "5 match(es): src/core/config.ts:72, src/gateway/auth.ts:20, src/gateway/server.ts:307"
+    "detail": "5 match(es): src/core/config.ts:72, src/gateway/auth.ts:20, src/gateway/server.ts:308"
    }
   },
   {
@@ -2580,7 +2582,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2891"
+    "detail": "20 match(es): src/cli.ts:28, src/command-help.ts:70, src/gateway/server.ts:2920"
    }
   },
   {
@@ -2618,7 +2620,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "65 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
+    "detail": "69 match(es): src/agent/dream.ts:65, src/agent/heartbeat.ts:34, src/agent/sessions.ts:494"
    }
   },
   {
@@ -2897,7 +2899,7 @@
    "why": "",
    "probeResult": {
     "state": "ok",
-    "detail": "89 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
+    "detail": "90 match(es): test/adapters.test.ts:10, test/agents.test.ts:1, test/api.test.ts:1"
    }
   },
   {

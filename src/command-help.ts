@@ -209,17 +209,18 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'cron',
-    usage: 'cron [ls | add --schedule "<cron>" --prompt "<text>" [--name <n>] [--critical] | rm <id> | enable <id> | disable <id>]',
-    summary: 'scheduled jobs that keep repeating',
+    usage: 'cron [ls | show <id> | add --schedule "<cron>" --prompt "<text>" [--name <n>] [--critical] | rm <id> | enable <id> | disable <id>]',
+    summary: 'scheduled jobs that keep repeating and record how it went (missed runs are caught up once after the device was off)',
     flags: [
       '--schedule "<cron>"  when to run ("0 8 * * *" = 8am daily)',
       '--prompt "<text>"    what to ask the agent each time',
       '--name <n>           a human name for the job',
       '--critical           run even when the battery is low',
-      '--json               list/add/rm/on/off as one JSON document',
+      'show <id>            one job in full: target, next run and the last five attempts',
+      '--json               list/show/add/rm/on/off as one JSON document',
     ],
     example: 'termcrab cron add --schedule "0 8 * * *" --prompt "give me a briefing" --name morning',
-    json: '{count, jobs:[{id, name, schedule, enabled, critical, nextRun, prompt}]} · add → {job, nextRun} · rm → {removed}',
+    json: 'ls → {count, jobs:[{id, name, schedule, enabled, critical, nextRun, prompt, agent, deliver, lastRun, lastResult, lastError, failures}]} · show → {job} · add → {job, nextRun} · rm → {removed}',
   },
   {
     cmd: 'import',
@@ -352,6 +353,17 @@ export const COMMANDS: CommandDoc[] = [
       'routes clear <s>        back to the main agent',
     ],
     example: 'termcrab agents routes set telegram crabby',
+  },
+  {
+    cmd: 'board',
+    usage: 'board [--limit <n>] [--json]',
+    summary: 'one screen for everything in flight: live turns, subagent tasks, scheduled jobs and the cards the agent suggested',
+    flags: [
+      '--limit <n>   show only the first n cards',
+      '--json        the same as data, with counts per status',
+    ],
+    example: 'termcrab board',
+    json: '{generatedAt, counts:{running,queued,scheduling,failed,done,suggested}, cards:[{id, kind, status, title, at?, detail?}]}',
   },
   {
     cmd: 'rooms',

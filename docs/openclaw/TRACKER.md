@@ -10,8 +10,8 @@
 - **তোমার আসল প্রশ্ন ছিল:** "আমি কোন লেভেলে আছি, আর তাদের ছাড়াতে কতটুকু বাকি?" — এই ফাইলে সেটার উত্তর **কোড পড়ে মাপা** হয়েছে, মনে করে লেখা নয়।
 
 <!-- BEGIN SUMMARY-BN -->
-- **এখনকার স্কোর: ৯৬%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১০৮টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ১০টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
-- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৫৪ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
+- **এখনকার স্কোর: ৯৭%।** ১৫০টা ক্যাপাবিলিটির মধ্যে ১১০টা পুরো কাজ করে (WORKING), ১৪টায় আমরা OpenClaw-এর চেয়ে এগিয়ে (BETTER), ৮টা আধা (PARTIAL), ০টা এখনো নেই (ABSENT) — আর **০টা ভাঙা**।
+- **core lane: ~০ দিন বাকি** (১৫টা চেক) — এটাই "এজেন্ট হিসেবে বিশ্বাসযোগ্য হওয়ার" লাইন; parity ~৪৮ দিন, later ~৩ দিন (ইচ্ছাকৃতভাবে ফেলে রাখা, কারণ ১:১ ম্যাচ করলে ফোনে কিছুই লাভ হয় না)।
 - **যা বানাচ্ছি না, তার হিসাব আলাদা:** ১৮টা চেক ইচ্ছাকৃতভাবে **out of scope** (মাপা হয়, কিন্তু স্কোরের ভাগ হয় না) — কারণগুলো টেবিলের নিচে লেখা।
 - **সংখ্যাগুলো কোড থেকে মাপা, মনে করে লেখা নয়:** `node scripts/census.mjs` — ১৫০টা probe, drift ০; কোনো probe মিস করলে ওই সারি DRIFT দেখায়, অর্থাৎ কোড সরেছে আর সিদ্ধান্তটা নতুন করে নিতে হবে।
 <!-- END SUMMARY-BN -->
@@ -52,15 +52,15 @@ _Measured 2026-10-04 against `src/` at HEAD. Re-run `node scripts/census.mjs --w
 
 | Verdict | Count | Meaning |
 |---|---:|---|
-| ✅ WORKING | 108 | wired and observable |
+| ✅ WORKING | 110 | wired and observable |
 | 🏅 BETTER | 14 | TermCrab is ahead of OpenClaw here |
-| 🟡 PARTIAL | 10 | exists, narrower than theirs |
+| 🟡 PARTIAL | 8 | exists, narrower than theirs |
 | ⛔ BROKEN | 0 | **the code exists but nothing reaches it** |
 | ⚪ ABSENT | 0 | nothing in the tree |
 | 🚫 OUT OF SCOPE | 18 | deliberately not planned — measured, not counted |
 | | **132** | in-scope capabilities (150 measured in total) |
 
-**Capability score 96%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
+**Capability score 97%** of in-scope work (WORKING/BETTER = 1, PARTIAL = 0.45, BROKEN = 0.1, ABSENT = 0). Out-of-scope rows are excluded from both halves of that fraction.
 
 Out of scope, and why:
 
@@ -86,9 +86,9 @@ Out of scope, and why:
 | Lane | Checks | Effort left | What it is |
 |---|---:|---:|---|
 | **core** | 15 | ~0d | must exist for TermCrab to be a credible agent at all |
-| **parity** | 103 | ~54d | needed to compete on the axes the phone-first bet depends on |
+| **parity** | 103 | ~48d | needed to compete on the axes the phone-first bet depends on |
 | **later** | 14 | ~3d | deliberately deferred — matching OpenClaw 1:1 here buys nothing on a phone |
-| **total** | 132 | ~57d | in-scope only |
+| **total** | 132 | ~51d | in-scope only |
 
 > ✅ All probes match their recorded judgements as of this run.
 
@@ -113,15 +113,15 @@ Out of scope, and why:
 | Progress drafts / partial updates | incremental draft messages | ✅ WORKING | {type:'draft'} events carry the whole partial answer (emitted at most once per round, so a surface replaces instead of appending) and it is saved in the progress card (state/progress/<session>.json) so a reload mid-turn still shows it; the panel paints it and marks the bubble as a draft. test/tier0.test.ts 10.4 | parity | — |
 | Timeouts + error containment | per-phase budgets | ✅ WORKING | loop.ts containment; tests in test/loop.test.ts | parity | — |
 
-### automation — 82% (6 in-scope checks, 1 out of scope)
+### automation — 100% (6 in-scope checks, 1 out of scope)
 
 | Capability | OpenClaw | TermCrab | Evidence | Lane | Left (d) |
 |---|---|---|---|---|---:|
-| Cron scheduler | schedules, payloads, delivery, webhooks | 🟡 PARTIAL | src/cron/{parser,store,scheduler}.ts, 5-field expressions | parity | 3 |
+| Cron scheduler | schedules, payloads, delivery, webhooks | ✅ WORKING | five-field expressions with @macros (src/cron/parser.ts), a JSON store, and a 20s tick that grew the parts a phone needs (34.4): a job that became due while the device was asleep is caught up **once** on the next tick — the minutes missed inside a 24h window are counted and written into its history, never replayed one by one, and the first tick of a fresh state never bursts — a job still running is skipped as `skipped-overlap` instead of piling up on itself, a low-battery skip is recorded as `skipped-battery`, and every attempt lands in the job record (`lastRun`, `lastResult`, `lastError`, a consecutive-failure count that a success clears, the last five runs with durations). Failures are shown, never used to disable a job silently. Delivery and agent selection were 33.4 (`--deliver telegram|panel|none`, `--agent`, now also on POST /api/crons with validation before anything is written). Surfaces: `cron ls` prints the last result and the failure streak, `cron show <id>` prints one job in full. Limits stated: no payload templating language, no per-job timeout (a run is bounded by the model timeout), and inbound webhooks stay their own row. test/tier3b.test.ts 34.4 | parity | — |
 | Heartbeat / proactive tick | 30-min heartbeat + HEARTBEAT.md | ✅ WORKING | src/agent/heartbeat.ts + power-aware gating — TermCrab is arguably better here | parity | — |
 | Event triggers / watchers | condition watchers, stream sources | ✅ WORKING | src/gateway/triggers.ts + config: a hook that names events (`on: ["run.failed"]`, `device.*`, `*`) is woken by what happens inside the gateway — run.failed, run.start, run.end, session.reset, device.paired, file.received, file.changed, cron.finished — and the turn is queued exactly like a webhook's, in session hook:<id>, with a self-loop guard and a 60s cooldown per hook. config.watchers adds file/folder watchers (fs.watch with a per-watcher debounce and an optional suffix `match`), so "when a PDF lands in this folder, look at it" works without a rule language. `termcrab events` prints the catalogue, the listeners and the watched paths. Not attempted: condition polling (battery/disk thresholds as events) and stream sources | core | — |
 | Standing orders | persistent programs with execute-verify-report | ✅ WORKING | src/agent/intents.ts (state/intents.json) stores them; the system prompt injects a `# Standing orders` block into every turn with the precedence spelled out (they outrank memory and workspace notes; they never override the safety rules). Surfaces: `termcrab orders [list|add|remove]`, the chat command `/orders [add|remove]`, and the agent's own `intent` tool — all one store. The run half is cron (schedule) + event triggers on run.end/run.failed (verify + report), so "every morning brief me, and tell me if it breaks" is expressible today. What is not attempted: a typed program object with phases and approval boundaries. test/tier2n.test.ts covers the CLI round-trip, the prompt block and the precedence line | parity | — |
-| Task board | tasks, taskflow, workboard | 🟡 PARTIAL | src/agent/tasks.ts + suggest_task/dismiss_task tools + /api/tasks | parity | 3 |
+| Task board | tasks, taskflow, workboard | ✅ WORKING | one board for everything in flight (34.4): src/agent/board.ts merges four sources that each had a view of their own — live turns (run-health verdicts with a suggested action), subagent tasks (running/done/error/timeout, with elapsed time or an output excerpt), cron jobs (next run, last result, failure streak) and the agents suggestion cards — into one list with one status vocabulary (running, queued, scheduling, failed, done, suggested) ordered by urgency, and every card names where it came from. It reads only: the board cannot start, cancel or schedule anything. Surfaces: `termcrab board [--limit n] [--json]` and `GET /api/board`, the same object. Limits stated: no dependency graph between cards and no drag-to-reorder (a phone board is a status list, not a project planner), and the suggestion dismiss path stays `/api/tasks`. test/tier3b.test.ts 34.4 | parity | — |
 | Scheduled delivery to channels | deliver cron output to a chat | ✅ WORKING | a job now says where its result goes: cron add --deliver telegram|panel|none (unset = every configured surface, which is what happened before), `cron ls` shows it and the choice is stored in crons.json. The scheduler does not know which surfaces exist — it decides when and hands the target to the gateway, which sends to the paired Telegram chat, emits cron-output on the bus for the panel, or does neither; deliver:none still records the run, the transcript and a daily-log line saying it went nowhere. The same tick resolves which agent runs the job (job.agent, then agents.routes.cron, then main) and logs the reason when a route names an agent that does not exist. test/tier2x.test.ts 33.4 drives all five cases through cronTick with a spy deliver and asserts the transcripts (helper:cron:<id> vs cron:<id>) and the CLI round-trip, including the refusal of a nonsense target and an unknown agent | parity | — |
 | Gmail / IMAP watchers | PubSub + IMAP integrations | 🚫 OUT OF SCOPE | no mail integration — **not part of a three-surface phone agent (user decision 2026-10-03: telegram + web + terminal). No plugin ecosystem, no server-fleet deployment, no email surface and no native app are planned** | later | — |
 

@@ -57,6 +57,7 @@ import { embeddingsStatus, embeddingsSetup, embeddingsTest } from './agent/embed
 import { transcribeFile } from './mobile/whisper.js';
 import { browserStatus, CdpBrowser } from './agent/cdp.js';
 import { clearRoom, formatRoomHistory, listRooms, parseRoomKey, readRoom } from './channels/rooms.js';
+import { buildBoard, formatBoard } from './agent/board.js';
 import { dreamHistory } from './agent/dream.js';
 import { runHeartbeatOnce } from './agent/heartbeat.js';
 import { AgentEvent } from './agent/loop.js';
@@ -1039,6 +1040,11 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
                 prompt: j.prompt,
                 agent: j.agent ?? null,
                 deliver: j.deliver ?? 'all',
+                // 34.4: how it went, not just what it would do next.
+                lastRun: j.lastRun ?? null,
+                lastResult: j.lastResult ?? null,
+                lastError: j.lastError ?? null,
+                failures: j.failures ?? 0,
               };
             }),
           });
@@ -1063,9 +1069,13 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
             j.critical ? '[critical]' : '',
             j.agent ? `@${j.agent}` : '',
             j.deliver ? `→${j.deliver}` : '',
+            j.failures && j.failures > 1 ? `⚠ ${j.failures} fails` : '',
           ].filter(Boolean);
+          const last = j.lastRun
+            ? ` · last ${new Date(j.lastRun).toLocaleTimeString()} ${j.lastResult ?? '?'}`
+            : '';
           console.log(
-            `${state} ${j.id}  ${j.name.padEnd(18)} ${j.schedule.padEnd(14)} next: ${next}${bits.length ? ` ${bits.join(' ')}` : ''}`,
+            `${state} ${j.id}  ${j.name.padEnd(18)} ${j.schedule.padEnd(14)} next: ${next}${bits.length ? ` ${bits.join(' ')}` : ''}${last}`,
           );
         }
         return;
@@ -1125,6 +1135,50 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
             process.exitCode = 1;
           }
         }
+        return;
+      }
+      if (sub === 'show') {
+        // 34.4: one job in full — schedule, target, and the last attempts.
+        const id = rest[1] ?? '';
+        if (!id) {
+          console.error('usage: termcrab cron show <id|name> [--json]');
+          process.exitCode = 1;
+          return;
+        }
+        const job = getCron(id);
+        if (!job) {
+          console.error(`no cron job: ${id}   (see: termcrab cron ls)`);
+          process.exitCode = 1;
+          return;
+        }
+        if (machine) {
+          emitJson('cron', { job });
+          return;
+        }
+        let next = 'invalid schedule';
+        try {
+          const nx = nextRun(parseCron(job.schedule), new Date());
+          next = nx ? nx.toLocaleString() : 'no next run';
+        } catch {
+          /* keep invalid */
+        }
+        console.log(`⏰ ${job.name} (${job.id}) — ${job.enabled ? 'on' : 'off'} · ${job.schedule} · next ${next}`);
+        console.log(`   prompt: ${job.prompt.slice(0, 300)}`);
+        console.log(
+          `   runs as: ${job.agent ?? 'the cron route'} · delivers: ${job.deliver ?? 'all surfaces'}` +
+            `${job.critical ? ' · critical' : ''}${job.oneShot ? ' · one-shot' : ''}`,
+        );
+        if (!job.history?.length) {
+          console.log('   no runs recorded yet');
+          return;
+        }
+        console.log('   recent runs (newest last):');
+        for (const h of job.history) {
+          console.log(
+            `     ${new Date(h.at).toLocaleString()}  ${h.ok ? 'ok' : (h.note ?? 'failed')}  (${Math.max(1, Math.round(h.ms / 1000))}s)`,
+          );
+        }
+        if (job.lastError) console.log(`   last error: ${job.lastError}`);
         return;
       }
       if (sub === 'rm' || sub === 'delete') {
@@ -2565,6 +2619,21 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       }
       console.error(`usage: termcrab agents [ls|new <name> --template ${SOUL_TEMPLATES.join('|')}]`);
       process.exitCode = 1;
+      return;
+    }
+
+    case 'board': {
+      // 34.4: one screen for everything in flight — live turns, subagents,
+      // scheduled jobs and the cards the agent suggested.
+      const limitIdx = rest.indexOf('--limit');
+      const limit = limitIdx >= 0 ? Number(rest[limitIdx + 1]) || 0 : 0;
+      const board = buildBoard();
+      const cards = limit > 0 ? board.cards.slice(0, limit) : board.cards;
+      if (machine) {
+        emitJson('board', { ...board, cards });
+        return;
+      }
+      console.log(formatBoard({ ...board, cards }));
       return;
     }
 

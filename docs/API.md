@@ -182,10 +182,31 @@ Runs one proactive tick now (battery-aware).
 → `{ "ran": true, "reason": "battery 88% (charging)", "output": "…" }`
 
 ### `GET /api/crons`
-→ `{ "crons": [ { "id", "name", "schedule", "prompt", "enabled", "critical", "nextRun": "ISO" } ] }`
+→ `{ "crons": [ { "id", "name", "schedule", "prompt", "enabled", "critical", "nextRun": "ISO", "agent", "deliver", "lastRun", "lastResult", "lastError", "failures", "history" } ] }`
+
+Each job now records how it went, not only what it would do next (34.4): `lastResult`
+is `ok` / `error` / `skipped-battery` / `skipped-overlap`, `failures` counts the
+consecutive streak (a success clears it, and it never disables the job), and
+`history` keeps the last five attempts with their durations and notes. A job that
+became due while the device was off is caught up **once** on the next tick, inside
+a 24-hour window, with the skipped count written into its history.
 
 ### `POST /api/crons`
-Body: `{ "name": "weekday", "schedule": "0 8 * * 1-5", "prompt": "briefing", "critical": false }`
+Body: `{ "name": "weekday", "schedule": "0 8 * * 1-5", "prompt": "briefing", "critical": false, "agent": "crabby", "deliver": "telegram" }`
+`deliver` is `telegram` | `panel` | `none`; an unknown agent or target is a `400`
+with a sentence, before anything is written.
+
+### `GET /api/board`
+The merged work board `termcrab board` prints (34.4): `{generatedAt, counts:{running,queued,scheduling,failed,done,suggested}, cards:[{id, kind, status, title, at?, detail?}]}` with kinds `turn`, `subagent`, `cron`, `suggestion`. Read-only — the board never starts, stops or schedules anything.
+
+### `GET /api/subagents` (33.1)
+`{tasks:[{id, sessionId, prompt, label?, agent?, cwd?, status, started, finished?, elapsedMs?, output?, error?}], running, max}` — the same list `termcrab subagents` prints, bounded to the running tasks plus recent history.
+
+### `GET /api/agents` · `PUT /api/agents/routes` (33.2)
+`GET` answers `{agents, routes:[{surface, agent, source, problem?}]}`; `PUT` takes `{surface, agent}` (or `{surface, agent: null}` to clear) and validates both against the agents that exist. The surfaces are the ones that can route a turn: web, telegram, cli, cron, voice, wake, subagent.
+
+### Skills the agent proposed (33.3)
+`GET /api/skills/proposals` → `{proposals:[…], rejected:[…]}`; `POST /api/skills/proposals` with `{action:"approve"|"reject", name, reason?, force?}` makes the decision. Nothing in `skills/_proposals/` can reach the prompt before that call, and approving over an existing skill needs `force: true`.
 → `200 { "cron": { … } }` or `400 { "error": "<schedule explanation>" }`
 
 ### `DELETE /api/crons/:id`

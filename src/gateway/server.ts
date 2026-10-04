@@ -92,6 +92,7 @@ import { importSkills } from '../skills/importer.js';
 import { isSoulTemplate, soulTemplate } from '../skills/scaffold.js';
 import { listConversations, registerDocumentSender, registerSender, recordInbound } from '../channels/conversations.js';
 import { formatRoomHistory } from '../channels/rooms.js';
+import { buildBoard } from '../agent/board.js';
 import { getPortal } from './portal.js';
 import { canvasList, canvasRemove } from './canvas.js';
 import { listSuggestions, dismiss } from '../agent/suggestions.js';
@@ -1824,13 +1825,36 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         if (req.method === 'POST' && pathname === '/api/crons') {
           const raw = await readBody(req);
-          const body = raw ? (JSON.parse(raw) as { name?: string; schedule?: string; prompt?: string; critical?: boolean }) : {};
+          const body = raw
+            ? (JSON.parse(raw) as {
+                name?: string;
+                schedule?: string;
+                prompt?: string;
+                critical?: boolean;
+                agent?: string;
+                deliver?: string;
+              })
+            : {};
           try {
+            // 34.4: the panel can set the same two things the CLI can (33.4) —
+            // refused with a sentence before anything is written otherwise.
+            const deliver = body.deliver ? String(body.deliver).toLowerCase() : undefined;
+            if (deliver && !['telegram', 'panel', 'none'].includes(deliver)) {
+              json(res, 400, { error: 'deliver must be telegram, panel or none' });
+              return;
+            }
+            const agentName = body.agent ? String(body.agent).trim().toLowerCase() : undefined;
+            if (agentName && !listAgents().includes(agentName)) {
+              json(res, 400, { error: `no such agent: ${agentName} (have: ${listAgents().join(', ') || 'none'})` });
+              return;
+            }
             const job = addCron({
               name: body.name || '',
               schedule: body.schedule || '',
               prompt: body.prompt || '',
               critical: body.critical,
+              ...(agentName ? { agent: agentName } : {}),
+              ...(deliver ? { deliver: deliver as 'telegram' | 'panel' | 'none' } : {}),
             });
             json(res, 200, { cron: job });
           } catch (err) {
@@ -2086,6 +2110,11 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
 
         if (req.method === 'GET' && pathname === '/api/tasks') {
           json(res, 200, { suggestions: listSuggestions('pending') });
+          return;
+        }
+        if (req.method === 'GET' && pathname === '/api/board') {
+          // 34.4: the same merged view `termcrab board` prints, from live data.
+          json(res, 200, buildBoard());
           return;
         }
         if (req.method === 'DELETE' && pathname.startsWith('/api/tasks/')) {
