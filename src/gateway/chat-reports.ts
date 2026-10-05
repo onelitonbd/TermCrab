@@ -711,6 +711,8 @@ export const CHAT_COMMANDS: { cmd: string; args: string; description: string }[]
   { cmd: '/work', args: '[full]', description: 'What is being built now' },
   { cmd: '/say', args: '<text>', description: 'Send it as a voice note' },
   { cmd: '/controlui', args: '', description: 'Open the panel inside Telegram' },
+  { cmd: '/subagents', args: '', description: 'Subagent runs and their scratch dirs' },
+  { cmd: '/identity', args: '', description: 'SOUL / IDENTITY / USER the agent answers from' },
 ];
 
 /** The text `/help` prints — one list, also used to register the Bot menu. */

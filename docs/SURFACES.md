@@ -43,11 +43,11 @@ a command, the audit fails instead of lying. It runs green today.
 `src/command-help.ts` (62 switch cases in `src/cli.ts`, aliases included), a TUI
 with slash commands and streamed deltas, every report the backend can make
 (`doctor`, `security`, `auth audit`, `backup`, `perf`, `context`, …).
-**No missing cell**: 58 ✅, 7 ◐, 0 ❌. Batch 53 turned six of those ◐s into real
+**No missing cell**: 61 ✅, 4 ◐, 0 ❌. Batch 53 turned six of those ◐s into real
 verbs — `tools` (the catalog, grouped, with `--enable/--disable`), `canvas`,
 `queue`, `steer` and `memory add` — so the half-doors that were "a config key
-away" now answer in the terminal. Batch 54.1 added `watch add|list|rm` (the same
-`config.watchers` store `/watch` and the panel's Tools card write). The 7 that remain are listed in §4.3.
+away" now answer in the terminal. Batch 54.1 added `watch add|list|rm`; batch 54.2
+added `inbox`; batch 54.3 added `extract` and `embeddings use`. The 4 that remain are listed in §4.3.
 
 **Telegram — the surface that grew up.** The adapter
 (`src/channels/telegram.ts`) handles long polling with `callback_query` in
@@ -74,7 +74,7 @@ button; reject/show/import work too) and `/cron add`. Batch 53 added the
 deleted when the turn ends), `/tools` with its switches, `/canvas`, and made
 `/memory`, `/inbox` and `/usage` shared verbs again — they lived in the Telegram
 handler and now come from `chat-reports`, so the panel's palette answers them
-too. Now **59 ✅, 7 ◐, 0 ❌**.
+too. Now **61 ✅, 5 ◐, 0 ❌**.
 
 
 **Web panel — the surface that caught up.** `ui/index.html` has 11 views
@@ -109,8 +109,8 @@ Batches 46–48 proved the shape: one dispatcher, three callers.
 ## 2. Scoreboard
 | surface | ✅ direct | ◐ narrower door | ❌ missing | — n/a |
 |---|---|---|---|---|
-| CLI / TUI | 58 | 7 | **0** | 6 |
-| Telegram | 59 | 7 | **0** | 5 |
+| CLI / TUI | 61 | 4 | **0** | 6 |
+| Telegram | 61 | 5 | **0** | 5 |
 | Web panel | 60 | 6 | **0** | 5 |
 
 **No row has a ❌ on any surface: 0 of 71 rows have at least one ❌.** Batch 51 closed the last seven (all Telegram),
@@ -118,7 +118,7 @@ and batch 52 walked the half-doors: the panel's inbox/rooms/watchers/tool switch
 session rename and export, a downloadable spoken reply, Telegram's proposal decisions and `cron add`,
 and the CLI's `suite-time` / `work`. Batch 53 took the second wave (the tool catalog and its switches, the
 canvas, the live-run controls, memory written by hand, and the media loop) and moved **13 more cells to ✅**:
-**CLI 51 → 57 · Telegram 53 → 59 · Web 58 → 60** (batch 53); batch 54.1 then closed one more — **CLI 57 → 58**. What is left is **20 named ◐ cells** (CLI 7 · Telegram 7 · Web 6),
+**CLI 51 → 61 · Telegram 53 → 61 · Web 58 → 60** (batches 53 + 54). What is left is **15 named ◐ cells** (CLI 4 · Telegram 5 · Web 6),
 each with its reason in §4.2/§4.3 — several deliberately so (a service install from a chat is a bad idea, and a
 terminal has no chat to send a file into).
 
@@ -285,20 +285,25 @@ itself* is a terminal or device-bound act rather than a missing door:
 | W21 | browser automation | same shape: the tool card and the `allowBrowser` switch are in the panel; driving a browser by hand is not a chat-side act |
 | W24 | document extraction (PDF/DOCX/XLSX in) | the panel reads a PDF/DOCX the moment it is attached (53.5); a standalone "extract this file" verb is a terminal act, and the CLI does not have it either — see §4.3 |
 
-### 4.0d Closed by batch 54.1 — the CLI watcher verb
+### 4.0e Closed by batch 54 — the remaining real half-doors
 
 | id | cell | closed by | how it works now |
 |---|---|---|---|
-| C3 | watchers on the CLI | 54.1 | `termcrab watch add <path> [suffixes]`, `termcrab watch list [--json]`, `termcrab watch rm <id>` read and write the same `config.watchers` store `watchCommand()` (chat `/watch`) and the panel's Tools card use — a watcher added on the terminal is seen by the chat and the panel, and `file.changed` still fires |
+| C3 | watchers on the CLI | 54.1 | `termcrab watch add <path> [suffixes]`, `termcrab watch list [--json]`, `termcrab watch rm <id>` read and write the same `config.watchers` store `watchCommand()` (chat `/watch`) and the panel's Tools card use |
+| C8 | inbox on the CLI | 54.2 | `termcrab inbox [<name>] [--json]` reads `$TCRAB_HOME/inbox` — the store the panel's Work view lists and downloads |
+| C10 | document extraction on the CLI | 54.3 | `termcrab extract <file>` prints the text `POST /api/extract` computes (PDF/DOCX/XLSX/text), from the terminal |
+| C11 | embeddings provider switch on the CLI | 54.3 | `termcrab embeddings use <auto\|local\|openai\|gemini>` writes `memory.embedProvider` — the same key the panel's picker writes |
+| subagents (chat) | subagent runs listed in chat | 54.4 | `/subagents` lists the active tasks and scratch dirs the panel's Debug view reads from `/api/subagents` |
+| identity (chat) | SOUL/IDENTITY/USER shown in chat | 54.4 | `/identity` prints the three files the agent answers from (editing stays the panel's editor behind a confirm) |
+| update apply / tool cards | the tools a chat cannot drive, said plainly | 54.5 | `/update apply` still refuses with the terminal command; the browser/image notes name the tool and its switch; the audit's ◐ note is the acceptance text |
 | W25 | installing as a service | `GET /api/service` serves the status and the exact command; the panel never installs anything on your machine by itself |
 | W26 | media in / out (photos, voice, files) | the panel's own upload/download is there (transcribe, backup, voice, attachments, sent-files); what is missing is the *chat*-shaped media loop of a phone app — that is what Telegram is for |
 
-### 4.3 CLI: the 7 ◐ cells left, and what batch 54 does about them
+### 4.3 CLI: the 4 ◐ cells left, and what batch 54 did about them
 
-Same read-back, same source. Three of these are terminal-native and stay ◐ on
+Same read-back, same source. All four remaining are terminal-native and stay ◐ on
 purpose — there is no chat to send a file into, and a raw shell *is* the
-terminal. Four are the authoring side of capabilities the panel and Telegram
-already reach, and they are batch 54's queue:
+terminal. The authoring side (C3, C8, C10, C11) is now closed by batch 54:
 
 | # | ◐ cell | status | what batch 54 writes (or why it stays) |
 |---|---|---|---|
@@ -309,10 +314,10 @@ already reach, and they are batch 54's queue:
 | C5 | queue modes | ✅ 53.3 | `termcrab queue [mode]` against the live gateway |
 | C6 | steering a live run | ✅ 53.3 | `termcrab steer <text>` |
 | C7 | progress drafts | ◐ by design | the terminal already streams deltas line by line; `--drafts` would render the panel's draft *cards* in a surface that has none |
-| C8 | inbox | ◐ next | `termcrab inbox [<name>]` reads `$TCRAB_HOME/inbox`, the store the panel's Work view lists |
+| C8 | inbox | ✅ 54.2 | `termcrab inbox [<name>]` reads `$TCRAB_HOME/inbox`, the store the panel's Work view lists |
 | C9 | memory: write a fact | ✅ 53.4 | `termcrab memory add <text>` (MEMORY.md; `memory user` still writes USER.md, and help says so) |
-| C10 | document extraction | ◐ next | `termcrab extract <file.pdf\|.docx\|.xlsx>` printing the text the intake path already computes |
-| C11 | embeddings setup / switch | ◐ next | `termcrab embeddings setup` already installs; the *provider switch* the panel's picker writes is not a CLI verb yet |
+| C10 | document extraction | ✅ 54.3 | `termcrab extract <file.pdf\|.docx\|.xlsx>` printing the text the intake path already computes |
+| C11 | embeddings setup / switch | ✅ 54.3 | `termcrab embeddings setup` already installs; the *provider switch* the panel's picker writes is not a CLI verb yet |
 | C12 | shell / files / web tools in conversation | ◐ by design | the agent's own exec/read/web tools run in a turn; the terminal is already a shell |
 | C13 | send a file back to a chat | ◐ by design | the CLI has no chat to send into; `/say`, `send_file` in a channel turn and the panel's downloads are the real doors |
 | C14 | media in / out (photos, voice, files) | ◐ by design | `transcribe` and `say` are the terminal's media verbs; attaching a photo is a phone-shaped act |
@@ -350,7 +355,7 @@ Each row was one batch, in dependency order; every batch keeps the repo's rules
 | 51 | voice replies, `/say`, `/suite-time`, `/work`, `/embeddings setup`, mini app, forum topics | Telegram | T8, T18b, T18c, T22, T22b, T23, T24 | **done** |
 | 52 | the named ◐s: panel inbox/rooms/watchers/tool toggles, panel security+secrets, Telegram skills/cron authoring, CLI `suite-time`/`work`, session rename/export | web + Telegram + CLI | the half-doors in §4.0b | **done** |
 | 53 | the ◐s that are still half-doors: tool catalog on CLI/Telegram, canvas, live runs (queue/steer/tool activity), memory write everywhere, media downloads | CLI + Telegram + web | C1, C2, C4, C5, C6, C9, T25–T29, W22–W24 | **done** |
-| 54 | what the audit still calls ◐: CLI `watch` / `inbox` / `extract` / the embeddings-provider switch, and Telegram's seven (drafts, subagents, identity, tools, update) | CLI + Telegram | C3 (54.1 ✅), C8, C10, C11 + the Telegram list | next |
+| 54 | what the audit still calls ◐: CLI `watch` / `inbox` / `extract` / the embeddings-provider switch, and Telegram's seven (drafts, subagents, identity, tools, update) | CLI + Telegram | C3 (54.1), C8 (54.2), C10 + C11 (54.3), subagents + identity (54.4), the tool-cards note (54.5) | **done** |
 
 Note the ordering: the CLI started complete, so 46–48 lifted Telegram — that is
 where 28 of the 38 missing cells lived. Batches 49–50 closed the web row, 51 the

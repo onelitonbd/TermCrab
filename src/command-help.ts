@@ -467,16 +467,17 @@ export const COMMANDS: CommandDoc[] = [
   },
   {
     cmd: 'embeddings',
-    usage: 'embeddings [status | setup | test [text]] [--json]',
+    usage: 'embeddings [status | use <auto|local|openai|gemini> | setup | test [text]] [--json]',
     summary: 'smart memory search: the local model, or your provider\u2019s embedding endpoint',
     flags: [
+      'use <provider>  write memory.embedProvider — the same key the panel’s picker writes',
       'status         which embedder is live, the model, its price, and the fix when there is none',
       'setup          install and download the optional local model (~23 MB, offline, no key)',
       'test [text]    embed one string end to end and print the dimension — proof, not a promise',
       'memory.embedProvider = auto | local | openai | gemini   (auto: local if installed, else your chat provider)',
       'memory.embedModel / memory.embedBaseUrl                override the model or point at your own endpoint',
     ],
-    example: 'termcrab embeddings test "the crab likes rice"',
+    example: 'termcrab embeddings use local',
     json: '{packageInstalled, enabled, indexVectors, modelCached, provider, model, costNote, blocker?, summary}',
   },
   {
@@ -602,6 +603,22 @@ export const COMMANDS: CommandDoc[] = [
     flags: ['add <path> [.md,.txt]   watch a path (optional comma-separated suffixes) and print its id', 'list                  show the watchers and their ids', 'rm <id>               stop a watcher by id', '--json               list as {watchers:[{id,path,match}]}'],
     example: 'termcrab watch add ~/notes .md',
     json: '{watchers:[{id, path, match}]} (or {added}/{removed})',
+  },
+  {
+    cmd: 'inbox',
+    usage: 'inbox [<name>] [--json]',
+    summary: 'files people sent you — the same store the panel lists and downloads (name/kind/from/age)',
+    flags: ['<name>   print one arrival’s captured text (from its sidecar or extraction)', '--json   entries:[{name, kind, from, receivedAt}] (or {name, text, source})'],
+    example: 'termcrab inbox',
+    json: '{entries:[{name, kind, from, receivedAt}]} (or {name, text, source})',
+  },
+  {
+    cmd: 'extract',
+    usage: 'extract <file> [--json]',
+    summary: 'read the text out of a PDF/DOCX/XLSX the same way POST /api/extract does, from the terminal',
+    flags: ['<file>   path to a .pdf / .docx / .pptx / .xlsx / text file', '--json   {ok, text, kind}'],
+    example: 'termcrab extract x.pdf',
+    json: '{ok, text, kind}',
   },
   {
     cmd: 'logs',

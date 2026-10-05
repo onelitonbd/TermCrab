@@ -11,6 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import test from 'node:test';
+import { recordArrival } from '../src/channels/inbox.js';
+import { subagentsCommand, identityCommand } from '../src/gateway/chat-control.js';
 
 const ROOT = process.cwd();
 const CLI = path.join(ROOT, 'dist', 'src', 'bin', 'termcrab.js');
@@ -91,3 +93,48 @@ test('54.1 usage errors are real, not silent', async () => {
   assert.equal(badId.code, 1, 'rm of a missing id must fail');
   assert.match(badId.stderr, /no watcher with id nope/i);
 });
+
+test('54.2 + 54.3 the CLI inbox / extract / embeddings reach the same stores', async () => {
+  const home = tmpHome('t54cli-');
+  const env = { TCRAB_HOME: home };
+  process.env.TCRAB_HOME = home; // recordArrival runs in this process — point it at the temp home
+
+  // inbox: seed one arrival through the real module, read it back via the CLI.
+  recordArrival({ name: 'note.txt', kind: 'document', bytes: 10, text: 'hello from the inbox' });
+  const listed = await cliAsync(['inbox', '--json'], env);
+  assert.equal(listed.code, 0, listed.stderr);
+  const inboxJson = JSON.parse(listed.stdout.slice(listed.stdout.indexOf('{'))) as { data: { entries: { name: string }[] } };
+  assert.ok(inboxJson.data.entries.some((e) => e.name === 'note.txt'), 'inbox lists the seeded arrival');
+  const one = await cliAsync(['inbox', 'note.txt'], env);
+  assert.equal(one.code, 0, one.stderr);
+  assert.match(one.stdout, /hello from the inbox/);
+
+  // extract: a plain text file reads back its text.
+  const file = path.join(home, 'plain.txt');
+  fs.writeFileSync(file, 'the crab likes rice');
+  const ext = await cliAsync(['extract', file], env);
+  assert.equal(ext.code, 0, ext.stderr || ext.stdout);
+  assert.match(ext.stdout, /the crab likes rice/);
+
+  // embeddings: `use` writes the same memory.embedProvider the panel picker writes.
+  const use = await cliAsync(['embeddings', 'use', 'local'], env);
+  assert.equal(use.code, 0, use.stderr || use.stdout);
+  const cfg = JSON.parse(fs.readFileSync(path.join(home, 'config.json'), 'utf8'));
+  assert.equal(cfg.memory.embedProvider, 'local', 'the provider switch lands in config');
+  const status = await cliAsync(['embeddings'], env);
+  assert.equal(status.code, 0);
+  assert.match(status.stdout, /local/);
+});
+
+test('54.4 the chat /subagents and /identity answer from the same data as the panel', async () => {
+  const subs = subagentsCommand();
+  assert.equal(subs.ok, true);
+  assert.match(subs.text, /subagent/i);
+
+  const id = identityCommand();
+  assert.equal(id.ok, true);
+  assert.match(id.text, /SOUL\.md/);
+  assert.match(id.text, /IDENTITY\.md/);
+  assert.match(id.text, /USER\.md/);
+});
+

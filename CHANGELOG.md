@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.84.0 - 2026-10-05
+
+**Batch 54 — the named ◐ cells, closed (CLI 61 · Telegram 61 · Web 60 ✅, 15 named ◐, 0 ❌).** The last real half-doors are gone: every capability reachable on one or two surfaces is now reachable on all three.
+
+- **CLI reaches the same stores the chat and the panel use.** `termcrab watch add|list|rm` (54.1), `termcrab inbox [<name>]` (54.2), `termcrab extract <file>` (54.3) and `termcrab embeddings use <provider>` (54.3) all read and write the identical `config.watchers`, inbox, extraction and `memory.embedProvider` stores the chat `/watch` `/inbox` and the panel's Tools/Docs cards write — so a watcher, an arrival or a provider switch made on the terminal is seen by the chat and the panel.
+- **The chat shows the subagent and identity views.** `/subagents` lists the active runs and scratch dirs (the panel's Debug view reads the same `/api/subagents`); `/identity` prints SOUL.md / IDENTITY.md / USER.md (editing stays the panel's editor behind a confirm). `/update apply` remains terminal-only by design — the audit's ◐ note is the acceptance text (54.5).
+- Register: **CLI 61 ✅ / 4 ◐ / 6 n/a · Telegram 61 ✅ / 5 ◐ / 5 n/a · Web 60 ✅ / 6 ◐ / 5 n/a** — 71 rows, 15 named ◐ (4/5/6), 0 ❌. The remaining ◐ are terminal-native shapes (a raw shell, sending a file *into* a chat), recorded as such, not holes. `test/tier3w.test.ts` is 4/4 green and exercises every new verb end to end.
+- Surface audit probes updated for the new CLI verbs; `scripts/surface-audit.mjs --check` green (gaps 0). Census 100% of 171 (117/53/1, drift 0); coverage regenerated (87.53% of `src/`, floor 80%, fingerprint-pinned); CLI 56/64 commands run by the suite; final-numbers `--check` ok.
+
 ## 0.83.0 - 2026-10-05
 
 **The second wave of half-doors, closed on every surface.** Batch 53 walked the

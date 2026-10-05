@@ -66,7 +66,7 @@ export const CAPABILITIES = [
   // --------------------------------------------------------- agent loop
   { area: 'agent', name: 'Tool activity visible while it works', cli: [P(TUI_SRC, 'tool')], tg: [P(SERVER_SRC, 'makeToolActivity'), P(TG_SRC, 'toolStatusPort')], web: [P(PANEL_SRC, "addEventListener\\('tool:start'")] },
   { area: 'agent', name: 'Progress drafts / partial answers', cli: { probes: [P(TUI_SRC, 'delta')], partial: 'streams deltas; no draft markers' }, tg: { partial: 'the reply arrives whole; no live edit' }, web: [P(PANEL_SRC, "addEventListener\\('draft'")] },
-  { area: 'agent', name: 'Subagents: spawn, list, read results', cli: [P(CLI_SRC, "case 'subagents'")], tg: { partial: 'via sessions_spawn tool in chat' }, web: [P(PANEL_SRC, '/api/subagents')] },
+  { area: 'agent', name: 'Subagents: spawn, list, read results', cli: [P(CLI_SRC, "case 'subagents'")], tg: [P(CT, "case '/subagents'")], web: [P(PANEL_SRC, '/api/subagents')] },
   { area: 'agent', name: 'Steering a live run', cli: [P(CLI_SRC, "case 'steer'")], tg: [P(CT, "case '/steer'")], web: [P(SERVER_SRC, "'/api/steer'"), P(PANEL_SRC, 'steerInput')] },
 
   // ------------------------------------------------------------ sessions
@@ -83,8 +83,8 @@ export const CAPABILITIES = [
   { area: 'context', name: 'Dreaming / idle consolidation', cli: [P(CLI_SRC, "case 'dream'")], tg: [P(CR, "case '/dream'")], web: [P(PANEL_SRC, '/api/dream')] },
   { area: 'context', name: 'Context report: what the model is sent', cli: [P(CLI_SRC, "case 'context'")], tg: [P(SERVER_SRC, "text === '/context'")], web: [P(SERVER_SRC, "'/api/context'"), P(PANEL_SRC, 'ctxTable')] },
   { area: 'context', name: 'Embeddings: status', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(CR, "case '/embeddings'")], web: [P(SERVER_SRC, 'embeddingsStatus'), P(PANEL_SRC, 'embStatus')] },
-  { area: 'context', name: 'Embeddings: setup / switch provider', cli: { probes: [P(HELP_SRC, 'embeddings')], partial: 'the install runs in the terminal; the provider switch exists here too' }, tg: [P(SERVER_SRC, "text === '/embeddings setup'"), P(SERVER_SRC, 'emb:setup'), P(CR, 'embeddingsSetupReport')], web: [P(SERVER_SRC, 'embeddingsSetup'), P(PANEL_SRC, "action: 'install'")] },
-  { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: { partial: '"remember …" writes USER.md; SOUL/IDENTITY are not editable from chat' }, web: [P(SERVER_SRC, "'/api/bootstrap'"), P(PANEL_SRC, 'idFiles')] },
+  { area: 'context', name: 'Embeddings: setup / switch provider', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(SERVER_SRC, "text === '/embeddings setup'"), P(SERVER_SRC, 'emb:setup'), P(CR, 'embeddingsSetupReport')], web: [P(SERVER_SRC, 'embeddingsSetup'), P(PANEL_SRC, "action: 'install'")] },
+  { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: [P(CT, "case '/identity'")], web: [P(SERVER_SRC, "'/api/bootstrap'"), P(PANEL_SRC, 'idFiles')] },
 
   // --------------------------------------------------------------- tools
   { area: 'tools', name: 'Tool catalog: what the agent can do', cli: [P(CLI_SRC, "case 'tools'")], tg: [P(CT, "case '/tools'")], web: [P(PANEL_SRC, '/api/tools')] },
@@ -93,7 +93,7 @@ export const CAPABILITIES = [
   { area: 'tools', name: 'Browser automation', cli: [P(CLI_SRC, "case 'browser'")], tg: { partial: 'agent tool in chat' }, web: { partial: 'agent tool in chat; no browser panel' } },
   { area: 'tools', name: 'Image generation', cli: [P(CLI_SRC, "case 'image'")], tg: { partial: 'agent tool in chat' }, web: [P(PANEL_SRC, 'imgGo'), P(PANEL_SRC, "api\\('/api/image'")] },
   { area: 'tools', name: 'Send a file back to a chat', cli: { partial: 'needs a channel to send into' }, tg: [P(TG_SRC, 'sendDocument')], web: [P(PANEL_SRC, 'refreshSentFiles'), P(PANEL_SRC, "'/api/sent-files/'")] },
-  { area: 'tools', name: 'Document extraction (PDF/DOCX/XLSX in)', cli: { partial: 'no command; agent reads text files only' }, tg: [P(TG_SRC, 'fetchIncoming')], web: { probes: [P(PANEL_SRC, '/api/extract')], partial: 'the panel reads PDF/DOCX text on attach; the CLI has no extract verb yet' } },
+  { area: 'tools', name: 'Document extraction (PDF/DOCX/XLSX in)', cli: [P(CLI_SRC, "case 'extract'")], tg: [P(TG_SRC, 'fetchIncoming')], web: { probes: [P(PANEL_SRC, '/api/extract')], partial: 'the panel reads PDF/DOCX text on attach; the CLI has no extract verb yet' } },
   { area: 'skills', name: 'Skills: list / import / create / proposals', cli: [P(CLI_SRC, "case 'skills'")], tg: [P(CR, 'skillsDecide'), P(CR, 'skillShow'), P(SERVER_SRC, 'skills:approve:')], web: [P(PANEL_SRC, '/api/skills')] },
 
   // ---------------------------------------------------------- automation
@@ -124,7 +124,7 @@ export const CAPABILITIES = [
 
   // ------------------------------------------------------------ channels
   { area: 'channels', name: 'Rooms: what was said while unaddressed', cli: [P(CLI_SRC, "case 'rooms'")], tg: [P(SERVER_SRC, "text === '/history'")], web: [P(SERVER_SRC, "'/api/rooms'"), P(PANEL_SRC, 'roomsList')] },
-  { area: 'channels', name: 'Inbox: files people sent', cli: { partial: 'inbox_list/read tools in a turn' }, tg: [P(SERVER_SRC, "text === '/inbox'")], web: [P(SERVER_SRC, "'/api/inbox'"), P(PANEL_SRC, 'inboxList')] },
+  { area: 'channels', name: 'Inbox: files people sent', cli: [P(CLI_SRC, "case 'inbox'")], tg: [P(SERVER_SRC, "text === '/inbox'")], web: [P(SERVER_SRC, "'/api/inbox'"), P(PANEL_SRC, 'inboxList')] },
   { area: 'channels', name: 'Typing indicator', cli: null, tg: [P(TG_SRC, 'sendChatAction')], web: [P(PANEL_SRC, "typing|Thinking")] },
   { area: 'channels', name: 'Media in / out (photos, voice, files)', cli: { partial: 'in: attach only in the panel' }, tg: [P(TG_SRC, 'sendDocument')], web: { probes: [P(PANEL_SRC, 'attachFile')], partial: 'in: attach (text types); out: send_file as a path' } },
   { area: 'channels', name: 'Telegram inline buttons (rich messages)', cli: null, tg: [P(API_SRC, 'inline_keyboard'), P(TG_SRC, 'editMessageReplyMarkup')], web: null },

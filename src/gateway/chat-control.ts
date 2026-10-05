@@ -8,6 +8,8 @@ import { sendDocumentTo } from '../channels/conversations.js';
 import type { ReportResult } from './chat-reports.js';
 import { canvasClear, canvasGet, canvasList } from './canvas.js';
 import { parseSwitchValue, switchFor, switchState } from '../agent/tool-catalog.js';
+import { listSubagentDirs } from '../agent/subagents.js';
+import { listTasks as listSubagentTasks, taskLine as subagentLine } from '../agent/tasks.js';
 
 /**
  * Batch 47 — the verbs.
@@ -298,9 +300,56 @@ export async function runControlCommand(text: string, deps: ControlDeps): Promis
       return canvasCommand(arg);
     case '/update':
       return updateCommand(deps, rest[0] ?? 'check');
+    case '/subagents':
+      return subagentsCommand();
+    case '/identity':
+      return identityCommand();
     default:
       return null;
   }
+}
+
+/**
+ * `/subagents` — list the spawned subagent runs and their scratch dirs (54.4).
+ * The same data the panel's Debug view reads from `/api/subagents`.
+ */
+export function subagentsCommand(): ReportResult {
+  const tasks = listSubagentTasks();
+  const dirs = listSubagentDirs();
+  const lines = [
+    `🤖 ${tasks.length} active subagent task(s):`,
+    ...(tasks.length ? tasks.map((t) => `  ${subagentLine(t)}`) : ['  none']),
+    '',
+    `${dirs.length} scratch dir(s):`,
+    ...(dirs.length ? dirs.map((d) => `  ${d.id}  (${d.path})`) : ['  none']),
+  ];
+  return ok(lines.join('\n'));
+}
+
+/** The identity files a chat shows but does not edit as easily as the panel (54.4). */
+const IDENTITY_FILES = [
+  { name: 'SOUL.md', rel: 'workspace/SOUL.md' },
+  { name: 'IDENTITY.md', rel: 'workspace/IDENTITY.md' },
+  { name: 'USER.md', rel: 'memory/USER.md' },
+] as const;
+
+/**
+ * `/identity` — show the SOUL / IDENTITY / USER files the agent answers from
+ * (54.4). Editing is the panel's editor (a confirm in a chat is a weaker door);
+ * this shows the current text so a chat can read it without leaving the thread.
+ */
+export function identityCommand(): ReportResult {
+  const parts = IDENTITY_FILES.map((f) => {
+    const abs = path.join(home(), f.rel);
+    let text = '';
+    try {
+      if (fs.existsSync(abs)) text = fs.readFileSync(abs, 'utf8');
+    } catch {
+      /* unreadable reads as empty */
+    }
+    return `🪪 ${f.name}\n${text ? text.slice(0, 1500) : '(empty)'}`;
+  });
+  return ok(parts.join('\n\n'));
 }
 
 export { loadConfig, saveConfig };

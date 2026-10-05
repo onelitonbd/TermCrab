@@ -56,24 +56,24 @@ dominating the run fails the suite instead of being noticed a month later.
 
 _Measured 2026-10-05 on node v22.22.3 — `node scripts/suite-time.mjs --run` re-measures, `--check` fails when the run is over its budget._
 
-The whole suite: **111 files, 1125 test cases, 178.8 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
+The whole suite: **112 files, 1129 test cases, 188.0 s** (budget 240 s; no file may take more than 90 s). Each row is the sum of that file's top-level tests, so the numbers add up to roughly the wall clock.
 
 | slowest file | time |
 |---|---|
-| `tier3j.test.js` | 40.3 s |
-| `tier3i.test.js` | 33.3 s |
-| `tier2c.test.js` | 5.7 s |
-| `tier2.test.js` | 4.9 s |
-| `tier3v.test.js` | 3.6 s |
+| `tier3j.test.js` | 40.2 s |
+| `tier3i.test.js` | 34.7 s |
+| `tier2c.test.js` | 6.5 s |
+| `tier2.test.js` | 5.2 s |
+| `tier2x.test.js` | 4.0 s |
 
 <!-- END SUITE TIME -->
 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-05:** **87.52%** of the lines in `src/` are executed by the
-suite (77.73% of branches, 86.87% of functions), across
-**1127 test cases in 112 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-05:** **87.53%** of the lines in `src/` are executed by the
+suite (77.71% of branches, 86.83% of functions), across
+**1129 test cases in 112 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
@@ -88,8 +88,8 @@ suite (77.73% of branches, 86.87% of functions), across
 | `mobile/notify.ts` | 55.17% |
 | `mobile/boot.ts` | 55.56% |
 | `core/friendly.ts` | 58.59% |
+| `channels/cli.ts` | 61.37% |
 | `mobile/onboard.ts` | 61.44% |
-| `channels/cli.ts` | 61.46% |
 
 Those are the files the suite touches least. They are named here on purpose: on a phone, the
 cheapest next step is whichever of them your next bug lands in.

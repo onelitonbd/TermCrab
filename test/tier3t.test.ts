@@ -119,7 +119,9 @@ test('51.1 the suite clock and the work tracker answer in a chat', async (t) => 
     for (const id of nowIds) assert.ok(now.text.includes(id), `${id} reaches the chat`);
     for (const id of nextIds) assert.ok(now.text.includes(id), `${id} is named as next`);
     assert.match(now.text, /✔ done/);
-    assert.match(now.text, /☐ todo/);
+    // Endgame: the three-surface parity queue is closed, so the tracker shows no
+    // pending step — the report must NOT carry a `☐ todo` for finished work.
+    assert.ok(!now.text.includes('☐ todo'), 'the queue is empty — no pending step left');
     assert.ok(!now.text.includes('npm run ci:install'), 'the owner-action block is not a batch step');
     assert.equal(now.attach, undefined, 'a plain /work sends no file');
 

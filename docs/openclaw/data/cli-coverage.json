@@ -26,6 +26,9 @@
     "presence",
     "events",
     "watch",
+    "inbox",
+    "extract",
+    "embeddings",
     "image",
     "models",
     "auth",
@@ -54,7 +57,6 @@
     "rooms",
     "browser",
     "transcribe",
-    "embeddings",
     "context",
     "memory",
     "tools",
@@ -67,321 +69,331 @@
   "covered": [
     {
       "command": "help",
-      "line": 410,
+      "line": 412,
       "runs": 19
     },
     {
       "command": "completion",
-      "line": 430,
+      "line": 432,
       "runs": 3
     },
     {
       "command": "version",
-      "line": 447,
+      "line": 449,
       "runs": 15
     },
     {
       "command": "owner",
-      "line": 453,
+      "line": 455,
       "runs": 2
     },
     {
       "command": "gateway",
-      "line": 496,
+      "line": 498,
       "runs": 14
     },
     {
       "command": "doctor",
-      "line": 537,
+      "line": 539,
       "runs": 9
     },
     {
       "command": "update",
-      "line": 573,
+      "line": 575,
       "runs": 3
     },
     {
       "command": "say",
-      "line": 634,
+      "line": 636,
       "runs": 1
     },
     {
       "command": "agent",
-      "line": 708,
+      "line": 710,
       "runs": 1
     },
     {
       "command": "heartbeat",
-      "line": 814,
+      "line": 816,
       "runs": 2
     },
     {
       "command": "skills",
-      "line": 821,
+      "line": 823,
       "runs": 6
     },
     {
       "command": "cron",
-      "line": 1053,
+      "line": 1055,
       "runs": 13
     },
     {
       "command": "approvals",
-      "line": 1332,
+      "line": 1334,
       "runs": 3
     },
     {
       "command": "usage",
-      "line": 1410,
+      "line": 1412,
       "runs": 4
     },
     {
       "command": "run",
-      "line": 1456,
+      "line": 1458,
       "runs": 4
     },
     {
       "command": "wait",
-      "line": 1457,
+      "line": 1459,
       "runs": 1
     },
     {
       "command": "stop",
-      "line": 1523,
+      "line": 1525,
       "runs": 2
     },
     {
       "command": "runs",
-      "line": 1556,
+      "line": 1558,
       "runs": 3
     },
     {
       "command": "presence",
-      "line": 1593,
+      "line": 1595,
       "runs": 3
     },
     {
       "command": "events",
-      "line": 1637,
+      "line": 1639,
       "runs": 3
     },
     {
       "command": "watch",
-      "line": 1677,
+      "line": 1679,
       "runs": 7
     },
     {
-      "command": "image",
-      "line": 1726,
-      "runs": 1
-    },
-    {
-      "command": "models",
-      "line": 1770,
-      "runs": 1
-    },
-    {
-      "command": "auth",
-      "line": 1810,
-      "runs": 4
-    },
-    {
-      "command": "orders",
-      "line": 1915,
-      "runs": 5
-    },
-    {
-      "command": "logs",
-      "line": 1980,
-      "runs": 3
-    },
-    {
-      "command": "backup",
-      "line": 2090,
+      "command": "inbox",
+      "line": 1728,
       "runs": 2
     },
     {
-      "command": "restore",
-      "line": 2108,
-      "runs": 3
-    },
-    {
-      "command": "service",
-      "line": 2176,
-      "runs": 1
-    },
-    {
-      "command": "bootstrap",
-      "line": 2199,
-      "runs": 3
-    },
-    {
-      "command": "schema",
-      "line": 2231,
-      "runs": 3
-    },
-    {
-      "command": "perf",
-      "line": 2253,
-      "runs": 18
-    },
-    {
-      "command": "suite-time",
-      "line": 2351,
-      "runs": 2
-    },
-    {
-      "command": "work",
-      "line": 2373,
-      "runs": 3
-    },
-    {
-      "command": "disk",
-      "line": 2421,
-      "runs": 4
-    },
-    {
-      "command": "status",
-      "line": 2460,
-      "runs": 3
-    },
-    {
-      "command": "wake",
-      "line": 2500,
-      "runs": 1
-    },
-    {
-      "command": "sessions",
-      "line": 2538,
-      "runs": 13
-    },
-    {
-      "command": "subagents",
-      "line": 2743,
-      "runs": 3
-    },
-    {
-      "command": "agents",
-      "line": 2804,
-      "runs": 6
-    },
-    {
-      "command": "docs",
-      "line": 2887,
-      "runs": 17
-    },
-    {
-      "command": "security",
-      "line": 2953,
-      "runs": 4
-    },
-    {
-      "command": "board",
-      "line": 2976,
-      "runs": 2
-    },
-    {
-      "command": "rooms",
-      "line": 2991,
-      "runs": 4
-    },
-    {
-      "command": "browser",
-      "line": 3071,
-      "runs": 5
-    },
-    {
-      "command": "transcribe",
-      "line": 3138,
+      "command": "extract",
+      "line": 1759,
       "runs": 1
     },
     {
       "command": "embeddings",
-      "line": 3172,
+      "line": 1784,
       "runs": 6
     },
     {
+      "command": "image",
+      "line": 1812,
+      "runs": 1
+    },
+    {
+      "command": "models",
+      "line": 1856,
+      "runs": 1
+    },
+    {
+      "command": "auth",
+      "line": 1896,
+      "runs": 4
+    },
+    {
+      "command": "orders",
+      "line": 2001,
+      "runs": 5
+    },
+    {
+      "command": "logs",
+      "line": 2066,
+      "runs": 3
+    },
+    {
+      "command": "backup",
+      "line": 2176,
+      "runs": 2
+    },
+    {
+      "command": "restore",
+      "line": 2194,
+      "runs": 3
+    },
+    {
+      "command": "service",
+      "line": 2262,
+      "runs": 1
+    },
+    {
+      "command": "bootstrap",
+      "line": 2285,
+      "runs": 3
+    },
+    {
+      "command": "schema",
+      "line": 2317,
+      "runs": 3
+    },
+    {
+      "command": "perf",
+      "line": 2339,
+      "runs": 18
+    },
+    {
+      "command": "suite-time",
+      "line": 2437,
+      "runs": 2
+    },
+    {
+      "command": "work",
+      "line": 2459,
+      "runs": 3
+    },
+    {
+      "command": "disk",
+      "line": 2507,
+      "runs": 4
+    },
+    {
+      "command": "status",
+      "line": 2546,
+      "runs": 3
+    },
+    {
+      "command": "wake",
+      "line": 2586,
+      "runs": 1
+    },
+    {
+      "command": "sessions",
+      "line": 2624,
+      "runs": 13
+    },
+    {
+      "command": "subagents",
+      "line": 2829,
+      "runs": 3
+    },
+    {
+      "command": "agents",
+      "line": 2890,
+      "runs": 6
+    },
+    {
+      "command": "docs",
+      "line": 2973,
+      "runs": 17
+    },
+    {
+      "command": "security",
+      "line": 3039,
+      "runs": 4
+    },
+    {
+      "command": "board",
+      "line": 3062,
+      "runs": 2
+    },
+    {
+      "command": "rooms",
+      "line": 3077,
+      "runs": 4
+    },
+    {
+      "command": "browser",
+      "line": 3157,
+      "runs": 5
+    },
+    {
+      "command": "transcribe",
+      "line": 3224,
+      "runs": 1
+    },
+    {
       "command": "context",
-      "line": 3232,
+      "line": 3318,
       "runs": 1
     },
     {
       "command": "memory",
-      "line": 3252,
+      "line": 3338,
       "runs": 9
     },
     {
       "command": "tools",
-      "line": 3394,
+      "line": 3480,
       "runs": 4
     },
     {
       "command": "canvas",
-      "line": 3449,
+      "line": 3535,
       "runs": 5
     },
     {
       "command": "queue",
-      "line": 3506,
+      "line": 3592,
       "runs": 5
     },
     {
       "command": "steer",
-      "line": 3538,
+      "line": 3624,
       "runs": 1
     },
     {
       "command": "config",
-      "line": 3582,
+      "line": 3668,
       "runs": 4
     }
   ],
   "untested": [
     {
       "command": "onboard",
-      "line": 463,
+      "line": 465,
       "why": "an interactive question-and-answer wizard on stdin; the prompts are asserted directly",
       "instead": "test/tier.test.ts"
     },
     {
       "command": "supervisor",
-      "line": 533,
+      "line": 535,
       "why": "supervise-and-restart is a loop with no exit condition — spawning it would hang the suite",
       "instead": "test/tier2s.test.ts"
     },
     {
       "command": "tui",
-      "line": 657,
+      "line": 659,
       "why": "needs a real TTY (alternate screen + raw keys); the suite drives it through a fake TTY instead",
       "instead": "test/tier2r.test.ts"
     },
     {
       "command": "import",
-      "line": 1263,
+      "line": 1265,
       "why": "reads a Telegram desktop export; the suite builds the same files and imports them through the library",
       "instead": "test/import.test.ts"
     },
     {
       "command": "pair",
-      "line": 2013,
+      "line": 2099,
       "why": "the pairing code is printed for a device that has to answer — the HTTP flow is tested live instead",
       "instead": "test/tier2i.test.ts"
     },
     {
       "command": "devices",
-      "line": 2037,
+      "line": 2123,
       "why": "same flow: the paired-device list and revocation are asserted over a real socket",
       "instead": "test/tier2i.test.ts"
     },
     {
       "command": "dream",
-      "line": 2471,
+      "line": 2557,
       "why": "a long background consolidation pass; the same store is exercised by the library tests",
       "instead": "test/dream.test.ts"
     },
     {
       "command": "boot",
-      "line": 3568,
+      "line": 3654,
       "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
       "instead": "test/tier2w.test.ts"
     }
@@ -443,6 +455,8 @@
     "canvas": 5,
     "queue": 5,
     "steer": 1,
-    "watch": 7
+    "watch": 7,
+    "inbox": 2,
+    "extract": 1
   }
 }

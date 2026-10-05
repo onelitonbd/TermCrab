@@ -40,6 +40,8 @@ import { speak } from './mobile/tts.js';
 import { EmbeddingIndex } from './agent/embed.js';
 import { resolveEmbedder } from './agent/embed-provider.js';
 import { formatTokens, usageForDay, type UsageDay } from './core/usage.js';
+import { listInbox, readArrival, humanAge } from './channels/inbox.js';
+import { extractText } from './channels/extract.js';
 import { runDream } from './agent/dream.js';
 import { runWakeLoop } from './mobile/wake.js';
 import { renderStatus, statusData, statusReport } from './agent/status.js';
@@ -1723,6 +1725,62 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       return;
     }
 
+    case 'inbox': {
+      // 54.2: the same `config`-backed inbox the panel lists and downloads.
+      const entries = listInbox({ limit: 500 });
+      const name = rest[0] && !rest[0].startsWith('--') ? rest[0] : undefined;
+      if (name) {
+        const arrival = readArrival(name);
+        if (!arrival.ok) {
+          if (machine) failJson('inbox', arrival.reason ?? 'no such item');
+          else console.error(arrival.reason ?? 'no such item');
+          process.exitCode = 1;
+          return;
+        }
+        if (machine) emitJson('inbox', { name, text: arrival.text, source: arrival.source });
+        else {
+          console.log(`👥 ${name} (${arrival.source})`);
+          console.log('');
+          console.log(arrival.text || '(no text captured)');
+        }
+        return;
+      }
+      if (machine) emitJson('inbox', { entries });
+      else {
+        if (!entries.length) { console.log('📥 inbox is empty'); return; }
+        console.log(`📥 ${entries.length} item(s) in the inbox:`);
+        for (const e of entries) {
+          console.log(`  ${e.name}  ${e.kind}  ${e.at ? humanAge(e.at) : ''}`);
+        }
+      }
+      return;
+    }
+
+    case 'extract': {
+      // 54.3: the same reader `POST /api/extract` uses, run from the terminal.
+      const file = rest[0];
+      if (!file) {
+        if (machine) failJson('extract', 'missing file');
+        else console.error('usage: termcrab extract <file>');
+        process.exitCode = 1;
+        return;
+      }
+      const r = extractText(file, { name: file });
+      if (!r.ok) {
+        if (machine) failJson('extract', r.reason ?? 'could not read');
+        else console.error(r.reason ?? 'could not read');
+        process.exitCode = 1;
+        return;
+      }
+      if (machine) emitJson('extract', { ok: true, text: r.text, kind: r.kind });
+      else {
+        console.log(`📄 ${file} (${r.kind})`);
+        console.log('');
+        console.log(r.text);
+      }
+      return;
+    }
+
     case 'image': {
       // 26.2: create an image from a prompt. A configured image endpoint is
       // used when there is one; otherwise the mock provider draws a real,
@@ -3171,6 +3229,23 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
 
     case 'embeddings': {
       const [sub = 'status'] = rest;
+      if (sub === 'use') {
+        // 54.3: the provider switch the panel's picker writes, from the terminal.
+        const allowed = ['auto', 'local', 'openai', 'gemini'];
+        const provider = rest[1];
+        if (!provider || !allowed.includes(provider)) {
+          if (machine) failJson('embeddings', 'usage: termcrab embeddings use <auto|local|openai|gemini>');
+          else console.error('usage: termcrab embeddings use <auto|local|openai|gemini>');
+          process.exitCode = 1;
+          return;
+        }
+        const cfg = loadConfig();
+        cfg.memory = { ...cfg.memory, embedProvider: provider as 'auto' | 'local' | 'openai' | 'gemini' };
+        saveConfig(cfg);
+        if (machine) emitJson('embeddings', { provider });
+        else console.log(`🧠 embeddings provider set to ${provider} (the key the panel's picker writes)`);
+        return;
+      }
       if (sub === 'status') {
         const st = embeddingsStatus();
         if (machine) {
