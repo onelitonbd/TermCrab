@@ -6,6 +6,8 @@ import { writeBackup } from '../core/backup.js';
 import { checkForUpdate } from '../core/update.js';
 import { sendDocumentTo } from '../channels/conversations.js';
 import type { ReportResult } from './chat-reports.js';
+import { canvasClear, canvasGet, canvasList } from './canvas.js';
+import { parseSwitchValue, switchFor, switchState } from '../agent/tool-catalog.js';
 
 /**
  * Batch 47 — the verbs.
@@ -201,6 +203,80 @@ export function watchCommand(deps: ControlDeps, action: string, rest: string): R
   return fail('usage: /watch [list | add <path> [suffixes] | rm <id>]');
 }
 
+/** What a widget says in one message when HTML cannot be rendered. */
+export function canvasSummary(widget: { id: string; title?: string; html: string; updatedAt: number }): string {
+  const text = widget.html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > 240 ? `${text.slice(0, 240)}…` : text;
+}
+
+/**
+ * 53.2 — `/canvas` in a chat: the widgets the agent pushed to the panel,
+ * described in words (a phone cannot render the HTML, and pretending otherwise
+ * would be worse than saying it). `clear` empties the registry.
+ */
+export function canvasCommand(action: string): ReportResult {
+  const what = (action ?? '').trim().toLowerCase();
+  if (what === 'clear') {
+    const count = canvasList().length;
+    canvasClear();
+    return ok(count ? `🖼️ cleared ${count} canvas widget(s)` : '🖼️ the canvas was already empty');
+  }
+  const widgets = canvasList();
+  if (!widgets.length) return ok('🖼️ the canvas is empty — the agent fills it with the `canvas` tool');
+  const first = what.startsWith('show ') ? canvasGet(action.trim().slice(5).trim()) : widgets[0]!;
+  if (!first) return fail(`canvas: no widget with that id — try /canvas to list them`);
+  const when = new Date(first.updatedAt).toISOString().slice(0, 16).replace('T', ' ');
+  const body = [
+    `🖼️ ${widgets.length} widget(s) on the canvas:`,
+    ...widgets.slice(0, 6).map((w) => `  ${w.id}  ${w.title ?? '(untitled)'} · ${(w.html.length / 1024).toFixed(1)} KB · ${new Date(w.updatedAt).toISOString().slice(11, 16)}`),
+    '',
+    `newest — ${first.title ?? '(untitled)'} (${when}):`,
+    canvasSummary(first),
+    '',
+    'the panel renders it as it is; clear it with /canvas clear',
+  ];
+  return ok(body.join('\n'));
+}
+
+/**
+ * 53.1 — `/tools` in a chat: the three switches the config really carries, with
+ * the same names and the same keys the panel's checkboxes and `termcrab tools`
+ * write. `exec on`, `browser off`, `code on`.
+ */
+export function toolsCommand(deps: ControlDeps, action: string): ReportResult {
+  const args = (action ?? '').trim().split(/\s+/).filter(Boolean);
+  const state = switchState(deps.config);
+  if (args.length === 0 || args[0] === 'list') {
+    const lines = state.map((s) => `  ${s.on ? '✅' : '⛔'} ${s.name.padEnd(8)} ${s.label} — ${s.note}`);
+    const off = state.filter((s) => !s.on).map((s) => s.name);
+    return ok(
+      [
+        '🧰 Tools on this device',
+        ...lines,
+        '',
+        'the agent sees the full catalog in `termcrab tools`;',
+        off.length ? `switch one on here: /tools ${off[0]} on` : 'everything is on.',
+      ].join('\n'),
+    );
+  }
+  const sw = switchFor(args[0]!);
+  if (!sw) return fail(`tools: unknown switch "${args[0]}" — try ${state.map((s) => s.name).join(', ')}`);
+  const to = parseSwitchValue(args[1] ?? '');
+  if (to === undefined) return fail(`tools: say on or off — /tools ${sw.name} on`);
+  deps.config.agent[sw.key] = to;
+  deps.saveConfig(deps.config);
+  return ok(
+    `${to ? '✅' : '⛔'} ${sw.name} is now ${to ? 'on' : 'off'} (agent.${sw.key}) — ${sw.note}` +
+      (to ? '' : '\n     the tools behind it are hidden from the model until it is on again.'),
+  );
+}
+
 /** The dispatcher: returns null for anything that is not a control verb. */
 export async function runControlCommand(text: string, deps: ControlDeps): Promise<ReportResult | null> {
   const [cmd, ...rest] = text.trim().split(/\s+/);
@@ -216,6 +292,10 @@ export async function runControlCommand(text: string, deps: ControlDeps): Promis
       return backupCommand(deps);
     case '/watch':
       return watchCommand(deps, rest[0] ?? 'list', rest.slice(1).join(' '));
+    case '/tools':
+      return toolsCommand(deps, arg);
+    case '/canvas':
+      return canvasCommand(arg);
     case '/update':
       return updateCommand(deps, rest[0] ?? 'check');
     default:

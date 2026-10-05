@@ -24,6 +24,9 @@ import { approveProposal, getProposal, rejectProposal } from '../skills/proposal
 import { importSkills } from '../skills/importer.js';
 import { nextRun, parseCron } from '../cron/parser.js';
 import { listAgents } from '../agent/prompt.js';
+import type { MemoryStore } from '../agent/memory.js';
+import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
+import { formatTokens, usageForDay } from '../core/usage.js';
 
 /**
  * Batch 46 — the read-only reports, reachable from a chat.
@@ -136,6 +139,7 @@ export const CHAT_SET_KEYS = new Set([
   'memory.embeddings',
   'channels.telegram.groupPolicy',
   'channels.telegram.voiceReplies',
+  'channels.telegram.toolActivity',
 ]);
 
 export function configReport(key?: string): ReportResult {
@@ -680,10 +684,12 @@ export const CHAT_COMMANDS: { cmd: string; args: string; description: string }[]
   { cmd: '/usage', args: '', description: 'Tokens and cost today' },
   { cmd: '/board', args: '', description: 'Everything in flight' },
   { cmd: '/sessions', args: '[search|show|rename|purge]', description: 'Your conversations' },
-  { cmd: '/memory', args: '[search <words>]', description: 'What the agent remembers' },
+  { cmd: '/memory', args: '[search <words>|add <text>|user <line>]', description: 'What the agent remembers' },
   { cmd: '/context', args: '', description: 'What the model is sent' },
   { cmd: '/inbox', args: '[name]', description: 'Files people sent you' },
   { cmd: '/orders', args: '[add|remove]', description: 'Standing orders' },
+  { cmd: '/tools', args: '[exec|browser|code on|off]', description: 'What the agent can do, and the switches' },
+  { cmd: '/canvas', args: '[clear|show <id>]', description: "The agent's visual widgets" },
   { cmd: '/agents', args: '', description: 'Named personalities' },
   { cmd: '/history', args: '[n]', description: 'Room history' },
   { cmd: '/providers', args: '', description: 'Pick the model' },
@@ -734,6 +740,76 @@ export interface ReportDeps {
  * model. This is the single dispatch table both Telegram and the panel chat
  * call — one implementation, two surfaces, no drift.
  */
+/**
+ * 53.4 — `/memory` from *every* surface. This used to live inside the gateway's
+ * channel handler, which meant Telegram could write a fact and the panel's own
+ * chat could not (the palette answered "unknown command"). Now the words come
+ * from here, and the panel, the palette and every channel get the same ones.
+ */
+export async function memoryCommand(deps: { memory: MemoryStore }, arg: string): Promise<ReportResult> {
+  const memory = deps.memory;
+  const a = (arg ?? '').trim();
+  if (a.startsWith('search ')) {
+    const q = a.slice('search '.length).trim();
+    if (!q) return fail('🧠 Usage: /memory search <words>');
+    const hits = await memory.searchDetailed(q, 6);
+    if (!hits.length) return ok(`🧠 Nothing in memory matches “${q}”.`);
+    const lines = hits.map((h) => {
+      const trust = h.origin && h.origin !== 'agent' ? ` [${h.origin}]` : '';
+      const when = h.when ? ` (${h.when})` : '';
+      return `  ${h.score.toFixed(2)}  ${h.file}${h.lineNo ? `:${h.lineNo}` : ''}${when}${trust}\n      ${h.snippet}`;
+    });
+    return ok(`🧠 Memory matches for “${q}”:\n${lines.join('\n')}`);
+  }
+  if (a.startsWith('user ')) {
+    const line = a.slice('user '.length).trim();
+    if (!line) return fail('👤 Usage: /memory user <one line about the owner>');
+    return ok(`👤 ${memory.rememberUser(line)}`);
+  }
+  if (a === 'add' || a.startsWith('add ')) {
+    const fact = a.slice('add'.length).trim();
+    if (!fact) return fail('🧠 Usage: /memory add <something worth keeping>');
+    if (fact.length > 2000) return fail('🧠 That is a document, not a fact — keep it under 2000 characters.');
+    return ok(`🧠 ${memory.remember(fact, { origin: 'owner', source: 'chat' })}`);
+  }
+  const block = memory.readForPrompt(1200);
+  const stats = memory.stats();
+  const user = memory.readUser().trim();
+  const head = `🧠 ${block.facts}/${block.totalFacts} facts injected, ${stats.dailyFiles} daily log(s)`;
+  const userLine = user ? `\n\n👤 USER.md:\n${user.slice(0, 600)}` : '';
+  const hint =
+    '\n(/memory search <words> to look something up, /memory add <fact> to keep something, /memory user <line> to teach me about you)';
+  return ok(
+    block.text.trim()
+      ? `${head}${userLine}\n\n${block.text.trim()}${hint}`
+      : `${head}${userLine}\n(nothing remembered yet — tell me something worth keeping)${hint}`,
+  );
+}
+
+/** 53.5 — the inbox, readable from the panel chat too (the Work view lists it). */
+export function inboxCommand(arg: string): ReportResult {
+  const name = (arg ?? '').trim();
+  if (name) {
+    const read = readArrival(path.basename(name));
+    if (!read.ok) return fail(`📥 ${read.reason}`);
+    const text = read.text.length > 3000 ? `${read.text.slice(0, 3000)}\n… [truncated — ask for the rest by name]` : read.text;
+    return ok(`📥 ${name}\n\n${text}`);
+  }
+  const entries = listInbox({ limit: 8 });
+  return ok(`📥 Inbox (${entries.length} shown)\n${formatInbox(entries)}`);
+}
+
+/** `/usage` — the day's tokens and cost, from the same meter the CLI reads. */
+export function usageCommand(config: Config): ReportResult {
+  const day = usageForDay();
+  if (!day.turns) return ok(`📊 No turns metered today (${day.day}). Tokens show up as soon as a model reports them.`);
+  const priced = config.provider.priceInPerM || config.provider.priceOutPerM;
+  const cost = typeof day.costUsd === 'number' ? `\n     cost ~$${day.costUsd.toFixed(4)}${priced ? '' : ' (from a dated price snapshot)'}` : '';
+  return ok(
+    `📊 Today (${day.day}) — ${day.turns} turn(s), ${day.calls} model call(s)\n     tokens ${formatTokens(day.totalTokens)} (in ${formatTokens(day.promptTokens)} · out ${formatTokens(day.completionTokens)})${cost}`,
+  );
+}
+
 export async function runReportCommand(text: string, deps: ReportDeps): Promise<ReportResult | null> {
   const [cmd, ...rest] = text.trim().split(/\s+/);
   const arg = rest.join(' ');

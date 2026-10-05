@@ -1014,6 +1014,12 @@ export interface QueuedTurn {
   error?: string;
   /** Messages steered into this turn while it runs (queue mode 'steer'). */
   steers?: string[];
+  /**
+   * The caller's event listener, carried through the queue. Dropping it (as
+   * runQueuedTurn used to) silently disabled everything a surface does per
+   * turn — Telegram's tool status line among them.
+   */
+  onEvent?: (ev: import('./loop.js').AgentEvent) => void;
 }
 
 /**

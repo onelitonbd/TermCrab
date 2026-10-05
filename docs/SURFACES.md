@@ -43,8 +43,10 @@ a command, the audit fails instead of lying. It runs green today.
 `src/command-help.ts` (62 switch cases in `src/cli.ts`, aliases included), a TUI
 with slash commands and streamed deltas, every report the backend can make
 (`doctor`, `security`, `auth audit`, `backup`, `perf`, `context`, …).
-**No missing cell**: 50 ✅, 15 ◐, 0 ❌. The ◐ cells are coarser controls, not
-absent ones (queue modes are `config set agent.queueMode`, not a live control).
+**No missing cell**: 57 ✅, 8 ◐, 0 ❌. Batch 53 turned six of those ◐s into real
+verbs — `tools` (the catalog, grouped, with `--enable/--disable`), `canvas`,
+`queue`, `steer` and `memory add` — so the half-doors that were "a config key
+away" now answer in the terminal. The 8 that remain are listed in §4.3.
 
 **Telegram — the surface that grew up.** The adapter
 (`src/channels/telegram.ts`) handles long polling with `callback_query` in
@@ -66,7 +68,12 @@ setup` runs behind an **inline confirm**, `/controlui` opens the panel as a
 own session (`telegram:<chatId>:<threadId>`). Was 24 ✅ / 28 ❌, then 45 ✅ / 7 ❌;
 now **54 ✅, 12 ◐, 0 ❌** — batch 52 added the proposal decisions
 (`/skills approve` answers with the proposal's own text and an inline **Approve**
-button; reject/show/import work too) and `/cron add`.
+button; reject/show/import work too) and `/cron add`. Batch 53 added the
+**tool status line** (`🛠️ exec · read_file …`, one message edited in place and
+deleted when the turn ends), `/tools` with its switches, `/canvas`, and made
+`/memory`, `/inbox` and `/usage` shared verbs again — they lived in the Telegram
+handler and now come from `chat-reports`, so the panel's palette answers them
+too. Now **59 ✅, 7 ◐, 0 ❌**.
 
 
 **Web panel — the surface that caught up.** `ui/index.html` has 11 views
@@ -86,7 +93,11 @@ prompt. Batch 49 closed the quick gaps (ranked **chat search**, the
 plus a steer box**); batch 50 closed the builder half — an **editor for
 SOUL.md / IDENTITY.md / USER.md**, **backup + restore with a typed
 confirmation**, a **service card** that names the exact install command, and a
-**transcribe-upload** box that runs the same whisper path as the CLI.
+**transcribe-upload** box that runs the same whisper path as the CLI. Batch 53
+closed the media loop: a **download for every attachment** (`send_file` paths and
+inbox entries served as real downloads by id, never by path), a **Draw** button
+that generates and files an image, and **PDF/DOCX attachment** in the chat box
+(`POST /api/extract`). Now **60 ✅, 6 ◐, 0 ❌**.
 
 **Shared backend, three doors.** Everything the CLI does is a library call
 inside the same process the gateway runs; everything Telegram and the panel do
@@ -97,15 +108,18 @@ Batches 46–48 proved the shape: one dispatcher, three callers.
 ## 2. Scoreboard
 | surface | ✅ direct | ◐ narrower door | ❌ missing | — n/a |
 |---|---|---|---|---|
-| CLI / TUI | 51 | 14 | **0** | 6 |
-| Telegram | 54 | 12 | **0** | 5 |
-| Web panel | 58 | 8 | **0** | 5 |
+| CLI / TUI | 57 | 8 | **0** | 6 |
+| Telegram | 59 | 7 | **0** | 5 |
+| Web panel | 60 | 6 | **0** | 5 |
 
 **No row has a ❌ on any surface: 0 of 71 rows have at least one ❌.** Batch 51 closed the last seven (all Telegram),
 and batch 52 walked the half-doors: the panel's inbox/rooms/watchers/tool switches/security/secrets,
 session rename and export, a downloadable spoken reply, Telegram's proposal decisions and `cron add`,
-and the CLI's `suite-time` / `work`. What is left is **34 named ◐ cells** (CLI 14 · Telegram 12 · Web 8),
-each with its reason below — several deliberately so (a service install from a chat is a bad idea).
+and the CLI's `suite-time` / `work`. Batch 53 took the second wave (the tool catalog and its switches, the
+canvas, the live-run controls, memory written by hand, and the media loop) and moved **13 more cells to ✅**:
+**CLI 51 → 57 · Telegram 53 → 59 · Web 58 → 60**. What is left is **21 named ◐ cells** (CLI 8 · Telegram 7 · Web 6),
+each with its reason in §4.2/§4.3 — several deliberately so (a service install from a chat is a bad idea, and a
+terminal has no chat to send a file into).
 
 By area (rows each): gateway 17 · ops 12 · channels 9 · context 8 · tools 7 ·
 sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
@@ -116,7 +130,7 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 |---|---|---|---|---|---|
 | gateway | Chat: send text, stream the answer | ✅ | ✅ | ✅ |  |
 | gateway | Stop a running turn | ✅ | ✅ | ✅ |  |
-| gateway | Queue modes (steer/followup/collect/interrupt) | ◐ | ✅ | ✅ | config set agent.queueMode only |
+| gateway | Queue modes (steer/followup/collect/interrupt) | ✅ | ✅ | ✅ |  |
 | gateway | Approvals (human-in-the-loop) | ✅ | ✅ | ✅ |  |
 | gateway | Devices: pair, list, revoke | ✅ | ✅ | ✅ |  |
 | gateway | Presence: who can reach the agent now | ✅ | ✅ | ✅ |  |
@@ -127,14 +141,14 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | gateway | Logs: console lines with levels | ✅ | ✅ | ✅ |  |
 | gateway | Config: read and set | ✅ | ✅ | ✅ |  |
 | gateway | Board: everything in flight | ✅ | ✅ | ✅ |  |
-| gateway | Canvas / A2UI widgets | ◐ | ◐ | ✅ | the canvas tool the agent can call; no command |
+| gateway | Canvas / A2UI widgets | ✅ | ✅ | ✅ |  |
 | gateway | Multi-agent routing (@name, per-surface) | ✅ | ✅ | ✅ |  |
 | gateway | Health/status at a glance | ✅ | ✅ | ✅ |  |
 | gateway | Slash commands typed into the chat | ✅ | ✅ | ✅ |  |
-| agent | Tool activity visible while it works | ✅ | ◐ | ✅ | only the typing indicator; tool names never shown |
+| agent | Tool activity visible while it works | ✅ | ✅ | ✅ |  |
 | agent | Progress drafts / partial answers | ◐ | ◐ | ✅ | streams deltas; no draft markers |
 | agent | Subagents: spawn, list, read results | ✅ | ◐ | ✅ | via sessions_spawn tool in chat |
-| agent | Steering a live run | ◐ | ✅ | ✅ | config mode=steer only |
+| agent | Steering a live run | ✅ | ✅ | ✅ |  |
 | sessions | List / switch conversations | ✅ | ✅ | ✅ |  |
 | sessions | Search across conversations | ✅ | ✅ | ✅ |  |
 | sessions | Show one transcript | ✅ | ✅ | ✅ |  |
@@ -142,19 +156,19 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | sessions | Start a fresh conversation | ✅ | ✅ | ✅ |  |
 | context | Memory: browse what it knows | ✅ | ✅ | ✅ |  |
 | context | Memory: search it | ✅ | ✅ | ✅ |  |
-| context | Memory: write a fact by hand | ◐ | ◐ | ✅ | memory user <line> writes USER.md only |
+| context | Memory: write a fact by hand | ✅ | ✅ | ✅ |  |
 | context | Dreaming / idle consolidation | ✅ | ✅ | ✅ |  |
 | context | Context report: what the model is sent | ✅ | ✅ | ✅ |  |
 | context | Embeddings: status | ✅ | ✅ | ✅ |  |
 | context | Embeddings: setup / switch provider | ◐ | ✅ | ✅ | the install runs in the terminal; the provider switch exists here too |
 | context | Identity files (SOUL/IDENTITY/USER bootstrap) | ✅ | ◐ | ✅ | "remember …" writes USER.md; SOUL/IDENTITY are not editable from chat |
-| tools | Tool catalog: what the agent can do | ◐ | ◐ | ✅ | context lists schemas; no catalog command |
-| tools | Tool toggles (enable/disable a tool) | ◐ | ◐ | ✅ | config set agent.allowExec etc. |
+| tools | Tool catalog: what the agent can do | ✅ | ✅ | ✅ |  |
+| tools | Tool toggles (enable/disable a tool) | ✅ | ✅ | ✅ |  |
 | tools | Shell / files / web tools in conversation | ◐ | ◐ | ◐ | the agent's own exec/read/web tools |
 | tools | Browser automation | ✅ | ◐ | ◐ | agent tool in chat |
-| tools | Image generation | ✅ | ◐ | ◐ | agent tool in chat |
-| tools | Send a file back to a chat | ◐ | ✅ | ◐ | needs a channel to send into |
-| tools | Document extraction (PDF/DOCX/XLSX in) | ◐ | ✅ | ◐ | no command; agent reads text files only |
+| tools | Image generation | ✅ | ◐ | ✅ | in chat: the agent's own tool; the panel has a Draw button |
+| tools | Send a file back to a chat | ◐ | ✅ | ✅ | the CLI has no chat to send into; the panel downloads what was sent |
+| tools | Document extraction (PDF/DOCX/XLSX in) | ◐ | ✅ | ✅ | the CLI has no extract verb; the panel attaches PDF/DOCX in chat |
 | skills | Skills: list / import / create / proposals | ✅ | ✅ | ✅ |  |
 | automation | Cron jobs: list / add / run | ✅ | ✅ | ✅ |  |
 | automation | Heartbeat: run a self-check now | ✅ | ✅ | ✅ |  |
@@ -225,6 +239,21 @@ sessions 5 · agent 4 · automation 4 · mobile 4 · skills 1.
 | T25 | proposal decisions | `/skills approve <name>` shows the proposal and an inline Approve button (`skills:approve:` → `approveProposal()`); `/skills reject|show|import` and `/cron add "…" …` resolve through the shared dispatcher |
 | C8 | CLI suite clock + tracker | `termcrab suite-time` and `termcrab work [--full]`, both with `--json` envelopes |
 
+### 4.0c Closed by batch 53 — the second wave of half-doors (CLI +6, Telegram +5, Web +2)
+
+| id | cell | closed by | how it works now |
+|---|---|---|---|
+| C1/T25 | tool catalog | 53.1 | `termcrab tools` and `/tools` list the same 8 groups from `src/agent/tool-catalog.ts` (59 tools, switches marked off) |
+| C2/T26 | tool toggles | 53.1 | `termcrab tools --enable code` / `/tools code off` write `agent.allowExec` / `allowBrowser` / `allowCodeExec` — the keys the panel's switches write |
+| C4/T27 | canvas | 53.2 | `termcrab canvas [--clear] [--json]` and `/canvas` read the same widget registry the panel renders; `canvas show <id>` prints one widget's text |
+| C5/T1b | queue modes | 53.3 | `termcrab queue [followup\|steer\|collect\|interrupt]` reads/writes the live gateway's mode (`GET/POST /api/queue`) |
+| C6/T10b | steering a live run | 53.3 | `termcrab steer <text>` calls `/api/steer`; with nothing running it says so and leaves the message to be sent normally |
+| T28 | tool activity in a chat | 53.3 | one status message per turn (`makeToolActivity`, `TelegramChannel.toolStatusPort`), edited at most every 1500 ms (`channels.telegram.toolActivityMinMs`), deleted when the turn ends |
+| C9/T29 | memory written by hand | 53.4 | `termcrab memory add <text>`, `/memory add <text>` and the panel's palette all call `memoryCommand()`; the fact lands in `MEMORY.md` with its origin |
+| W22 | image generation button | 53.5 | the panel's **Draw** posts `/api/image`, files the PNG in the outbox and offers the download |
+| W23 | a download for what was sent | 53.5 | `GET /api/sent-files` + `/api/sent-files/<id>` (records in `state/shared-files.jsonl`; the path is re-checked, 403/410 when it moved) and `GET /api/inbox/<name>/download` |
+| W24 | document attach in the panel | 53.5 | `POST /api/extract?name=` reads PDF/DOCX/XLSX text with the same reader the chat intake uses; a broken .docx answers 422 with the reason |
+
 ### 4.1 Closed by batch 51 — Telegram's tail (the last seven ❌ in the audit)
 
 | id | cell | how it works now |
@@ -242,52 +271,48 @@ door is named): `/update apply` (terminal on purpose until an inline confirm
 exists), `/skills` approve (terminal keeps the write), `/cron` add (panel or
 terminal), tool-output visibility, drafts.
 
-### 4.2 Web panel: nothing is missing — the 8 cells that stay ◐
+### 4.2 Web panel: nothing is missing — the 6 cells that stay ◐
 
 Read back out of the probes (`--json`), not from memory: the web column has
-**no ❌ left**, and exactly these eight cells are ◐, each because the *thing
-itself* is a conversational or device-bound act rather than a missing door:
+**no ❌ left**, and exactly these six cells are ◐, each because the *thing
+itself* is a terminal or device-bound act rather than a missing door:
 
 | # | ◐ cell | why ◐, and what the panel does have |
 |---|---|---|
-| W19 | run identity + wait for a run | the run's id and "wait for it to finish" are terminal verbs; the panel shows run health and the live stream instead |
+| W19 | run identity + wait for a run | the run id and "wait for it to finish" are terminal verbs; the panel shows run health and the live stream instead |
 | W20 | shell / files / web tools in conversation | the agent runs them inside a chat turn; the panel renders the tool cards, the switches and the results — it does not offer a raw shell |
 | W21 | browser automation | same shape: the tool card and the `allowBrowser` switch are in the panel; driving a browser by hand is not a chat-side act |
-| W22 | image generation | the agent's `image` tool runs in a turn; a generate-my-own-image button arrives with batch 53.5 |
-| W23 | sending a file back to a chat | the direction the *agent* takes (attachment out); the panel downloads what arrives |
-| W24 | document extraction (PDF/DOCX/XLSX in) | batch 53.5 puts the upload in the panel; today the CLI and the chat intake do it |
+| W24 | document extraction (PDF/DOCX/XLSX in) | the panel reads a PDF/DOCX the moment it is attached (53.5); a standalone "extract this file" verb is a terminal act, and the CLI does not have it either — see §4.3 |
 | W25 | installing as a service | `GET /api/service` serves the status and the exact command; the panel never installs anything on your machine by itself |
-| W26 | media in / out (photos, voice, files) | the panel's own upload/download is there (transcribe, backup, voice, attachments); what is missing is the *chat*-shaped media loop of a phone app — batch 53.5 |
+| W26 | media in / out (photos, voice, files) | the panel's own upload/download is there (transcribe, backup, voice, attachments, sent-files); what is missing is the *chat*-shaped media loop of a phone app — that is what Telegram is for |
 
-Two names that used to sit on this list (`schema`, `orders`) are not cells at
-all any more: both answer from the panel chat through the shared dispatcher,
-and the audit scores "can a person reach it from this surface" — typing
-`/schema` counts.
+### 4.3 CLI: the 8 ◐ cells left, and what batch 54 does about them
 
-### 4.3 CLI: the 14 ◐ cells, and what batch 53 does about them
+Same read-back, same source. Three of these are terminal-native and stay ◐ on
+purpose — there is no chat to send a file into, and a raw shell *is* the
+terminal. Five are the authoring side of capabilities the panel and Telegram
+already reach, and they are batch 54's queue:
 
-Same read-back, same source. Three of these are terminal-native and should
-stay ◐ — `tui`, `supervisor`/`gateway`/`wait`, and "send a file back to a
-chat" (the CLI has no chat to send into; `/say` and Telegram's document path
-are the real doors). The other eleven are the *authoring* side of capabilities
-the panel and Telegram already reach, and they are batch 53's queue:
-
-| # | ◐ cell | what batch 53 writes | step |
+| # | ◐ cell | status | what batch 54 writes (or why it stays) |
 |---|---|---|---|
-| C1 | tool catalog | `termcrab tools` lists the catalog grouped by class (`--json`), so what the panel shows is readable on a phone terminal | 53.1 |
-| C2 | tool toggles | `termcrab tools --enable <name>` / `--disable <name>` writing `agent.allowExec` / `allowBrowser` / `allowCodeExec` — the same keys the panel's checkboxes write | 53.1 |
-| C3 | watchers | `termcrab watch add|list|rm` on the same `config.watchers` store `/watch` and the panel's Tools card use | 53.1 |
-| C4 | canvas / A2UI | `termcrab canvas [--clear]` renders the current widget tree as text | 53.2 |
-| C5 | queue modes | `termcrab queue [steer|followup|collect|interrupt]` shows/switches the mode the panel's picker and `/queue` write | 53.3 |
-| C6 | steering a live run | `termcrab steer <text>` against the running gateway session | 53.3 |
-| C7 | progress drafts | `--drafts` on the CLI chat shows partial answers the way the panel already renders them | 53.3 |
-| C8 | inbox | `termcrab inbox [<name>]` reads `$TCRAB_HOME/inbox` — the same store the panel's Work view lists | 53.5 |
-| C9 | memory: write a fact | `termcrab memory add <text>` (today `memory user` writes USER.md only; the distinction stays, and help says so) | 53.4 |
-| C10 | document extraction | `termcrab extract <file.pdf|.docx|.xlsx>` printing the text the intake path already computes | 53.5 |
-| C11 | embeddings setup | the status block joins `termcrab status`, so the number is visible without hunting | 53.4 |
+| C1 | tool catalog | ✅ 53.1 | `termcrab tools` — grouped, `--json`, switches marked |
+| C2 | tool toggles | ✅ 53.1 | `termcrab tools --enable/--disable <switch>` |
+| C3 | watchers | ◐ next | `termcrab watch add\|list\|rm` on the same `config.watchers` store `/watch` and the panel's Tools card use |
+| C4 | canvas / A2UI | ✅ 53.2 | `termcrab canvas [--clear] [--json]`, `canvas show <id>` |
+| C5 | queue modes | ✅ 53.3 | `termcrab queue [mode]` against the live gateway |
+| C6 | steering a live run | ✅ 53.3 | `termcrab steer <text>` |
+| C7 | progress drafts | ◐ by design | the terminal already streams deltas line by line; `--drafts` would render the panel's draft *cards* in a surface that has none |
+| C8 | inbox | ◐ next | `termcrab inbox [<name>]` reads `$TCRAB_HOME/inbox`, the store the panel's Work view lists |
+| C9 | memory: write a fact | ✅ 53.4 | `termcrab memory add <text>` (MEMORY.md; `memory user` still writes USER.md, and help says so) |
+| C10 | document extraction | ◐ next | `termcrab extract <file.pdf\|.docx\|.xlsx>` printing the text the intake path already computes |
+| C11 | embeddings setup / switch | ◐ next | `termcrab embeddings setup` already installs; the *provider switch* the panel's picker writes is not a CLI verb yet |
+| C12 | shell / files / web tools in conversation | ◐ by design | the agent's own exec/read/web tools run in a turn; the terminal is already a shell |
+| C13 | send a file back to a chat | ◐ by design | the CLI has no chat to send into; `/say`, `send_file` in a channel turn and the panel's downloads are the real doors |
+| C14 | media in / out (photos, voice, files) | ◐ by design | `transcribe` and `say` are the terminal's media verbs; attaching a photo is a phone-shaped act |
 
-Telegram's twelve ◐ cells get the same treatment in the same batch, one row
-per cell in `WORKLOG.md` §3 — the register and the queue are the same list.
+Telegram's seven ◐ cells are read back the same way — progress drafts, subagents, identity files, the
+agent's shell/browser/image tools, and `update --apply` (terminal-only by decision, 48) — and they are the
+second half of batch 54, one row per cell in `WORKLOG.md` §3. The register and the queue stay the same list.
 
 ## 5. What OpenClaw puts on each surface (from our crawl), and our call
 
@@ -317,13 +342,15 @@ Each row was one batch, in dependency order; every batch keeps the repo's rules
 | 50 | panel gaps, builder half: identity editor, backup/restore, service card, transcribe upload | web (+ API) | W4, W5, W8, W9b | **done** |
 | 51 | voice replies, `/say`, `/suite-time`, `/work`, `/embeddings setup`, mini app, forum topics | Telegram | T8, T18b, T18c, T22, T22b, T23, T24 | **done** |
 | 52 | the named ◐s: panel inbox/rooms/watchers/tool toggles, panel security+secrets, Telegram skills/cron authoring, CLI `suite-time`/`work`, session rename/export | web + Telegram + CLI | the half-doors in §4.0b | **done** |
-| 53 | the ◐s that are still half-doors: tool catalog on CLI/Telegram, canvas, live runs (queue/steer/tool activity), memory write everywhere, media downloads | CLI + Telegram + web | the rest of §3's ◐ cells | next |
+| 53 | the ◐s that are still half-doors: tool catalog on CLI/Telegram, canvas, live runs (queue/steer/tool activity), memory write everywhere, media downloads | CLI + Telegram + web | C1, C2, C4, C5, C6, C9, T25–T29, W22–W24 | **done** |
+| 54 | what the audit still calls ◐: CLI `watch` / `inbox` / `extract` / the embeddings-provider switch, and Telegram's seven (drafts, subagents, identity, tools, update) | CLI + Telegram | C3, C8, C10, C11 + the Telegram list | next |
 
 Note the ordering: the CLI started complete, so 46–48 lifted Telegram — that is
 where 28 of the 38 missing cells lived. Batches 49–50 closed the web row, 51 the
 Telegram tail (the ❌ register is empty on all three since), 52 the first slice
-of the ◐s. Batch 53 takes the rest; what remains after it must be a deliberate
-"narrower door" note, never a hole.
+of the ◐s. Batch 53 took the second wave; what remains after it (21 cells, §4.2/§4.3)
+must be a deliberate "narrower door" note — five are real half-doors for batch 54,
+the rest are terminal-native shapes.
 
 ## 7. Keeping this true
 

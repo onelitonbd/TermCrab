@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.83.0 - 2026-10-05
+
+**The second wave of half-doors, closed on every surface.** Batch 53 walked the
+real half-doors the three-surface audit still called ◐ — a verb short of the
+panel's door — and finished them so the register now reads **CLI 57 ✅ / 8 ◐ / 6 n/a
+· Telegram 59 ✅ / 7 ◐ / 5 n/a · Web 60 ✅ / 6 ◐ / 5 n/a**, **71 rows, 21 named ◐,
+0 ❌**, with the eight CLI, seven Telegram and six web ◐ each carrying its reason
+in `docs/SURFACES.md` §4.2/§4.3.
+
+- **The tool catalog is one source, reachable from all three.** `termcrab tools`
+  prints the catalog (8 groups, 60 tools) and every tool's on/off switch
+  (`switchFor` / `tool switches`), shared by the chat `/tools` card and the
+  panel's Tools view — turn a tool off once and the agent, the chat and the panel
+  all see it off (`src/agent/tool-catalog.ts`, `src/gateway/chat-control.ts`).
+- **Canvas everywhere.** `termcrab canvas` (new), the chat `/canvas`, and the
+  panel's Canvas card all read and write the same `state/canvas*.jsonl`, newest
+  wins by a real timestamp, and the DELETE the panel sends is honoured
+  (`src/cli.ts`, `src/gateway/chat-control.ts`, `src/gateway/server.ts`).
+- **The live run is visible from the chat.** Queue modes submit from the CLI,
+  Telegram and the panel; a Telegram turn now shows a throttled `🛠️ tool · tool`
+  status (`channels.telegram.toolActivity`, `channels.telegram.toolActivityMinMs`)
+  that edits in place and deletes on finish, and the queue fans a turn's events
+  out to every surface (`agent/loop.ts`, `agent/sessions.ts`, `gateway/server.ts`).
+- **Memory you can write from any surface.** `termcrab memory add <text>` and the
+  chat `/memory add <text>` store the same fact (`- [ts] text` in `MEMORY.md` /
+  `daily/`, `--json` stripped from the stored text) and `/memory search` highlights
+  the matched terms (`gateway/chat-reports.ts`, `cli.ts`).
+- **Media the phone and the chat can both reach.** Sent files are downloaded from
+  the panel's Sent view and the chat `/sent-files`; Draw opens from all three
+  surfaces; and PDF/DOCX attach through `/api/extract` and the composer's file
+  input (`gateway/server.ts`, `ui/index.html`, `channels/shared-files.ts`).
+- **A real catch, kept in the notes.** `test/tier3v.test.ts` (24/24 green) found
+  three defects while closing this batch — `runQueuedTurn` dropped the turn's
+  `onEvent`, the activity tracker could post a second status message when a tool
+  returned instantly, and `.md`/`.json` were served as `application/octet-stream`
+  — each fixed at the source with a regression that fails 100% against the
+  unfixed build.
+
 ## 0.82.0 - 2026-10-04
 
 **Every surface can decide, inspect and take its own copy.** Batch 52 went after the audit's honest

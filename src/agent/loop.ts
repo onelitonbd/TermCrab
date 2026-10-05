@@ -245,6 +245,7 @@ export async function runQueuedTurn(ctx: AgentCtx, opts: RunOpts): Promise<strin
       agent: opts.agent,
       tier: opts.tier,
       thinkingLevel: opts.thinkingLevel,
+      ...(opts.onEvent ? { onEvent: opts.onEvent } : {}),
     }).turn;
   } catch (err) {
     if (err instanceof QueueFullError) return `[busy] ${err.message}`;

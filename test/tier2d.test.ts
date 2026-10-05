@@ -361,9 +361,15 @@ test('15.4 the chat commands answer from the same data the CLI reports', async (
     for (const cmd of ['/logs', '/config', '/board', '/disk', '/perf', '/doctor', '/security', '/auth', '/devices', '/embeddings', '/dream', '/docs', '/skills', '/cron']) {
       assert.ok(reports.includes(`case '${cmd}':`), `${cmd} is handled by the shared dispatcher`);
     }
-    assert.match(src, /usageForDay\(\)/, '/usage reads the real meter');
+    // Batch 53 routed /usage through the shared dispatcher (usageCommand in
+    // chat-reports.ts), which still reads the same meter the CLI reads.
+    assert.match(src, /usageCommand\(config\)/, '/usage reads the real meter via the shared dispatcher');
+    assert.match(reports, /usageForDay\(\)/, '/usage reads the same meter the CLI reads');
     assert.match(src, /sessions\.list\(\)/, '/sessions reads the real session store');
-    assert.match(src, /memory\.readForPrompt\(/, '/memory reads the real memory');
+    // Batch 53 routed /memory through the shared dispatcher (memoryCommand in
+    // chat-reports.ts), which still reads the same memory the agent prompts with.
+    assert.match(src, /memoryCommand\(\{ memory \}/, '/memory reads the real memory via the shared dispatcher');
+    assert.match(reports, /memory\.readForPrompt\(/, '/memory reads the same memory the agent prompts with');
   });
 
   await t.test('the tools the agent needs are registered', async () => {

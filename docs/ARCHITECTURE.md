@@ -114,6 +114,7 @@ users' runtime.
 | `src/agent/subagents.ts` | Scratch space for subagents (33.1) |
 | `src/agent/suggestions.ts` | Follow-up task cards suggested by the agent; the operator dismisses them |
 | `src/agent/tasks.ts` | Background subagent tasks: spawned turns tracked to completion |
+| `src/agent/tool-catalog.ts` | Batch 53.1 — the tool catalog and its three switches, as every surface reads them |
 | `src/agent/tool-schema.ts` | Check a tool call's arguments before the tool runs (22.2) |
 | `src/agent/toolbox.ts` | extended tools: edit, patch, web_search, automations, sessions_*, subagents, phone tools (Termux:API) |
 | `src/agent/tools.ts` | tool registry + path guard + shell resolver + browser (CDP) + code_exec (vm sandbox) |
@@ -129,11 +130,13 @@ users' runtime.
 | `src/channels/media.ts` | What a chat may hand the agent and the agent may send back: size/extension rules, inbox paths (15.1/15.2) |
 | `src/channels/picker.ts` | Telegram provider/model picker (v0.29.0) |
 | `src/channels/rooms.ts` | Ambient room history: what a group said while the bot was not addressed (34.3) |
+| `src/channels/shared-files.ts` | Batch 53.5 — every attachment can be downloaded from the panel |
 | `src/channels/signal.ts` | Signal (optional, signal-cli) |
 | `src/channels/slack.ts` | Slack (optional, @slack/bolt) |
 | `src/channels/sms.ts` | SMS/MMS (optional, Twilio) |
 | `src/channels/telegram-runs.ts` | 37.4 — the record of runs that really happened |
 | `src/channels/telegram.ts` | long-poll loop, allowlist, chunking, outbox |
+| `src/channels/tool-activity.ts` | Batch 53.3 — a long turn is not silent |
 | `src/channels/vision.ts` | Looking at a picture for the agent (16.2) |
 | `src/channels/whatsapp.ts` | WhatsApp channel via Baileys - shipped as an OPTIONAL extension so the TermCrab core keeps zero runtime dependencies |
 | `src/cli.ts` | command dispatch (parseArgs, zero deps) |
@@ -166,7 +169,7 @@ users' runtime.
 | `src/docs/site.ts` | 34.8 — the documentation site: one self-contained HTML file, offline |
 | `src/gateway/auth.ts` | constant-time token checks (header or query) |
 | `src/gateway/canvas.ts` | Canvas / A2UI: agent-driven visual widgets served by the gateway |
-| `src/gateway/chat-control.ts` | the verbs a chat can run — /stop, /steer, /queue, /sessions rename|purge, /update, /backup, /watch — one implementation for every surface, and the refusals that name the terminal |
+| `src/gateway/chat-control.ts` | the verbs a chat can run — /stop, /steer, /queue, /sessions rename\|purge, /update, /backup, /watch — one implementation for every surface, and the refusals that name the terminal |
 | `src/gateway/chat-reports.ts` | the read-only reports and /help: /logs /config /board /disk /perf /doctor /security /auth /devices /embeddings /dream /docs /skills /cron — the shared dispatcher Telegram, the panel chat and the palette all call |
 | `src/gateway/client.ts` | The one place that knows how to talk to the local gateway: host resolution (0.0.0.0/:: mean "this machine"), the bearer token, and a short timeout |
 | `src/gateway/devices.ts` | Paired devices: a phone (or any client) proves it is allowed on this gateway once, with a short code, and then carries its own token (20.1) |

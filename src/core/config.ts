@@ -236,6 +236,16 @@ export interface Config {
        * what a chat is for, and speaking costs a TTS engine + ffmpeg).
        */
       voiceReplies?: boolean;
+      /**
+       * 53.3 — report the tools a turn runs in one edited status message
+       * (default true: a long turn should not look stuck).
+       */
+      toolActivity?: boolean;
+      /**
+       * 53.3 — how often that line may be edited, in ms (default 1500:
+       * Telegram rate-limits edits per chat). `0` edits on every tool.
+       */
+      toolActivityMinMs?: number;
     };
     whatsapp?: {
       enabled: boolean;

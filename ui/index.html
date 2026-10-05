@@ -2690,6 +2690,15 @@
         </div>
         <div id="wtList" class="secList"></div>
       </div>
+      <div class="setCard" id="imgCard">
+        <h4>Make a picture</h4>
+        <div class="d">The same call the agent's <code>image</code> tool and <code>termcrab image</code> use; the result lands in the download list above.</div>
+        <div class="pBar" style="margin:6px 0">
+          <input id="imgPrompt" placeholder="a crab on a beach at sunset" style="flex:1" />
+          <button id="imgGo" class="ghost smallBtn" type="button">Draw</button>
+        </div>
+        <div id="imgOut" class="secList"></div>
+      </div>
       <div id="toolCat" aria-live="polite"><div class="nx">loading…</div></div>
     </div>
 
@@ -2817,6 +2826,14 @@
       </div>
       <div id="inboxList" class="secList"><div class="nx">loading…</div></div>
       <div id="roomsList" class="secList" style="margin-top:8px"></div>
+    </div>
+    <div class="setCard" id="filesCard">
+      <h4>Files the agent produced</h4>
+      <div class="d">Everything <code>send_file</code> sent and every picture the image button drew — each one a real download.</div>
+      <div class="pBar" style="margin:6px 0">
+        <button id="flRefresh" class="ghost smallBtn" type="button">Refresh</button>
+      </div>
+      <div id="filesList" class="secList"><div class="nx">loading…</div></div>
     </div>
     <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
   </section>
@@ -3060,7 +3077,7 @@
     <svg class="errIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <span class="errText"></span>
   </div>
-  <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt" />
+  <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt,.pdf,.docx,.pptx,.xlsx" />
 </div>
 
 </div>
@@ -5152,23 +5169,36 @@
     const f = $('attachFile').files && $('attachFile').files[0];
     $('attachFile').value = '';
     if (!f) return;
-    if (/^(image|audio|video)\//.test(f.type) || f.type === 'application/pdf' || f.type === 'application/zip') {
-      addMsg('sys', 'Attachments work with text files for now.');
+    const doc = /\.(pdf|docx|pptx|xlsx)$/i.test(f.name);
+    if (!doc && (/^(image|audio|video)\//.test(f.type) || f.type === 'application/zip')) {
+      addMsg('sys', 'That kind of file cannot be read here yet (photos, audio and video).');
       return;
     }
-    if (f.size > 200 * 1024) {
-      addMsg('sys', 'That file is too big to attach (200 KB max).');
+    const cap = doc ? 4 * 1024 * 1024 : 200 * 1024;
+    if (f.size > cap) {
+      addMsg('sys', 'That file is too big to attach (' + (cap / 1024 / 1024 >= 1 ? cap / 1024 / 1024 + ' MB' : cap / 1024 + ' KB') + ' max).');
       return;
     }
+    const inp = $('input');
     try {
+      if (doc) {
+        // 53.5 — the same extractor the chat intake uses, so a PDF behaves the
+        // same whether it arrives on Telegram or through this button.
+        addMsg('sys', 'reading ' + f.name + '…');
+        const r = await api('/api/extract?name=' + encodeURIComponent(f.name), { method: 'POST', body: await f.arrayBuffer(), raw: true });
+        const block = '\u2014 ' + f.name + ' (' + r.kind + ', ' + r.chars + ' chars) \u2014\n' + r.text;
+        inp.value = inp.value ? inp.value + '\n\n' + block : block;
+        inp.focus();
+        addMsg('sys', 'Extracted ' + r.chars + ' characters from ' + f.name + ' — edit it or hit send.');
+        return;
+      }
       const body = await f.text();
-      const inp = $('input');
       const block = '\u2014 ' + f.name + ' \u2014\n' + body;
       inp.value = inp.value ? inp.value + '\n\n' + block : block;
       inp.focus();
       addMsg('sys', 'Attached ' + f.name + ' — edit it or hit send.');
-    } catch {
-      addMsg('sys', 'Could not read that file.');
+    } catch (e) {
+      addMsg('sys', 'Could not read that file: ' + (e.message || 'unknown error'));
     }
   };
   $('btnNew').onclick = async () => {
@@ -7020,6 +7050,70 @@
     await loadKeys();
   });
 
+  // ---- 53.x: a download for every attachment ----
+  // One helper: fetch with the panel token, then save the blob under a real
+  // name. Never a URL with the token in it.
+  async function downloadFrom(path, filename) {
+    const res = await fetch(path, { headers: { 'authorization': 'Bearer ' + state.token } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+  }
+
+  // Files the agent produced: what send_file sent, and what the image button
+  // drew. The route resolves an id from the record, so the panel cannot ask
+  // for a path.
+  async function refreshSentFiles() {
+    const box = $('filesList');
+    if (!box) return;
+    try {
+      const data = await api('/api/sent-files?limit=20');
+      const rows = data.files || [];
+      box.innerHTML = '';
+      if (!rows.length) {
+        box.innerHTML = '<div class="nx">nothing yet — the agent has not sent or drawn a file</div>';
+        return;
+      }
+      for (const f of rows.slice(0, 10)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = f.name + (f.exists ? '' : ' (gone)');
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        const when = new Date(f.at).toISOString().slice(5, 16).replace('T', ' ');
+        meta.textContent = `${f.via === 'image' ? 'drawn' : 'sent'} · ${Math.max(1, Math.round((f.bytes || 0) / 1024))} KB · ${when}${f.channel ? ' · ' + f.channel : ''}`;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const get = document.createElement('button');
+        get.className = 'ghost'; get.textContent = 'Download';
+        get.disabled = !f.exists;
+        get.onclick = async () => {
+          try { await downloadFrom('/api/sent-files/' + encodeURIComponent(f.id), f.name); addMsg('sys', 'downloaded ' + f.name); }
+          catch (e) { addMsg('sys', 'download failed: ' + e.message); }
+        };
+        row.append(name, meta, sp, get);
+        if (f.via === 'image' && f.exists && /\.(png|jpe?g|webp|gif)$/i.test(f.name)) {
+          const img = document.createElement('img');
+          img.alt = f.name;
+          img.style.maxWidth = '140px';
+          img.style.borderRadius = '8px';
+          img.style.marginLeft = '8px';
+          fetch('/api/sent-files/' + encodeURIComponent(f.id), { headers: { 'authorization': 'Bearer ' + state.token } })
+            .then((r) => (r.ok ? r.blob() : null))
+            .then((b) => { if (b) img.src = URL.createObjectURL(b); })
+            .catch(() => undefined);
+          row.appendChild(img);
+        }
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
   // ---- 52.x: the cards that close the named ◐ cells ----
   // Inbox & rooms: same store the agent's inbox_list/room_history tools read.
   async function refreshInbox() {
@@ -7050,7 +7144,13 @@
             switchView('chat');
           } catch (err) { addMsg('sys', 'read failed: ' + err.message); }
         };
-        row.append(name, meta, sp, open);
+        const dl = document.createElement('button');
+        dl.className = 'ghost'; dl.textContent = 'Download';
+        dl.onclick = async () => {
+          try { await downloadFrom('/api/inbox/' + encodeURIComponent(e.name) + '/download', e.name); addMsg('sys', 'downloaded ' + e.name); }
+          catch (err) { addMsg('sys', 'download failed: ' + err.message); }
+        };
+        row.append(name, meta, sp, dl, open);
         box.appendChild(row);
       }
       const rData = await api('/api/rooms');
@@ -7205,6 +7305,29 @@
     } catch (e) { addMsg('sys', 'add failed: ' + e.message); }
   });
   $('ibRefresh') && ($('ibRefresh').onclick = () => refreshInbox());
+  $('flRefresh') && ($('flRefresh').onclick = () => refreshSentFiles());
+  $('imgGo') && ($('imgGo').onclick = async () => {
+    const prompt = (($('imgPrompt') && $('imgPrompt').value) || '').trim();
+    if (!prompt) { addMsg('sys', 'say what to draw'); return; }
+    const out = $('imgOut');
+    if (out) out.innerHTML = '<div class="nx">drawing…</div>';
+    try {
+      const r = await api('/api/image', { method: 'POST', body: { prompt } });
+      if (out) {
+        out.innerHTML = '';
+        const line = document.createElement('div');
+        line.className = 'nx';
+        line.textContent = `${r.width}×${r.height} · ${(r.bytes / 1024).toFixed(0)} KB · ${r.provider} ${r.placeholder ? '(local placeholder — no image provider configured)' : r.model}`;
+        const dl = document.createElement('button');
+        dl.className = 'ghost smallBtn'; dl.textContent = 'Download';
+        dl.onclick = () => downloadFrom('/api/sent-files/' + encodeURIComponent(r.id), r.path.split('/').pop());
+        out.append(line, dl);
+      }
+      refreshSentFiles();
+    } catch (e) {
+      if (out) out.innerHTML = '<div class="nx">failed: ' + e.message + '</div>';
+    }
+  });
 
   // ---- Chats panel (export / rename / purge) ----
   async function refreshSessPanel() {
@@ -8201,7 +8324,7 @@
     if (name === 'memory') { refreshMem(); refreshDreams(); }
     if (name === 'tools') { refreshTools(); refreshWatchers(); refreshToolToggles(); }
     if (name === 'board') refreshBoard();
-    if (name === 'work') { refreshWork(); refreshInbox(); }
+    if (name === 'work') { refreshWork(); refreshInbox(); refreshSentFiles(); }
     if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); refreshSecurity(); }
     if (name === 'logs') { refreshLogs(); startLogAuto(); } else { stopLogAuto(); }
     if (name === 'debug') { refreshDebug(); if ($('debugAuto')?.checked) { clearInterval(debugTimer); debugTimer = setInterval(refreshDebug, 3000); } } else { clearInterval(debugTimer); debugTimer = null; }

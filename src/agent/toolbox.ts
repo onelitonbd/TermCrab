@@ -21,6 +21,7 @@ import { formatRoomHistory, listRooms, parseRoomKey } from '../channels/rooms.js
 import { channelsWithDocuments, sendDocumentTo } from '../channels/conversations.js';
 import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
 import { acceptIncoming } from '../channels/media.js';
+import { recordSharedFile } from '../channels/shared-files.js';
 import {
   listIntents,
   addIntent,
@@ -718,6 +719,17 @@ export function extraTools(env: ToolEnv): Tool[] {
       const address = argStr(args, 'address') || undefined;
       const caption = argStr(args, 'caption') || undefined;
       const sent = await sendDocumentTo(channel, address, file, caption);
+      // 53.5 — the record the panel reads: an id the download route resolves,
+      // never a path from a request.
+      recordSharedFile({
+        name: path.basename(file),
+        path: file,
+        bytes: size,
+        via: 'send',
+        channel: sent.channel,
+        address: sent.address,
+        ...(env.sessionId ? { sessionId: env.sessionId } : {}),
+      });
       return `sent ${path.basename(file)} (${Math.max(1, Math.round(size / 1024))} KB) to ${sent.channel}:${sent.address}`;
     },
   });

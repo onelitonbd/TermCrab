@@ -5,61 +5,65 @@ actually runs it through the built binary. The number below is a recording, not 
 `src/cli.ts` appends its command to `$TCRAB_CLI_COVERAGE` on every dispatch, and
 `node scripts/cli-coverage.mjs --run` runs the whole suite with that variable set.
 
-**Measured:** 2026-10-04 · **49 of 57** commands executed end-to-end by `npm test` (86%).
+**Measured:** 2026-10-04 · **53 of 61** commands executed end-to-end by `npm test` (87%).
 
 ## Run by the suite
 
 | Command | In `src/cli.ts` | Times run |
 |---|---|---|
-| `termcrab help` | line 409 | 19 |
-| `termcrab completion` | line 429 | 3 |
-| `termcrab version` | line 446 | 15 |
-| `termcrab owner` | line 452 | 2 |
-| `termcrab gateway` | line 495 | 15 |
-| `termcrab doctor` | line 536 | 9 |
-| `termcrab update` | line 572 | 3 |
-| `termcrab say` | line 633 | 1 |
-| `termcrab agent` | line 707 | 1 |
-| `termcrab heartbeat` | line 813 | 2 |
-| `termcrab skills` | line 820 | 6 |
-| `termcrab cron` | line 1052 | 13 |
-| `termcrab approvals` | line 1331 | 3 |
-| `termcrab usage` | line 1409 | 4 |
-| `termcrab run` | line 1455 | 4 |
-| `termcrab wait` | line 1456 | 1 |
-| `termcrab stop` | line 1522 | 2 |
-| `termcrab runs` | line 1555 | 3 |
-| `termcrab presence` | line 1592 | 3 |
-| `termcrab events` | line 1636 | 3 |
-| `termcrab image` | line 1676 | 1 |
-| `termcrab models` | line 1720 | 1 |
-| `termcrab auth` | line 1760 | 4 |
-| `termcrab orders` | line 1865 | 5 |
-| `termcrab logs` | line 1930 | 3 |
-| `termcrab backup` | line 2040 | 2 |
-| `termcrab restore` | line 2058 | 3 |
-| `termcrab service` | line 2126 | 1 |
-| `termcrab bootstrap` | line 2149 | 3 |
-| `termcrab schema` | line 2181 | 3 |
-| `termcrab perf` | line 2203 | 18 |
-| `termcrab suite-time` | line 2301 | 2 |
-| `termcrab work` | line 2323 | 3 |
-| `termcrab disk` | line 2371 | 4 |
-| `termcrab status` | line 2410 | 3 |
-| `termcrab wake` | line 2450 | 1 |
-| `termcrab sessions` | line 2488 | 13 |
-| `termcrab subagents` | line 2693 | 3 |
-| `termcrab agents` | line 2754 | 6 |
-| `termcrab docs` | line 2837 | 17 |
-| `termcrab security` | line 2903 | 4 |
-| `termcrab board` | line 2926 | 2 |
-| `termcrab rooms` | line 2941 | 4 |
-| `termcrab browser` | line 3021 | 5 |
-| `termcrab transcribe` | line 3088 | 1 |
-| `termcrab embeddings` | line 3122 | 6 |
-| `termcrab context` | line 3182 | 1 |
-| `termcrab memory` | line 3202 | 6 |
-| `termcrab config` | line 3338 | 7 |
+| `termcrab help` | line 410 | 19 |
+| `termcrab completion` | line 430 | 3 |
+| `termcrab version` | line 447 | 15 |
+| `termcrab owner` | line 453 | 2 |
+| `termcrab gateway` | line 496 | 14 |
+| `termcrab doctor` | line 537 | 9 |
+| `termcrab update` | line 573 | 3 |
+| `termcrab say` | line 634 | 1 |
+| `termcrab agent` | line 708 | 1 |
+| `termcrab heartbeat` | line 814 | 2 |
+| `termcrab skills` | line 821 | 6 |
+| `termcrab cron` | line 1053 | 13 |
+| `termcrab approvals` | line 1332 | 3 |
+| `termcrab usage` | line 1410 | 4 |
+| `termcrab run` | line 1456 | 4 |
+| `termcrab wait` | line 1457 | 1 |
+| `termcrab stop` | line 1523 | 2 |
+| `termcrab runs` | line 1556 | 3 |
+| `termcrab presence` | line 1593 | 3 |
+| `termcrab events` | line 1637 | 3 |
+| `termcrab image` | line 1677 | 1 |
+| `termcrab models` | line 1721 | 1 |
+| `termcrab auth` | line 1761 | 4 |
+| `termcrab orders` | line 1866 | 5 |
+| `termcrab logs` | line 1931 | 3 |
+| `termcrab backup` | line 2041 | 2 |
+| `termcrab restore` | line 2059 | 3 |
+| `termcrab service` | line 2127 | 1 |
+| `termcrab bootstrap` | line 2150 | 3 |
+| `termcrab schema` | line 2182 | 3 |
+| `termcrab perf` | line 2204 | 18 |
+| `termcrab suite-time` | line 2302 | 2 |
+| `termcrab work` | line 2324 | 3 |
+| `termcrab disk` | line 2372 | 4 |
+| `termcrab status` | line 2411 | 3 |
+| `termcrab wake` | line 2451 | 1 |
+| `termcrab sessions` | line 2489 | 13 |
+| `termcrab subagents` | line 2694 | 3 |
+| `termcrab agents` | line 2755 | 6 |
+| `termcrab docs` | line 2838 | 17 |
+| `termcrab security` | line 2904 | 4 |
+| `termcrab board` | line 2927 | 2 |
+| `termcrab rooms` | line 2942 | 4 |
+| `termcrab browser` | line 3022 | 5 |
+| `termcrab transcribe` | line 3089 | 1 |
+| `termcrab embeddings` | line 3123 | 6 |
+| `termcrab context` | line 3183 | 1 |
+| `termcrab memory` | line 3203 | 9 |
+| `termcrab tools` | line 3345 | 4 |
+| `termcrab canvas` | line 3400 | 5 |
+| `termcrab queue` | line 3457 | 5 |
+| `termcrab steer` | line 3489 | 1 |
+| `termcrab config` | line 3533 | 4 |
 
 ## Not run by the suite — and what covers it instead
 

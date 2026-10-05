@@ -5,6 +5,7 @@ import { log } from '../core/logger.js';
 import { recordRoomMessage } from './rooms.js';
 import { outboxAck, outboxFail, outboxMarkSending, outboxPending, outboxPush } from '../mobile/outbox.js';
 import { speakToFile, type VoiceFileResult } from '../mobile/tts.js';
+import type { ToolStatusPort } from './tool-activity.js';
 import { home } from '../core/paths.js';
 import { escapeHtml, mdToTelegramHtml } from './markdown.js';
 import type { ArrivalInfo } from './intake.js';
@@ -30,6 +31,8 @@ export interface TelegramCfg {
   maxFileMb?: number;
   /** 51.3 — a voice note in gets a voice note back (needs TTS + ffmpeg). */
   voiceReplies?: boolean;
+  /** 53.3 — one status message, edited with the tool names as they run (default true). */
+  toolActivity?: boolean;
 }
 
 /**
@@ -85,6 +88,8 @@ export interface TelegramDeps {
         | 'setMyCommands'
         | 'sendVoice'
         | 'sendDocument'
+        | 'editMessageText'
+        | 'deleteMessage'
       >
     >;
   /** Test seam: where an incoming file lands (default: workspace/inbox). */
@@ -249,6 +254,35 @@ export class TelegramChannel {
         this.backoffMs = Math.min(this.backoffMs * 2, 60_000);
       }
     }
+  }
+
+  /**
+   * 53.3 — the port the tool-activity tracker writes through: one status
+   * message per turn, edited as tools run, removed at the end. Returns null
+   * when the Bot API stub in use has no `editMessageText` (a test seam that
+   * only records texts, or an ancient API), so the caller can simply skip it.
+   */
+  toolStatusPort(chatId: number): ToolStatusPort | null {
+    const api = this.api as Partial<TelegramApi>;
+    if (typeof api.sendMessage !== 'function' || typeof api.editMessageText !== 'function') return null;
+    return {
+      send: async (text: string) => {
+        const res = (await api.sendMessage!.call(this.api, chatId, escapeHtml(text))) as
+          | { result?: { message_id?: number } }
+          | undefined;
+        const id = res?.result?.message_id;
+        return typeof id === 'number' ? id : null;
+      },
+      edit: async (messageId: number, text: string) => {
+        if (typeof api.editMessageText !== 'function') return;
+        await api.editMessageText.call(this.api, chatId, messageId, escapeHtml(text));
+      },
+      remove: async (messageId: number) => {
+        const del = api.deleteMessage;
+        if (typeof del !== 'function') return;
+        await del.call(this.api, chatId, messageId).catch(() => undefined);
+      },
+    };
   }
 
   /**

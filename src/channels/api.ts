@@ -139,6 +139,23 @@ export class TelegramApi {
     return this.call('sendChatAction', { chat_id: chatId, action }, 10_000);
   }
 
+  /**
+   * 53.3 — edit one message in place. A long turn reports the tool names here
+   * instead of sending a message per tool.
+   */
+  editMessageText(chatId: number, messageId: number, html: string): Promise<unknown> {
+    return this.call(
+      'editMessageText',
+      { chat_id: chatId, message_id: messageId, text: html, parse_mode: 'HTML', disable_web_page_preview: true },
+      10_000,
+    );
+  }
+
+  /** 53.3 — take the status message away when the turn ends. */
+  deleteMessage(chatId: number, messageId: number): Promise<unknown> {
+    return this.call('deleteMessage', { chat_id: chatId, message_id: messageId }, 10_000);
+  }
+
   /** Where a file lives on Telegram's servers (then `downloadFile` fetches it). */
   getFile(fileId: string): Promise<{ file_id: string; file_path?: string; file_size?: number }> {
     return this.call('getFile', { file_id: fileId }, 20_000);

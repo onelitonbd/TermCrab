@@ -58,11 +58,12 @@ import { lastDigestSummary, QueueFullError, QueuedTurn, SessionQueue, SessionSto
 import { SkillStore } from '../skills/loader.js';
 // Auth removed for now — all /api/* endpoints are open.
 import { bus, BusEvent } from './events.js';
-import { escapeHtml, TelegramChannel, type IncomingContext } from '../channels/telegram.js';
+import { escapeHtml, TelegramChannel, type IncomingContext, type TelegramDeps } from '../channels/telegram.js';
 import { makeIntake } from '../channels/intake.js';
+import { makeToolActivity } from '../channels/tool-activity.js';
 import { contextReport, renderContext } from '../agent/context.js';
 import { toProviderMessages } from '../agent/loop.js';
-import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
+import { formatInbox, inboxDir, listInbox, readArrival } from '../channels/inbox.js';
 import { WhatsAppChannel } from '../channels/whatsapp.js';
 import { parseAgentPrefix } from '../channels/telegram.js';
 import { getProposal } from '../skills/proposals.js';
@@ -108,10 +109,16 @@ import { docsSiteFreshness, ensureDocsSite } from '../docs/site.js';
 import { RUN_LIMIT, lastTelegramRuns, telegramRunsPath } from '../channels/telegram-runs.js';
 import { perfStatus, suiteTimeStatus } from '../core/perf.js';
 import { getPortal } from './portal.js';
-import { canvasList, canvasRemove } from './canvas.js';
+import { canvasClear, canvasList, canvasRemove } from './canvas.js';
+import { offSwitches, switchKeyFor, TOOL_SWITCHES } from '../agent/tool-catalog.js';
+import { findSharedFile, listSharedFiles, recordSharedFile, withinRoots } from '../channels/shared-files.js';
+import { extractText } from '../channels/extract.js';
 import {
   CHAT_COMMANDS,
   controlUiReport,
+  inboxCommand,
+  memoryCommand,
+  usageCommand,
   skillShow,
   skillsDecide,
   embeddingsSetupReport,
@@ -166,6 +173,13 @@ interface GatewayOpts {
   config: Config;
   host?: string;
   port?: number;
+  /**
+   * 53.3 — a Bot API stub. The suite drives a real Telegram turn through the
+   * gateway (message in → tools run → one status message edited → reply out)
+   * without a network, which is the only way to prove the wiring rather than
+   * describe it.
+   */
+  telegramApi?: NonNullable<TelegramDeps['api']>;
 }
 
 function readBody(req: http.IncomingMessage, limit = 1_000_000): Promise<string> {
@@ -325,6 +339,18 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.md': 'text/markdown; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.log': 'text/plain; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.csv': 'text/csv; charset=utf-8',
+  '.pdf': 'application/pdf',
+  '.ogg': 'audio/ogg',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.zip': 'application/zip',
 };
 
 function serveFile(res: http.ServerResponse, file: string): void {
@@ -334,6 +360,23 @@ function serveFile(res: http.ServerResponse, file: string): void {
   }
   const ext = path.extname(file);
   res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream' });
+  res.end(fs.readFileSync(file));
+}
+
+/**
+ * 53.5 — a real download: the bytes, plus a file name the browser keeps.
+ * The name is escaped, never trusted as a path.
+ */
+function serveDownload(res: http.ServerResponse, file: string, name: string): void {
+  if (!fs.existsSync(file)) {
+    res.writeHead(404).end('not found');
+    return;
+  }
+  const safe = name.replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'file';
+  res.writeHead(200, {
+    'content-type': MIME[path.extname(safe)] || 'application/octet-stream',
+    'content-disposition': `attachment; filename="${safe}"`,
+  });
   res.end(fs.readFileSync(file));
 }
 
@@ -517,7 +560,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       skipQueue: true,
       // A failed turn must say which session it was, or an event trigger
       // cannot tell its own failure from someone else's (24.2).
-      onEvent: (ev) => bus.emit({ ...ev, sessionId: (ev as { sessionId?: string }).sessionId ?? turn.sessionId } as unknown as BusEvent),
+      onEvent: (ev) => {
+        const stamped = { ...ev, sessionId: (ev as { sessionId?: string }).sessionId ?? turn.sessionId };
+        bus.emit(stamped as unknown as BusEvent);
+        // 53.3: the per-turn listener the caller passed (Telegram's tool status
+        // line). The bus is not a substitute — the caller wants *its* turn.
+        turn.onEvent?.(stamped as typeof ev);
+      },
     });
   });
 
@@ -580,6 +629,7 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     const state = readTelegramState();
     telegram = new TelegramChannel({
       cfg: tgCfg,
+      ...(opts.telegramApi ? { api: opts.telegramApi } : {}),
       // 16.1–16.3: what arrives becomes something the agent can answer about —
       // a document is read, a voice note transcribed, a photo described.
       // The arrival is remembered by the intake; the same moment is what
@@ -999,6 +1049,13 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
   ): Promise<ReportResult | null> {
     const control = await runControlCommand(text, controlDepsFor(sessionId, channel, chatId));
     if (control) return control;
+    // 53.4/53.5 — the three verbs that used to be reachable on Telegram only,
+    // because they lived inside this file's channel handler. They come from
+    // `chat-reports` now, so the panel's chat and the palette get them too.
+    const trimmed = text.trim();
+    if (/^\/memory(\s|$)/.test(trimmed)) return memoryCommand({ memory }, trimmed.slice('/memory'.length).trim());
+    if (/^\/inbox(\s|$)/.test(trimmed)) return inboxCommand(trimmed.slice('/inbox'.length).trim());
+    if (trimmed === '/usage' || trimmed.startsWith('/usage ')) return usageCommand(config);
     // 51.5: the mini-app report needs the address a phone can reach.
     return runReportCommand(text, {
       agent,
@@ -1173,13 +1230,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       }
     }
     if (text === '/usage') {
-      const day = usageForDay();
-      if (!day.turns) return `📊 No turns metered today (${day.day}). Tokens show up as soon as a model reports them.`;
-      const cost =
-        typeof day.costUsd === 'number'
-          ? `\n     cost ~$${day.costUsd.toFixed(4)}${config.provider.priceInPerM || config.provider.priceOutPerM ? '' : ' (from a dated price snapshot)'}`
-          : '';
-      return `📊 Today (${day.day}) — ${day.turns} turn(s), ${day.calls} model call(s)\n     tokens ${formatTokens(day.totalTokens)} (in ${formatTokens(day.promptTokens)} · out ${formatTokens(day.completionTokens)})${cost}`;
+      const r = usageCommand(config);
+      return r.ok ? r.text : `⚠️ ${r.error}`;
     }
     if (text === '/sessions' || text.startsWith('/sessions ')) {
       const arg = text.slice('/sessions'.length).trim();
@@ -1214,32 +1266,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       );
     }
     if (text === '/memory' || text.startsWith('/memory ')) {
-      const arg = text.slice('/memory'.length).trim();
-      if (arg.startsWith('search ')) {
-        const q = arg.slice('search '.length).trim();
-        if (!q) return '🧠 Usage: /memory search <words>';
-        const hits = await memory.searchDetailed(q, 6);
-        if (!hits.length) return `🧠 Nothing in memory matches “${q}”.`;
-        const lines = hits.map((h) => {
-          const trust = h.origin && h.origin !== 'agent' ? ` [${h.origin}]` : '';
-          const when = h.when ? ` (${h.when})` : '';
-          return `  ${h.score.toFixed(2)}  ${h.file}${h.lineNo ? `:${h.lineNo}` : ''}${when}${trust}\n      ${h.snippet}`;
-        });
-        return `🧠 Memory matches for “${q}”:\n${lines.join('\n')}`;
-      }
-      if (arg.startsWith('user ')) {
-        const line = arg.slice('user '.length).trim();
-        return `👤 ${memory.rememberUser(line)}`;
-      }
-      const block = memory.readForPrompt(1200);
-      const stats = memory.stats();
-      const user = memory.readUser().trim();
-      const head = `🧠 ${block.facts}/${block.totalFacts} facts injected, ${stats.dailyFiles} daily log(s)`;
-      const userLine = user ? `\n\n👤 USER.md:\n${user.slice(0, 600)}` : '';
-      const hint = '\n(/memory search <words> to look something up, /memory user <line> to teach me about you)';
-      return block.text.trim()
-        ? `${head}${userLine}\n\n${block.text.trim()}${hint}`
-        : `${head}${userLine}\n(nothing remembered yet — tell me something worth keeping)${hint}`;
+      const r = await memoryCommand({ memory }, text.slice('/memory'.length).trim());
+      return r.ok ? r.text : `⚠️ ${r.error}`;
     }
     if (text === '/context') {
       const report = contextReport({
@@ -1254,16 +1282,8 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
       return `📐 ${renderContext(report).split('\n').slice(1).join('\n').trim().slice(0, 3000)}`;
     }
     if (text === '/inbox' || text.startsWith('/inbox ')) {
-      const name = text.slice('/inbox'.length).trim();
-      if (name) {
-        const read = readArrival(path.basename(name));
-        return read.ok
-          ? `📥 ${name}\n\n${read.text.length > 3000 ? `${read.text.slice(0, 3000)}\n… [truncated — ask for the rest by name]` : read.text}`
-          : `📥 ${read.reason}`;
-      }
-      const entries = listInbox({ limit: 8 });
-      const head = `📥 Inbox (${entries.length} shown)`;
-      return `${head}\n${formatInbox(entries)}`;
+      const r = inboxCommand(text.slice('/inbox'.length).trim());
+      return r.ok ? r.text : `⚠️ ${r.error}`;
     }
     if (channel === 'telegram' && text === '/heartbeat') {
       const res = await runHeartbeatOnce(agent);
@@ -1294,15 +1314,40 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
     const route = resolveRoute(agent.config, channel, { explicit: prefixed.agent, known: listAgents() });
     if (route.problem) log.warn(`routing: ${route.problem}`);
     const routedAgent = route.agent ?? undefined;
-    const result = await runQueuedTurn(agent, {
-      sessionId: baseSession,
-      userMessage: prefixed.text,
-      channel,
-      user: userId ? String(userId) : undefined,
-      room: String(chatId),
-      agent: routedAgent,
-      onEvent: (ev) => bus.emit(ev as unknown as BusEvent),
-    });
+    // 53.3 — a long turn reports the tools it runs in one edited message
+    // instead of a message per tool (Telegram only; the panel has its own
+    // cards). Off with channels.telegram.toolActivity = false.
+    const statusPort =
+      channel === 'telegram' && telegram && config.channels.telegram?.toolActivity !== false
+        ? telegram.toolStatusPort(Number(chatId))
+        : null;
+    const activity = statusPort
+      ? makeToolActivity(statusPort, {
+          ...(typeof config.channels.telegram?.toolActivityMinMs === 'number'
+            ? { minMs: config.channels.telegram.toolActivityMinMs }
+            : {}),
+        })
+      : null;
+    let result: ChannelAnswer;
+    try {
+      result = await runQueuedTurn(agent, {
+        sessionId: baseSession,
+        userMessage: prefixed.text,
+        channel,
+        user: userId ? String(userId) : undefined,
+        room: String(chatId),
+        agent: routedAgent,
+        onEvent: (ev) => {
+          bus.emit(ev as unknown as BusEvent);
+          const e = ev as { type?: string; name?: string; sessionId?: string };
+          if (activity && e.type === 'tool:start' && (!e.sessionId || e.sessionId === baseSession) && e.name) {
+            activity.note(e.name);
+          }
+        },
+      });
+    } finally {
+      await activity?.finish();
+    }
     void userId;
     void displayName;
     return result;
@@ -2719,6 +2764,21 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
             json(res, read.ok ? 200 : 404, read);
             return;
           }
+          const dl = pathname.match(/^\/api\/inbox\/([^/]+)\/download$/);
+          if (req.method === 'GET' && dl) {
+            const name = decodeURIComponent(dl[1]!);
+            if (path.basename(name) !== name) {
+              json(res, 400, { error: 'a file name, not a path' });
+              return;
+            }
+            const entry = listInbox({ limit: 500 }).find((e) => e.name === name);
+            if (!entry) {
+              json(res, 404, { error: 'no file by that name in the inbox' });
+              return;
+            }
+            serveDownload(res, path.join(inboxDir(), entry.name), entry.name);
+            return;
+          }
         }
 
         // Rooms: what was said while the bot was not addressed (34.3).
@@ -2776,16 +2836,11 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
         // panel's catalog can flip them instead of sending you to a terminal.
         if (req.method === 'POST' && pathname === '/api/tools/toggle') {
           const body = (await readJsonBody(req)) as { tool?: string; enabled?: boolean } | null;
-          const map: Record<string, 'allowExec' | 'allowBrowser' | 'allowCodeExec'> = {
-            exec: 'allowExec',
-            shell: 'allowExec',
-            browser: 'allowBrowser',
-            code: 'allowCodeExec',
-            code_exec: 'allowCodeExec',
-          };
-          const key = map[(body?.tool ?? '').toLowerCase()];
+          const key = switchKeyFor(body?.tool ?? '');
           if (!key) {
-            json(res, 400, { error: `no toggle for "${body?.tool ?? ''}" — toggles: ${Object.keys(map).join(', ')}` });
+            json(res, 400, {
+              error: `no toggle for "${body?.tool ?? ''}" — toggles: ${TOOL_SWITCHES.map((s) => s.name).join(', ')}`,
+            });
             return;
           }
           config.agent[key] = body?.enabled !== false;
@@ -2862,7 +2917,15 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
               size: body.size,
               name: body.name,
             });
-            json(res, 200, { ok: true, ...result });
+            // 53.5 — the picture joins the download list, so the panel can show
+            // it (and keep it) without a route that takes a path.
+            const record = recordSharedFile({
+              name: path.basename(result.path),
+              path: result.path,
+              bytes: result.bytes,
+              via: 'image',
+            });
+            json(res, 200, { ok: true, ...result, id: record?.id ?? null });
           } catch (err) {
             json(res, 502, { error: err instanceof Error ? err.message : String(err) });
           }
@@ -2873,10 +2936,77 @@ export async function startGateway(opts: GatewayOpts): Promise<GatewayHandle> {
           json(res, 200, { widgets: canvasList() });
           return;
         }
+        if (req.method === 'DELETE' && pathname === '/api/canvas') {
+          const count = canvasList().length;
+          canvasClear();
+          json(res, 200, { ok: true, cleared: count });
+          return;
+        }
         if (req.method === 'DELETE' && pathname.startsWith('/api/canvas/')) {
           const id = decodeURIComponent(pathname.slice('/api/canvas/'.length));
           const ok = canvasRemove(id);
           json(res, ok ? 200 : 404, ok ? { ok: true } : { error: `no canvas widget: ${id}` });
+          return;
+        }
+
+        // 53.5 — the files the agent really sent, and their bytes. The download
+        // resolves an id from the record, so a request can never name a path.
+        if (req.method === 'GET' && pathname === '/api/sent-files') {
+          const limit = Math.min(Number(new URL(req.url!, 'http://x').searchParams.get('limit')) || 50, 200);
+          json(res, 200, { files: listSharedFiles({ limit }) });
+          return;
+        }
+        {
+          const m = pathname.match(/^\/api\/sent-files\/([^/]+)$/);
+          if (req.method === 'GET' && m) {
+            const rec = findSharedFile(decodeURIComponent(m[1]!));
+            if (!rec) {
+              json(res, 404, { error: 'no file with that id' });
+              return;
+            }
+            if (!rec.exists) {
+              json(res, 410, { error: `${rec.name} is no longer on disk (it was at ${rec.path})` });
+              return;
+            }
+            if (!withinRoots(rec.path)) {
+              json(res, 403, { error: 'refusing to serve a file outside the home' });
+              return;
+            }
+            serveDownload(res, rec.path, rec.name);
+            return;
+          }
+        }
+
+        // 53.5 — text out of an uploaded document, through the same extractor
+        // the chat intake uses (`extractText`), so PDF/DOCX behave the same
+        // whether they arrive on Telegram or through the panel.
+        if (req.method === 'POST' && pathname === '/api/extract') {
+          const name =
+            (new URL(req.url ?? '/', 'http://localhost').searchParams.get('name') ?? 'upload.txt')
+              .replace(/[^\w.\-]+/g, '_')
+              .slice(0, 120) || 'upload.txt';
+          let buf: Buffer;
+          try {
+            buf = await readBodyBuffer(req);
+          } catch (err) {
+            json(res, 413, { error: err instanceof Error ? err.message : 'upload failed' });
+            return;
+          }
+          if (!buf.length) {
+            json(res, 400, { error: 'empty upload' });
+            return;
+          }
+          const dir = path.join(home(), 'state', 'uploads');
+          fs.mkdirSync(dir, { recursive: true });
+          const file = path.join(dir, name);
+          fs.writeFileSync(file, buf);
+          const read = extractText(file, { name });
+          if (!read.ok) {
+            json(res, 422, { error: read.reason, name, bytes: buf.length });
+            return;
+          }
+          const text = read.text ?? '';
+          json(res, 200, { ok: true, name, bytes: buf.length, kind: read.kind, chars: text.length, text });
           return;
         }
 

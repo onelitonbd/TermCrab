@@ -18,6 +18,7 @@ import {
 import { diskBudgetBytes, diskKeepDays, diskUsage, enforceDiskBudget } from './core/disk.js';
 import { contextReport, renderContext } from './agent/context.js';
 import { buildTools } from './agent/tools.js';
+import { groupCatalog, offSwitches, switchFor, switchState, type ToolGroup } from './agent/tool-catalog.js';
 import { toProviderMessages } from './agent/loop.js';
 import { ensureLayout, home, workspaceDir, memoryDir, configPath } from './core/paths.js';
 import { log, setLogLevel, setLogToStderr } from './core/logger.js';
@@ -3200,7 +3201,9 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
     }
 
     case 'memory': {
-      const [sub = 'show', ...queryParts] = rest;
+      // Flags are not part of a fact: `memory add <text> --json` must not
+      // store the word "--json" (it did, until the batch-53 test caught it).
+      const [sub = 'show', ...queryParts] = rest.filter((r) => r !== '--json');
       const memory = await makeMemoryStore();
       if (sub === 'search') {
         const q = queryParts.join(' ');
@@ -3258,6 +3261,24 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
         }
         if (!text) console.log('USER.md is empty. Add a line: termcrab memory user <what to remember about the owner>');
         else console.log(text);
+        return;
+      }
+      if (sub === 'add') {
+        const fact = queryParts.join(' ').trim();
+        if (!fact) {
+          if (machine) failJson('memory', 'missing fact', 'usage: termcrab memory add <text>');
+          else {
+            console.error('usage: termcrab memory add <text>   (a real fact, stored with its origin; `memory user` writes USER.md)');
+            process.exitCode = 1;
+          }
+          return;
+        }
+        const r = memory.remember(fact, { origin: 'owner', source: 'cli' });
+        if (machine) emitJson('memory', { added: fact, result: r, file: memoryDir() });
+        else {
+          console.log(`🧠 ${r}`);
+          console.log(`   stored in ${memoryDir()} — search it with: termcrab memory search <words>`);
+        }
         return;
       }
       if (sub === 'compact') {
@@ -3319,6 +3340,180 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
           ` | stats: ${JSON.stringify(memory.stats())} | files: ${memoryDir()}`,
       );
       return;
+    }
+
+    case 'tools': {
+      const asJson = rest.includes('--json');
+      const enableIdx = rest.findIndex((r) => r === '--enable' || r === '--disable');
+      const config = loadConfig();
+      if (enableIdx >= 0) {
+        const wantsOn = rest[enableIdx] === '--enable';
+        const name = rest[enableIdx + 1] ?? '';
+        const sw = switchFor(name);
+        if (!sw) {
+          const names = switchState(config).map((s) => s.name).join(', ');
+          if (machine) failJson('tools', `unknown switch "${name}"`, `toggles: ${names}`);
+          else {
+            console.error(`tools: unknown switch "${name}" — toggles: ${names}`);
+            process.exitCode = 1;
+          }
+          return;
+        }
+        config.agent[sw.key] = wantsOn;
+        saveConfig(config);
+        if (machine) emitJson('tools', { switch: sw.name, key: sw.key, enabled: wantsOn, state: switchState(config) });
+        else {
+          console.log(`${wantsOn ? '✅' : '⛔'} ${sw.name} is now ${wantsOn ? 'on' : 'off'} (agent.${sw.key}) — ${sw.note}`);
+          if (!wantsOn) console.log('   the tools behind it are hidden from the model until it is on again.');
+        }
+        return;
+      }
+      const ctx = await makeAgentCtx();
+      const defs = (await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills })).map((tool) => ({
+        name: tool.def.name,
+        description: tool.def.description,
+      }));
+      const groups = groupCatalog(defs);
+      const switches = switchState(ctx.config);
+      if (machine) {
+        emitJson('tools', {
+          count: defs.length,
+          groups: groups.map((g) => ({ group: g.group, tools: g.tools.map((x) => x.name) })),
+          switches: switches.map((s) => ({ name: s.name, key: s.key, on: s.on })),
+        });
+        return;
+      }
+      console.log(`🧰 ${defs.length} tools the agent can use, in ${groups.length} groups:`);
+      for (const g of groups) {
+        console.log(`\n  ${g.group}`);
+        for (const tool of g.tools) console.log(`    ${tool.name.padEnd(24)} ${tool.description.split('.')[0]}`);
+      }
+      console.log('\n  switches (agent.* in config.json) — the same three the panel shows:');
+      for (const s of switches) console.log(`    ${s.on ? '✅' : '⛔'} ${s.name.padEnd(8)} ${s.label} — ${s.note}`);
+      const off = offSwitches(ctx.config);
+      for (const s of off) {
+        console.log(`    (${s.name} is off: its tools are hidden from the model — termcrab tools --enable ${s.name})`);
+      }
+      return;
+    }
+
+    case 'canvas': {
+      const asJson = rest.includes('--json');
+      const clear = rest.includes('--clear');
+      const want = rest.find((r) => !r.startsWith('--'));
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      try {
+        if (clear) {
+          const res = await client.json<{ cleared: number }>('/api/canvas', { method: 'DELETE' });
+          if (machine) emitJson('canvas', res);
+          else console.log(res.cleared ? `🖼️ cleared ${res.cleared} canvas widget(s)` : '🖼️ the canvas was already empty');
+          return;
+        }
+        const res = await client.json<{ widgets: { id: string; title?: string; html: string; updatedAt: number }[] }>('/api/canvas');
+        if (want) {
+          const one = res.widgets.find((w) => w.id === want);
+          if (!one) {
+            if (machine) failJson('canvas', `no widget with id ${want}`, 'termcrab canvas lists them');
+            else {
+              console.error(`canvas: no widget with id ${want}`);
+              process.exitCode = 1;
+            }
+            return;
+          }
+          if (machine) emitJson('canvas', { widget: one });
+          else console.log(one.html);
+          return;
+        }
+        if (machine) {
+          emitJson('canvas', { count: res.widgets.length, widgets: res.widgets.map((w) => ({ id: w.id, title: w.title ?? null, bytes: w.html.length, updatedAt: w.updatedAt })) });
+          return;
+        }
+        if (!res.widgets.length) {
+          console.log('🖼️ the canvas is empty — the agent fills it with the `canvas` tool, and the panel renders it');
+          return;
+        }
+        console.log(`🖼️ ${res.widgets.length} widget(s) on the canvas (newest first):`);
+        for (const w of res.widgets) {
+          const when = new Date(w.updatedAt).toISOString().slice(11, 16);
+          console.log(`    ${w.id.padEnd(18)} ${(w.title ?? '(untitled)').padEnd(24)} ${(w.html.length / 1024).toFixed(1)} KB · ${when}`);
+        }
+        console.log('    termcrab canvas <id> prints one as HTML; termcrab canvas --clear empties the registry');
+        return;
+      } catch (err) {
+        if (machine) failJson('canvas', errorText(err), 'the canvas lives in the running gateway: termcrab gateway');
+        else if (err instanceof GatewayNotRunningError) {
+          console.error(err.message);
+          console.error('   (the canvas registry lives in the gateway process — start it, then ask again)');
+          process.exitCode = 1;
+        } else {
+          console.error(`canvas: ${errorText(err)}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+    }
+
+    case 'queue': {
+      const asJson = rest.includes('--json');
+      const mode = rest.find((r) => !r.startsWith('--'));
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      try {
+        if (!mode) {
+          const res = await client.json<{ mode: string; running: number; text: string }>('/api/queue');
+          if (machine) emitJson('queue', res);
+          else {
+            console.log(`🚦 queue mode: ${res.mode} · ${res.running} turn(s) running`);
+            console.log('   steer | followup | collect | interrupt — switch with: termcrab queue <mode>');
+          }
+          return;
+        }
+        const res = await client.json<{ ok: boolean; mode: string; message: string }>('/api/queue', { method: 'POST', json: { mode } });
+        if (machine) emitJson('queue', res);
+        else console.log(`🚦 ${res.message}`);
+        return;
+      } catch (err) {
+        if (machine) failJson('queue', errorText(err), 'the queue belongs to the running gateway: termcrab gateway');
+        else if (err instanceof GatewayNotRunningError) {
+          console.error(err.message);
+          process.exitCode = 1;
+        } else {
+          console.error(`queue: ${errorText(err)}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
+    }
+
+    case 'steer': {
+      const asJson = rest.includes('--json');
+      const text = rest.filter((r) => r !== '--json').join(' ').trim();
+      const config = loadConfig();
+      const client = new GatewayClient(config);
+      try {
+        if (!text) {
+          const res = await client.json<{ mode: string; running: number; text: string }>('/api/queue');
+          if (machine) emitJson('steer', { ...res, said: null });
+          else {
+            console.log(`🚦 ${res.running ? `${res.running} turn(s) running` : 'nothing is running'} · queue mode ${res.mode}`);
+            console.log('   usage: termcrab steer <what the running turn should know>');
+          }
+          return;
+        }
+        const res = await client.json<{ ok: boolean; message: string }>('/api/steer', { method: 'POST', json: { text } });
+        if (machine) emitJson('steer', res);
+        else console.log(`🧭 ${res.message}`);
+        return;
+      } catch (err) {
+        if (machine) failJson('steer', errorText(err), 'steering needs the running gateway: termcrab gateway');
+        else {
+          if (err instanceof GatewayNotRunningError) console.error(err.message);
+          else console.error(`steer: ${errorText(err)}`);
+          process.exitCode = 1;
+        }
+        return;
+      }
     }
 
     case 'boot': {

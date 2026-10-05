@@ -47,7 +47,7 @@ export const CAPABILITIES = [
   // ------------------------------------------------------------- gateway
   { area: 'gateway', name: 'Chat: send text, stream the answer', cli: [P(CLI_SRC, "case 'agent'")], tg: [P(TG_SRC, 'sendMessage')], web: [P(PANEL_SRC, "api\\('/api/chat'"), P(PANEL_SRC, "addEventListener\\('delta'")] },
   { area: 'gateway', name: 'Stop a running turn', cli: [P(CLI_SRC, "case 'stop'")], tg: [P(CT, "case '/stop'")], web: [P(PANEL_SRC, '/api/stop')] },
-  { area: 'gateway', name: 'Queue modes (steer/followup/collect/interrupt)', cli: { partial: 'config set agent.queueMode only' }, tg: [P(CT, "case '/queue'")], web: [P(SERVER_SRC, "'/api/queue'"), P(PANEL_SRC, 'queueSel')] },
+  { area: 'gateway', name: 'Queue modes (steer/followup/collect/interrupt)', cli: [P(CLI_SRC, "case 'queue'")], tg: [P(CT, "case '/queue'")], web: [P(SERVER_SRC, "'/api/queue'"), P(PANEL_SRC, 'queueSel')] },
   { area: 'gateway', name: 'Approvals (human-in-the-loop)', cli: [P(CLI_SRC, "case 'approvals'")], tg: [P(SERVER_SRC, 'sendButtons'), P(SERVER_SRC, 'approve:')], web: [P(PANEL_SRC, '/api/approvals'), P(PANEL_SRC, "addEventListener\\('approval'")] },
   { area: 'gateway', name: 'Devices: pair, list, revoke', cli: [P(CLI_SRC, "case 'pair'"), P(CLI_SRC, "case 'devices'")], tg: [P(CR, "case '/devices'")], web: [P(PANEL_SRC, '/api/devices')] },
   { area: 'gateway', name: 'Presence: who can reach the agent now', cli: [P(CLI_SRC, "case 'presence'")], tg: [P(SERVER_SRC, 'presenceLine')], web: [P(PANEL_SRC, '/api/presence')] },
@@ -58,16 +58,16 @@ export const CAPABILITIES = [
   { area: 'gateway', name: 'Logs: console lines with levels', cli: [P(CLI_SRC, "case 'logs'")], tg: [P(CR, "case '/logs'")], web: [P(PANEL_SRC, '/api/logs')] },
   { area: 'gateway', name: 'Config: read and set', cli: [P(CLI_SRC, "case 'config'")], tg: [P(CR, "case '/config'")], web: [P(PANEL_SRC, '/api/config')] },
   { area: 'gateway', name: 'Board: everything in flight', cli: [P(CLI_SRC, "case 'board'")], tg: [P(CR, "case '/board'")], web: [P(PANEL_SRC, '/api/board')] },
-  { area: 'gateway', name: 'Canvas / A2UI widgets', cli: { partial: 'the canvas tool the agent can call; no command' }, tg: { partial: 'the agent can call canvas; nothing renders in Telegram' }, web: [P(PANEL_SRC, '/api/canvas'), P(PANEL_SRC, "addEventListener\\('canvas:update'")] },
+  { area: 'gateway', name: 'Canvas / A2UI widgets', cli: [P(CLI_SRC, "case 'canvas'")], tg: [P(CT, "case '/canvas'")], web: [P(PANEL_SRC, '/api/canvas'), P(PANEL_SRC, "addEventListener\\('canvas:update'")] },
   { area: 'gateway', name: 'Multi-agent routing (@name, per-surface)', cli: [P(CLI_SRC, "case 'agents'")], tg: [P(SERVER_SRC, "text === '/agents'")], web: [P(PANEL_SRC, '/api/agents')] },
   { area: 'gateway', name: 'Health/status at a glance', cli: [P(CLI_SRC, "case 'status'")], tg: [P(SERVER_SRC, "text === '/status'")], web: [P(PANEL_SRC, '/api/status')] },
   { area: 'gateway', name: 'Slash commands typed into the chat', cli: [P(TUI_SRC, "startsWith\\('/'\\)")], tg: [P(SERVER_SRC, "text === '/status'")], web: [P(PANEL_SRC, 'fromChat'), P(SERVER_SRC, 'runReportCommand')] },
 
   // --------------------------------------------------------- agent loop
-  { area: 'agent', name: 'Tool activity visible while it works', cli: [P(TUI_SRC, 'tool')], tg: { partial: 'only the typing indicator; tool names never shown' }, web: [P(PANEL_SRC, "addEventListener\\('tool:start'")] },
+  { area: 'agent', name: 'Tool activity visible while it works', cli: [P(TUI_SRC, 'tool')], tg: [P(SERVER_SRC, 'makeToolActivity'), P(TG_SRC, 'toolStatusPort')], web: [P(PANEL_SRC, "addEventListener\\('tool:start'")] },
   { area: 'agent', name: 'Progress drafts / partial answers', cli: { probes: [P(TUI_SRC, 'delta')], partial: 'streams deltas; no draft markers' }, tg: { partial: 'the reply arrives whole; no live edit' }, web: [P(PANEL_SRC, "addEventListener\\('draft'")] },
   { area: 'agent', name: 'Subagents: spawn, list, read results', cli: [P(CLI_SRC, "case 'subagents'")], tg: { partial: 'via sessions_spawn tool in chat' }, web: [P(PANEL_SRC, '/api/subagents')] },
-  { area: 'agent', name: 'Steering a live run', cli: { partial: 'config mode=steer only' }, tg: [P(CT, "case '/steer'")], web: [P(SERVER_SRC, "'/api/steer'"), P(PANEL_SRC, 'steerInput')] },
+  { area: 'agent', name: 'Steering a live run', cli: [P(CLI_SRC, "case 'steer'")], tg: [P(CT, "case '/steer'")], web: [P(SERVER_SRC, "'/api/steer'"), P(PANEL_SRC, 'steerInput')] },
 
   // ------------------------------------------------------------ sessions
   { area: 'sessions', name: 'List / switch conversations', cli: [P(CLI_SRC, "case 'sessions'")], tg: [P(SERVER_SRC, "text === '/sessions'")], web: [P(PANEL_SRC, '/api/sessions')] },
@@ -78,8 +78,8 @@ export const CAPABILITIES = [
 
   // ------------------------------------------------------- memory/context
   { area: 'context', name: 'Memory: browse what it knows', cli: [P(CLI_SRC, "case 'memory'")], tg: [P(SERVER_SRC, "text === '/memory'")], web: [P(PANEL_SRC, '/api/memory')] },
-  { area: 'context', name: 'Memory: search it', cli: [P(CLI_SRC, 'search')], tg: [P(SERVER_SRC, '/memory search')], web: [P(PANEL_SRC, '/api/memory/search')] },
-  { area: 'context', name: 'Memory: write a fact by hand', cli: { partial: 'memory user <line> writes USER.md only' }, tg: { partial: 'say "remember …" and the agent calls the tool' }, web: [P(PANEL_SRC, '/api/memory/remember')] },
+  { area: 'context', name: 'Memory: search it', cli: [P(CLI_SRC, 'search')], tg: [P(SERVER_SRC, 'memoryCommand'), P(CR, "startsWith\\('search '")], web: [P(PANEL_SRC, '/api/memory/search')] },
+  { area: 'context', name: 'Memory: write a fact by hand', cli: [P(CLI_SRC, "sub === 'add'"), P(CLI_SRC, 'memory add')], tg: [P(SERVER_SRC, 'memoryCommand'), P(CR, "a === 'add'")], web: [P(PANEL_SRC, '/api/memory/remember')] },
   { area: 'context', name: 'Dreaming / idle consolidation', cli: [P(CLI_SRC, "case 'dream'")], tg: [P(CR, "case '/dream'")], web: [P(PANEL_SRC, '/api/dream')] },
   { area: 'context', name: 'Context report: what the model is sent', cli: [P(CLI_SRC, "case 'context'")], tg: [P(SERVER_SRC, "text === '/context'")], web: [P(SERVER_SRC, "'/api/context'"), P(PANEL_SRC, 'ctxTable')] },
   { area: 'context', name: 'Embeddings: status', cli: [P(CLI_SRC, "case 'embeddings'")], tg: [P(CR, "case '/embeddings'")], web: [P(SERVER_SRC, 'embeddingsStatus'), P(PANEL_SRC, 'embStatus')] },
@@ -87,13 +87,13 @@ export const CAPABILITIES = [
   { area: 'context', name: 'Identity files (SOUL/IDENTITY/USER bootstrap)', cli: [P(CLI_SRC, "case 'bootstrap'")], tg: { partial: '"remember …" writes USER.md; SOUL/IDENTITY are not editable from chat' }, web: [P(SERVER_SRC, "'/api/bootstrap'"), P(PANEL_SRC, 'idFiles')] },
 
   // --------------------------------------------------------------- tools
-  { area: 'tools', name: 'Tool catalog: what the agent can do', cli: { partial: 'context lists schemas; no catalog command' }, tg: { partial: 'ask in chat and the agent answers' }, web: [P(PANEL_SRC, '/api/tools')] },
-  { area: 'tools', name: 'Tool toggles (enable/disable a tool)', cli: { partial: 'config set agent.allowExec etc.' }, tg: { partial: 'config only' }, web: [P(SERVER_SRC, "'/api/tools/toggle'"), P(PANEL_SRC, 'toolToggles')] },
+  { area: 'tools', name: 'Tool catalog: what the agent can do', cli: [P(CLI_SRC, "case 'tools'")], tg: [P(CT, "case '/tools'")], web: [P(PANEL_SRC, '/api/tools')] },
+  { area: 'tools', name: 'Tool toggles (enable/disable a tool)', cli: [P(CLI_SRC, "'--enable'"), P(CLI_SRC, "'--disable'")], tg: [P(SERVER_SRC, 'switchKeyFor')], web: [P(SERVER_SRC, "'/api/tools/toggle'"), P(PANEL_SRC, 'toolToggles')] },
   { area: 'tools', name: 'Shell / files / web tools in conversation', cli: { partial: "the agent's own exec/read/web tools" }, tg: { partial: "the agent's own tools in a turn" }, web: { partial: "the agent's own tools in a turn" } },
   { area: 'tools', name: 'Browser automation', cli: [P(CLI_SRC, "case 'browser'")], tg: { partial: 'agent tool in chat' }, web: { partial: 'agent tool in chat; no browser panel' } },
-  { area: 'tools', name: 'Image generation', cli: [P(CLI_SRC, "case 'image'")], tg: { partial: 'agent tool in chat' }, web: { partial: 'agent tool in chat; no button' } },
-  { area: 'tools', name: 'Send a file back to a chat', cli: { partial: 'needs a channel to send into' }, tg: [P(TG_SRC, 'sendDocument')], web: { partial: 'send_file reaches the panel as a path, not a download' } },
-  { area: 'tools', name: 'Document extraction (PDF/DOCX/XLSX in)', cli: { partial: 'no command; agent reads text files only' }, tg: [P(TG_SRC, 'fetchIncoming')], web: { partial: 'attach accepts text types only' } },
+  { area: 'tools', name: 'Image generation', cli: [P(CLI_SRC, "case 'image'")], tg: { partial: 'agent tool in chat' }, web: [P(PANEL_SRC, 'imgGo'), P(PANEL_SRC, "api\\('/api/image'")] },
+  { area: 'tools', name: 'Send a file back to a chat', cli: { partial: 'needs a channel to send into' }, tg: [P(TG_SRC, 'sendDocument')], web: [P(PANEL_SRC, 'refreshSentFiles'), P(PANEL_SRC, "'/api/sent-files/'")] },
+  { area: 'tools', name: 'Document extraction (PDF/DOCX/XLSX in)', cli: { partial: 'no command; agent reads text files only' }, tg: [P(TG_SRC, 'fetchIncoming')], web: { probes: [P(PANEL_SRC, '/api/extract')], partial: 'the panel reads PDF/DOCX text on attach; the CLI has no extract verb yet' } },
   { area: 'skills', name: 'Skills: list / import / create / proposals', cli: [P(CLI_SRC, "case 'skills'")], tg: [P(CR, 'skillsDecide'), P(CR, 'skillShow'), P(SERVER_SRC, 'skills:approve:')], web: [P(PANEL_SRC, '/api/skills')] },
 
   // ---------------------------------------------------------- automation
