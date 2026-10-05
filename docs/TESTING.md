@@ -71,9 +71,9 @@ The whole suite: **111 files, 1125 test cases, 178.8 s** (budget 240 s; no file 
 ## The measurement
 
 <!-- coverage:begin -->
-**Measured 2026-10-05:** **87.51%** of the lines in `src/` are executed by the
-suite (77.73% of branches, 86.92% of functions), across
-**1125 test cases in 111 files**. The floor is 80% and it is enforced:
+**Measured 2026-10-05:** **87.52%** of the lines in `src/` are executed by the
+suite (77.73% of branches, 86.87% of functions), across
+**1127 test cases in 112 files**. The floor is 80% and it is enforced:
 `node scripts/coverage.mjs --check` also verifies that the recording was made on *this* source.
 
 | Lowest coverage in `src/` | lines |
@@ -88,8 +88,8 @@ suite (77.73% of branches, 86.92% of functions), across
 | `mobile/notify.ts` | 55.17% |
 | `mobile/boot.ts` | 55.56% |
 | `core/friendly.ts` | 58.59% |
-| `channels/cli.ts` | 61.3% |
 | `mobile/onboard.ts` | 61.44% |
+| `channels/cli.ts` | 61.46% |
 
 Those are the files the suite touches least. They are named here on purpose: on a phone, the
 cheapest next step is whichever of them your next bug lands in.

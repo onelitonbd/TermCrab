@@ -99,7 +99,7 @@ export const CAPABILITIES = [
   // ---------------------------------------------------------- automation
   { area: 'automation', name: 'Cron jobs: list / add / run', cli: [P(CLI_SRC, "case 'cron'")], tg: [P(CR, 'cronAddReport'), P(CR, 'parseCronAdd')], web: [P(PANEL_SRC, '/api/crons')] },
   { area: 'automation', name: 'Heartbeat: run a self-check now', cli: [P(CLI_SRC, "case 'heartbeat'")], tg: [P(SERVER_SRC, "text === '/heartbeat'")], web: [P(PANEL_SRC, '/api/heartbeat')] },
-  { area: 'automation', name: 'Watchers / file triggers', cli: { partial: 'config set only' }, tg: [P(CT, "case '/watch'")], web: [P(SERVER_SRC, "'/api/watchers'"), P(PANEL_SRC, 'wtAdd')] },
+  { area: 'automation', name: 'Watchers / file triggers', cli: [P(CLI_SRC, "case 'watch'")], tg: [P(CT, "case '/watch'")], web: [P(SERVER_SRC, "'/api/watchers'"), P(PANEL_SRC, 'wtAdd')] },
   { area: 'automation', name: 'Standing orders', cli: [P(CLI_SRC, "case 'orders'")], tg: [P(SERVER_SRC, "text === '/orders'")], web: [P(CR, "cmd: '/orders'[^}]*Standing orders")] },
 
   // ---------------------------------------------------------------- voice

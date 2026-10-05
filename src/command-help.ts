@@ -596,6 +596,14 @@ export const COMMANDS: CommandDoc[] = [
     json: '{count, events:[{name, what, hooks:[id]}]}',
   },
   {
+    cmd: 'watch',
+    usage: 'watch [list | add <path> [suffixes] | rm <id>]',
+    summary: 'manage file watchers that fire file.changed — the same config.watchers store the chat /watch and the panel Tools card write',
+    flags: ['add <path> [.md,.txt]   watch a path (optional comma-separated suffixes) and print its id', 'list                  show the watchers and their ids', 'rm <id>               stop a watcher by id', '--json               list as {watchers:[{id,path,match}]}'],
+    example: 'termcrab watch add ~/notes .md',
+    json: '{watchers:[{id, path, match}]} (or {added}/{removed})',
+  },
+  {
     cmd: 'logs',
     usage: 'logs [n] [--json|--path]',
     summary: 'the last n records from logs/termcrab.jsonl (rotation is built in)',

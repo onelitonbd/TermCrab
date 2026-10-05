@@ -1674,6 +1674,55 @@ ${rejected.length} rejected (kept in skills/_rejected/): ${rejected.map((r) => r
       return;
     }
 
+    case 'watch': {
+      // 54.1: the CLI reaches the same `config.watchers` store the chat `/watch`
+      // and the panel Tools card write, so a watcher added anywhere is seen
+      // everywhere (and `file.changed` still fires). Reads the disk config and
+      // writes it back through saveConfig — identical to watchCommand() in
+      // chat-control.ts, just without a live gateway in the loop.
+      const cfg = loadConfig();
+      const watchers = [...(cfg.watchers ?? [])];
+      const [action, ...restParts] = rest;
+      const sub = (action ?? 'list').toLowerCase();
+      const restStr = restParts.join(' ').trim();
+      if (sub === 'list' || sub === '') {
+        if (machine) { emitJson('watch', { watchers: watchers.map((w) => ({ id: w.id, path: w.path, match: w.match ?? null })) }); return; }
+        if (!watchers.length) { console.log('👀 no watchers — add one: termcrab watch add ~/notes .md'); return; }
+        console.log(`👀 ${watchers.length} watcher(s)`);
+        for (const w of watchers) console.log(`  ${w.id}  ${w.path}${w.match ? ` · ${w.match}` : ''}`);
+        return;
+      }
+      if (sub === 'rm' || sub === 'remove') {
+        const id = restStr;
+        if (!id) { if (machine) failJson('watch', 'usage: termcrab watch rm <id>'); else console.error('usage: termcrab watch rm <id>'); process.exitCode = 1; return; }
+        const left = watchers.filter((w) => w.id !== id);
+        if (left.length === watchers.length) { if (machine) failJson('watch', `no watcher with id ${id}`); else console.error(`watch: no watcher with id ${id}`); process.exitCode = 1; return; }
+        cfg.watchers = left;
+        saveConfig(cfg);
+        if (machine) emitJson('watch', { removed: id, remaining: left.length });
+        else console.log(`👀 removed watcher ${id} (${watchers.length - left.length} gone)`);
+        return;
+      }
+      if (sub === 'add') {
+        const [rawPath, match] = restStr.split(/\s+/);
+        if (!rawPath) { if (machine) failJson('watch', 'usage: termcrab watch add <path> [suffixes like .md,.txt]'); else console.error('usage: termcrab watch add <path> [suffixes like .md,.txt]'); process.exitCode = 1; return; }
+        const id = `w${Date.now().toString(36)}`;
+        watchers.push({ id, path: rawPath, ...(match ? { match } : {}) });
+        cfg.watchers = watchers;
+        saveConfig(cfg);
+        if (machine) emitJson('watch', { added: { id, path: rawPath, match: match ?? null } });
+        else {
+          console.log(`👀 watching ${rawPath}${match ? ` (${match})` : ''} as ${id} — a change fires file.changed, which hooks hear`);
+          console.log(`   remove: termcrab watch rm ${id}`);
+        }
+        return;
+      }
+      if (machine) failJson('watch', 'usage: termcrab watch [list | add <path> [suffixes] | rm <id>]');
+      else console.error('usage: termcrab watch [list | add <path> [suffixes] | rm <id>]');
+      process.exitCode = 1;
+      return;
+    }
+
     case 'image': {
       // 26.2: create an image from a prompt. A configured image endpoint is
       // used when there is one; otherwise the mock provider draws a real,

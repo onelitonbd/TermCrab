@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-04",
+  "measuredAt": "2026-10-05",
   "commands": [
     "help",
     "completion",
@@ -25,6 +25,7 @@
     "runs",
     "presence",
     "events",
+    "watch",
     "image",
     "models",
     "auth",
@@ -165,168 +166,173 @@
       "runs": 3
     },
     {
-      "command": "image",
+      "command": "watch",
       "line": 1677,
+      "runs": 7
+    },
+    {
+      "command": "image",
+      "line": 1726,
       "runs": 1
     },
     {
       "command": "models",
-      "line": 1721,
+      "line": 1770,
       "runs": 1
     },
     {
       "command": "auth",
-      "line": 1761,
+      "line": 1810,
       "runs": 4
     },
     {
       "command": "orders",
-      "line": 1866,
+      "line": 1915,
       "runs": 5
     },
     {
       "command": "logs",
-      "line": 1931,
+      "line": 1980,
       "runs": 3
     },
     {
       "command": "backup",
-      "line": 2041,
+      "line": 2090,
       "runs": 2
     },
     {
       "command": "restore",
-      "line": 2059,
+      "line": 2108,
       "runs": 3
     },
     {
       "command": "service",
-      "line": 2127,
+      "line": 2176,
       "runs": 1
     },
     {
       "command": "bootstrap",
-      "line": 2150,
+      "line": 2199,
       "runs": 3
     },
     {
       "command": "schema",
-      "line": 2182,
+      "line": 2231,
       "runs": 3
     },
     {
       "command": "perf",
-      "line": 2204,
+      "line": 2253,
       "runs": 18
     },
     {
       "command": "suite-time",
-      "line": 2302,
+      "line": 2351,
       "runs": 2
     },
     {
       "command": "work",
-      "line": 2324,
+      "line": 2373,
       "runs": 3
     },
     {
       "command": "disk",
-      "line": 2372,
+      "line": 2421,
       "runs": 4
     },
     {
       "command": "status",
-      "line": 2411,
+      "line": 2460,
       "runs": 3
     },
     {
       "command": "wake",
-      "line": 2451,
+      "line": 2500,
       "runs": 1
     },
     {
       "command": "sessions",
-      "line": 2489,
+      "line": 2538,
       "runs": 13
     },
     {
       "command": "subagents",
-      "line": 2694,
+      "line": 2743,
       "runs": 3
     },
     {
       "command": "agents",
-      "line": 2755,
+      "line": 2804,
       "runs": 6
     },
     {
       "command": "docs",
-      "line": 2838,
+      "line": 2887,
       "runs": 17
     },
     {
       "command": "security",
-      "line": 2904,
+      "line": 2953,
       "runs": 4
     },
     {
       "command": "board",
-      "line": 2927,
+      "line": 2976,
       "runs": 2
     },
     {
       "command": "rooms",
-      "line": 2942,
+      "line": 2991,
       "runs": 4
     },
     {
       "command": "browser",
-      "line": 3022,
+      "line": 3071,
       "runs": 5
     },
     {
       "command": "transcribe",
-      "line": 3089,
+      "line": 3138,
       "runs": 1
     },
     {
       "command": "embeddings",
-      "line": 3123,
+      "line": 3172,
       "runs": 6
     },
     {
       "command": "context",
-      "line": 3183,
+      "line": 3232,
       "runs": 1
     },
     {
       "command": "memory",
-      "line": 3203,
+      "line": 3252,
       "runs": 9
     },
     {
       "command": "tools",
-      "line": 3345,
+      "line": 3394,
       "runs": 4
     },
     {
       "command": "canvas",
-      "line": 3400,
+      "line": 3449,
       "runs": 5
     },
     {
       "command": "queue",
-      "line": 3457,
+      "line": 3506,
       "runs": 5
     },
     {
       "command": "steer",
-      "line": 3489,
+      "line": 3538,
       "runs": 1
     },
     {
       "command": "config",
-      "line": 3533,
+      "line": 3582,
       "runs": 4
     }
   ],
@@ -357,25 +363,25 @@
     },
     {
       "command": "pair",
-      "line": 1964,
+      "line": 2013,
       "why": "the pairing code is printed for a device that has to answer — the HTTP flow is tested live instead",
       "instead": "test/tier2i.test.ts"
     },
     {
       "command": "devices",
-      "line": 1988,
+      "line": 2037,
       "why": "same flow: the paired-device list and revocation are asserted over a real socket",
       "instead": "test/tier2i.test.ts"
     },
     {
       "command": "dream",
-      "line": 2422,
+      "line": 2471,
       "why": "a long background consolidation pass; the same store is exercised by the library tests",
       "instead": "test/dream.test.ts"
     },
     {
       "command": "boot",
-      "line": 3519,
+      "line": 3568,
       "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
       "instead": "test/tier2w.test.ts"
     }
@@ -436,6 +442,7 @@
     "tools": 4,
     "canvas": 5,
     "queue": 5,
-    "steer": 1
+    "steer": 1,
+    "watch": 7
   }
 }
