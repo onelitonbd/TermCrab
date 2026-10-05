@@ -15,7 +15,8 @@ function makeCtx(): { ctx: AgentCtx; home: string } {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tloop-'));
   process.env.TCRAB_HOME = home;
   const config = defaults();
-  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
+  // The offline brain: these tests are about the loop, not about HTTP.
+  config.provider = { type: 'mock', model: 'mock-1' };
   const memory = new MemoryStore(path.join(home, 'memory'));
   const sessions = new SessionStore(path.join(home, 'sessions'));
   const skillRoot = path.join(home, 'skills');
@@ -62,7 +63,10 @@ test('exec tool blocked when allowExec=false', async () => {
   ctx.config.agent.allowExec = false;
   const tools = await buildTools({ config: ctx.config, memory: ctx.memory, skills: ctx.skills });
   const exec = tools.find((t) => t.def.name === 'exec')!;
-  await assert.rejects(() => exec.execute({ command: 'echo hi' }), /disabled/);
+  // 22.1: a refusal is a sentence the model can read, not a rejected promise.
+  const out = await exec.execute({ command: 'echo hi' });
+  assert.match(out, /exec is disabled/);
+  assert.match(out, /allowExec/);
 });
 
 test('path guard blocks traversal outside roots', () => {

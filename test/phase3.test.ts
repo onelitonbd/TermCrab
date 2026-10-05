@@ -160,13 +160,23 @@ test('phase 3: wake service + wizard + update button', async (t) => {
       assert.ok(!JSON.stringify(get.data).includes(secret));
     });
 
-    await t.test('wizard: submitting empty key flags setup needed', async () => {
+    await t.test('wizard: an empty key never wipes a saved one', async () => {
+      const res = await req('/api/onboard', 'POST', { provider: 'openai', apiKey: '', model: '', baseUrl: '' });
+      assert.equal(res.status, 200);
+      assert.equal(res.data.providerType, 'openai');
+      assert.equal(res.data.setupNeeded, false, 'a blank field must not clear the saved key');
+      assert.equal(loadConfig().provider.apiKey, 'sk-wizard-secret-987654321');
+    });
+
+    await t.test('wizard: no key and a remote endpoint reports setup needed', async () => {
+      // Same server, emptied the way a fresh install looks.
+      config.provider.apiKey = '';
+      config.provider.baseUrl = '';
       const res = await req('/api/onboard', 'POST', { provider: 'openai', apiKey: '', model: '', baseUrl: '' });
       assert.equal(res.status, 200);
       assert.equal(res.data.providerType, 'openai');
       assert.equal(res.data.setupNeeded, true);
-      const cfg = loadConfig();
-      assert.equal(cfg.provider.type, 'openai');
+      assert.equal(loadConfig().provider.type, 'openai');
     });
   } finally {
     await handle.stop();

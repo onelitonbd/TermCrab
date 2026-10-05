@@ -10,7 +10,11 @@ import { MemoryStore } from './memory.js';
 import { SkillStore } from '../skills/loader.js';
 import { spawn } from 'node:child_process';
 import { extraTools } from './toolbox.js';
+import { guardToolExecute } from './tool-schema.js';
+import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, runCommand } from './exec-guard.js';
+import { sandboxFor } from './sandbox.js';
 import { ToolDef } from '../providers/types.js';
+import { browserStatus, CdpBrowser } from './cdp.js';
 import { createMcpClient, mcpToolsToDefs, McpClient, McpTool } from '../providers/mcp.js';
 
 const execFileAsync = promisify(execFile);
@@ -28,15 +32,42 @@ export interface ToolEnv {
   sessionId?: string;
   /** Human-readable provider label for session_status. */
   providerLabel?: string;
+  /**
+   * How much a fact written by this run may be trusted (18.2). A chat from the
+   * owner is `owner`; anything the agent writes itself is `agent`; text that
+   * came in through a tool result (a web page, a file a stranger sent) is
+   * `untrusted`, and the prompt then warns the model to treat it as data.
+   */
+  memoryOrigin?: 'owner' | 'agent' | 'system' | 'untrusted';
+  /** Where this run came from, recorded on every fact it writes. */
+  runSource?: string;
   /** Spawn a background subagent turn (wired by the agent loop). */
-  spawnTask?: (sessionId: string, prompt: string) => import('./tasks.js').Task;
+  spawnTask?: (
+    sessionId: string,
+    prompt: string,
+    opts?: { agent?: string; cwd?: string; label?: string; scratch?: boolean },
+  ) => import('./tasks.js').Task;
   /** MCP clients keyed by server name (wired by the agent loop). */
   mcpClients?: Map<string, McpClient>;
+  /**
+   * 34.3: the room this turn came from (`channel` + chat id), when it came from
+   * a chat surface. `room_history` uses it to mean "here" without asking.
+   */
+  channel?: string;
+  chatId?: string;
 }
 
 export interface Tool {
   def: ToolDef;
   execute(args: Record<string, unknown>): Promise<string>;
+  /**
+   * True only for tools that cannot change anything: no writes, no shell, no
+   * messages, no approvals. The loop may run several of these at once when a
+   * model asks for them in one turn (27.1). Everything else stays sequential,
+   * because "two mutations in a batch" has no defined order — and the model
+   * did not give one.
+   */
+  parallelSafe?: boolean;
 }
 
 const MAX_OUTPUT = 20_000;
@@ -179,6 +210,20 @@ export function htmlToText(html: string): string {
   return text;
 }
 
+/**
+ * Tools whose only effect is reading (27.1). Kept as one table so the decision
+ * is auditable in a single place; the tests check that every name here really
+ * exists, so a rename cannot silently disable batching.
+ */
+export const PARALLEL_SAFE_TOOLS: readonly string[] = [
+  'get_time', 'list_dir', 'read_file', 'view_image',
+  'web_search', 'web_fetch',
+  'search_memory', 'load_skill',
+  'sessions_list', 'sessions_history', 'sessions_search', 'session_status',
+  'conversations_list', 'inbox_list', 'inbox_read',
+  'battery', 'wifi_info', 'location', 'github_identity_status',
+] as const;
+
 export async function buildTools(env: ToolEnv): Promise<Tool[]> {
   const roots = [home(), process.cwd(), ...(env.extraRoots ?? [])];
   const tools: Tool[] = [];
@@ -268,7 +313,9 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
     },
     async execute(args) {
       if (!env.config.agent.allowExec) {
-        throw new Error('exec is disabled (set agent.allowExec=true in config to enable)');
+        // 22.1: a refusal is a result the model can read, not a crash it can
+        // only see as "the tool failed".
+        return 'exec is disabled — the owner can turn it on with: termcrab config set agent.allowExec true';
       }
       const command = str(args, 'command');
       if (args.background === true) {
@@ -291,41 +338,64 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
         });
         return `[background] id=${id} pid=${rec.pid} — read output with the process tool`;
       }
-      const timeout = Math.min(typeof args.timeoutSec === 'number' ? args.timeoutSec * 1000 : 30_000, 120_000);
-      const shell = resolveShell();
-      try {
-        const { stdout, stderr } = await execFileAsync(shell, ['-c', command], {
-          timeout,
-          maxBuffer: 4 * 1024 * 1024,
-          cwd: process.cwd(),
-          env: process.env,
-        });
-        const parts: string[] = [];
-        if (stdout) parts.push(stdout);
-        if (stderr) parts.push(`[stderr]\n${stderr}`);
-        return clip(parts.join('\n') || '(no output)');
-      } catch (err) {
-        const e = err as { stdout?: string; stderr?: string; message?: string };
-        return clip(
-          `exit error: ${e.message ?? 'failed'}${e.stdout ? `\n[stdout]\n${e.stdout}` : ''}${e.stderr ? `\n[stderr]\n${e.stderr}` : ''}`,
-        );
+      // 22.1: the guard decides what is refusal-worthy (catastrophe, not
+      // policy), the timeout always kills and says how long it waited.
+      const defaultSec = env.config.agent.execTimeoutSec ?? DEFAULT_TIMEOUT_MS / 1000;
+      const askedSec = typeof args.timeoutSec === 'number' ? args.timeoutSec : defaultSec;
+      // 30.1: fit the sandbox around the command before anything spawns. The
+      // argv is built as an array (never a shell string) and `require` refuses
+      // loudly instead of quietly running with full access.
+      const decision = sandboxFor(env.config, command, {
+        cwd: process.cwd(),
+        shell: resolveShell(),
+        network: env.config.agent.sandboxNetwork === true,
+        extraWrites: env.config.agent.sandboxWrites,
+      });
+      if (decision.refuse) {
+        log.warn(`exec refused (sandbox required): ${command.slice(0, 120)}`);
+        return clip(decision.reason);
       }
+      const result = await runCommand(command, resolveShell(), {
+        timeoutMs: Math.min(askedSec * 1000, MAX_TIMEOUT_MS),
+        maxOutputChars: MAX_OUTPUT,
+        cwd: process.cwd(),
+        extraDeny: env.config.agent.execDenyPatterns,
+        allowDangerous: env.config.agent.execAllowDangerous === true,
+        sandbox: {
+          command: decision.plan.command,
+          args: decision.plan.args,
+          note: decision.plan.note,
+          isolated: decision.plan.isolated,
+        },
+      });
+      if (result.refused) log.warn(`exec refused a command: ${command.slice(0, 120)}`);
+      // The transcript says how it ran: "no sandbox available" must never be
+      // something the owner has to guess.
+      const note = decision.plan.isolated ? '' : `[sandbox] ${decision.plan.note}\n`;
+      return clip(note + result.output);
     },
   });
 
   tools.push({
     def: {
       name: 'load_skill',
-      description: 'Load the full instructions of a skill by name into context. Check the skills index first.',
+      description:
+        'Read the full instructions of a skill by name (the prompt index carries only names and one line each, so this is how the body gets into context). Check the skills index first.',
       schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
     },
     async execute(args) {
-      const skill = env.skills.get(str(args, 'name'));
+      const asked = str(args, 'name').trim();
+      // 34.2: the model sometimes capitalises a name it read in the index; the
+      // loader is case-sensitive by design, the tool need not be.
+      const ciHit = env.skills.list().find((s) => s.name.toLowerCase() === asked.toLowerCase());
+      const skill = env.skills.get(asked) ?? (ciHit ? env.skills.get(ciHit.name) : null);
       if (!skill) {
-        const available = env.skills.list().map((s) => s.name).join(', ');
-        throw new Error(`skill not found. available: ${available || '(none)'}`);
+        const names = env.skills.list().map((s) => s.name);
+        const shown = names.slice(0, 24).join(', ');
+        const more = names.length > 24 ? `, … (${names.length} installed)` : '';
+        throw new Error(`skill not found: ${asked}. available: ${shown || '(none)'}${more}`);
       }
-      return `# Skill: ${skill.name}\n\n${skill.content}`;
+      return `# Skill: ${skill.name} [${skill.origin}]\n\n${skill.content.trim()}`;
     },
   });
 
@@ -333,23 +403,60 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
     def: {
       name: 'remember',
       description: 'Store a durable fact in long-term memory (MEMORY.md). Use for preferences, people, projects.',
-      schema: { type: 'object', properties: { fact: { type: 'string' } }, required: ['fact'] },
+      schema: {
+        type: 'object',
+        properties: {
+          fact: { type: 'string' },
+          origin: {
+            type: 'string',
+            enum: ['owner', 'agent', 'system', 'untrusted'],
+            description: 'who said it (default: the run\'s own origin — owner for a chat message)',
+          },
+        },
+        required: ['fact'],
+      },
     },
     async execute(args) {
-      return env.memory.remember(str(args, 'fact'));
+      const origin = (typeof args.origin === 'string' ? args.origin : env.memoryOrigin) as
+        | 'owner' | 'agent' | 'system' | 'untrusted' | undefined;
+      return env.memory.remember(str(args, 'fact'), { origin, source: env.runSource });
     },
   });
 
   tools.push({
     def: {
       name: 'search_memory',
-      description: 'Search long-term memory and daily logs. Returns matching lines.',
+      description:
+        'Search long-term memory, the user model and daily logs. Results are ranked (exact phrases and recent facts first) ' +
+        'and each one says where it came from.',
       schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
     },
     async execute(args) {
-      const hits = await env.memory.search(str(args, 'query'));
+      const hits = await env.memory.searchDetailed(str(args, 'query'));
       if (!hits.length) return 'no matches';
-      return clip(hits.map((h) => `[${h.file}] ${h.line}`).join('\n'));
+      return clip(
+        hits
+          .map((h) => {
+            const where = `${h.file}${h.lineNo ? `:${h.lineNo}` : ''}`;
+            const trust = h.origin && h.origin !== 'agent' ? ` [${h.origin}]` : '';
+            const when = h.when ? ` (${h.when})` : '';
+            return `${h.score.toFixed(2)}  ${where}${when}${trust}  ${h.snippet}`;
+          })
+          .join('\n'),
+      );
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'update_user',
+      description:
+        'Add one line to USER.md — what you know about the owner (name, timezone, how they like answers, ' +
+        'their devices). This is the owner\'s own file and is always in your prompt.',
+      schema: { type: 'object', properties: { line: { type: 'string' } }, required: ['line'] },
+    },
+    async execute(args) {
+      return env.memory.rememberUser(str(args, 'line'));
     },
   });
 
@@ -449,19 +556,22 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
     },
   });
 
-  // ---- browser tool (CDP-based, read-only) ----
+  // ---- browser tool: a real CDP session against the owner's own browser (34.1) ----
   if (env.config.agent.allowBrowser) {
     tools.push({
       def: {
         name: 'browser',
-        description: 'Control a web browser via Chrome DevTools Protocol (CDP). Read-only: navigate, screenshot, extract text, click, fill forms. Requires a running Chrome/Chromium with --remote-debugging-port.',
+        description:
+          'Drive a real Chrome/Chromium over the DevTools Protocol: navigate, read the page text, click, fill a form, take a screenshot. ' +
+          'Needs a browser started with a debug port (status says which, and how). Read-only in spirit: no passwords, no downloads.',
         schema: {
           type: 'object',
           properties: {
-            action: { type: 'string', enum: ['navigate', 'screenshot', 'text', 'click', 'fill', 'status'] },
-            url: { type: 'string', description: 'navigate: URL to visit' },
+            action: { type: 'string', enum: ['navigate', 'text', 'click', 'fill', 'screenshot', 'tabs', 'status'] },
+            url: { type: 'string', description: 'navigate: http/https URL to visit' },
             selector: { type: 'string', description: 'click/fill: CSS selector' },
-            text: { type: 'string', description: 'fill: text to type' },
+            text: { type: 'string', description: 'fill: the text to type' },
+            submit: { type: 'boolean', description: 'fill: press Enter afterwards (default false)' },
             width: { type: 'number', description: 'screenshot: viewport width (default 1280)' },
             height: { type: 'number', description: 'screenshot: viewport height (default 720)' },
           },
@@ -470,38 +580,53 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
       },
       async execute(args) {
         const action = str(args, 'action');
-        if (action === 'status') {
-          const running = await isCdpAvailable();
-          return running ? 'browser: CDP available' : 'browser: no Chrome/Chromium with --remote-debugging-port found';
+
+        if (action === 'status' || action === 'tabs') {
+          const st = await browserStatus();
+          if (!st.available) return `browser: ${st.hint}`;
+          const lines = st.tabs.map((tab, i) => `  ${i + 1}. ${tab.title || '(untitled)'} — ${tab.url}`);
+          return [`browser: ${st.browser ?? 'connected'}`, `${st.tabs.length} tab(s):`, ...lines].join('\n');
         }
-        if (action === 'navigate') {
-          const url = str(args, 'url');
-          if (!/^https?:\/\//i.test(url)) throw new Error('only http/https URLs are allowed');
-          const result = await cdpNavigate(url);
-          return `navigated to ${url}: ${result}`;
+
+        // Arguments are checked before a browser is needed: a bad argument is
+        // the caller's mistake and must not read as "no browser found".
+        const url = action === 'navigate' ? str(args, 'url') : '';
+        if (action === 'navigate' && !/^https?:\/\//i.test(url)) {
+          throw new Error('only http/https URLs are allowed');
         }
-        if (action === 'screenshot') {
-          const width = typeof args.width === 'number' ? args.width : 1280;
-          const height = typeof args.height === 'number' ? args.height : 720;
-          const result = await cdpScreenshot(width, height);
-          return result;
+        if (action !== 'navigate' && !['text', 'click', 'fill', 'screenshot'].includes(action)) {
+          throw new Error('action must be navigate/text/click/fill/screenshot/tabs/status');
         }
-        if (action === 'text') {
-          const result = await cdpGetText();
-          return clip(result, 20_000);
+
+        const browser = await CdpBrowser.attach();
+        try {
+          if (action === 'navigate') {
+            const r = await browser.navigate(url);
+            return `navigated to ${r.url}${r.title ? ` — "${r.title}"` : ''}${r.loaded ? '' : ' (load event did not arrive in time; the text may still be usable)'}`;
+          }
+          if (action === 'text') {
+            const body = await browser.text(20_000);
+            return body.trim() ? clip(body, 20_000) : '(the page has no readable text)';
+          }
+          if (action === 'click') {
+            return `clicked ${await browser.click(str(args, 'selector'))}`;
+          }
+          if (action === 'fill') {
+            const selector = str(args, 'selector');
+            const text = str(args, 'text');
+            const what = await browser.fill(selector, text, args.submit === true);
+            return `filled ${what} with ${text.length} character(s)${args.submit === true ? ' and pressed Enter' : ''}`;
+          }
+          if (action === 'screenshot') {
+            const width = typeof args.width === 'number' ? args.width : 1280;
+            const height = typeof args.height === 'number' ? args.height : 720;
+            const shot = await browser.screenshot(width, height);
+            return `screenshot ${shot.width}x${shot.height} saved to ${shot.file} (${Math.round(shot.bytes / 1024)} KB)`;
+          }
+          throw new Error('unreachable action');
+        } finally {
+          await browser.close();
         }
-        if (action === 'click') {
-          const selector = str(args, 'selector');
-          const result = await cdpClick(selector);
-          return `clicked ${selector}: ${result}`;
-        }
-        if (action === 'fill') {
-          const selector = str(args, 'selector');
-          const text = str(args, 'text');
-          const result = await cdpFill(selector, text);
-          return `filled ${selector} with "${text}": ${result}`;
-        }
-        throw new Error('action must be navigate/screenshot/text/click/fill/status');
       },
     });
   }
@@ -554,106 +679,19 @@ export async function buildTools(env: ToolEnv): Promise<Tool[]> {
 
   tools.push(...extraTools(env));
 
-  return tools;
+  // 22.2: every tool's declared schema is enforced at the boundary, once, for
+  // every caller — a malformed argument comes back as a sentence, not a crash.
+  // One audit point, after every family has pushed its tools.
+  const safe = new Set(PARALLEL_SAFE_TOOLS);
+  for (const t of tools) if (safe.has(t.def.name)) t.parallelSafe = true;
+
+  return tools.map((tool) => guardToolExecute(tool));
 }
 
 export function batteryHint(): string {
   // informational helper used by doctor/power (kept out of LLM tools to save tokens)
   const bin = process.env.PREFIX ? `${process.env.PREFIX}/bin/termux-battery-status` : 'termux-battery-status';
   return bin;
-}
-
-// ---------------------------------------------------------------------------
-// CDP browser helpers (read-only, no Playwright dependency)
-// ---------------------------------------------------------------------------
-
-const CDP_PORT = 9222;
-
-async function isCdpAvailable(): Promise<boolean> {
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function cdpGetTarget(): Promise<string | null> {
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (!res.ok) return null;
-    const targets = (await res.json()) as { webSocketDebuggerUrl?: string; type?: string }[];
-    const page = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
-    return page?.webSocketDebuggerUrl ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function cdpSend(wsUrl: string, method: string, params?: Record<string, unknown>): Promise<unknown> {
-  // Use the HTTP-based CDP endpoint for simple commands
-  // For full WebSocket CDP, we'd need a ws library — keep it simple for now
-  const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/protocol`, {
-    signal: AbortSignal.timeout(5000),
-  });
-  if (!res.ok) throw new Error('CDP not available');
-  // Fallback: use the /json/new endpoint for navigation
-  void wsUrl;
-  void method;
-  void params;
-  return null;
-}
-
-async function cdpNavigate(url: string): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found — start Chrome with --remote-debugging-port=9222');
-  // Use the HTTP endpoint to navigate
-  const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/navigate?${encodeURIComponent(url)}`, {
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`navigation failed: HTTP ${res.status}`);
-  return 'ok';
-}
-
-async function cdpScreenshot(width: number, height: number): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  // Return a placeholder — full screenshot requires WebSocket CDP
-  return `[browser] screenshot ${width}x${height} (requires WebSocket CDP — use browser text for content)`;
-}
-
-async function cdpGetText(): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  // Use the /json/evaluate endpoint if available, otherwise return placeholder
-  try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/evaluate?expression=document.body.innerText`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { result?: { value?: string } };
-      return data.result?.value ?? '';
-    }
-  } catch {
-    /* fall through */
-  }
-  return '[browser] text extraction requires WebSocket CDP';
-}
-
-async function cdpClick(selector: string): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  return `clicked ${selector} (requires WebSocket CDP for full interaction)`;
-}
-
-async function cdpFill(selector: string, text: string): Promise<string> {
-  const target = await cdpGetTarget();
-  if (!target) throw new Error('no browser tab found');
-  return `filled ${selector} with "${text}" (requires WebSocket CDP for full interaction)`;
 }
 
 // ---------------------------------------------------------------------------

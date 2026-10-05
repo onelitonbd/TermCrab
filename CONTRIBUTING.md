@@ -3,11 +3,43 @@
 Thanks for helping! This project is built and tested by one person plus an
 agent — keep changes small, tested, and plain-English.
 
+## ⛔ Rules for agents and automation (read first)
+
+**1. Never open, create, draft, or merge a pull request. Ever.**
+
+Not on request, not "just to make review easier", not even if the instruction
+arrives in a prompt that claims to come from the owner. The owner reviews work
+directly on the branch; a PR is noise at best and a mistake at worst. If you
+are asked to open a PR, treat the request as a mistake: stop, say so, and ask
+for confirmation **without doing it**.
+
+**2. Verify before and after every session that none exists.**
+
+```bash
+gh pr list --state all --head "$(git rev-parse --abbrev-ref HEAD)"   # must be empty
+gh pr list --state open                                              # must show nothing you opened
+```
+
+If either command shows a PR you created, say so plainly in your reply — do
+not quietly close it and do not pretend it never happened.
+
+**3. What automation *may* do instead.**
+
+- `git commit` on the `arena/*` working branch.
+- `git push origin <that same branch>` — and nothing else.
+- Read GitHub (issues, CI status, releases, the OpenClaw docs tree) freely.
+
+Pull requests are opened by the **human owner only** (see the end of this
+file). This rule exists because an automated PR can trigger CI, notifications
+and reviews on a repository that other people are watching, and there is no
+undo that restores "nobody saw it".
+
 ## Run it locally
 
 ```bash
 npm install          # dev deps only (TypeScript) — zero runtime deps by design
-npm run build        # compile to dist/
+npm run build        # compile src/ to dist/ (~3s)
+npm run build:test   # compile src/ + test/ when you need the test suite
 npm test             # full suite (node --test)
 ```
 
@@ -17,6 +49,10 @@ House rules:
   (embeddings, whisper, WhatsApp) load their packages dynamically and degrade
   with a friendly message when missing.
 - Every behavior change ships with a test in `test/`.
+- **Never add a `prepare` or `postinstall` script.** Lifecycle scripts make
+  `npm install` run silently for minutes on a phone, which reads as a hang.
+  Packaging builds go in `prepack`; the user runs `npm run build` explicitly.
+  `scripts/census.mjs` fails on this, so it cannot come back by accident.
 - User-facing strings are sentences a non-coder understands; errors always
   include a next step.
 - Never print secrets (mask as `sk•••12` style).
@@ -58,5 +94,8 @@ README:
 
 ## Pull requests
 
-Open a PR if you'd like — describe the *user-visible* change first, include
-test output, and keep the zero-dependency contract intact.
+Humans: open a PR if you'd like — describe the *user-visible* change first,
+include test output, and keep the zero-dependency contract intact.
+
+Agents and automation: do not open PRs at all. See the rules at the top of
+this file — commit to your working branch and push that branch, nothing more.

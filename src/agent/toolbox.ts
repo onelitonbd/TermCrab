@@ -1,3 +1,4 @@
+import { formatSessionHits, searchSessions } from './session-search.js';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,6 +17,11 @@ import {
 import { parseCron, CronParseError, nextRun } from '../cron/parser.js';
 import { saveConfig } from '../core/config.js';
 import { parseFrontmatter } from '../core/frontmatter.js';
+import { formatRoomHistory, listRooms, parseRoomKey } from '../channels/rooms.js';
+import { channelsWithDocuments, sendDocumentTo } from '../channels/conversations.js';
+import { formatInbox, listInbox, readArrival } from '../channels/inbox.js';
+import { acceptIncoming } from '../channels/media.js';
+import { recordSharedFile } from '../channels/shared-files.js';
 import {
   listIntents,
   addIntent,
@@ -30,7 +36,9 @@ import {
 import { suggest, dismiss, listSuggestions } from './suggestions.js';
 import { getProgress, updateProgress, clearProgress } from './progress.js';
 import { ask } from './ask.js';
-import { listTasks, getTask, waitForTasks } from './tasks.js';
+import { listTasks, getTask, taskLine, waitForTasks } from './tasks.js';
+import { listAgents } from './prompt.js';
+import { proposeSkill } from '../skills/proposals.js';
 import {
   listSecrets,
   setSecret,
@@ -43,6 +51,7 @@ import {
   turn as convoTurn,
 } from '../channels/conversations.js';
 import { listPortals, addPortal, removePortal } from '../gateway/portal.js';
+import { generateImage } from '../media/image.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -362,6 +371,32 @@ export function extraTools(env: ToolEnv): Tool[] {
 
   tools.push({
     def: {
+      name: 'generate_image',
+      description:
+        'Create an image from a text prompt and save it under workspace/outbox. With the mock provider (or no image endpoint) a deterministic local placeholder is drawn instead, and the result says so.',
+      schema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'what to draw' },
+          size: { type: 'string', description: 'e.g. 1024x1024 (default 1024x1024)' },
+          name: { type: 'string', description: 'file name without extension' },
+        },
+        required: ['prompt'],
+      },
+    },
+    async execute(args) {
+      const result = await generateImage(env.config, {
+        prompt: argStr(args, 'prompt'),
+        size: argStr(args, 'size', false) || undefined,
+        name: argStr(args, 'name', false) || undefined,
+      });
+      const note = result.placeholder ? ' (placeholder drawn locally — mock provider)' : '';
+      return `image saved: ${result.path} · ${result.width}x${result.height} · ${Math.round(result.bytes / 1024)} KB · ${result.model}${note}`;
+    },
+  });
+
+  tools.push({
+    def: {
       name: 'view_image',
       description: 'Inspect an image file: format, dimensions and size (png/jpeg/gif/webp/bmp).',
       schema: {
@@ -607,6 +642,99 @@ export function extraTools(env: ToolEnv): Tool[] {
   });
   tools.push({
     def: {
+      name: 'inbox_list',
+      description:
+        'List what was sent to you through a chat (photos, documents, voice notes) — newest first, ' +
+        'with size, age and whether its text was saved. Use it when the user refers to something ' +
+        'they sent earlier instead of asking them for a path.',
+      schema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'how many arrivals to list (default 10)' },
+        },
+      },
+    },
+    async execute(args) {
+      const raw = args.limit;
+      const limit = typeof raw === 'number' && raw > 0 ? Math.min(50, Math.floor(raw)) : 10;
+      return formatInbox(listInbox({ limit }));
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'inbox_read',
+      description:
+        'Read the text of a file that was sent to you (a PDF/DOCX/photo/voice note in the inbox). ' +
+        'Returns the text saved when it arrived, or reads the file again if needed.',
+      schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'file name from inbox_list, e.g. 2026-10-03T10-00-00-rent.pdf' },
+        },
+        required: ['name'],
+      },
+    },
+    async execute(args) {
+      const name = argStr(args, 'name');
+      const read = readArrival(name);
+      if (!read.ok) throw new Error(read.reason);
+      if (read.source === 'sidecar') {
+        return read.gone
+          ? `${read.text}\n\n(the file itself was trimmed by the disk budget — this is the text saved when it arrived)`
+          : read.text;
+      }
+      return `${read.text}\n\n(read from the file just now)`;
+    },
+  });
+
+  tools.push({
+    def: {
+      name: 'send_file',
+      description:
+        'Send a local file (photo, PDF, …) to a chat through a configured channel. ' +
+        'With no address it goes to the most recent conversation on that channel.',
+      schema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'file to send (inside the workspace/home)' },
+          caption: { type: 'string', description: 'short note to send with it' },
+          channel: { type: 'string', description: 'telegram | whatsapp | … (default: the only channel that can send files)' },
+          address: { type: 'string', description: 'chat id / jid (default: the last conversation on that channel)' },
+        },
+        required: ['path'],
+      },
+    },
+    async execute(args) {
+      const requested = argStr(args, 'path');
+      if (!requested) throw new Error('path is required');
+      const file = resolveInRoots(requested, [home(), process.cwd(), ...(env.extraRoots ?? [])]);
+      if (!fs.existsSync(file)) throw new Error(`no file at ${requested}`);
+      const size = fs.statSync(file).size;
+      const allowed = acceptIncoming({ name: path.basename(file), size });
+      if (!allowed.ok) throw new Error(`refusing to send ${path.basename(file)}: ${allowed.reason}`);
+      const channels = channelsWithDocuments();
+      if (!channels.length) throw new Error('no channel on this device can send files yet (Telegram is the one that can)');
+      const channel = argStr(args, 'channel') || channels[0]!;
+      const address = argStr(args, 'address') || undefined;
+      const caption = argStr(args, 'caption') || undefined;
+      const sent = await sendDocumentTo(channel, address, file, caption);
+      // 53.5 — the record the panel reads: an id the download route resolves,
+      // never a path from a request.
+      recordSharedFile({
+        name: path.basename(file),
+        path: file,
+        bytes: size,
+        via: 'send',
+        channel: sent.channel,
+        address: sent.address,
+        ...(env.sessionId ? { sessionId: env.sessionId } : {}),
+      });
+      return `sent ${path.basename(file)} (${Math.max(1, Math.round(size / 1024))} KB) to ${sent.channel}:${sent.address}`;
+    },
+  });
+  tools.push({
+    def: {
       name: 'conversations_turn',
       description: 'Send a message to an external conversation and wait for the correlated reply.',
       schema: {
@@ -634,9 +762,9 @@ export function extraTools(env: ToolEnv): Tool[] {
     if (!env.sessions) throw new Error('sessions are unavailable in this context');
     return env.sessions;
   };
-  const spawn = (sessionId: string, prompt: string) => {
+  const spawn = (sessionId: string, prompt: string, opts?: { agent?: string; cwd?: string; label?: string; scratch?: boolean }) => {
     if (!env.spawnTask) throw new Error('background spawning is unavailable in this context');
-    return env.spawnTask(sessionId, prompt);
+    return env.spawnTask(sessionId, prompt, opts);
   };
 
   tools.push({
@@ -689,21 +817,12 @@ export function extraTools(env: ToolEnv): Tool[] {
     },
     async execute(args) {
       const store = requireSessions();
-      const q = argStr(args, 'query').toLowerCase();
-      const targets = args.sessionId ? [String(args.sessionId)] : store.list().slice(0, 30).map((s) => s.id);
-      const hits: string[] = [];
-      for (const sid of targets) {
-        for (const e of store.read(sid)) {
-          const body = e.role === 'tool' ? `${e.name} ${e.result}` : e.content;
-          const idx = String(body).toLowerCase().indexOf(q);
-          if (idx >= 0) {
-            const snippet = String(body).slice(Math.max(0, idx - 60), idx + 140).replace(/\n/g, ' ');
-            hits.push(`${sid} [${e.role}] ...${snippet}...`);
-            if (hits.length >= 20) return clip(hits.join('\n'), 8000);
-          }
-        }
-      }
-      return hits.length ? clip(hits.join('\n'), 8000) : `no matches for "${q}"`;
+      // 21.2: ranked, archive-inclusive search — the same function the CLI and
+      // the chat use, so "find that conversation" behaves the same everywhere.
+      const query = argStr(args, 'query');
+      const hits = searchSessions(query, { limit: 20, sessionId: args.sessionId ? String(args.sessionId) : undefined }, store);
+      if (!hits.length) return `no matches for "${query}"`;
+      return clip(formatSessionHits(query, hits), 8000);
     },
   });
   tools.push({
@@ -796,22 +915,41 @@ export function extraTools(env: ToolEnv): Tool[] {
   tools.push({
     def: {
       name: 'sessions_spawn',
-      description: 'Spawn a subagent: run a prompt in its own session in the background; returns the task id.',
+      description:
+        'Spawn a subagent: run a prompt in its own session in the background; returns the task id. ' +
+        'Optionally as a named agent (@name) and/or in its own scratch directory, so parallel tasks cannot collide.',
       schema: {
         type: 'object',
         properties: {
           prompt: { type: 'string' },
           sessionId: { type: 'string', description: 'target session (default: a fresh one)' },
           label: { type: 'string', description: 'short label for the task list' },
+          agent: { type: 'string', description: 'run as a named agent (workspace/agents/<name>/SOUL.md)' },
+          scratch: { type: 'boolean', description: 'give the task its own working directory under workspace/subagents/' },
         },
         required: ['prompt'],
       },
     },
     async execute(args) {
       const sid = argStr(args, 'sessionId', false) || `sub:${Date.now().toString(36)}`;
-      const task = spawn(sid, argStr(args, 'prompt'));
-      if (args.label) task.label = String(args.label).slice(0, 80);
-      return `spawned subagent task ${task.id} (session ${sid}) — poll subagents or call agents_wait`;
+      const agent = argStr(args, 'agent', false) || undefined;
+      if (agent && !listAgents().includes(agent.toLowerCase())) {
+        throw new Error(`unknown agent "${agent}" — known: ${listAgents().join(', ') || '(none yet)'}`);
+      }
+      const label = args.label ? String(args.label).slice(0, 80) : undefined;
+      try {
+        const task = spawn(sid, argStr(args, 'prompt'), {
+          ...(agent ? { agent: agent.toLowerCase() } : {}),
+          ...(label ? { label } : {}),
+          ...(args.scratch === true ? { scratch: true } : {}),
+        });
+        const where = [task.sessionId, task.agent ? `@${task.agent}` : '', task.cwd ? `in ${task.cwd}` : ''].filter(Boolean).join(' · ');
+        return `spawned subagent task ${task.id} (${where}) — poll subagents or call agents_wait`;
+      } catch (err) {
+        // The cap is a policy, not a crash: say what is running and what to do.
+        if (err instanceof Error && err.name === 'TaskLimitError') return err.message;
+        throw err;
+      }
     },
   });
   tools.push({
@@ -832,8 +970,8 @@ export function extraTools(env: ToolEnv): Tool[] {
         const t = getTask(argStr(args, 'id'));
         if (!t) throw new Error('task not found');
         return [
-          `${t.id} · ${t.status}${t.label ? ` · ${t.label}` : ''}`,
-          `session: ${t.sessionId}`,
+          taskLine(t),
+          `session: ${t.sessionId}${t.agent ? ` · agent: @${t.agent}` : ''}${t.cwd ? ` · cwd: ${t.cwd}` : ''}`,
           `prompt: ${t.prompt.slice(0, 200)}`,
           t.status === 'running' ? `running since ${new Date(t.started).toLocaleTimeString()}` : '',
           t.error ? `error: ${t.error}` : '',
@@ -844,7 +982,7 @@ export function extraTools(env: ToolEnv): Tool[] {
       if (!list.length) return 'no subagent tasks yet';
       return list
         .slice(-20)
-        .map((t) => `${t.id} ${t.status}${t.label ? ` (${t.label})` : ''} -> ${t.sessionId} · ${t.prompt.slice(0, 70).replace(/\n/g, ' ')}`)
+        .map((t) => `${taskLine(t)} · ${t.prompt.slice(0, 60).replace(/\n/g, ' ')}`)
         .join('\n');
     },
   });
@@ -884,7 +1022,7 @@ export function extraTools(env: ToolEnv): Tool[] {
     async execute() {
       const running = listTasks().filter((t) => t.status === 'running');
       if (!running.length) return 'nothing pending — turn can end';
-      return `ending turn with ${running.length} task(s) still running: ${running.map((t) => `${t.id}(${t.sessionId})`).join(', ')} — poll with subagents or agents_wait later`;
+      return `ending turn with ${running.length} task(s) still running: ${running.map((t) => `${t.id}(${t.sessionId})`).join(', ')} — poll with subagents or agents_wait later; each result is also noted in this session`;
     },
   });
 
@@ -945,7 +1083,7 @@ export function extraTools(env: ToolEnv): Tool[] {
   tools.push({
     def: {
       name: 'intent',
-      description: 'Manage standing intents: durable directives injected into every reply. actions: list/add/remove.',
+      description: 'Manage standing orders: durable instructions injected into every turn, ahead of memory. actions: list/add/remove.',
       schema: {
         type: 'object',
         properties: {
@@ -960,7 +1098,7 @@ export function extraTools(env: ToolEnv): Tool[] {
       const action = argStr(args, 'action');
       if (action === 'list') {
         const list = listIntents();
-        if (!list.length) return 'no standing intents';
+        if (!list.length) return 'no standing orders';
         return list.map((i) => `${i.id} · ${i.text}`).join('\n');
       }
       if (action === 'add') {
@@ -1037,6 +1175,53 @@ export function extraTools(env: ToolEnv): Tool[] {
     },
   });
 
+  // ---- ambient room history (34.3) ----
+  tools.push({
+    def: {
+      name: 'room_history',
+      description:
+        'Read the recent messages of a chat/group room, including the ones the bot was not addressed in and therefore never got a turn for. Use it to answer "what did I miss?" or to see what was said before you were called in.',
+      schema: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'how many messages back (default 12, max 50)' },
+          room: { type: 'string', description: 'channel:chat, e.g. telegram:-100123 (default: this room)' },
+        },
+      },
+    },
+    async execute(args) {
+      const limitRaw = typeof args.limit === 'number' && Number.isFinite(args.limit) ? Math.floor(args.limit) : 12;
+      const limit = Math.min(50, Math.max(1, limitRaw));
+      const asked = argStr(args, 'room', false).trim();
+      let channel = env.channel ?? '';
+      let room = env.chatId ?? '';
+      if (asked) {
+        const parsed = parseRoomKey(asked);
+        if (parsed) {
+          channel = parsed.channel;
+          room = parsed.room;
+        } else {
+          // A bare room id is how a person thinks about it; only trust it if
+          // exactly one channel could mean.
+          const candidates = listRooms().filter((r) => r.room === asked);
+          if (candidates.length === 1) {
+            channel = candidates[0]!.channel;
+            room = candidates[0]!.room;
+          } else {
+            return `could not read "${asked}" — use channel:chat (for example telegram:-100123).`;
+          }
+        }
+      }
+      if (!channel || !room) {
+        const rooms = listRooms().slice(0, 10);
+        return rooms.length
+          ? `no room context in this turn — rooms with history: ${rooms.map((r) => r.key).join(', ')}`
+          : 'no room context in this turn, and no room has any history yet.';
+      }
+      return formatRoomHistory(channel, room, { limit });
+    },
+  });
+
   // ---- skills & configuration ----
   tools.push({
     def: {
@@ -1045,7 +1230,8 @@ export function extraTools(env: ToolEnv): Tool[] {
       schema: {
         type: 'object',
         properties: {
-          action: { type: 'string', enum: ['create', 'update', 'check', 'repair'] },
+          action: { type: 'string', enum: ['create', 'update', 'check', 'repair', 'propose'] },
+          reason: { type: 'string', description: 'propose: why this skill should exist (the owner reads it)' },
           name: { type: 'string', description: 'lowercase-with-dashes' },
           description: { type: 'string' },
           content: { type: 'string', description: 'full SKILL.md incl. frontmatter (create/update)' },
@@ -1059,6 +1245,25 @@ export function extraTools(env: ToolEnv): Tool[] {
       if (!name) throw new Error('bad skill name');
       const file = path.join(userSkillsDir(), name, 'SKILL.md');
       const exists = fs.existsSync(file);
+      if (action === 'propose') {
+        // 33.3: the agent proposes, a person decides. The proposal is written
+        // to skills/_proposals/ and cannot load until it is approved.
+        const r = proposeSkill({
+          name,
+          description: (typeof args.description === 'string' && args.description) || `Skill ${name}`,
+          content: typeof args.content === 'string' ? args.content : '',
+          ...(typeof args.reason === 'string' ? { reason: args.reason } : {}),
+          source: `session ${env.sessionId ?? 'unknown'} · run ${env.runSource ?? ''}`.trim(),
+        });
+        if (!r.ok) throw new Error(r.error ?? 'could not write the proposal');
+        return (
+          `proposed skill ${name}${r.replaced ? ' (replacing an earlier proposal of the same name)' : ''} — ` +
+          `it is NOT live yet. The owner approves with: termcrab skills proposals approve ${name}` +
+          (r.proposal?.replacesLive
+            ? `. NOTE: a live skill named ${name} already exists; approving it needs --force, so say in your reason why it should replace what is there`
+            : '')
+        );
+      }
       if (action === 'create' || action === 'update') {
         if (action === 'create' && exists) throw new Error(`skill exists: ${name} (use update)`);
         let content = argStr(args, 'content');

@@ -101,7 +101,7 @@ test('whisper: live transcription works when the real engine + model are install
   }
   process.env.PATH = `${sandboxBin}:${process.env.PATH ?? ''}`;
   fs.copyFileSync(sandboxModel, path.join(models, 'ggml-tiny.bin'));
-  const r = await transcribeFile(sandboxWav, { timeoutMs: 120_000 });
+  const r = await transcribeFile(sandboxWav, { timeoutMs: 30_000 });
   assert.equal(r.ok, true, r.error ?? '');
   assert.match(r.text!, /fellow Americans/i, 'must transcribe the JFK sample');
   delete process.env.TCRAB_HOME;

@@ -161,7 +161,7 @@ test('process: background exec lists, captures output, kills', async () => {
   const listed = await run('process', { action: 'list' });
   assert.match(listed, new RegExp(`${id}`));
 
-  const sleeper = await run('exec', { command: 'sleep 30', background: true });
+  const sleeper = await run('exec', { command: 'sleep 5', background: true });
   const sid = /id=(\w+)/.exec(sleeper)?.[1]!;
   assert.match(await run('process', { action: 'kill', id: sid }), /SIGTERM/);
 });
@@ -169,7 +169,7 @@ test('process: background exec lists, captures output, kills', async () => {
 // ---- terminal ----
 
 test('terminal: spawn, read output, close', async () => {
-  const opened = await run('terminal', { action: 'spawn', command: 'echo term-ready; sleep 20' });
+  const opened = await run('terminal', { action: 'spawn', command: 'echo term-ready; sleep 5' });
   const id = /terminal (\w+) open/.exec(opened)?.[1];
   assert.ok(id, 'terminal id');
   let fresh = '';
@@ -313,7 +313,7 @@ test('sessions_spawn / agents_wait / subagents / sessions_yield / sessions_send'
   const status = await (await tool('subagents')).execute({ action: 'status', id: taskId });
   assert.match(status, /running|done/);
 
-  const waited = await (await tool('agents_wait')).execute({ timeoutSec: 10 });
+  const waited = await (await tool('agents_wait')).execute({ timeoutSec: 5 });
   assert.match(waited, /done: collect weather/);
   assert.equal(getTask(taskId)?.status, 'done');
 
@@ -331,7 +331,7 @@ test('sessions_spawn / agents_wait / subagents / sessions_yield / sessions_send'
 // ---- ask_user ----
 
 test('ask_user: operator answers from the UI path', async () => {
-  const pending = run('ask_user', { question: 'Ship it?', options: ['yes', 'no'], timeoutSec: 20 });
+  const pending = run('ask_user', { question: 'Ship it?', options: ['yes', 'no'], timeoutSec: 5 });
   let id = '';
   for (let i = 0; i < 30 && !id; i++) {
     const asks = listAsks();
@@ -361,16 +361,17 @@ test('suggest_task / dismiss_task lifecycle', async () => {
 // ---- intent / goals / prompt ----
 
 test('intent: list/add/remove and prompt injection', async () => {
-  assert.match(await run('intent', { action: 'list' }), /no standing intents/);
+  assert.match(await run('intent', { action: 'list' }), /no standing orders/);
   assert.match(await run('intent', { action: 'add', text: 'Always answer in Banglish' }), /intent added/);
   assert.match(await run('intent', { action: 'list' }), /Always answer in Banglish/);
   const prompt = buildSystemPrompt({ config: env.config, memory: env.memory, skills: env.skills });
-  assert.match(prompt, /Standing intents/);
+  assert.match(prompt, /Standing orders/);
   assert.match(prompt, /Always answer in Banglish/);
+  assert.match(prompt, /outrank long-term memory and workspace notes/, 'the precedence over memory is in the prompt itself');
   const id = listIntents()[0]!.id;
   assert.match(await run('intent', { action: 'remove', id }), /removed/);
   assert.equal(listIntents().length, 0);
-  assert.ok(!buildSystemPrompt({ config: env.config, memory: env.memory, skills: env.skills }).includes('Standing intents'));
+  assert.ok(!buildSystemPrompt({ config: env.config, memory: env.memory, skills: env.skills }).includes('Standing orders'));
 });
 
 test('goals: create/get/update + open goals in prompt', async () => {
@@ -459,5 +460,6 @@ test('progress_card: set/get/clear for the current session', async () => {
 test('exec still honors allowExec=false', async () => {
   const locked: ToolEnv = { ...env, config: { ...env.config, agent: { ...env.config.agent, allowExec: false } } };
   const execTool = (await buildTools(locked)).find((t) => t.def.name === 'exec')!;
-  await assert.rejects(() => execTool.execute({ command: 'echo hi' }), /disabled/);
+  const out = await execTool.execute({ command: 'echo hi' });
+  assert.match(out, /exec is disabled/, '22.1: refused with a sentence, never spawned');
 });

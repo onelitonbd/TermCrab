@@ -74,7 +74,19 @@ function runCli(args: string[], home: string): Promise<{ out: string; err: strin
   });
 }
 
-test('config get gateway.token creates the password on a fresh install', async () => {
+test('config get gateway.token creates the password on a fresh install', async (t) => {
+  // The CLI probes the default port before creating a password. If a panel is
+  // already answering there (a dev machine, a live preview), this scenario
+  // cannot exist — say so instead of failing for the wrong reason.
+  const free = await new Promise<boolean>((resolve) => {
+    const probe = net.createServer();
+    probe.once('error', () => resolve(false));
+    probe.listen(7788, '127.0.0.1', () => probe.close(() => resolve(true)));
+  });
+  if (!free) {
+    t.skip('another panel is answering on port 7788');
+    return;
+  }
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tcfg-fresh-'));
   const first = await runCli(['config', 'get', 'gateway.token'], home);
   const token = first.out.trim();

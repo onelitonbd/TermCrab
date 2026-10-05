@@ -319,7 +319,7 @@ test('thinking trace survives a restart: loop persists it and the UI replays it'
   const loop = fs.readFileSync(path.join(process.cwd(), 'src', 'agent', 'loop.ts'), 'utf8');
   // The final-reply append must carry the trace.
   const finalAppend = loop.match(
-    /ctx\.sessions\.append\(sessionId, \{\s*role: 'assistant',\s*content: finalText,[\s\S]{0,400}?\}\);/g,
+    /appendEntry\(\{\s*role: 'assistant',\s*content: finalText,[\s\S]{0,900}?\}\);/g,
   );
   assert.ok(finalAppend && finalAppend.length > 0, 'final reply append found');
   assert.ok(

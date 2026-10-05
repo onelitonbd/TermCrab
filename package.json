@@ -1,6 +1,6 @@
 {
   "name": "termcrab",
-  "version": "0.36.0",
+  "version": "0.84.0",
   "description": "TermCrab - the always-on AI agent that lives in your Termux. Gateway, channels, skills, memory. Zero native dependencies.",
   "type": "module",
   "license": "MIT",
@@ -38,9 +38,18 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
-    "test": "npm run build && node --test dist/test/*.test.js",
+    "build:test": "tsc -p tsconfig.test.json && node scripts/copy-assets.mjs",
+    "test": "npm run build:test && node scripts/test-files.mjs",
     "start": "node dist/src/bin/termcrab.js",
-    "prepare": "npm run build"
+    "prepack": "npm run build",
+    "release": "node scripts/release.mjs",
+    "ci:install": "node scripts/install-ci.mjs",
+    "test:coverage": "node scripts/coverage.mjs --run",
+    "test:cli": "node scripts/cli-coverage.mjs --run",
+    "check:measure": "node scripts/coverage.mjs --check && node scripts/cli-coverage.mjs --check",
+    "bench:budget": "node scripts/bench.mjs --quick --budget",
+    "test:time": "node scripts/suite-time.mjs --run",
+    "smoke:telegram": "node scripts/smoke-telegram.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

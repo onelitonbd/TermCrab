@@ -3,7 +3,11 @@
 Base URL: `http://127.0.0.1:7788` (config: `gateway.host` / `gateway.port`)
 
 Auth: `Authorization: Bearer <gateway.token>` — or `?token=` for EventSource/SSE.
-Get the token: `termcrab config get gateway.token`
+Get the token: `termcrab config get gateway.token`.
+A paired device may send its **own** token instead (`termcrab pair` prints a
+5-minute code; `POST /api/pair` exchanges it for a token shown once and stored
+only as a hash). Revoke one device without touching the others:
+`termcrab devices revoke <id|name>`.
 
 ## Endpoints
 
@@ -13,23 +17,184 @@ Get the token: `termcrab config get gateway.token`
 ```
 
 ### `GET /api/events` (SSE)
-Server-sent events for live UIs. Query token required.
-Events: `run:start`, `delta`, `tool:start`, `tool:end`, `run:end`, `error` (agent shapes),
-plus `heartbeat`-related log lines. Comment pings every 25s keep proxies alive.
+Server-sent events for live UIs. Query token required. Comment pings every 25s
+keep proxies alive.
+
+**Wire version `v: 1`.** Every frame is the event object plus `v` and a
+monotonic `seq`, and its `type` is a safe token (letters, digits, `._:-`):
+
+```json
+{ "v": 1, "seq": 42, "ts": 1759500000000, "type": "tool:start", "name": "read_file", "args": { "path": "notes.md" } }
+```
+
+The families a client can rely on:
+
+| Family | Types | When | Payload |
+|---|---|---|---|
+| `turn` | `delta`, `draft`, `error`, `approval`, `approval:decided`, `steer`, `stop` | a turn streams, wants a yes/no, is decided, or is stopped | text, or approval `{id, tool, args}` |
+| `tool` | `tool:start`, `tool:end` | one tool call begins and finishes | `name`, `args`, `toolCallId`, `ok`, `result` (trimmed to 200 chars on the wire) |
+| `run` | `run:start`, `run:end` | a run starts and ends | `runId`, `sessionId`, `text`, `iterations`, `usage`, `costUsd` |
+| `thinking` | `thinking:delta`, `thinkingCaps` | the model thinks out loud, or the model list changes | text, or per-model caps |
+| `voice` | `wake`, `tts:chunk`, `stt:result` | the wake loop hears, speaks or transcribes | text, reason |
+| `canvas` | `canvas:update`, `canvas:remove` | a canvas document changes | canvas id, patch |
+| `channel` | `discord:message`, `matrix:message`, `signal:message`, `slack:message`, `sms:message` | a message arrives on a channel | channel, chat, userId, text |
+| `schedule` | `cron`, `cron-output` | a scheduled job fires or is edited, or its result is delivered | job id, name, next run / delivered text |
+| `memory` | `dream` | memory is consolidated | file, count, by |
+| `panel` | `update`, `tasks`, `ask` | the panel reloads config, suggests a task, or asks a question | section, suggestions, question |
+| `presence` | `presence` | who can reach the agent changes (a client attaches or leaves, a device pairs) | `change` (`started`/`watch`/`unwatch`/`paired:<id>`), `watchers`, `summary` |
+| `trigger` | `trigger` | an internal event woke a hook | `event`, `hooks[]` |
+| `session` | `session:reset` | a conversation's working context starts over (the transcript is archived, not deleted) | sessionId, reason |
+
+Unknown *types* may appear later and a client must ignore what it does not
+know; an unknown `v` may not be ignored — refuse it rather than mis-read it.
+A test walks the source, so a new event type cannot ship undocumented.
 
 ```bash
 curl -N "http://127.0.0.1:7788/api/events?token=$TOKEN"
 ```
 
+### `POST /api/pair` (no token needed)
+```json
+{ "code": "K7M2QX", "name": "pixel" }
+```
+→ `200 { "ok": true, "v": 1, "device": { "id": "9f3a1c02", "name": "pixel" }, "token": "tc_dev_…" }`
+The code is printed by `termcrab pair`, lives 5 minutes and is single use.
+Wrong or expired codes answer `401` with a reason (`expired` / `unknown`), and
+the route is rate limited per IP, so a code cannot be brute-forced.
+
+### `GET /api/docs` — the offline docs page, and how fresh it is (34.8, 37.2)
+```json
+{ "file": "/…/state/docs-site.html", "exists": true, "bytes": 2765646, "docs": 58, "sections": 298,
+  "release": "0.71.0", "currentRelease": "0.71.0", "releaseBehind": false,
+  "builtAt": 1770000000000, "ageMs": 720000, "age": "12 min ago", "staleDocs": 0, "stale": false,
+  "kept": ["/…/state/docs-site-0.71.0.html"], "url": "/docs" }
+```
+Never builds: it reads the page's own build stamp and compares mtimes, so the panel can ask on every
+refresh. `stale` is true when a doc (or the panel HTML) changed after the build **or** the page
+describes an older release than `package.json`.
+
+### `POST /api/docs` — rebuild it now (37.2)
+Forces a build, keeps a per-release copy (`docs-site-<release>.html`, newest five — 36.3), and answers
+with the same freshness object (`rebuilt: true`).
+
+### `GET /api/perf` — the last performance measurement (38.2)
+```json
+### GET /api/suite-time
+
+The last recorded suite run (`docs/openclaw/data/suite-time.json`, written by `npm run test:time`): wall clock, file and case counts, the five slowest files, the budgets and whether the run was over. Read-only and cheap — it reads a recording and never runs the suite; the panel's Work page prints `(99 files · 1024 cases · 165.5 s of 240.0 s · slowest tier3j 40.4 s · recorded 7 min ago)` (41.3).
+{ "exists": true, "file": "/…/state/perf.json", "at": "2026-10-04T04:51:06.608Z",
+  "ageMs": 69049, "age": "1 min ago",
+  "worst": { "key": "idleRssMb", "value": 72, "max": 130, "pct": 55 },
+  "over": [], "skipped": ["firstRunMs", "rebuildMs"], "measured": 5, "total": 7,
+  "machine": { "node": "v22.22.3", "platform": "linux", "arch": "x64", "cpus": 2, "totalMemMb": 3940 },
+  "runs": 6, "lastOverAt": null,
+  "trend": [ { "key": "coldStartMs", "first": 116, "last": 146, "delta": 30, "deltaPct": 26,
+               "direction": "up", "samples": 6, "over": false } ] }
+```
+Reads `state/perf.json`, written by `termcrab perf` (38.1); it **never measures anything** (a measurement boots a gateway and runs a turn). `worst` is the metric furthest along its ceiling, so the panel can say what to watch. `runs`/`trend`/`lastOverAt` come from `state/perf-history.jsonl` (39.1): `direction: "up"` means slower or bigger, a move under 3% reads as `flat`, and `samples` says how many runs the comparison used. No snapshot yet → `exists: false` and `age: "never measured"`.
+
+### `GET /api/telegram-runs` — the recorded live runs (37.4)
+```json
+{ "file": "docs/openclaw/data/telegram-runs.jsonl", "exists": true, "limit": 20,
+  "runs": [ { "at": "2026-10-04T05:20:00.000Z", "status": "ok", "bot": "crab_bot",
+              "api": "api.telegram.org", "chat": 99, "messageId": 501,
+              "sent": "🦀 TermCrab smoke test …", "reply": "hello crab", "replyMs": 900,
+              "token": "1a2b3c4d" } ] }
+```
+Newest first, capped at 20 lines; `token` is a fingerprint, never the token. Written only by
+`npm run smoke:telegram -- --record`.
+
+### `GET /api/runs/health`
+```json
+{ "ok": true, "v": 1, "count": 1, "runs": [ { "sessionId": "web:main", "turnId": "…", "runId": "…", "verdict": "slow", "elapsedMs": 91000, "idleMs": 91000, "lastActivity": "in tool web_fetch for 2 minute(s)", "suggestion": "still inside tool web_fetch after 2 minute(s) — give it a minute, or stop it with: termcrab stop web:main" } ] }
+```
+Verdicts: `working` (mid-step), `slow` (>60s on one step), `stuck` (>5min with nothing new), `failing` (the provider errored), `queued` (messages waiting behind a running turn). `termcrab runs`, the `/status` chat line and the doctor's `running turns` check all read this one function.
+
+### `GET /api/presence`
+```json
+{ "ok": true, "v": 1, "count": 4, "watchers": 1, "summary": "👀 here: 1 watcher · telegram running · 1 device(s), 1 online · 1 person(s) recently",
+  "entries": [ { "kind": "panel", "id": "panel", "label": "1 watcher", "state": "online", "lastSeenAt": 1759500000000, "seenAgoMs": 0, "detail": "1 client(s) attached to the gateway (panel, phone or CLI)" } ] }
+```
+Who can reach this agent right now, derived from stores that already exist: attached gateway watchers (SSE clients), channels that are configured vs actually running, paired devices with their last sighting, and people who wrote recently. Kinds are `panel`, `channel`, `device`, `person`. States follow one stated rule: **online** = seen within 2 minutes, **recent** = within an hour, **idle** = older, **unknown** = never seen (paired but unused), **off** = configured and not running. `termcrab presence`, the `presence` block of `/api/status` and the `/status` chat reply all read this. Presence *changes* are pushed as `presence` bus events (`change`: `started` | `watch` | `unwatch` | `paired:<id>`) to `/api/events` subscribers, so a UI does not have to poll.
+
+### Event triggers (hooks with `on`)
+A hook entry may name the internal events it wakes on, and then nobody has to POST anything:
+```json
+{ "id": "oncall", "token": "s3cret", "prompt": "what broke? tell me in telegram", "on": ["run.failed"] }
+```
+Events: `run.failed` (a turn ended with an error), `run.start` / `run.end` / `session.reset` (lifecycle — reactive, a hook cannot block a turn), `device.paired` (a device redeemed a code), `file.received` (a file/photo/voice arrived in the inbox), `file.changed` (a watched path changed), `cron.finished` (`ok` in the payload). Watchers come from config: `"watchers": [{"id":"inboxdrop","path":"/sdcard/Download","match":".pdf","debounceMs":1500}]` — a change under `path` (optionally filtered by a comma list of suffixes) fires `file.changed` with `{watcher, path, name}`. Patterns: an exact name, a family (`device.*`) or `*`. The turn is queued exactly like a webhook's — same lane, same queue mode, same rate limits — in session `hook:<id>`, and the message starts `[event:<name>]` so the transcript says where it came from. Two safety rules: **a hook is never woken by an event its own session produced** (otherwise a failing hook retries itself forever), and each hook has a **60-second cooldown**. `termcrab events` lists the catalogue and which hooks listen; the gateway logs a warning at startup when a hook listens for an event nothing emits. A hook without `on` stays webhook-only, exactly as before.
+
+### Image generation (`POST /api/image`)
+`{"prompt": "a crab reading a book", "size": "1024x1024", "name": "crab"}` → `{ok, path, bytes, width, height, provider, model, placeholder}`. The provider's image endpoint is used when one is configured (`config.media.imageModel`); under the mock provider a deterministic PNG is drawn locally and `placeholder: true` says so. `400` when `prompt` is missing, `502` with the endpoint's message when generation fails.
+
+### Providers: native wire formats, keys, and the catalog (27.2–27.3)
+`provider.type` is one of `openai` (any OpenAI-compatible `/chat/completions`), `anthropic` (`POST {base}/v1/messages`, content blocks, `input_schema` tools, `tool_result` user turns) or `gemini` (`POST {base}/models/<model>:generateContent`, `functionDeclarations`, `functionResponse` parts), plus `mock` offline. Keys can live in a named profile instead of config: `termcrab auth add work --provider anthropic --key …` writes `state/auth-profiles.json` (mode 0600, audited in `state/auth-audit.log`) and `provider.authProfile: "work"` resolves at the one place a provider is built. `termcrab models` lists the endpoint's models with capabilities (context, vision, tools, thinking, price), falling back to the offline catalog with a note when the endpoint cannot be reached.
+
+### Event watchers (config)
+`config.watchers` turns "something changed under this folder" into the `file.changed` event, which any hook with `on: ["file.changed"]` hears:
+
+```json
+{ "watchers": [ { "id": "inboxdrop", "path": "~/storage/downloads", "match": ".pdf,.jpg", "debounceMs": 1500 } ] }
+```
+
+`path` may be absolute or `~/…`; `match` is an optional comma list of suffixes (empty = everything); `debounceMs` collapses one save into one event. `fs.watch` is used with `recursive: true` where the platform allows it and falls back to the top level when it does not. `termcrab events` prints the catalogue, the listeners and what is being watched.
+
+### Standing orders (`/api/slash` command `/orders`)
+The web panel's command palette lists `/orders`; `POST /api/slash` with `{command:"/orders", args:"add <text>"}` (or `remove <id>`) edits the same store `termcrab orders` edits and the system prompt injects. `GET /api/slash` returns the palette including it.
+
+### Approvals
+A gated tool (any name in `security.approvals.tools`) pauses the turn *before*
+it runs and emits an `approval` event over SSE (`{id, tool, args, sessionId,
+createdAt, timeoutSec}`). Answer it with `POST /api/approvals/:id/approve` (or `.../deny`) — the panel
+button, a Telegram inline button (which emits `approval:decided` with
+`{id, status, decidedBy}`), and `termcrab approvals approve|deny <id>` all call it, and `termcrab
+agent` asks `y/N` right in the terminal when that is the surface in front of
+you (a non-interactive run is told which command to use instead). Nobody answering means the configured
+`security.approvals.onTimeout` default (deny), and the decision is written into
+the transcript as a `[approval] <tool> <decision> by <who>` line.
+
+### `GET /api/devices`
+```json
+{ "ok": true, "v": 1, "count": 1, "devices": [ { "id": "9f3a1c02", "name": "pixel", "createdAt": "…", "lastSeenAt": "…", "seenCount": 12, "current": true } ] }
+```
+Token hashes are never returned. `POST /api/devices/revoke {id|name}` removes
+one device; its token stops working on the next request.
+
 ### `POST /api/chat`
 ```json
 { "message": "list files in my workspace", "sessionId": "web:main" }
 ```
-→ `200 { "text": "<final reply>", "sessionId": "web:main" }` (runs the full agent loop)
+Leave `sessionId` out and the turn lands in the **rolling main session** (28.1,
+`agent.rollingSession`, default `main`): the panel, the terminal and a Telegram
+DM with the owner share one thread, archived daily. Name a `sessionId` and you
+get exactly that thread — the panel does this when you pick another chat.
+Headers: `authorization: Bearer <token>`, optional `idempotency-key: <any string>`.
+→ `202 { "turnId": "…", "sessionId": "web:main", "status": "queued" }` (runs the full agent loop)
+Conversation history: `GET /api/sessions` lists chats; each session's working
+context can start over by policy (`agent.sessionReset` = `never` | `daily` |
+`idle:<minutes>`), which archives the live transcript into
+`<session>.archive.jsonl` — nothing is deleted, and `termcrab sessions search`
+still finds it.
+Retrying with the same `idempotency-key` (day-long memory) returns the same run
+with `"replayed": true` instead of starting a second turn — a phone that loses
+the answer must not pay for the question twice.
+A bad body answers `400 { "error": "message required", "field": "message" }`;
+too many requests answer `429 { "error": "Too many messages at once — try again in 4s.", "retryAfterMs": 3600, "limit": { "perMinute": 60, "burst": 10 } }`
+with a `retry-after` header.
 
 ### `GET /api/sessions`
-→ `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000, "bytes": 4096 } ] }`
-→ `{ "sessions": [ { "id": "web:main", "messages": 12, "modified": 1790000000 } ] }`
+→ `{ "sessions": [ { "id": "main", "messages": 12, "modified": 1790000000, "bytes": 4096, "viewers": 2, "running": "turn-1a2b" } ] }`
+`viewers` is how many clients are attached (28.2); `running` is the turn id
+currently executing in that conversation, or `null`.
+
+### `GET /api/sessions/:id/attach` — server-sent events
+One conversation, live, for as many clients as want it (28.2). The first frame
+is `state`: the last 60 transcript entries, the running turn and the viewer
+count, so a tab that just opened catches up without a second request. After
+that it is the same wire format as `/api/events`, filtered to this session, so
+two phones, a laptop and the terminal can watch one thread and none of them
+misses a message. A conversation with nothing in it yet (or one you have never
+opened) attaches too, with an empty tail; a nonsensical id answers 400.
 
 ### `GET /api/sessions/:id`
 → `{ "messages": [ …transcript entries… ] }`
@@ -60,10 +225,31 @@ Runs one proactive tick now (battery-aware).
 → `{ "ran": true, "reason": "battery 88% (charging)", "output": "…" }`
 
 ### `GET /api/crons`
-→ `{ "crons": [ { "id", "name", "schedule", "prompt", "enabled", "critical", "nextRun": "ISO" } ] }`
+→ `{ "crons": [ { "id", "name", "schedule", "prompt", "enabled", "critical", "nextRun": "ISO", "agent", "deliver", "lastRun", "lastResult", "lastError", "failures", "history" } ] }`
+
+Each job now records how it went, not only what it would do next (34.4): `lastResult`
+is `ok` / `error` / `skipped-battery` / `skipped-overlap`, `failures` counts the
+consecutive streak (a success clears it, and it never disables the job), and
+`history` keeps the last five attempts with their durations and notes. A job that
+became due while the device was off is caught up **once** on the next tick, inside
+a 24-hour window, with the skipped count written into its history.
 
 ### `POST /api/crons`
-Body: `{ "name": "weekday", "schedule": "0 8 * * 1-5", "prompt": "briefing", "critical": false }`
+Body: `{ "name": "weekday", "schedule": "0 8 * * 1-5", "prompt": "briefing", "critical": false, "agent": "crabby", "deliver": "telegram" }`
+`deliver` is `telegram` | `panel` | `none`; an unknown agent or target is a `400`
+with a sentence, before anything is written.
+
+### `GET /api/board`
+The merged work board `termcrab board` prints (34.4): `{generatedAt, counts:{running,queued,scheduling,failed,done,suggested}, cards:[{id, kind, status, title, at?, detail?}]}` with kinds `turn`, `subagent`, `cron`, `suggestion`. Read-only — the board never starts, stops or schedules anything.
+
+### `GET /api/subagents` (33.1)
+`{tasks:[{id, sessionId, prompt, label?, agent?, cwd?, status, started, finished?, elapsedMs?, output?, error?}], running, max}` — the same list `termcrab subagents` prints, bounded to the running tasks plus recent history.
+
+### `GET /api/agents` · `PUT /api/agents/routes` (33.2)
+`GET` answers `{agents, routes:[{surface, agent, source, problem?}]}`; `PUT` takes `{surface, agent}` (or `{surface, agent: null}` to clear) and validates both against the agents that exist. The surfaces are the ones that can route a turn: web, telegram, cli, cron, voice, wake, subagent.
+
+### Skills the agent proposed (33.3)
+`GET /api/skills/proposals` → `{proposals:[…], rejected:[…]}`; `POST /api/skills/proposals` with `{action:"approve"|"reject", name, reason?, force?}` makes the decision. Nothing in `skills/_proposals/` can reach the prompt before that call, and approving over an existing skill needs `force: true`.
 → `200 { "cron": { … } }` or `400 { "error": "<schedule explanation>" }`
 
 ### `DELETE /api/crons/:id`
@@ -74,7 +260,16 @@ SSE also emits a `cron` event when a scheduled job fires.
 
 ## Errors
 
-Non-2xx responses: `{ "error": "message" }`. `401` = missing/invalid token.
+Non-2xx responses: `{ "error": "message" }` (plus `field` when a body was wrong).
+`401` = missing/invalid token (or a bad pairing code), `404` = unknown id,
+`429` = rate limited (`retryAfterMs` says when to try again).
+
+## Rate limits
+
+Every key — a device token, the master token, or a peer address — has a token
+bucket (`gateway.rateLimit = { perMinute, burst }`, default 60/minute with a
+burst of 10). Chat submissions, webhooks and each channel chat share the same
+rule; a full bucket answers immediately instead of queueing more turns.
 
 ## Example session
 

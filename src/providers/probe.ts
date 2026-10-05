@@ -69,6 +69,8 @@ interface ProbeResult {
   mechanism?: ReasoningMechanism;
   /** Optional: server's exact error string when rejecting (helpful for debugging). */
   rejectReason?: string;
+  /** True when this is the offline mock brain: nothing was sent anywhere. */
+  offline?: boolean;
 }
 
 type CapCache = Record<string, ProbeResult>;
@@ -164,6 +166,11 @@ interface ProbeOpts {
    *  them. The UI will show xhigh/max as aliases of high when supported. */
   levels?: readonly ThinkingLevel[];
   signal?: AbortSignal;
+  /**
+   * The offline brain: there is nothing to probe, and a phone with no key must
+   * not send a packet to find that out. Returns a local result instead.
+   */
+  offline?: boolean;
 }
 
 /**
@@ -185,6 +192,15 @@ interface ProbeOpts {
  */
 export async function probeModel(opts: ProbeOpts): Promise<ProbeResult> {
   const { baseUrl, apiKey = '', model, fetchImpl = fetch, force = false } = opts;
+  if (opts.offline) {
+    return {
+      probedAt: new Date().toISOString(),
+      supportsThinking: false,
+      supportedLevels: [],
+      defaultLevel: 'none',
+      offline: true,
+    };
+  }
   const key = modelCapsKey(baseUrl, model, apiKey);
   if (!force) {
     const cached = getCachedCaps(baseUrl, model, apiKey);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # TermCrab installer - works on Termux and any Linux/macOS with Node >= 20.10.
 # Usage: curl -fsSL https://raw.githubusercontent.com/onelitonbd/claw/main/install.sh | bash
-# Pin a version: TCRAB_BRANCH=v0.34.0 curl -fsSL <url> | bash
+# Pin a ref: TCRAB_BRANCH=<branch|tag>  (default: main)
 set -euo pipefail
 
 REPO="${TCRAB_REPO:-https://github.com/onelitonbd/claw.git}"
@@ -28,6 +28,32 @@ say "node $(node -v) ok"
 command -v git >/dev/null 2>&1 || {
   if [ -n "${PREFIX:-}" ]; then pkg install -y git; else fail "git not found"; fi
 }
+
+# --- check only -------------------------------------------------------
+# `install.sh --check` (or TCRAB_CHECK=1) answers "what would this do on this
+# machine?" without cloning, installing or writing anything: the version gate
+# above still runs, so an old Node is reported as the failure it is.
+CHECK=0
+case "${1:-}" in --check|-n|--dry-run) CHECK=1 ;; esac
+[ "${TCRAB_CHECK:-0}" = "1" ] && CHECK=1
+if [ "$CHECK" = "1" ]; then
+  say "check: nothing will be written"
+  echo "   node       : $(node -v)  (>= 20.10 required)"
+  echo "   git        : $(git --version)"
+  echo "   repo       : $REPO"
+  echo "   ref        : $BRANCH   (TCRAB_BRANCH overrides)"
+  echo "   destination: $DEST"
+  if [ -d "$DEST/.git" ]; then
+    echo "   mode       : upgrade an existing install"
+  else
+    echo "   mode       : fresh install"
+  fi
+  echo "   steps      : clone or update the checkout -> npm install (dev packages only;"
+  echo "                TermCrab has no runtime dependencies) -> npm run build ->"
+  echo "                put 'termcrab' on your PATH"
+  echo "   afterwards : termcrab onboard     (setup wizard)"
+  exit 0
+fi
 
 # --- clone / upgrade --------------------------------------------------
 MODE="install"
@@ -90,8 +116,15 @@ fi
 
 # --- build ------------------------------------------------------------
 cd "$DEST"
-say "installing dev dependencies + build..."
+# Two explicit steps on purpose. `npm install` used to run the TypeScript
+# compile through a "prepare" lifecycle script, which made it look like the
+# install had hung: it downloads three small dev packages in under a second,
+# then prints nothing while tsc runs (minutes on a phone).
+say "step 1 of 2: installing TypeScript (3 small dev packages, no runtime deps)..."
 npm install --no-fund --no-audit
+say "step 2 of 2: compiling TypeScript - this is the slow part on a phone"
+say "(1-3 minutes; it prints nothing until it is done, that is normal)..."
+npm run build
 
 # --- shim -------------------------------------------------------------
 write_shim() {

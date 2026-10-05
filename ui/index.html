@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#000000" />
+<meta name="theme-color" content="#fdfbff" />
 <title>TermCrab</title>
 <style>
   :root {
@@ -165,13 +165,14 @@
   .me {
     align-self: flex-end;
     max-width: 84%;
-    background: var(--g);
-    color: #fff;
-    border-radius: 22px 22px 6px 22px;
-    padding: 12px 17px;
+    background: #E7F0EE;
+    color: #102a2e;
+    border: 1px solid #cfe0dc;
+    border-radius: 18px 18px 5px 18px;
+    padding: 11px 16px;
     font-size: 15.5px;
     line-height: 1.5;
-    box-shadow: 0 14px 26px -14px var(--sh);
+    box-shadow: 0 10px 22px -16px rgba(14,26,31,.45);
     overflow-wrap: break-word;
     animation: settle 0.18s ease-out;
   }
@@ -184,6 +185,30 @@
     max-width: 92%;
     overflow-wrap: break-word;
   }
+  /* Pending approval — a gated tool is stopped until you decide. */
+  .msg.approval {
+    align-self: stretch;
+    max-width: 100%;
+    text-align: left;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid #f0517d;
+    border-radius: 4px var(--r-lg) var(--r-lg) 4px;
+    padding: 12px 14px;
+  }
+  .msg.approval .apHead { font-weight: 650; font-size: 14px; color: var(--ink); }
+  .msg.approval .apArgs {
+    margin: 8px 0; padding: 8px 10px; background: var(--bg2, #f7f2fb); border-radius: 8px;
+    font-size: 12.5px; color: var(--mut); overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.approval .apRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .msg.approval .apBtn { border: 0; border-radius: 999px; padding: 7px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  .msg.approval .apBtn.yes { background: var(--g); color: #fff; }
+  .msg.approval .apBtn.no { background: #f1e7f6; color: var(--ink); }
+  .msg.approval .apBtn:disabled { opacity: 0.55; cursor: default; }
+  .msg.approval .apSt { font-size: 12px; color: var(--mut); }
+  .msg.approval.ok { border-left-color: #2fae6b; }
+  .msg.approval.gone { border-left-color: #d9456f; opacity: 0.85; }
   .msg.welcome {
     align-self: stretch;
     max-width: 100%;
@@ -480,6 +505,16 @@
   .tpChk { flex-shrink: 0; color: #d9456f; display: inline-flex; }
   .tpList { max-height: min(52vh, 420px); overflow-y: auto; }
 
+  /* ---- progress drafts (10.4): the bubble says it is still a draft ---- */
+  .msg.drafting .textBody::after {
+    content: '✍️ draft';
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--mut);
+    vertical-align: baseline;
+  }
+
   /* ---- stop / max-iterations notice ---- */
   .warn {
     display: flex;
@@ -640,6 +675,26 @@
   #composerProgress.hidden { opacity: 0; transform: translateY(-4px); pointer-events: none; }
   #composerProgress .progIcon { flex-shrink: 0; width: 16px; height: 16px; }
   #composerProgress .progText { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #composerProgress .progWait {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(122, 93, 140, 0.14);
+    color: var(--accent);
+  }
+  #composerProgress .progWait.hidden { display: none; }
+  .me .qBadge {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.7;
+  }
+  #steerRow { display: flex; gap: 6px; padding: 0 2px 6px; }
+  #steerRow input { flex: 1; }
+  .qModeBtn { padding: 0 8px; }
+  .qModeBtn select { cursor: pointer; }
   #composerProgress .progSpinner {
     width: 14px; height: 14px;
     border: 2px solid var(--line-strong);
@@ -754,6 +809,17 @@
      Targeted by class, not `svg:last-child`, so dropping the label span from the
      markup can never turn the leading glyph into a match and hide it. */
   #composer .modOn svg.chev { display: none; }
+  /* the queue control carries inline text + a <select>, so it must not be a 40px
+     round icon button — give it a proper pill and let it size to its content */
+  #composer .qModeBtn {
+    width: auto; min-width: 0; height: var(--composerBtn);
+    border-radius: 999px; padding: 0 9px; gap: 4px;
+    background: var(--soft); border: 1px solid var(--line);
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--mut);
+  }
+  #composer .qModeBtn select { font-size: 11px; font-weight: 600; color: var(--ink); border: 0; background: transparent; }
+  /* keep every control on one even baseline */
+  #composer .composerRow { align-items: center; gap: 8px; }
   /* icon buttons (soft circle) */
   .iconBtn {
     width: 40px;
@@ -929,11 +995,15 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: safe center;
     text-align: center;
     padding: calc(env(safe-area-inset-top, 0px) + 54px) 16px calc(var(--pb, 130px) + 20px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     pointer-events: none;
+    background:
+      radial-gradient(125% 85% at 50% -12%, #173A42 0%, #0E1A1F 55%, #0A1216 100%);
+    color: #E8F1EF;
   }
   #hero > * { pointer-events: auto; }
   #hero[hidden] { display: none !important; }
@@ -945,12 +1015,12 @@
     width: 320px;
     height: 320px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(240, 81, 125, .16), transparent 65%);
+    background: radial-gradient(circle, rgba(255, 107, 74, .20), transparent 65%);
     pointer-events: none;
   }
   .heroCrab {
     position: relative;
-    margin-top: auto;
+    margin-top: 0;
     animation: crabFloat 5.2s ease-in-out infinite;
   }
   .heroCrab svg {
@@ -998,6 +1068,21 @@
     transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
   }
   .chipBtn:hover { border-color: #f0517d; color: var(--ink); transform: translateY(-1px); }
+  /* ── Tidal Ink first-page theme (Plan A): one bold moment, rest quiet ── */
+  #hero .heroHi { font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif; font-weight: 600; color: #F2F7F5; letter-spacing: -0.01em; }
+  #hero .heroSub { color: #9FB8B4; }
+  #hero .heroStatus { background: rgba(232,241,239,.06); border-color: rgba(232,241,239,.16); color: #CFE0DC; box-shadow: 0 14px 30px -22px rgba(0,0,0,.6); }
+  #hero .heroStatus::before { background: #4FB286; }
+  #hero .chipBtn { background: rgba(232,241,239,.06); border-color: rgba(232,241,239,.16); color: #E8F1EF; }
+  #hero .chipBtn:hover { border-color: #FF6B4A; color: #fff; }
+  /* the composer becomes a live prompt line on the first page — the one bold accent */
+  body[data-view="chat"]:has(#hero:not([hidden])) #composer { border-top-color: rgba(255,107,74,.5); }
+  body[data-view="chat"]:has(#hero:not([hidden])) #composer textarea { caret-color: #FF6B4A; }
+  body[data-view="chat"]:has(#hero:not([hidden])) #composer textarea::placeholder { color: rgba(255,107,74,.72); }
+  @media (prefers-reduced-motion: no-preference) {
+    body[data-view="chat"]:has(#hero:not([hidden])) #composer { animation: heroPrompt 2.4s ease-in-out infinite; }
+    @keyframes heroPrompt { 0%, 100% { border-top-color: rgba(255,107,74,.3); } 50% { border-top-color: rgba(255,107,74,.85); } }
+  }
   #heroNote {
     position: relative;
     margin-top: 14px;
@@ -2178,6 +2263,25 @@
   }
   .menuBtn:hover { background: var(--soft); color: var(--ink); }
   .menuBtn svg { color: #f0517d; flex-shrink: 0; }
+  .usagePill {
+    margin-left: auto;
+    margin-right: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--b1, #f1e7f6);
+    color: var(--mut);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: default;
+  }
+  .usagePill.hidden { display: none; }
+  .turnUsage {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--mut);
+    opacity: 0.85;
+  }
   #health {
     font-size: 12.5px;
     font-weight: 500;
@@ -2241,12 +2345,14 @@
   </div>
   <nav class="nav" aria-label="Sections">
     <button data-goto="status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Status</button>
+    <button data-goto="board"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Board</button>
     <button data-goto="providers"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="19" height="7" x="2.5" y="2.5" rx="1.5"/><rect width="19" height="7" x="2.5" y="14" rx="1.5"/><path d="M6 6h.01M6 17.5h.01"/></svg>Providers</button>
     <button data-goto="models"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Models</button>
     <button data-goto="memory"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="5" y="5" rx="1.5"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2.5v2M15 19.5v2M2.5 15h2M19.5 15h2M2.5 9h2M19.5 9h2M9 2.5v2M9 19.5v2"/></svg>Memory</button>
     <button data-goto="tools"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.93-3.93a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0z"/><path d="m19.66 17.73-3.17-3.17a2.5 2.5 0 0 0-3.54 0l-1.41 1.41a2.5 2.5 0 0 1-3.54-3.54l3.17-3.17a2.5 2.5 0 0 1 3.54 0l1.41 1.41a2.5 2.5 0 0 0 3.54 0l3.17-3.17a2.5 2.5 0 0 1 3.54 3.54l-3.17 3.17a2.5 2.5 0 0 0 0 3.54"/></svg>Tools</button>
     <button data-goto="logs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>Logs</button>
 
+    <button data-goto="work"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>Work</button>
     <button data-goto="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</button>
   </nav>
   <div class="sideLabel"><span>Chat history</span><button id="newChatBtn" class="ghost" title="New chat" aria-label="New chat"><svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 2.5v10M2.5 7.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
@@ -2256,6 +2362,7 @@
   <button id="navBtn" class="ib" aria-label="Open menu" title="Menu">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
   </button>
+  <span id="usageToday" class="usagePill hidden" title="today's tokens, measured from what the model reported"></span>
   <button id="menuBtn" class="ib" aria-label="More actions" title="More actions">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
   </button>
@@ -2278,19 +2385,19 @@
     <div id="hero">
       <div class="heroGlow"></div>
       <div class="heroCrab"><svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true">
-          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
-          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
-          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
-          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
-          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#5b8dff"/>
-          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#9cbcff" opacity="0.4"/>
-          <circle cx="47" cy="59" r="9.5" fill="#f4f8ff"/>
-          <circle cx="73" cy="59" r="9.5" fill="#f4f8ff"/>
-          <circle cx="49" cy="60" r="4.6" fill="#101418"/>
-          <circle cx="75" cy="60" r="4.6" fill="#101418"/>
+          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#FF6B4A" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#FF6B4A" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#2E7D7A"/>
+          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#2E7D7A"/>
+          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#2E7D7A"/>
+          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#7FB7B2" opacity="0.4"/>
+          <circle cx="47" cy="59" r="9.5" fill="#E8F1EF"/>
+          <circle cx="73" cy="59" r="9.5" fill="#E8F1EF"/>
+          <circle cx="49" cy="60" r="4.6" fill="#0E1A1F"/>
+          <circle cx="75" cy="60" r="4.6" fill="#0E1A1F"/>
           <circle cx="51" cy="58" r="1.6" fill="#ffffff"/>
           <circle cx="77" cy="58" r="1.6" fill="#ffffff"/>
-          <path d="M50 77c6 6 14 6 20 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+          <path d="M50 77c6 6 14 6 20 0" stroke="#0E1A1F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
         </svg></div>
       <h2 class="heroHi">Hey — I'm Crabby.</h2>
       <p class="heroSub">Your own agent, living on this device. Conversations, memory and dreams stay private — nothing phones home.</p>
@@ -2345,6 +2452,7 @@
     <p class="pageNote" id="provNote">OpenAI-compatible services only (OpenAI, OpenRouter, Groq, DeepSeek, Ollama and friends). Keys stay on this device — nothing connects until you press Use on a key.</p>
     <div class="pBar" style="margin-bottom:10px">
       <button id="provDetect" class="ghost">Auto-detect keys</button>
+      <button id="provOffline" class="ghost" title="no key, no network">Run offline demo</button>
       <span id="provDetectNote" class="pNote"></span>
     </div>
     <div id="provList" class="listCol"><div class="nx">loading…</div></div>
@@ -2532,6 +2640,17 @@
           <button type="button" data-emb="0">Lexical only</button>
         </div>
         <div class="pNote" id="engNote" style="margin-top: 10px"></div>
+        <div class="memSearchRow" style="margin-top: 10px">
+          <select id="embProvider" title="Embedding provider">
+            <option value="auto">Auto — best available</option>
+            <option value="local">Local model — offline, no key</option>
+            <option value="openai">OpenAI embeddings</option>
+            <option value="gemini">Gemini embeddings</option>
+          </select>
+          <button id="embProviderSave" class="ghost go" type="button">Save provider</button>
+          <button id="embInstall" class="ghost" type="button">Prepare offline model</button>
+        </div>
+        <div class="pNote" id="embStatus" style="margin-top: 8px"></div>
       </div>
       <div class="memSectionLabel">MEMORY FILE</div>
       <div class="setCard">
@@ -2587,6 +2706,30 @@
 
     <div class="memPane" id="tlPane-tools">
       <p class="tlNote" style="margin-top:0">Green "active" tools are live on this machine right now. "planned" entries are on the roadmap — not built yet.</p>
+      <div class="setCard" id="tgToolCard">
+        <h4>Switches</h4>
+        <div class="d">The three switches the config really carries. Flipping one writes the same key <code>termcrab config set</code> writes.</div>
+        <div id="toolToggles" class="secList"></div>
+      </div>
+      <div class="setCard" id="watchCard">
+        <h4>Watchers</h4>
+        <div class="d">A change under a watched path fires <code>file.changed</code>, which hooks and crons can hear.</div>
+        <div class="pBar" style="margin:6px 0">
+          <input id="wtPath" placeholder="~/notes" style="flex:1" />
+          <input id="wtMatch" placeholder=".md" style="width:90px" />
+          <button id="wtAdd" class="ghost smallBtn" type="button">Add</button>
+        </div>
+        <div id="wtList" class="secList"></div>
+      </div>
+      <div class="setCard" id="imgCard">
+        <h4>Make a picture</h4>
+        <div class="d">The same call the agent's <code>image</code> tool and <code>termcrab image</code> use; the result lands in the download list above.</div>
+        <div class="pBar" style="margin:6px 0">
+          <input id="imgPrompt" placeholder="a crab on a beach at sunset" style="flex:1" />
+          <button id="imgGo" class="ghost smallBtn" type="button">Draw</button>
+        </div>
+        <div id="imgOut" class="secList"></div>
+      </div>
       <div id="toolCat" aria-live="polite"><div class="nx">loading…</div></div>
     </div>
 
@@ -2604,6 +2747,11 @@
 
     <div class="memPane" id="tlPane-chats" hidden>
       <div class="memSectionLabel">SAVED CHATS</div>
+      <div class="memSearchRow" style="margin-bottom:8px">
+        <input type="text" id="sessSearch" placeholder="search every chat by words…" maxlength="80" />
+        <button id="sessSearchClear" class="ghost" type="button">Clear</button>
+      </div>
+      <div id="sessHits" class="listCol" hidden></div>
       <div id="sessList" class="listCol"><div class="nx">loading…</div></div>
       <div class="tlForm">
         <div class="pBar">
@@ -2627,6 +2775,15 @@
           <button id="listenGo" class="ghost">Dictate</button>
           <span class="pNote">tap, speak, and the words land in the chat box (needs Termux:API)</span>
         </div>
+      </div>
+      <div class="tlCard">
+        <div class="tlCardHead">TRANSCRIBE A FILE</div>
+        <div class="pBar">
+          <input type="file" id="trFile" accept="audio/*" />
+          <button id="trGo" class="ghost" type="button">Transcribe</button>
+        </div>
+        <div id="trOut" class="pNote"></div>
+        <p class="pNote" style="margin:0">Offline, through the same engine <code>termcrab transcribe</code> uses. If the engine is missing, the exact install hint comes back here.</p>
       </div>
       <div class="tlCard">
         <div class="tlCardHead">STARTUP</div>
@@ -2668,6 +2825,66 @@
       <p class="tlNote">Skills add extra abilities the agent can load on demand — give it a folder path or a git URL. "force" overwrites a skill that already exists under the same name.</p>
       <pre id="skView" class="hidden"></pre>
     </div>
+  </section>
+
+  <section class="view" id="view-work" hidden>
+    <div class="pageHead">
+      <h2>Work</h2>
+      <span class="pNote" id="workFresh"></span>
+      <button class="iconBtn" id="workReload" type="button" title="Reload" aria-label="Reload">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+    </div>
+    <p class="pageNote">What the agent is building right now: the current batch, what proves it, and what comes next — read straight from <code>WORKLOG.md</code> in the project.</p>
+    <p class="pageNote">Every document in <code>docs/</code>, as one offline page with search:
+      <a id="docsSiteLink" href="/docs" target="_blank" rel="noopener">open the docs site →</a>
+      <span class="pNote" id="docsSiteNote"></span>
+      <button class="iconBtn" id="docsRebuild" type="button" hidden title="Rebuild the docs page"
+        style="display:inline-flex;vertical-align:middle">rebuild</button>
+    </p>
+    <p class="pageNote">Live Telegram runs, recorded by <code>npm run smoke:telegram -- --record</code>:
+      <span class="pNote" id="tgRuns"></span>
+    </p>
+    <p class="pageNote">Performance budget, measured by <code>termcrab perf</code> (exit 1 when over):
+      <span class="pNote" id="perfNote"></span>
+      <span class="pNote" id="suiteNote"></span>
+    </p>
+    <div class="setCard" id="inboxCard">
+      <h4>Inbox &amp; rooms</h4>
+      <div class="d">What people sent you, and what was said in group rooms while the bot was not addressed — the same store the agent's tools read.</div>
+      <div class="pBar" style="margin:6px 0">
+        <button id="ibRefresh" class="ghost smallBtn" type="button">Refresh</button>
+      </div>
+      <div id="inboxList" class="secList"><div class="nx">loading…</div></div>
+      <div id="roomsList" class="secList" style="margin-top:8px"></div>
+    </div>
+    <div class="setCard" id="filesCard">
+      <h4>Files the agent produced</h4>
+      <div class="d">Everything <code>send_file</code> sent and every picture the image button drew — each one a real download.</div>
+      <div class="pBar" style="margin:6px 0">
+        <button id="flRefresh" class="ghost smallBtn" type="button">Refresh</button>
+      </div>
+      <div id="filesList" class="secList"><div class="nx">loading…</div></div>
+    </div>
+    <div class="panel"><div class="pBody"><div id="workBody" class="textBody">loading…</div></div></div>
+  </section>
+
+  <section class="view" id="view-board" hidden>
+    <div class="pageHead">
+      <h2>Board</h2>
+      <span class="pNote" id="boardNote"></span>
+      <button class="iconBtn" id="boardReload" type="button" title="Reload" aria-label="Reload">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+    </div>
+    <p class="pageNote">Everything in flight in one list — live turns, background tasks, cron jobs and the things the agent suggested — with one status vocabulary, read from <code>GET /api/board</code>. It only reads: nothing here can start or stop anything.</p>
+    <div id="boardBody"><div class="nx">loading…</div></div>
+    <div class="pageHead" style="margin-top:18px"><h2 class="memTitle">Devices</h2><span class="pNote" id="devNote"></span></div>
+    <p class="pageNote">Who can reach this agent: the phone you are holding and anything you have paired. A paired device carries its own token and can be revoked here without touching the others.</p>
+    <div id="devBody"><div class="nx">loading…</div></div>
+    <div class="pageHead" style="margin-top:18px"><h2 class="memTitle">System</h2><span class="pNote" id="sysNote"></span></div>
+    <p class="pageNote">The rest of what "how is it going?" means: live turns with a verdict, background tasks, how much space the state is using, who can reach the agent, and any skill the agent proposed but you have not decided on.</p>
+    <div id="sysBody"><div class="nx">loading…</div></div>
   </section>
 
   <section class="view" id="view-settings" hidden>
@@ -2729,6 +2946,44 @@
     </div>
 
     <div class="memSectionLabel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      IDENTITY FILES
+    </div>
+    <div class="setCard" id="idCard">
+      <h4>Workspace files</h4>
+      <div class="d">The three files that make the agent yours — SOUL.md, IDENTITY.md and USER.md. Edits save straight to disk inside this device's home.</div>
+      <div id="idFiles"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memSectionLabel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+      BACKUP &amp; RESTORE
+    </div>
+    <div class="setCard" id="bkCard">
+      <h4>Backups</h4>
+      <div class="d">One archive of this home: config, memory, sessions, skills. Restoring moves the current files aside first, so a wrong choice is recoverable.</div>
+      <div class="pBar" style="margin:8px 0">
+        <button id="bkCreate" class="hnBtnPrimary" type="button">Create a backup</button>
+        <span class="pNote" id="bkNote"></span>
+      </div>
+      <div id="bkList" class="listCol"><div class="nx">loading…</div></div>
+    </div>
+
+    <div class="memSectionLabel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      SERVICE
+    </div>
+    <div class="setCard" id="svcCard">
+      <h4>Keep it running</h4>
+      <div class="d">Install the agent as a service so it comes back after a reboot. The panel never runs the install — copy the line into a terminal on this device.</div>
+      <div id="svcInfo" class="pNote">loading…</div>
+      <div class="pBar" style="margin-top:8px">
+        <code id="svcCmd" style="flex:1;overflow:auto">termcrab service install</code>
+        <button id="svcCopy" class="ghost" type="button">Copy</button>
+      </div>
+    </div>
+
+    <div class="memSectionLabel">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="7.5" cy="15.5" r="3.5"/><path d="M10.5 12.5L20 3M16.5 6.5l3 3M14 9l2.5 2.5"/></svg>
       SECRETS &amp; KEYS
     </div>
@@ -2736,6 +2991,12 @@
       <h4>Secrets Manager</h4>
       <div class="d">API keys and access tokens stored on this device. Values are securely masked until you reveal them.</div>
       <div id="secretsList" class="secList"><div class="nx">loading secrets…</div></div>
+    </div>
+
+    <div class="setCard" id="secScanCard">
+      <h4>Security scan</h4>
+      <div class="d">The same audit <code>termcrab security</code> and the chat's <code>/security</code> run — findings with their fixes, never a key value.</div>
+      <div id="secFindings" class="secList"><div class="nx">loading…</div></div>
     </div>
 
   </section>
@@ -2777,6 +3038,14 @@
           <input type="checkbox" id="debugAuto" checked /> Auto-refresh
         </label>
       </div>
+      <div class="setCard" style="margin-bottom:12px">
+        <div class="pBar" style="margin-bottom:8px">
+          <span class="tlCardHead">PROMPT CONTEXT</span>
+          <span class="sp"></span>
+          <button id="ctxRefresh" class="ghost" type="button">Refresh</button>
+        </div>
+        <div id="ctxTable" class="pNote">loading…</div>
+      </div>
       <pre id="debugView" style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,monospace"></pre>
     </div>
   </section>
@@ -2789,8 +3058,13 @@
   <div id="composerProgress" class="hidden">
     <span class="progSpinner"></span>
     <span class="progText">Crabby is thinking…</span>
+    <span id="progWait" class="progWait hidden"></span>
   </div>
   <div id="composerBox">
+    <div id="steerRow" class="hidden">
+      <input type="text" id="steerInput" placeholder="steer the running turn…" maxlength="300" />
+      <button id="steerSend" class="ghost" type="button">Steer</button>
+    </div>
     <textarea id="input" rows="1" placeholder="Type a message…"></textarea>
     <div class="composerRow">
       <button id="attachBtn" class="iconBtn" type="button" title="Attach a text file" aria-label="Attach a file">
@@ -2804,6 +3078,15 @@
             <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </span>
         </button>
+        <label class="iconBtn qModeBtn" title="What a message does while the agent is working" style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--muted);font-size:10px;letter-spacing:.06em">QUEUE</span>
+          <select id="queueSel" aria-label="Queue mode" style="border:0;background:transparent;font:inherit;color:inherit">
+            <option value="followup">followup</option>
+            <option value="steer">steer</option>
+            <option value="collect">collect</option>
+            <option value="interrupt">interrupt</option>
+          </select>
+        </label>
         <button id="thinkingBtn" class="iconBtn thinkingBtn" type="button" title="Thinking level: Auto" aria-label="Thinking level: Auto" aria-haspopup="dialog" aria-expanded="false">
           <span class="modOn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.2 4.7 3 6.1V19a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.9c1.8-1.4 3-3.6 3-6.1a8 8 0 0 0-8-8z"/><path d="M9 22h6"/><path d="M12 6v4"/></svg>
@@ -2813,6 +3096,9 @@
         </button>
       </div>
       <span class="composerSp"></span>
+      <button id="sayLast" class="iconBtn" type="button" title="Speak the last answer (downloads a voice file)" aria-label="Speak the last answer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      </button>
       <button id="send" class="iconBtn primary" type="button" title="Send" aria-label="Send">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       </button>
@@ -2822,7 +3108,7 @@
     <svg class="errIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <span class="errText"></span>
   </div>
-  <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt" />
+  <input type="file" id="attachFile" hidden accept="text/*,.md,.json,.csv,.js,.ts,.py,.sh,.yml,.yaml,.log,.txt,.pdf,.docx,.pptx,.xlsx" />
 </div>
 
 </div>
@@ -2893,8 +3179,12 @@
     thinkCaps: null,
     thinkStartTime: null,
     thinkInterval: null,
+    /** A stop was already asked for (one tap must not send five requests). */
+    stopSent: false,
+    /** Config-file problems the panel was told about (they are never silent). */
+    configProblems: [],
   };
-  const currentSession = () => $('session').value || 'web:main';
+  const currentSession = () => $('session').value || MAIN_SESSION;
 
 
   // ==== markdown renderer (zero-dependency, mobile-first) ====
@@ -3149,6 +3439,40 @@
     } else ok();
   });
 
+  // ---- panel password gate -------------------------------------------------
+  // Shown when the gateway answers 401: a token is configured and this browser
+  // does not have it. One field, one button, remembered in localStorage.
+  let askingPassword = false;
+  function askPassword() {
+    if (askingPassword || !document.body) return;
+    askingPassword = true;
+    const wrap = document.createElement('div');
+    wrap.id = 'pwGate';
+    wrap.setAttribute('style', 'position:fixed;inset:0;background:rgba(42,29,51,.55);display:flex;align-items:center;justify-content:center;padding:24px;z-index:9999');
+    wrap.innerHTML =
+      '<div style="background:#fff;border-radius:16px;padding:20px;max-width:380px;width:100%;box-shadow:0 24px 50px -24px rgba(180,80,120,.45)">' +
+      '<div style="font-weight:600;font-size:16px;margin-bottom:6px">Panel password needed</div>' +
+      '<div style="font-size:13px;color:#8a6f9b;line-height:1.45;margin-bottom:12px">' +
+      'This panel is protected. Paste the password printed by:<br><code>termcrab config get gateway.token</code>' +
+      '</div>' +
+      '<input id="pwGateInput" type="password" autocomplete="current-password" placeholder="panel password" ' +
+      'style="width:100%;padding:11px;border-radius:10px;border:1px solid rgba(122,93,140,.3);font-size:14px">' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px">' +
+      '<button id="pwGateSave" style="padding:9px 16px;border-radius:10px;border:0;background:linear-gradient(135deg,#f0517d,#ff9156);color:#fff;font-weight:600;font-size:14px">Unlock</button>' +
+      '</div></div>';
+    document.body.appendChild(wrap);
+    const input = document.getElementById('pwGateInput');
+    const save = () => {
+      const v = (input.value || '').trim();
+      if (!v) return;
+      localStorage.setItem('tc_token', v);
+      location.reload();
+    };
+    document.getElementById('pwGateSave').onclick = save;
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    input.focus();
+  }
+
   async function api(path, opts = {}, body) {
     if (typeof opts === 'string') {
       // Shorthand: api(path, 'POST', {…}) — JSON body, correct method.
@@ -3161,6 +3485,11 @@
     }
     const headers = Object.assign({ 'authorization': 'Bearer ' + state.token }, opts.headers || {});
     const res = await fetch(path, Object.assign({}, opts, { headers }));
+    if (res.status === 401) {
+      // The gateway has a panel password and we do not (or it is stale).
+      askPassword();
+      throw new Error('panel password needed');
+    }
     if (!res.ok) {
       let msg = 'HTTP ' + res.status;
       try { msg = (await res.json()).error || msg; } catch {}
@@ -3553,8 +3882,8 @@
   });
 
   async function refreshModelBtn() {
-    // No token gate here: the panel runs open by default, and the model chip +
-    // thinking picker must still show what is in use.
+    // Runs on load: if the gateway wants a panel password this 401s and the
+    // gate above asks for it; without a token the panel is open on loopback.
     try {
       const d = await api('/api/config');
       const m = (d.config && d.config.provider && d.config.provider.model) || '';
@@ -3663,6 +3992,12 @@
     try {
       const s = await api('/api/status');
       const facts = s.memory ? (s.memory.facts || 0) : 0;
+      // 28.1: the panel talks in the same rolling main session as the terminal
+      // and your Telegram DM. The name comes from the server, not from here.
+      if (s.sessions) {
+        // Rolling off means the panel goes back to its own thread.
+        MAIN_SESSION = s.sessions.rolling ? s.sessions.main : 'web:main';
+      }
       $('heroStatus').textContent = 'awake \u00b7 ' + s.provider + ' \u00b7 ' + facts + (facts === 1 ? ' memory' : ' memories');
     } catch { $('heroStatus').textContent = 'awake'; }
   }
@@ -3681,7 +4016,11 @@
     sub: { label: 'Subagent', color: '#39c5cf', d: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.6 8l3 7.5M16.4 8l-3 7.5M8.5 6h7"/>' },
     dream: { label: 'Dream', color: '#a78bfa', d: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>' },
     heartbeat: { label: 'Heartbeat', color: '#f85149', d: '<path d="M3 12h4l2-5 3 10 2.5-6 1.5 3h6"/>' },
+    // 28.1: the one session the panel, the terminal and your Telegram DM share.
+    main: { label: 'Main', color: '#3fb950', d: '<path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/>' },
   };
+  /** The main session id, learnt from /api/status (rolling can rename it). */
+  let MAIN_SESSION = 'main';
   function sessionSource(id) {
     const raw = String(id || '');
     const parts = raw.split(':');
@@ -4122,7 +4461,7 @@
   }
 
   function updateChatLabel() {
-    const id = currentSession() || 'web:main';
+    const id = currentSession() || MAIN_SESSION;
     const health = $('health');
     health.innerHTML = '';
     const ic = document.createElement('span');
@@ -4168,6 +4507,19 @@
         || rows.find((r) => r.querySelector('.d.pending'));
       if (row) markToolLine(row, ev.ok !== false, ev.result || ev.preview || '');
     });
+    es.addEventListener('draft', (e) => {
+      // A partial answer while the turn is still running (10.4). It replaces
+      // the bubble text (the next delta keeps appending to it), and the bubble
+      // is marked as a draft until the final answer arrives.
+      let ev;
+      try { ev = JSON.parse(e.data); } catch { return; }
+      if (ev.sessionId && ev.sessionId !== currentSession()) return;
+      if (state.pollDone) return;
+      if (!state.live || !log.contains(state.live)) { state.live = addMsg('bot', ''); state.liveRaw = ''; }
+      state.liveRaw = ev.text || state.liveRaw;
+      setLiveMarkdown(state.liveRaw);
+      if (state.live) state.live.classList.add('drafting');
+    });
     es.addEventListener('delta', (e) => {
       if (state.pollDone) return;
       stopThinkingTimer();
@@ -4193,6 +4545,13 @@
       if (now - (state.livePaint || 0) > 120) { state.livePaint = now; paint(); }
       clearTimeout(state.liveTimer);
       state.liveTimer = setTimeout(() => { state.livePaint = 0; paint(); }, 150);
+    });
+    es.addEventListener('run:end', (e) => {
+      try {
+        const ev = JSON.parse(e.data);
+        if (ev.usage) addUsageFooter(ev.usage, ev.costUsd);
+        refreshUsage();
+      } catch { /* malformed event */ }
     });
     es.addEventListener('thinkingCaps', (e) => {
       try {
@@ -4226,6 +4585,13 @@
           }
           closeModal();
         });
+      } catch { /* malformed event */ }
+    });
+    es.addEventListener('approval', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const a = d.approval || d;
+        addApprovalCard(a);
       } catch { /* malformed event */ }
     });
     es.addEventListener('tasks', () => { refreshTaskCards(); });
@@ -4440,9 +4806,63 @@
     refreshProgressCard();
   }
 
+  /** Paint the live bubble (creating the text body if needed). Shared by the
+   *  send path, streamed deltas and progress drafts so all three agree. */
+  function setLiveMarkdown(textStr, isErr) {
+    if (!state.live) return;
+    const think = state.live.querySelector('.think');
+    if (think) think.remove();
+    state.live.classList.remove('drafting');
+    let tb = state.live.querySelector('.textBody');
+    if (!tb) {
+      tb = document.createElement('div');
+      tb.className = 'textBody';
+      state.live.appendChild(tb);
+    }
+    if (isErr) state.live.classList.add('err');
+    tb.innerHTML = renderMarkdown(textStr);
+  }
+
+  /**
+   * Stop the running turn for real (10.3): the server aborts the model call,
+   * keeps the partial answer, and the lane is free for the next message. The
+   * client keeps polling, so the partial text lands in the same bubble.
+   */
+  async function stopRun() {
+    if (state.stopSent) return;
+    state.stopSent = true;
+    try {
+      await api('/api/stop', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSession() }),
+      });
+      addMsg('sys', 'Stopping…');
+    } catch (err) {
+      state.stopSent = false;
+      showComposerError(err.message || 'could not stop the run');
+    }
+  }
+
   async function send() {
     const text = $('input').value.trim();
-    if (!text || state.busy) return;
+    if (!text) return;
+    // 46.3: a slash command is a command here too. One handler answers it, so
+    // /logs, /doctor, /board … mean the same thing in the panel chat as in
+    // Telegram and the terminal.
+    if (text.startsWith('/')) {
+      const sp = text.indexOf(' ');
+      const name = sp === -1 ? text : text.slice(0, sp);
+      const args = sp === -1 ? '' : text.slice(sp + 1).trim();
+      $('input').value = '';
+      growInput();
+      addMsg('user', text);
+      await executeSlash(name, args, { fromChat: true });
+      return;
+    }
+    // A message while the agent is working is not a mistake: the queue either
+    // steers it into the running turn or holds it until the lane is free.
+    if (state.busy) { await sendWhileBusy(text); return; }
     state.busy = true;
     document.body.classList.add('busy');
     setSendMode(true);
@@ -4474,24 +4894,12 @@
         // Poll the turn-status endpoint until the reply is ready.
         // (POST /api/chat returns 202 immediately — the reply is generated
         // in the background, so we wait for it here.)
-        const setLiveMarkdown = (textStr, isErr) => {
-          if (!state.live) return;
-          const think = state.live.querySelector('.think');
-          if (think) think.remove();
-          let tb = state.live.querySelector('.textBody');
-          if (!tb) {
-            tb = document.createElement('div');
-            tb.className = 'textBody';
-            state.live.appendChild(tb);
-          }
-          if (isErr) state.live.classList.add('err');
-          tb.innerHTML = renderMarkdown(textStr);
-        };
         const deadline = Date.now() + 120000; // 2 min max
         while (Date.now() < deadline) {
           if (state.abort && state.abort.signal.aborted) break;
           try {
             const t = await api(`/api/chat/${encodeURIComponent(sid)}/${encodeURIComponent(turnId)}`);
+            setQueueWait(t.queueLength || 0);
             if (t.status === 'done') {
               state.pollDone = true;
               state.liveRaw = t.output || '';
@@ -4506,6 +4914,16 @@
               state.pollDone = true;
               state.liveRaw = t.error || 'Crabby got no text back from the model. Try again, or switch models in Providers.';
               setLiveMarkdown(state.liveRaw, true);
+              break;
+            }
+            if (t.status === 'interrupted') {
+              // Stopped from outside (this panel's stop button, the CLI, the
+              // API). Whatever was written is kept — the marker is stripped
+              // from the bubble and shown as a plain notice (10.3).
+              state.pollDone = true;
+              state.liveRaw = (t.output || '').replace(/\n*\[interrupted\][^\n]*$/i, '').trim();
+              setLiveMarkdown(state.liveRaw || 'Stopped before any text was written.');
+              addMsg('sys', 'Stopped — nothing else will run for this turn.');
               break;
             }
           } catch { /* transient poll failure — keep trying */ }
@@ -4555,6 +4973,8 @@
       state.liveRaw = '';
       state.abort = null;
       state.busy = false;
+      state.stopSent = false;
+      setQueueWait(0);
       document.body.classList.remove('busy');
       setSendMode(false);
       { const b = $('send'); if (b) b.disabled = false; }
@@ -4563,18 +4983,82 @@
     }
   }
 
+  /**
+   * Send a message while a turn is already running. The queue decides what that
+   * means (steer into the run, or wait behind it); this surfaces both, and the
+   * reply appears as its own bubble when the backend finishes that turn.
+   */
+  async function sendWhileBusy(text) {
+    $('input').value = '';
+    growInput();
+    syncSendBtn();
+    const bubble = addMsg('user', text);
+    const badge = document.createElement('span');
+    badge.className = 'qBadge';
+    badge.textContent = 'waiting…';
+    bubble.appendChild(badge);
+    const sid0 = currentSession();
+    try {
+      const res = await api('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          sessionId: sid0,
+          agent: $('agentSel').value || undefined,
+          thinkingLevel: state.thinkingLevel || 'none',
+        }),
+      });
+      const sid = res.sessionId || sid0;
+      if (res.status === 'steering') {
+        badge.textContent = 'steered into the running turn';
+        setQueueWait(0);
+        return;
+      }
+      const turnId = res.turnId;
+      if (!turnId) { badge.remove(); return; }
+      const deadline = Date.now() + 120000;
+      while (Date.now() < deadline) {
+        let t = null;
+        try { t = await api(`/api/chat/${encodeURIComponent(sid)}/${encodeURIComponent(turnId)}`); } catch { /* transient */ }
+        if (t) {
+          setQueueWait(t.queueLength || 0);
+          if (t.status === 'queued') badge.textContent = 'waiting…';
+          else if (t.status === 'running') badge.textContent = 'answering…';
+          if (t.status === 'done') {
+            badge.remove();
+            addMsg('bot', (t.output || '').trim() || 'Crabby got no text back from the model. Try again.');
+            return;
+          }
+          if (t.status === 'error') {
+            badge.remove();
+            const card = addMsg('bot', t.error || 'agent error');
+            card.classList.add('err');
+            return;
+          }
+          if (t.status === 'interrupted') { badge.textContent = 'stopped'; return; }
+        }
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      badge.textContent = 'timed out';
+    } catch (err) {
+      badge.remove();
+      showComposerError(err.message);
+    }
+  }
+
   async function refreshSessions() {
     try {
       const data = await api('/api/sessions');
       const sel = $('session');
-      const keep = state.pendingSession || sel.value || 'web:main';
+      const keep = state.pendingSession || sel.value || MAIN_SESSION;
       const opts = [];
       const seen = new Set();
       for (const s of data.sessions || []) {
         opts.push(s); seen.add(s.id);
       }
-      if (!seen.has('web:main')) opts.unshift({ id: 'web:main', messages: 0 });
-      if (keep && keep !== 'web:main' && !seen.has(keep)) opts.push({ id: keep, messages: 0 });
+      if (!seen.has(MAIN_SESSION)) opts.unshift({ id: MAIN_SESSION, messages: 0 });
+      if (keep && keep !== MAIN_SESSION && !seen.has(keep)) opts.push({ id: keep, messages: 0 });
       sel.innerHTML = '';
       for (const s of opts) {
         const o = document.createElement('option');
@@ -4585,7 +5069,7 @@
       }
       sel.value = keep;
       state.sessions = data.sessions || [];
-      if (keep && keep !== 'web:main' && !state.sessions.some((s) => s.id === keep)) {
+      if (keep && keep !== MAIN_SESSION && !state.sessions.some((s) => s.id === keep)) {
         state.sessions.unshift({ id: keep, messages: 0, modified: Math.floor(Date.now() / 1000) });
       }
       renderHistory(state.sessions);
@@ -4596,6 +5080,52 @@
         if (sel.value === want) await loadSession(want);
       }
     } catch { /* non-fatal */ }
+  }
+
+  /** Token counts, short: 1234 -> "1.2k". */
+  function fmtTok(n) {
+    const v = Number(n) || 0;
+    if (v < 1000) return String(v);
+    if (v < 1000000) return (v / 1000).toFixed(v < 10000 ? 1 : 0) + 'k';
+    return (v / 1000000).toFixed(2) + 'M';
+  }
+
+  /** The per-turn meter under an assistant bubble: measured, or explicitly estimated. */
+  function addUsageFooter(usage, costUsd) {
+    if (!usage || !usage.totalTokens) return;
+    const target = (state.live && log.contains(state.live))
+      ? state.live
+      : [...log.querySelectorAll('.msg.bot')].pop();
+    if (!target) return;
+    if (target.querySelector('.turnUsage')) return;
+    const est = usage.estimated ? '≈ ' : '';
+    const parts = [est + fmtTok(usage.totalTokens) + ' tokens'];
+    if (usage.promptTokens) parts.push('in ' + fmtTok(usage.promptTokens));
+    if (usage.completionTokens) parts.push('out ' + fmtTok(usage.completionTokens));
+    if (typeof costUsd === 'number') parts.push('~$' + costUsd.toFixed(4));
+    const node = document.createElement('div');
+    node.className = 'turnUsage';
+    node.textContent = parts.join(' · ');
+    node.title = usage.estimated
+      ? 'Estimated by the offline mock provider — a real server reports measured tokens'
+      : 'Reported by the model provider for this turn' + (typeof costUsd === 'number' ? '; cost from a dated price snapshot' : '');
+    target.appendChild(node);
+  }
+
+  /** Today's total in the top bar. Reads the meter; never renders a guess. */
+  async function refreshUsage() {
+    const pill = $('usageToday');
+    if (!pill) return;
+    try {
+      const d = await api('/api/usage');
+      if (!d || !d.turns) { pill.classList.add('hidden'); return; }
+      pill.textContent = fmtTok(d.totalTokens) + ' tok today';
+      pill.title = `${d.turns} turn(s), ${d.calls} model call(s) today\ntokens: in ${d.promptTokens} · out ${d.completionTokens}` +
+        (typeof d.costUsd === 'number' && d.priced ? `\n~$${d.costUsd.toFixed(4)} (price snapshot ${d.pricingAsOf})` : '\ncost unknown for this model');
+      pill.classList.remove('hidden');
+    } catch {
+      pill.classList.add('hidden');
+    }
   }
 
   async function loadSession(id, quiet) {
@@ -4637,6 +5167,8 @@
             }
             tb.innerHTML = renderMarkdown(m.content);
           }
+          // The meter is part of the transcript, so a reload keeps the footer.
+          if (m.usage) addUsageFooter(m.usage, m.costUsd);
         }
       }
       state.live = null;
@@ -4652,7 +5184,14 @@
     }
   }
 
-  $('send').onclick = () => { if (state.busy) { if (state.abort) state.abort.abort(); } else send(); };
+  $('send').onclick = () => {
+    const txt = $('input').value.trim();
+    if (txt) send();
+    // Empty box + busy = stop. It asks the server to stop, so the model call
+    // ends too and the partial answer is kept (10.3) — aborting only the
+    // browser's fetch would leave the turn running in the panel.
+    else if (state.busy) stopRun();
+  };
   $('input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
@@ -4661,23 +5200,36 @@
     const f = $('attachFile').files && $('attachFile').files[0];
     $('attachFile').value = '';
     if (!f) return;
-    if (/^(image|audio|video)\//.test(f.type) || f.type === 'application/pdf' || f.type === 'application/zip') {
-      addMsg('sys', 'Attachments work with text files for now.');
+    const doc = /\.(pdf|docx|pptx|xlsx)$/i.test(f.name);
+    if (!doc && (/^(image|audio|video)\//.test(f.type) || f.type === 'application/zip')) {
+      addMsg('sys', 'That kind of file cannot be read here yet (photos, audio and video).');
       return;
     }
-    if (f.size > 200 * 1024) {
-      addMsg('sys', 'That file is too big to attach (200 KB max).');
+    const cap = doc ? 4 * 1024 * 1024 : 200 * 1024;
+    if (f.size > cap) {
+      addMsg('sys', 'That file is too big to attach (' + (cap / 1024 / 1024 >= 1 ? cap / 1024 / 1024 + ' MB' : cap / 1024 + ' KB') + ' max).');
       return;
     }
+    const inp = $('input');
     try {
+      if (doc) {
+        // 53.5 — the same extractor the chat intake uses, so a PDF behaves the
+        // same whether it arrives on Telegram or through this button.
+        addMsg('sys', 'reading ' + f.name + '…');
+        const r = await api('/api/extract?name=' + encodeURIComponent(f.name), { method: 'POST', body: await f.arrayBuffer(), raw: true });
+        const block = '\u2014 ' + f.name + ' (' + r.kind + ', ' + r.chars + ' chars) \u2014\n' + r.text;
+        inp.value = inp.value ? inp.value + '\n\n' + block : block;
+        inp.focus();
+        addMsg('sys', 'Extracted ' + r.chars + ' characters from ' + f.name + ' — edit it or hit send.');
+        return;
+      }
       const body = await f.text();
-      const inp = $('input');
       const block = '\u2014 ' + f.name + ' \u2014\n' + body;
       inp.value = inp.value ? inp.value + '\n\n' + block : block;
       inp.focus();
       addMsg('sys', 'Attached ' + f.name + ' — edit it or hit send.');
-    } catch {
-      addMsg('sys', 'Could not read that file.');
+    } catch (e) {
+      addMsg('sys', 'Could not read that file: ' + (e.message || 'unknown error'));
     }
   };
   $('btnNew').onclick = async () => {
@@ -4775,7 +5327,13 @@
     ta.style.height = '';
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
   };
-  $('input').addEventListener('input', () => { growInput(); syncSendBtn(); });
+  $('input').addEventListener('input', () => {
+    growInput();
+    syncSendBtn();
+    // While a turn runs: an empty box means the button is Stop, a draft means
+    // it is Send (the message queues behind / steers the running turn).
+    if (state.busy) setSendMode(!$('input').value.trim());
+  });
   growInput();
   syncSendBtn();
 
@@ -4987,6 +5545,12 @@
       { key: 'channels.telegram.allowedUserIds', label: 'Telegram allowed people', hint: 'comma-separated user ids - empty means nobody gets in', type: 'list', numeric: true },
       { key: 'channels.whatsapp.enabled', label: 'WhatsApp door', hint: 'needs the baileys package installed', type: 'toggle' },
       { key: 'channels.whatsapp.allowedJids', label: 'WhatsApp allowed chats', hint: 'comma-separated chat ids - empty means off', type: 'list' },
+    ]},
+    { id: 'safety', label: 'SAFETY', title: 'Dangerous tools ask first', d: 'Tools that touch files or processes stop and wait for your answer. The request appears as a card in the chat and the same id is answerable from the terminal with termcrab approvals. Off by default.', fields: [
+      { key: 'security.approvals.enabled', label: 'Ask before dangerous tools run', hint: 'the agent stops and waits for Approve / Deny instead of running it', type: 'toggle' },
+      { key: 'security.approvals.tools', label: 'Which tools ask', hint: 'comma-separated tool names — exec, write_file, kill_process; * means every tool', type: 'list' },
+      { key: 'security.approvals.timeoutSec', label: 'Wait this long', suffix: 'seconds', min: 5, max: 3600, type: 'number' },
+      { key: 'security.approvals.onTimeout', label: 'If nobody answers', hint: 'deny is the safe default', type: 'select', options: [['deny', 'Deny (safe)'], ['allow', 'Allow it']] },
     ]},
     { id: 'rhythm', label: 'DAILY RHYTHM', title: 'Sleep, learning & check-ins', d: 'How your crab spends the quiet hours.', fields: [
       { key: 'dream.enabled', label: 'Night learning (dreaming)', hint: 'turns recent chats into long-term memory while idle', type: 'toggle' },
@@ -5252,8 +5816,176 @@
       host.append(lbl, card);
     }
     // Secrets manager
+  /**
+   * 50.1/50.2/50.3 — the identity files, the backups and the service card.
+   * Everything here goes through the endpoints the CLI's own modules back, so
+   * the panel cannot do something the terminal cannot explain.
+   */
+  async function refreshFiles() {
+    // --- identity files
+    const idHost = $('idFiles');
+    if (idHost) {
+      try {
+        const d = await api('/api/bootstrap');
+        idHost.innerHTML = '';
+        for (const f of d.files || []) {
+          const wrap = document.createElement('div');
+          wrap.style.marginBottom = '12px';
+          const head = document.createElement('div');
+          head.className = 'pNote';
+          head.textContent = `${f.name} — ${f.what} · ${f.exists ? f.bytes + ' B' : 'empty'} · max ${Math.round((f.max || 32768) / 1024)} KB`;
+          const ta = document.createElement('textarea');
+          ta.value = f.text || '';
+          ta.id = 'idf-' + f.name;
+          ta.style.cssText = 'width:100%;min-height:96px;font-family:ui-monospace,monospace;font-size:12px';
+          const bar = document.createElement('div');
+          bar.className = 'pBar';
+          bar.style.marginTop = '6px';
+          const save = document.createElement('button');
+          save.className = 'ghost go';
+          save.textContent = 'Save ' + f.name;
+          const note = document.createElement('span');
+          note.className = 'pNote';
+          save.onclick = async () => {
+            try {
+              const r = await api('/api/bootstrap', {
+                method: 'PUT', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ file: f.name, text: ta.value }),
+              });
+              note.textContent = 'saved ' + r.bytes + ' B';
+            } catch (e) { note.textContent = 'save failed: ' + e.message; }
+          };
+          bar.append(save, note);
+          wrap.append(head, ta, bar);
+          idHost.appendChild(wrap);
+        }
+      } catch (e) { idHost.textContent = 'files failed: ' + e.message; }
+    }
+
+    // --- backups
+    const bkHost = $('bkList');
+    const renderBackups = async () => {
+      if (!bkHost) return;
+      try {
+        const d = await api('/api/backups');
+        bkHost.innerHTML = '';
+        const list = d.backups || [];
+        if (!list.length) { bkHost.innerHTML = '<div class="nx">no backups yet</div>'; return; }
+        for (const b of list) {
+          const row = document.createElement('div');
+          row.className = 'sessRow';
+          const nm = document.createElement('span');
+          nm.className = 'id';
+          nm.textContent = b.name;
+          const meta = document.createElement('span');
+          meta.className = 'meta';
+          meta.textContent = `${Math.max(1, Math.round(b.bytes / 1024))} KB · ${new Date(b.modified).toISOString().slice(0, 16).replace('T', ' ')}`;
+          const sp = document.createElement('span'); sp.className = 'sp';
+          const dl = document.createElement('button');
+          dl.className = 'ghost'; dl.textContent = 'Download';
+          dl.onclick = async () => {
+            try {
+              const res = await fetch('/api/backups/' + encodeURIComponent(b.name), { headers: { authorization: 'Bearer ' + state.token } });
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              const blob = await res.blob();
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = b.name;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            } catch (e) { if ($('bkNote')) $('bkNote').textContent = 'download failed: ' + e.message; }
+          };
+          const rs = document.createElement('button');
+          rs.className = 'ghost danger'; rs.textContent = 'Restore…';
+          rs.onclick = async () => {
+            try {
+              const plan = await api('/api/restore', {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ name: b.name, dryRun: true }),
+              });
+              const n = (plan.plan && plan.plan.files) ? plan.plan.files.length : 0;
+              if (!confirm(`Restore ${b.name}? ${n} file(s) come back; anything in their place moves to state/restore-*/ first.\nType the archive name in the next box to confirm.`)) return;
+              const typed = prompt('Type the archive name to confirm:', '');
+              if (typed === null) return;
+              const r = await api('/api/restore', {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ name: b.name, confirm: typed }),
+              });
+              if ($('bkNote')) $('bkNote').textContent = `restored ${r.restored} file(s)` + (r.movedTo ? ' · previous home moved aside' : '');
+            } catch (e) { if ($('bkNote')) $('bkNote').textContent = 'restore failed: ' + e.message; }
+          };
+          row.append(nm, meta, sp, dl, rs);
+          bkHost.appendChild(row);
+        }
+      } catch (e) { bkHost.innerHTML = '<div class="nx">backups failed: ' + e.message + '</div>'; }
+    };
+    if ($('bkCreate')) {
+      $('bkCreate').onclick = async () => {
+        $('bkNote').textContent = 'writing the archive…';
+        try {
+          const r = await api('/api/backup', { method: 'POST' });
+          $('bkNote').textContent = `${r.name} · ${Math.max(1, Math.round(r.manifest.bytes / 1024))} KB · ${r.manifest.files} file(s)`;
+          renderBackups();
+        } catch (e) { $('bkNote').textContent = 'backup failed: ' + e.message; }
+      };
+    }
+    renderBackups();
+
+    // --- service card
+    if ($('svcInfo')) {
+      try {
+        const d = await api('/api/service');
+        const steps = (d.plan && d.plan.steps) || [];
+        $('svcInfo').textContent = [
+          `${d.platform} · ${d.installed ? 'installed' : 'not installed'}`,
+          d.file,
+          steps.length ? 'after install: ' + steps.join(' ; ') : '',
+        ].filter(Boolean).join(' · ');
+        $('svcCmd').textContent = d.installCommand || 'termcrab service install';
+      } catch (e) { $('svcInfo').textContent = 'service status failed: ' + e.message; }
+    }
+    if ($('svcCopy')) {
+      $('svcCopy').onclick = async () => {
+        try { await navigator.clipboard.writeText($('svcCmd').textContent); $('svcCopy').textContent = 'Copied'; }
+        catch { $('svcCopy').textContent = 'Select and copy'; }
+      };
+    }
+  }
+
+  // 50.4 — transcribe an uploaded audio file, offline.
+  if ($('trGo')) {
+    $('trGo').onclick = async () => {
+      const inp = $('trFile');
+      const file = inp && inp.files && inp.files[0];
+      if (!file) { $('trOut').textContent = 'pick an audio file first'; return; }
+      $('trOut').textContent = `transcribing ${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)…`;
+      try {
+        const ext = (file.name.split('.').pop() || 'ogg').toLowerCase();
+        const buf = await file.arrayBuffer();
+        const r = await api('/api/transcribe?ext=' + encodeURIComponent(ext), {
+          method: 'POST',
+          headers: { 'content-type': file.type || 'application/octet-stream' },
+          body: buf,
+        });
+        $('trOut').textContent = r.text || '(nothing recognized)';
+      } catch (e) { $('trOut').textContent = e.message; }
+    };
+  }
+
     const secList = $('secretsList');
     if (secList) {
+      // 52.2 — the *named* secrets store (agent/secrets.ts), as names only:
+      // the values never leave the server, and the card says so.
+      api('/api/secrets').then((data) => {
+        const named = (data.secrets || []);
+        const box = document.createElement('div');
+        box.className = 'nx';
+        box.style.marginTop = '8px';
+        box.textContent = named.length
+          ? `Named secrets on this device (${named.length}): ` + named.map((s) => s.name).join(', ')
+          : 'No named secrets stored. The agent can read one by name without it ever entering a prompt.';
+        secList.appendChild(box);
+      }).catch(() => { /* the card still shows the config keys */ });
       const secrets = [
         { key: 'provider.apiKey', label: 'AI Provider Key', desc: 'Authentication key for your active AI service', icon: '<path d="M12 2a8 8 0 0 0-8 8c0 3 2 5.5 5 7v3h6v-3c3-1.5 5-4 5-7a8 8 0 0 0-8-8z"/><path d="M9 22h6"/>' },
         { key: 'gateway.token', label: 'Web Panel Password', desc: 'Password required to access this control interface', icon: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' },
@@ -5425,6 +6157,7 @@
       if (pane) pane.hidden = t !== name;
     }
     if (name === 'overview' || name === 'dreams') { refreshMem(); refreshDreams(); }
+    if (name === 'msettings') refreshEmbeddings();
   }
   function showDTab(name) {
     document.querySelectorAll('[data-dtab]').forEach((b) => b.classList.toggle('on', b.dataset.dtab === name));
@@ -5643,6 +6376,65 @@
   };
 
   // Settings > engine: instant config write, no restart.
+  // 49.3 — the embedding provider: status from the same function
+  // `termcrab embeddings status` prints, and the picker writes the same config
+  // key the CLI writes. Installing the offline model is one background job the
+  // gateway reports on (`install` in the status payload).
+  let embInstallTimer = null;
+  async function refreshEmbeddings() {
+    const note = $('embStatus');
+    if (!note) return;
+    try {
+      const st = await api('/api/embeddings');
+      const sel = $('embProvider');
+      if (sel && st.setting) sel.value = st.setting;
+      const on = st.enabled !== false;
+      const bits = [
+        st.summary || (on ? 'smart search on' : 'smart search off'),
+        `provider: ${st.provider || 'none'}${st.model ? ' · ' + st.model : ''}`,
+        st.packageInstalled ? 'offline package installed' : 'offline package not installed',
+      ];
+      if (st.blocker) bits.push('⚠️ ' + st.blocker);
+      if (st.install && st.install.running) bits.push('installing the offline model…');
+      note.textContent = bits.join(' · ');
+      if (st.install && st.install.running && !embInstallTimer) {
+        embInstallTimer = setInterval(refreshEmbeddings, 3000);
+      }
+      if (st.install && !st.install.running && embInstallTimer) {
+        clearInterval(embInstallTimer); embInstallTimer = null;
+        if (st.install.steps && st.install.steps.length) bits.push(st.install.steps.join(' → '));
+        note.textContent = bits.join(' · ');
+      }
+    } catch (e) {
+      note.textContent = 'embeddings status failed: ' + e.message;
+    }
+  }
+  if ($('embProviderSave')) {
+    $('embProviderSave').onclick = async () => {
+      try {
+        const r = await api('/api/embeddings', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ provider: $('embProvider').value }),
+        });
+        $('embStatus').textContent = `provider → ${r.provider}`;
+        refreshEmbeddings();
+      } catch (e) { $('embStatus').textContent = 'could not save: ' + e.message; }
+    };
+  }
+  if ($('embInstall')) {
+    $('embInstall').onclick = async () => {
+      if (!confirm('Download the offline model? One-time: a package (~10 MB) and the model (~23 MB).')) return;
+      try {
+        await api('/api/embeddings', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'install', confirm: true }),
+        });
+        $('embStatus').textContent = 'installing the offline model…';
+        refreshEmbeddings();
+      } catch (e) { $('embStatus').textContent = 'could not start: ' + e.message; }
+    };
+  }
+
   document.querySelectorAll('#segEngine button').forEach((b) => {
     b.onclick = async () => {
       try {
@@ -5963,6 +6755,59 @@
   };
   $('wakeTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('wakeGo').click(); } });
 
+  // ---- Pending approvals (a gated tool is stopped until you decide) ----
+  /** One card per approval id; the buttons answer the run that is blocked on it. */
+  function addApprovalCard(a) {
+    const log = $('log');
+    if (!log || !a || !a.id) return;
+    if (log.querySelector('[data-approval-id="' + a.id + '"]')) return;
+    const card = document.createElement('div');
+    card.className = 'msg approval';
+    card.dataset.approvalId = a.id;
+    const head = document.createElement('div');
+    head.className = 'apHead';
+    head.textContent = 'Approval needed — the agent wants to run ' + (a.tool || 'a tool');
+    const args = document.createElement('pre');
+    args.className = 'apArgs';
+    const shown = JSON.stringify(a.args || {}, null, 2);
+    args.textContent = shown.length > 600 ? shown.slice(0, 600) + '\u2026' : shown;
+    const row = document.createElement('div');
+    row.className = 'apRow';
+    const yes = document.createElement('button');
+    yes.type = 'button'; yes.className = 'apBtn yes'; yes.textContent = 'Approve';
+    const no = document.createElement('button');
+    no.type = 'button'; no.className = 'apBtn no'; no.textContent = 'Deny';
+    const st = document.createElement('span');
+    st.className = 'apSt';
+    st.textContent = a.sessionId ? 'waiting — ' + a.sessionId : 'waiting for you\u2026';
+    const decide = async (approve) => {
+      yes.disabled = no.disabled = true;
+      st.textContent = 'sending\u2026';
+      try {
+        await api('/api/approvals/' + encodeURIComponent(a.id) + '/' + (approve ? 'approve' : 'deny'), 'POST', { by: 'panel' });
+        st.textContent = approve ? 'approved — the tool is running' : 'denied — the agent was told';
+        card.classList.add(approve ? 'ok' : 'gone');
+      } catch (err) {
+        st.textContent = 'failed: ' + err.message;
+        yes.disabled = no.disabled = false;
+      }
+    };
+    yes.onclick = () => decide(true);
+    no.onclick = () => decide(false);
+    row.append(yes, no, st);
+    card.append(head, args, row);
+    log.appendChild(card);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  /** A refresh must not hide a gate that is still waiting — re-list pending ones. */
+  async function refreshApprovals() {
+    try {
+      const d = await api('/api/approvals');
+      for (const a of d.approvals || []) addApprovalCard(a);
+    } catch { /* panel older than this UI, or nothing pending */ }
+  }
+
   // ---- Modal (shared popup: add provider / add API key) ----
   let modalOnSave = null;
   function openModal(title, fields, onSave) {
@@ -6192,6 +7037,19 @@
     } finally { $('provDetect').disabled = false; }
   };
 
+  // No key? The offline brain is always there. Switching is one write, and the
+  // panel reloads into it so every view reflects the new brain.
+  $('provOffline').onclick = async () => {
+    $('provOffline').disabled = true;
+    try {
+      await api('/api/config', 'POST', { key: 'provider.type', value: 'mock' });
+      location.reload();
+    } catch (e) {
+      $('provDetectNote').textContent = 'could not switch: ' + e.message;
+      $('provOffline').disabled = false;
+    }
+  };
+
   $('provAdd').onclick = () => openModal('Add provider', [
     { id: 'name', placeholder: 'Name (e.g. OpenRouter)', maxlength: 40 },
     { id: 'url', placeholder: 'Base URL (e.g. https://openrouter.ai/api/v1)' },
@@ -6223,6 +7081,285 @@
     await loadKeys();
   });
 
+  // ---- 53.x: a download for every attachment ----
+  // One helper: fetch with the panel token, then save the blob under a real
+  // name. Never a URL with the token in it.
+  async function downloadFrom(path, filename) {
+    const res = await fetch(path, { headers: { 'authorization': 'Bearer ' + state.token } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+  }
+
+  // Files the agent produced: what send_file sent, and what the image button
+  // drew. The route resolves an id from the record, so the panel cannot ask
+  // for a path.
+  async function refreshSentFiles() {
+    const box = $('filesList');
+    if (!box) return;
+    try {
+      const data = await api('/api/sent-files?limit=20');
+      const rows = data.files || [];
+      box.innerHTML = '';
+      if (!rows.length) {
+        box.innerHTML = '<div class="nx">nothing yet — the agent has not sent or drawn a file</div>';
+        return;
+      }
+      for (const f of rows.slice(0, 10)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = f.name + (f.exists ? '' : ' (gone)');
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        const when = new Date(f.at).toISOString().slice(5, 16).replace('T', ' ');
+        meta.textContent = `${f.via === 'image' ? 'drawn' : 'sent'} · ${Math.max(1, Math.round((f.bytes || 0) / 1024))} KB · ${when}${f.channel ? ' · ' + f.channel : ''}`;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const get = document.createElement('button');
+        get.className = 'ghost'; get.textContent = 'Download';
+        get.disabled = !f.exists;
+        get.onclick = async () => {
+          try { await downloadFrom('/api/sent-files/' + encodeURIComponent(f.id), f.name); addMsg('sys', 'downloaded ' + f.name); }
+          catch (e) { addMsg('sys', 'download failed: ' + e.message); }
+        };
+        row.append(name, meta, sp, get);
+        if (f.via === 'image' && f.exists && /\.(png|jpe?g|webp|gif)$/i.test(f.name)) {
+          const img = document.createElement('img');
+          img.alt = f.name;
+          img.style.maxWidth = '140px';
+          img.style.borderRadius = '8px';
+          img.style.marginLeft = '8px';
+          fetch('/api/sent-files/' + encodeURIComponent(f.id), { headers: { 'authorization': 'Bearer ' + state.token } })
+            .then((r) => (r.ok ? r.blob() : null))
+            .then((b) => { if (b) img.src = URL.createObjectURL(b); })
+            .catch(() => undefined);
+          row.appendChild(img);
+        }
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // ---- 52.x: the cards that close the named ◐ cells ----
+  // Inbox & rooms: same store the agent's inbox_list/room_history tools read.
+  async function refreshInbox() {
+    const box = $('inboxList');
+    const rooms = $('roomsList');
+    if (!box) return;
+    try {
+      const data = await api('/api/inbox?limit=20');
+      const rows = data.entries || [];
+      box.innerHTML = '';
+      if (!rows.length) box.innerHTML = '<div class="nx">the inbox is empty</div>';
+      for (const e of rows.slice(0, 12)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = e.name + (e.gone ? ' (gone)' : '');
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `${e.kind} · ${Math.max(1, Math.round((e.bytes || 0) / 1024))} KB · ${e.from || ''}`;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const open = document.createElement('button');
+        open.className = 'ghost'; open.textContent = 'Read';
+        open.onclick = async () => {
+          try {
+            const one = await api('/api/inbox/' + encodeURIComponent(e.name));
+            addMsg('sys', one.ok ? `${e.name}:\n${one.text}` : `could not read ${e.name}: ${one.reason}`);
+            switchView('chat');
+          } catch (err) { addMsg('sys', 'read failed: ' + err.message); }
+        };
+        const dl = document.createElement('button');
+        dl.className = 'ghost'; dl.textContent = 'Download';
+        dl.onclick = async () => {
+          try { await downloadFrom('/api/inbox/' + encodeURIComponent(e.name) + '/download', e.name); addMsg('sys', 'downloaded ' + e.name); }
+          catch (err) { addMsg('sys', 'download failed: ' + err.message); }
+        };
+        row.append(name, meta, sp, dl, open);
+        box.appendChild(row);
+      }
+      const rData = await api('/api/rooms');
+      rooms.innerHTML = '';
+      const list = rData.rooms || [];
+      if (!list.length) rooms.innerHTML = '<div class="nx">no rooms recorded yet (group messages the bot was not addressed in land here)</div>';
+      for (const r of list.slice(0, 8)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = `${r.channel} · ${r.room}`;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `${r.messages} msg · ${r.sinceAddressed} since addressed`;
+        row.append(name, meta);
+        rooms.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // Watchers: the same config key `/watch` in Telegram and `config set` write.
+  async function refreshWatchers() {
+    const box = $('wtList');
+    if (!box) return;
+    try {
+      const data = await api('/api/watchers');
+      const list = data.watchers || [];
+      box.innerHTML = '';
+      if (!list.length) box.innerHTML = '<div class="nx">nothing watched yet</div>';
+      for (const w of list) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id'; name.textContent = w.path + (w.match ? ` (${w.match})` : '');
+        const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = w.id;
+        const sp = document.createElement('span'); sp.className = 'sp';
+        const rm = document.createElement('button');
+        rm.className = 'ghost'; rm.textContent = 'Remove';
+        rm.onclick = async () => {
+          try { await api('/api/watchers', { method: 'POST', body: { action: 'rm', id: w.id } }); refreshWatchers(); }
+          catch (e) { addMsg('sys', 'remove failed: ' + e.message); }
+        };
+        row.append(name, meta, sp, rm);
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // Tool switches: three checkboxes bound to the config keys that exist.
+  async function refreshToolToggles() {
+    const box = $('toolToggles');
+    if (!box) return;
+    try {
+      const data = await api('/api/config');
+      const agent = (data.config && data.config.agent) || {};
+      const defs = [
+        { tool: 'exec', key: 'allowExec', label: 'Shell commands (exec)', desc: 'let the agent run commands on this device' },
+        { tool: 'browser', key: 'allowBrowser', label: 'Browser automation', desc: 'let the agent drive a browser' },
+        { tool: 'code', key: 'allowCodeExec', label: 'Code execution', desc: 'let the agent run code it wrote' },
+      ];
+      box.innerHTML = '';
+      for (const d of defs) {
+        const row = document.createElement('label');
+        row.className = 'sessRow';
+        row.style.cursor = 'pointer';
+        const on = document.createElement('input');
+        on.type = 'checkbox';
+        on.checked = agent[d.key] === true;
+        on.onchange = async () => {
+          try {
+            await api('/api/tools/toggle', { method: 'POST', body: { tool: d.tool, enabled: on.checked } });
+            addMsg('sys', `${d.label}: ${on.checked ? 'on' : 'off'}`);
+          } catch (e) { addMsg('sys', 'toggle failed: ' + e.message); on.checked = !on.checked; }
+        };
+        const name = document.createElement('span');
+        name.className = 'id'; name.textContent = d.label;
+        const meta = document.createElement('span');
+        meta.className = 'meta'; meta.textContent = d.desc;
+        row.append(on, name, meta);
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // Security scan: findings with fixes, straight from /api/security.
+  async function refreshSecurity() {
+    const box = $('secFindings');
+    if (!box) return;
+    try {
+      const data = await api('/api/security');
+      const findings = (data.findings || []).filter((f) => f.level !== 'ok');
+      box.innerHTML = '';
+      if (!findings.length) { box.innerHTML = '<div class="nx">nothing to fix</div>'; return; }
+      const head = document.createElement('div');
+      head.className = 'nx';
+      head.textContent = `${findings.length} finding(s)`;
+      box.appendChild(head);
+      for (const f of findings.slice(0, 12)) {
+        const row = document.createElement('div');
+        row.className = 'sessRow';
+        const name = document.createElement('span');
+        name.className = 'id';
+        name.textContent = (f.level === 'fail' ? '❌ ' : '⚠️ ') + f.title;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = f.fix || '';
+        row.append(name, meta);
+        box.appendChild(row);
+      }
+    } catch (e) { box.innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
+  }
+
+  // 52.5 — a spoken reply, as a file: the browser cannot hear this machine's
+  // speakers, so the answer arrives as a download it can play.
+  $('sayLast') && ($('sayLast').onclick = async () => {
+    const text = lastAssistantText();
+    if (!text) { addMsg('sys', 'nothing to speak yet'); return; }
+    try {
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + state.token },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        addMsg('sys', '🔇 ' + (body.hint || body.error || 'could not synthesize'));
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'reply.ogg';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+    } catch (e) { addMsg('sys', '🔇 ' + e.message); }
+  });
+  /** The last answer in the transcript, which is what "speak it" means. */
+  function lastAssistantText() {
+    const bubbles = document.querySelectorAll('#log .ai .textBody');
+    const last = bubbles[bubbles.length - 1];
+    return last ? (last.innerText || '').trim().slice(0, 1500) : '';
+  }
+  $('wtAdd') && ($('wtAdd').onclick = async () => {
+    const path = ($('wtPath').value || '').trim();
+    const match = ($('wtMatch').value || '').trim();
+    if (!path) { addMsg('sys', 'a path is required'); return; }
+    try {
+      await api('/api/watchers', { method: 'POST', body: { action: 'add', path, match } });
+      $('wtPath').value = ''; $('wtMatch').value = '';
+      refreshWatchers();
+    } catch (e) { addMsg('sys', 'add failed: ' + e.message); }
+  });
+  $('ibRefresh') && ($('ibRefresh').onclick = () => refreshInbox());
+  $('flRefresh') && ($('flRefresh').onclick = () => refreshSentFiles());
+  $('imgGo') && ($('imgGo').onclick = async () => {
+    const prompt = (($('imgPrompt') && $('imgPrompt').value) || '').trim();
+    if (!prompt) { addMsg('sys', 'say what to draw'); return; }
+    const out = $('imgOut');
+    if (out) out.innerHTML = '<div class="nx">drawing…</div>';
+    try {
+      const r = await api('/api/image', { method: 'POST', body: { prompt } });
+      if (out) {
+        out.innerHTML = '';
+        const line = document.createElement('div');
+        line.className = 'nx';
+        line.textContent = `${r.width}×${r.height} · ${(r.bytes / 1024).toFixed(0)} KB · ${r.provider} ${r.placeholder ? '(local placeholder — no image provider configured)' : r.model}`;
+        const dl = document.createElement('button');
+        dl.className = 'ghost smallBtn'; dl.textContent = 'Download';
+        dl.onclick = () => downloadFrom('/api/sent-files/' + encodeURIComponent(r.id), r.path.split('/').pop());
+        out.append(line, dl);
+      }
+      refreshSentFiles();
+    } catch (e) {
+      if (out) out.innerHTML = '<div class="nx">failed: ' + e.message + '</div>';
+    }
+  });
+
   // ---- Chats panel (export / rename / purge) ----
   async function refreshSessPanel() {
     try {
@@ -6252,11 +7389,107 @@
         const load = document.createElement('button');
         load.className = 'ghost'; load.textContent = 'Open';
         load.onclick = () => { $('session').value = s.id; loadSession(s.id); switchView('chat'); };
-        row.append(id, meta, sp, load);
+        // 52.5 — rename and export, the two the rail never had.
+        const rename = document.createElement('button');
+        rename.className = 'ghost'; rename.textContent = 'Rename';
+        rename.onclick = async () => {
+          const to = prompt('New name for ' + s.id + ' (letters, digits, . _ - : only)', s.id);
+          if (!to || to === s.id) return;
+          try {
+            await api('/api/sessions/' + encodeURIComponent(s.id) + '/rename', { method: 'POST', body: { to } });
+            addMsg('sys', `renamed ${s.id} → ${to}`);
+            refreshSessPanel();
+          } catch (e) { addMsg('sys', 'rename failed: ' + e.message); }
+        };
+        const exp = document.createElement('button');
+        exp.className = 'ghost'; exp.textContent = 'Export';
+        exp.onclick = async () => {
+          try {
+            const one = await api('/api/sessions/' + encodeURIComponent(s.id) + '/export');
+            if (!one.markdown) { addMsg('sys', 'export: no chat found with that id'); return; }
+            const blob = new Blob([one.markdown], { type: 'text/markdown' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = s.id.replace(/[^\w.-]+/g, '_') + '.md';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+          } catch (e) { addMsg('sys', 'export failed: ' + e.message); }
+        };
+        const del = document.createElement('button');
+        del.className = 'ghost'; del.textContent = 'Delete';
+        del.onclick = async () => {
+          if (!confirm(`Delete the transcript of ${s.id}? (the archived history stays on disk)`)) return;
+          try { await api('/api/sessions/' + encodeURIComponent(s.id), { method: 'DELETE' }); refreshSessPanel(); }
+          catch (e) { addMsg('sys', 'delete failed: ' + e.message); }
+        };
+        row.append(id, meta, sp, load, rename, exp, del);
         box.appendChild(row);
       }
     } catch (e) { $('sessList').innerHTML = '<div class="nx">failed: ' + e.message + '</div>'; }
   }
+  // 49.1 — search every chat by words: the rail asks `GET /api/sessions?q=`
+  // and the server answers with ranked hits (the same search `termcrab sessions
+  // search` runs), snippet included. Empty query = the normal list.
+  let sessSearchTimer = null;
+  function renderSessHits(query, hits) {
+    const box = $('sessHits');
+    box.innerHTML = '';
+    box.hidden = false;
+    $('sessList').hidden = true;
+    const head = document.createElement('div');
+    head.className = 'memSectionLabel';
+    head.textContent = hits.length ? `${hits.length} match(es) for “${query}”` : '';
+    if (!hits.length) {
+      box.innerHTML = '<div class="nx">no chat matches “' + query.replace(/[<>&]/g, '') + '”</div>';
+      return;
+    }
+    box.appendChild(head);
+    for (const h of hits) {
+      const row = document.createElement('div');
+      row.className = 'sessRow';
+      const id = document.createElement('span');
+      id.className = 'id';
+      id.textContent = sessionLabel(h.sessionId);
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      const when = h.when ? new Date(h.when).toISOString().slice(0, 10) : '';
+      meta.textContent = `${h.role} · ${when}${h.part === 'archive' ? ' · archived' : ''}`;
+      const snip = document.createElement('span');
+      snip.className = 'meta';
+      snip.style.cssText = 'flex:1;white-space:normal';
+      snip.textContent = h.snippet || '';
+      const sp = document.createElement('span'); sp.className = 'sp';
+      const open = document.createElement('button');
+      open.className = 'ghost'; open.textContent = 'Open';
+      open.onclick = () => { $('session').value = h.sessionId; loadSession(h.sessionId); switchView('chat'); };
+      row.append(id, meta, snip, sp, open);
+      box.appendChild(row);
+    }
+  }
+  async function runSessSearch(q) {
+    if (!q) {
+      $('sessHits').hidden = true;
+      $('sessHits').innerHTML = '';
+      $('sessList').hidden = false;
+      return;
+    }
+    try {
+      const data = await api('/api/sessions?q=' + encodeURIComponent(q));
+      renderSessHits(q, data.hits || []);
+    } catch (e) {
+      $('sessHits').hidden = false;
+      $('sessHits').innerHTML = '<div class="nx">search failed: ' + e.message + '</div>';
+    }
+  }
+  if ($('sessSearch')) {
+    $('sessSearch').oninput = () => {
+      clearTimeout(sessSearchTimer);
+      const q = $('sessSearch').value.trim();
+      sessSearchTimer = setTimeout(() => runSessSearch(q), 250);
+    };
+    $('sessSearchClear').onclick = () => { $('sessSearch').value = ''; runSessSearch(''); };
+  }
+
   $('sessExport').onclick = async () => {
     const sel = $('session').value;
     if (!sel) { addMsg('sys', 'pick a chat in the bar above first'); return; }
@@ -6399,7 +7632,7 @@
 
   
   // ---- Tab shell (mobile) ----
-  const VIEWS = ['chat', 'status', 'providers', 'models', 'memory', 'tools', 'logs', 'debug', 'settings'];
+  const VIEWS = ['chat', 'status', 'board', 'providers', 'models', 'memory', 'tools', 'logs', 'debug', 'work', 'settings'];
   // ---- Approvals ----
   let currentApproval = null;
   // ---- Debug / Stream inspector ----
@@ -6414,7 +7647,48 @@
     } catch (e) {
       view.textContent = 'failed to load events: ' + e.message;
     }
+    loadContext();
   }
+
+  // 49.2 — the prompt-section report (`termcrab context`), biggest section
+  // first, so "why is the prompt so big" has a visible answer.
+  async function loadContext() {
+    const box = $('ctxTable');
+    if (!box) return;
+    try {
+      const d = await api('/api/context?session=' + encodeURIComponent(currentSession()));
+      const kb = (n) => (n / 1024).toFixed(1) + ' KB';
+      box.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'pNote';
+      head.textContent = `${kb(d.totalBytes)} total · ${d.tools.count} tool(s) · ${d.history.messages} message(s) · ${d.memory.facts}/${d.memory.totalFacts} facts`;
+      box.appendChild(head);
+      const table = document.createElement('table');
+      table.className = 'ctxTable';
+      table.style.cssText = 'width:100%;border-collapse:collapse;margin-top:8px;font-size:12px';
+      for (const s of d.sections || []) {
+        const tr = document.createElement('tr');
+        const a = document.createElement('td');
+        a.textContent = s.name;
+        const b = document.createElement('td');
+        b.style.cssText = 'text-align:right;white-space:nowrap';
+        b.textContent = kb(s.bytes);
+        tr.append(a, b);
+        table.appendChild(tr);
+      }
+      box.appendChild(table);
+      if ((d.notes || []).length) {
+        const note = document.createElement('div');
+        note.className = 'pNote';
+        note.style.marginTop = '6px';
+        note.textContent = (d.notes || []).join(' · ');
+        box.appendChild(note);
+      }
+    } catch (e) {
+      box.textContent = 'context failed: ' + e.message;
+    }
+  }
+  if ($('ctxRefresh')) $('ctxRefresh').addEventListener('click', loadContext);
 
   // ---- Slash menu ----
   let slashCommands = [];
@@ -6450,9 +7724,13 @@
     }
   }
   function hideSlashMenu() { toggleSlashMenu(false); }
-  async function executeSlash(name, args) {
+  async function executeSlash(name, args, opts) {
+    const fromChat = !!(opts && opts.fromChat);
     try {
-      const r = await api('/api/slash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ command: name, args }) });
+      const r = await api('/api/slash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ command: name, args, ui: !fromChat }) });
+      // 46.3: the shared dispatcher answers with text — the same words Telegram
+      // gets, from the same data. Show it as the agent's reply.
+      if (r.message) addMsg('bot', r.message);
       if (r.action === 'new') { $('input').value = ''; }
       else if (r.action === 'clear') { if (confirm('Clear this chat?')) { await api('/api/sessions/' + encodeURIComponent(currentSession()), { method: 'DELETE' }); refreshSessions(); } }
       else if (r.action === 'model') { switchView('models'); }
@@ -6504,6 +7782,17 @@
   function updateStatusBand() {
     const band = $('statusBand');
     if (!band) return;
+    const bad = state.configProblems || [];
+    if (bad.length) {
+      // A refused config edit is the most important thing on this screen: the
+      // agent is running on the settings it already had (10.1).
+      band.style.display = 'flex';
+      band.textContent =
+        'Your config file is being ignored (' + bad.length + ' problem' + (bad.length === 1 ? '' : 's') + '): ' +
+        bad[0].path + ' — ' + bad[0].message;
+      band.title = bad.map((p) => p.path + ': ' + p.message).join('\n');
+      return;
+    }
     if (!navigator.onLine) {
       band.style.display = 'flex';
       band.textContent = 'Offline — messages will be queued';
@@ -6512,18 +7801,96 @@
     }
   }
 
+  // Ask the panel what it thinks of the config file on disk (10.1).
+  async function refreshConfigProblems() {
+    try {
+      const d = await api('/api/config');
+      state.configProblems = (d.configProblems || []).filter((p) => p.severity === 'error');
+    } catch { /* the panel will tell us another way */ }
+    updateStatusBand();
+  }
+
   // ---- Composer progress + error ----
   function showComposerProgress(text) {
     const p = $('composerProgress');
     if (!p) return;
     p.classList.remove('hidden');
+    showSteerRow(true);
     const t = p.querySelector('.progText');
     if (t) t.textContent = text;
   }
   function hideComposerProgress() {
     const p = $('composerProgress');
     if (p) p.classList.add('hidden');
+    showSteerRow(false);
   }
+
+  /** Real queue state for the composer chip: "N waiting" (0 means idle). */
+  function setQueueWait(n) {
+    const pill = $('progWait');
+    if (!pill) return;
+    const count = Number(n) || 0;
+    if (count > 0) {
+      pill.textContent = count + ' waiting';
+      pill.classList.remove('hidden');
+      const p = $('composerProgress');
+      if (p) p.classList.remove('hidden');
+    } else {
+      pill.classList.add('hidden');
+      const p = $('composerProgress');
+      if (p && !state.busy) p.classList.add('hidden');
+    }
+  }
+  /**
+   * 49.4 — the queue mode and steering, from the same verbs the chat dispatcher
+   * serves: the select writes `agent.queueMode` through `/queue`, the steer box
+   * feeds the running turn through `/steer`. The row appears while a turn is
+   * running, which is exactly when steering means something.
+   */
+  async function loadQueueMode() {
+    if (!$('queueSel')) return;
+    try {
+      const q = await api('/api/queue');
+      $('queueSel').value = q.mode || 'followup';
+    } catch { /* the chip keeps its last value */ }
+  }
+  if ($('queueSel')) {
+    $('queueSel').onchange = async () => {
+      try {
+        const r = await api('/api/queue', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mode: $('queueSel').value }),
+        });
+        addMsg('sys', r.message || `queue mode → ${$('queueSel').value}`);
+      } catch (e) {
+        addMsg('sys', 'queue mode not saved: ' + e.message);
+        loadQueueMode();
+      }
+    };
+  }
+  async function sendSteer() {
+    const inp = $('steerInput');
+    const text = (inp && inp.value.trim()) || '';
+    if (!text) return;
+    try {
+      const r = await api('/api/steer', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      inp.value = '';
+      addMsg('sys', r.message || 'steered');
+    } catch (e) { addMsg('sys', 'steer failed: ' + e.message); }
+  }
+  if ($('steerSend')) {
+    $('steerSend').onclick = sendSteer;
+    $('steerInput').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); sendSteer(); } });
+  }
+  function showSteerRow(show) {
+    const row = $('steerRow');
+    if (row) row.classList.toggle('hidden', !show);
+  }
+  loadQueueMode();
+
   function showComposerError(msg) {
     const e = $('composerError');
     if (!e) return;
@@ -6548,6 +7915,13 @@
       parts.push('Dream: ' + (s.dream?.enabled ? 'on' : 'off'));
       parts.push('Heartbeat: ' + (s.heartbeat?.enabled ? 'on' : 'off'));
       parts.push('Memory: ' + (s.memory?.memoryBytes || 0) + ' bytes');
+      if (s.sessions) parts.push('Session: ' + s.sessions.main + (s.sessions.rolling ? ' (rolling)' : ' (fixed)'));
+      if (s.sandbox) parts.push('Sandbox: ' + (s.sandbox.isolated ? s.sandbox.mode : s.sandbox.setting === 'off' ? 'off' : 'none'));
+      if (s.presence?.summary) {
+        // "👀 here: 1 watcher · telegram running…" — the same sentence the CLI
+        // and /status use, without the emoji the chip already implies.
+        parts.push((s.presence.summary || '').replace(/^👀\s*(here|quiet):\s*/, 'Here: '));
+      }
       el.textContent = parts.join(' · ');
     } catch (e) {
       el.textContent = 'status unavailable: ' + e.message;
@@ -6575,6 +7949,390 @@
   }
   function stopLogAuto() { if (logTimer) { clearInterval(logTimer); logTimer = null; } }
 
+  // ---- The offline docs site (34.8): link + size, from the live gateway ----
+  // 37.2: and its freshness — the release it describes, how long ago it was
+  // built, and whether a doc changed since. A stale page offers one button.
+  async function loadDocsSite() {
+    const link = document.getElementById('docsSiteLink');
+    const note = document.getElementById('docsSiteNote');
+    const rebuild = document.getElementById('docsRebuild');
+    if (!link || !note) return;
+    try {
+      const d = await api('/api/docs');
+      link.href = '/docs';
+      if (!d || !d.exists) {
+        note.textContent = '(build it: termcrab docs)';
+        note.className = 'pNote';
+        if (rebuild) rebuild.hidden = false;
+        return;
+      }
+      const size = Math.round(d.bytes / 1024) + ' KB';
+      const counts = d.docs + ' docs · ' + d.sections + ' sections · ' + size;
+      const release = d.release ? 'v' + d.release : 'release unknown';
+      const budget = await loadDocsBudget();
+      const paint = (extra, bad) => {
+        note.textContent = '(' + release + ' · ' + counts + (budget ? ' · ' + budget : '') + ' · ' + extra + ')';
+        note.className = bad ? 'pNote err' : 'pNote';
+      };
+      if (d.staleDocs > 0) {
+        paint('built ' + d.age + ', ' + d.staleDocs + ' doc(s) changed since — rebuild', true);
+      } else if (d.releaseBehind) {
+        paint('built ' + d.age + ' for an older release — rebuild', true);
+      } else {
+        paint('built ' + d.age, false);
+      }
+      if (rebuild) {
+        rebuild.hidden = !d.stale;
+        rebuild.onclick = async () => {
+          rebuild.disabled = true;
+          try { await api('/api/docs', { method: 'POST' }); } catch (err) { /* the reload below says it */ }
+          rebuild.disabled = false;
+          await loadDocsSite();
+        };
+      }
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+      if (rebuild) rebuild.hidden = true;
+    }
+  }
+
+  // ---- Live Telegram runs (37.4): evidence with a timestamp ----
+  async function loadTelegramRuns() {
+    const note = document.getElementById('tgRuns');
+    if (!note) return;
+    try {
+      const d = await api('/api/telegram-runs');
+      const runs = (d && d.runs) || [];
+      if (!runs.length) {
+        note.textContent = '(none recorded yet — the suite proves the client, this proves the bot)';
+        note.className = 'pNote';
+        return;
+      }
+      const last = runs[0];
+      const when = String(last.at || '').replace('T', ' ').slice(0, 16) + ' UTC';
+      const took = last.replyMs === null || last.replyMs === undefined ? 'no reply read' : 'reply in ' + (last.replyMs / 1000).toFixed(1) + ' s';
+      note.textContent = '(' + runs.length + ' recorded · last ' + when + ' · ' + last.status + ' · ' + took + ' · @' + last.bot + ')';
+      note.className = last.status === 'ok' ? 'pNote' : 'pNote err';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+    }
+  }
+
+  // ---- The performance budget (38.2): the last measurement, and how close ----
+  async function loadPerf() {
+    const note = document.getElementById('perfNote');
+    if (!note) return;
+    try {
+      const p = await api('/api/perf');
+      if (!p || !p.exists) {
+        note.textContent = '(not measured yet — termcrab perf)';
+        note.className = 'pNote';
+        return;
+      }
+      const worst = p.worst ? 'worst ' + p.worst.key + ' ' + Math.round(p.worst.value) + '/' + p.worst.max + ' (' + p.worst.pct + '%)' : 'nothing to compare';
+      const host = p.machine ? p.machine.platform + '/' + p.machine.arch + ', node ' + p.machine.node : 'machine unknown';
+      const bad = (p.over || []).length > 0;
+      const extra = bad ? ' — OVER: ' + p.over.join(', ') : '';
+      // 41.1: when something is over (or close), say where to look — the same
+      // advice the doc carries, from PERF_ADVICE in src/core/perf.ts.
+      const fix = bad
+        ? (p.overAdvice || []).map(function (r) { return r.key + ': ' + r.advice; }).join(' · ')
+        : p.worstAdvice && p.worst && p.worst.pct >= 80
+          ? p.worst.key + ': ' + p.worstAdvice
+          : '';
+      // 39.1: the trend, when there is a history to compare against.
+      const moved = (p.trend || []).filter(function (row) { return row.direction !== 'flat'; })[0];
+      const trend = moved
+        ? ' · ' + moved.key + ' ' + (moved.direction === 'up' ? '↑' : '↓') + Math.abs(moved.deltaPct) + '% over ' + moved.samples + ' runs'
+        : p.runs > 1 ? ' · steady over ' + p.runs + ' runs' : '';
+      note.textContent = '(' + p.measured + '/' + p.total + ' metrics · ' + host + ' · ' + p.age + ' · ' + worst + trend + extra + (fix ? '\n  fix: ' + fix : '') + ')';
+      note.className = bad ? 'pNote err' : 'pNote';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+    }
+  }
+
+  // ---- The docs page's own budget (41.5): build time and size, next to the --
+  // release the docs line already shows. From the same /api/perf snapshot the
+  // perf line reads — one measurement, two places a person looks.
+  let docsBudgetPromise = null;
+  function loadDocsBudget() {
+    if (!docsBudgetPromise) {
+      docsBudgetPromise = api('/api/perf').then(function (p) {
+        if (!p || !p.exists || !p.metrics) return '';
+        const ms = p.metrics.docsMs, kb = p.metrics.docsKb;
+        const parts = [];
+        if (typeof ms === 'number') parts.push('build ' + Math.round(ms) + ' ms' + (p.budget && p.budget.docsMs ? ' of ' + p.budget.docsMs.max : ''));
+        if (typeof kb === 'number') parts.push(Math.round(kb) + ' KB' + (p.budget && p.budget.docsKb ? ' of ' + p.budget.docsKb.max + ' KB' : ''));
+        return parts.join(' · ');
+      }).catch(function () { return ''; });
+      setTimeout(function () { docsBudgetPromise = null; }, 30000);
+    }
+    return docsBudgetPromise;
+  }
+
+  // ---- The suite's clock (41.3): the last recorded run, on the phone ----
+  async function loadSuiteTime() {
+    const note = document.getElementById('suiteNote');
+    if (!note) return;
+    try {
+      const s = await api('/api/suite-time');
+      if (!s || !s.exists) {
+        note.textContent = '(no suite run recorded yet — npm run test:time)';
+        note.className = 'pNote';
+        return;
+      }
+      const secs = function (ms) { return (ms / 1000).toFixed(1) + ' s'; };
+      const slow = (s.slowest || [])[0];
+      note.textContent = '(' + s.files + ' files · ' + s.cases + ' cases · ' + secs(s.wallMs) + ' of ' + secs(s.budgetWallMs)
+        + (s.over ? ' — OVER' : '')
+        + (slow ? ' · slowest ' + String(slow.file).replace(/\.test\.js$/, '') + ' ' + secs(slow.ms) : '')
+        + ' · ' + s.age + ')';
+      note.className = s.over ? 'pNote err' : 'pNote';
+    } catch (err) {
+      note.textContent = '(unavailable)';
+      note.className = 'pNote err';
+    }
+  }
+
+  // ---- Work tracker (WORKLOG.md, served by /api/worklog) ----
+  async function refreshWork() {
+    const box = $('workBody');
+    if (!box) return;
+    try {
+      void loadDocsSite();
+      void loadTelegramRuns();
+      void loadPerf();
+      void loadSuiteTime();
+      const w = await api('/api/worklog');
+      const note = $('workFresh');
+      if (note) {
+        note.textContent = w.fresh
+          ? `tracker up to date (${w.head}${w.lastTouched ? ', updated in ' + w.lastTouched : ''})`
+          : `tracker is ${w.behind} commit(s) behind — WORKLOG.md needs an update`;
+        note.className = w.fresh ? 'pNote' : 'pNote err';
+      }
+      box.innerHTML = renderMarkdown(w.markdown || '');
+    } catch (e) {
+      box.textContent = 'could not load the work tracker: ' + e.message;
+    }
+  }
+  $('workReload').onclick = () => refreshWork();
+
+  // ==== board view (zero-dependency, phone-first) ====
+  // Two pure functions do the thinking (boardGroups, boardSummary) so the tests
+  // can run them in Node; the DOM part below is deliberately thin.
+  const BOARD_ORDER = ['running', 'queued', 'scheduling', 'failed', 'done', 'suggested'];
+  const BOARD_LABEL = {
+    running: 'Running now',
+    queued: 'Queued',
+    scheduling: 'Scheduled',
+    failed: 'Needs attention',
+    done: 'Done',
+    suggested: 'Suggested',
+  };
+  function boardEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function boardGroups(board) {
+    const cards = (board && board.cards) || [];
+    const out = [];
+    for (const status of BOARD_ORDER) {
+      const mine = cards.filter((c) => c.status === status);
+      if (mine.length) out.push({ status: status, label: BOARD_LABEL[status] || status, count: mine.length, cards: mine });
+    }
+    const rest = cards.filter((c) => BOARD_ORDER.indexOf(c.status) < 0);
+    if (rest.length) out.push({ status: 'other', label: 'Other', count: rest.length, cards: rest });
+    return out;
+  }
+  function boardSummary(board) {
+    const counts = (board && board.counts) || {};
+    const bits = BOARD_ORDER.filter((s) => counts[s]).map((s) => counts[s] + ' ' + s);
+    return bits.length ? bits.join(' · ') : 'nothing in flight';
+  }
+  function boardCardLines(card) {
+    const where = [card.from, card.agent, card.source].filter(Boolean).join(' · ');
+    return { title: card.title || card.id || '(untitled)', where: where, detail: card.detail || '' };
+  }
+  function devicesRows(payload) {
+    const list = (payload && payload.devices) || [];
+    return list.map((d) => ({
+      id: d.id,
+      name: d.name || d.id,
+      kind: d.current ? 'this device' : 'paired',
+      lastSeen: d.lastSeenAt ? new Date(d.lastSeenAt).toLocaleString() : 'never used',
+    }));
+  }
+  function bytesText(n) {
+    if (typeof n !== 'number' || !isFinite(n) || n < 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+  function housekeepingRows(data) {
+    const runs = (data && data.runs && data.runs.runs) || [];
+    const tasks = (data && data.subagents) || {};
+    const disk = (data && data.disk) || {};
+    const presence = (data && data.presence) || {};
+    const proposals = (data && data.proposals && data.proposals.proposals) || [];
+    const worst = runs
+      .map(function (r) { return r.verdict; })
+      .filter(function (v) { return v && v !== 'working'; });
+    const areas = Object.keys(disk.byArea || {}).sort(function (a, b) { return disk.byArea[b] - disk.byArea[a]; });
+    const biggest = areas.length ? areas[0] + ' ' + bytesText(disk.byArea[areas[0]]) : '';
+    return [
+      {
+        label: 'Live turns',
+        value: runs.length ? runs.length + ' running' : 'none running',
+        note: worst.length ? 'needs a look: ' + worst.join(', ') : runs.length ? 'all working' : '',
+      },
+      {
+        label: 'Background tasks',
+        value: (tasks.count || 0) + ' total' + (tasks.running ? ', ' + tasks.running + ' running' : ''),
+        note: (tasks.scratch || []).length ? (tasks.scratch || []).length + ' scratch folder(s)' : '',
+      },
+      {
+        label: 'State on disk',
+        value: bytesText(disk.totalBytes || 0) + (disk.files ? ' in ' + disk.files + ' files' : ''),
+        note: disk.overBudget
+          ? 'over the ' + bytesText(disk.budgetBytes || 0) + ' budget'
+          : biggest
+            ? 'largest: ' + biggest
+            : '',
+      },
+      {
+        label: 'Reachable from',
+        value: presence.summary || 'nobody right now',
+        note: presence.count ? presence.count + ' entr' + (presence.count === 1 ? 'y' : 'ies') : '',
+      },
+      {
+        label: 'Skill proposals',
+        value: proposals.length ? proposals.length + ' waiting for a decision' : 'none waiting',
+        note: proposals.length ? proposals.map(function (p) { return p.name; }).join(', ') : '',
+      },
+    ];
+  }
+  // ==== end board view ====
+
+  async function refreshBoard() {
+    const box = $('boardBody');
+    if (!box) return;
+    try {
+      const board = await api('/api/board');
+      const note = $('boardNote');
+      if (note) note.textContent = boardSummary(board);
+      const groups = boardGroups(board);
+      box.innerHTML = groups.length
+        ? groups
+            .map(function (g) {
+              const cards = g.cards
+                .map(function (c) {
+                  const line = boardCardLines(c);
+                  return (
+                    '<div class="setCard" style="margin:0 0 8px">' +
+                    '<div style="font-weight:600">' + boardEsc(line.title) + '</div>' +
+                    (line.where ? '<div class="pNote">' + boardEsc(line.where) + '</div>' : '') +
+                    (line.detail ? '<div class="pNote">' + boardEsc(line.detail) + '</div>' : '') +
+                    '</div>'
+                  );
+                })
+                .join('');
+              return (
+                '<div style="margin:0 0 14px"><div class="sideLabel" style="padding-left:0">' +
+                boardEsc(g.label) + ' · ' + g.count +
+                '</div>' + cards + '</div>'
+              );
+            })
+            .join('')
+        : '<div class="nx">nothing is running, queued or scheduled</div>';
+    } catch (e) {
+      box.textContent = 'could not load the board: ' + e.message;
+    }
+    refreshDevices();
+    refreshSystem();
+  }
+
+  async function refreshDevices() {
+    const box = $('devBody');
+    if (!box) return;
+    try {
+      const payload = await api('/api/devices');
+      const rows = devicesRows(payload);
+      const note = $('devNote');
+      if (note) note.textContent = rows.length + (rows.length === 1 ? ' device' : ' devices');
+      box.innerHTML = rows.length
+        ? rows
+            .map(function (d) {
+              return (
+                '<div class="setCard" style="margin:0 0 8px;display:flex;align-items:center;gap:10px">' +
+                '<div style="flex:1"><div style="font-weight:600">' + boardEsc(d.name) + '</div>' +
+                '<div class="pNote">' + boardEsc(d.kind) + ' · last seen ' + boardEsc(d.lastSeen) + '</div></div>' +
+                (d.kind === 'this device'
+                  ? ''
+                  : '<button class="ghost" data-revoke="' + boardEsc(d.id) + '">Revoke</button>') +
+                '</div>'
+              );
+            })
+            .join('')
+        : '<div class="nx">no paired devices</div>';
+      box.querySelectorAll('[data-revoke]').forEach(function (btn) {
+        btn.onclick = async function () {
+          btn.disabled = true;
+          try {
+            await api('/api/devices/revoke', 'POST', { id: btn.dataset.revoke });
+            refreshDevices();
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'could not revoke';
+            btn.title = e.message;
+          }
+        };
+      });
+    } catch (e) {
+      box.textContent = 'could not load devices: ' + e.message;
+    }
+  }
+  async function refreshSystem() {
+    const box = $('sysBody');
+    if (!box) return;
+    const grab = function (path) {
+      return api(path).catch(function (e) { return { __error: e.message }; });
+    };
+    const parts = await Promise.all([
+      grab('/api/runs/health'),
+      grab('/api/subagents'),
+      grab('/api/disk'),
+      grab('/api/presence'),
+      grab('/api/skills/proposals'),
+    ]);
+    const data = {
+      runs: parts[0], subagents: parts[1], disk: parts[2], presence: parts[3], proposals: parts[4],
+    };
+    const rows = housekeepingRows(data);
+    const note = $('sysNote');
+    if (note) note.textContent = rows.filter(function (r) { return r.note; }).length + ' with a note';
+    box.innerHTML = rows
+      .map(function (r) {
+        return (
+          '<div class="setCard" style="margin:0 0 8px"><div style="display:flex;gap:10px;align-items:baseline">' +
+          '<div class="pNote" style="min-width:120px">' + boardEsc(r.label) + '</div>' +
+          '<div style="flex:1"><div style="font-weight:600">' + boardEsc(r.value) + '</div>' +
+          (r.note ? '<div class="pNote">' + boardEsc(r.note) + '</div>' : '') +
+          '</div></div></div>'
+        );
+      })
+      .join('');
+  }
+
+  const boardReloadBtn = $('boardReload');
+  if (boardReloadBtn) boardReloadBtn.onclick = function () { refreshBoard(); };
+
   function switchView(name) {
     if (!VIEWS.includes(name)) name = 'chat';
     if (name === 'providers' && state.lastView !== 'providers') state.provFrom = state.lastView || 'status';
@@ -6595,8 +8353,10 @@
     const primary = document.querySelector('#view-' + name + ' details[data-primary]');
     if (primary && !primary.open) primary.open = true;
     if (name === 'memory') { refreshMem(); refreshDreams(); }
-    if (name === 'tools') refreshTools();
-    if (name === 'settings') { refreshSettings(); refreshAgents(); }
+    if (name === 'tools') { refreshTools(); refreshWatchers(); refreshToolToggles(); }
+    if (name === 'board') refreshBoard();
+    if (name === 'work') { refreshWork(); refreshInbox(); refreshSentFiles(); }
+    if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); refreshSecurity(); }
     if (name === 'logs') { refreshLogs(); startLogAuto(); } else { stopLogAuto(); }
     if (name === 'debug') { refreshDebug(); if ($('debugAuto')?.checked) { clearInterval(debugTimer); debugTimer = setInterval(refreshDebug, 3000); } } else { clearInterval(debugTimer); debugTimer = null; }
     if (name === 'providers') showProvidersRoot();
@@ -6607,7 +8367,7 @@
   document.querySelectorAll('.nav [data-goto]').forEach((b) => {
     b.onclick = () => switchView(b.dataset.goto);
   });
-  // ---- Page routes: /status /providers /memory /tools /settings /chat/<id> ----
+  // ---- Page routes: every view in VIEWS (/status /board /providers …) plus /chat/<id> ----
   let applyingRoute = false;
   function pathForView(name) {
     if (name !== 'chat') return '/' + name;
@@ -6728,15 +8488,20 @@
 async function bootstrap() {
     // Login removed — walk straight in.
     try {
+      // 28.1: learn the main session's name before anything builds a session
+      // list from it, so the panel opens on the shared thread.
+      await refreshHero();
       updateChatLabel();
       refreshModelBtn();
       refreshThinkingBtn();
-      refreshHero();
       refreshLiveStatus(); setInterval(refreshLiveStatus, 30000);
+      refreshUsage(); setInterval(refreshUsage, 60000);
       connectEvents();
+      refreshApprovals();
       loadSlashCommands();
       restoreDraft();
       updateStatusBand();
+      refreshConfigProblems();
       refreshTaskCards();
       refreshProgressCard();
       refreshCanvas();

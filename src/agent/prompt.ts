@@ -5,9 +5,11 @@ import { Config } from '../core/config.js';
 import { workspaceDir } from '../core/paths.js';
 import { isLikelyAndroid } from '../mobile/bionic.js';
 import { MemoryStore } from './memory.js';
+import { readDigest } from './sessions.js';
 import { SkillStore } from '../skills/loader.js';
 import { listIntents } from './intents.js';
 import { listGoals } from './goals.js';
+import { readBootstrapNote, readIdentity } from '../core/bootstrap.js';
 
 export interface PromptCtx {
   config: Config;
@@ -17,6 +19,16 @@ export interface PromptCtx {
   agentName?: string;
   /** Where the reply is delivered: web, telegram, whatsapp, cli, voice, cron, heartbeat, dream, subagent. */
   channel?: string;
+  /** Session whose transcript this prompt is for (its compacted digest is injected). */
+  sessionId?: string;
+  /** Override the memory budget (the context engine decides; 19.3). */
+  memoryBudget?: number;
+  /**
+   * Keep the verbose sections (standing intents, active goals, agent roster).
+   * The `compact` context engine sets this false so a long chat on a small
+   * phone carries only what the turn needs (19.4).
+   */
+  includeExtras?: boolean;
 }
 
 const AGENT_NAME_RE = /^[a-z0-9][a-z0-9-_]{0,63}$/;
@@ -137,21 +149,98 @@ function readSoul(agentName?: string): { name: string; soul: string } {
   return { name: 'Crabby', soul: readWorkspaceFile('SOUL.md') };
 }
 
+/**
+ * The prompt broken into named sections (19.3). `buildSystemPrompt` is written
+ * from these same pieces, so `termcrab context` can never measure a prompt the
+ * model does not actually receive.
+ */
+export function promptSectionSizes(ctx: {
+  config: Config;
+  memoryBlock: string;
+  skills: SkillStore;
+  agentName?: string;
+  channel?: string;
+  includeExtras?: boolean;
+}): { section: string; bytes: number; note: string }[] {
+  const { name, soul } = readSoul(ctx.agentName);
+  const displayName = ctx.agentName ? name : ctx.config.agent.name || name;
+  const bytes = (s: string): number => Buffer.byteLength(s, 'utf8');
+  const extras = ctx.includeExtras !== false;
+  const parts: { section: string; text: string; note: string }[] = [
+    {
+      section: 'identity + rules',
+      text: `You are ${displayName}.\n${soul}${readIdentity() ? `\n${readIdentity()}` : ''}${readBootstrapNote() ? `\n${readBootstrapNote()}` : ''}\n${channelGuide(ctx.channel)}`,
+      note: 'who the agent is and how it must behave (plus the first-run note, while it exists)',
+    },
+    { section: 'memory', text: `# Long-term memory\n${ctx.memoryBlock}`, note: 'facts injected newest-first within the budget' },
+    { section: 'skills index', text: ctx.skills.promptIndex(), note: 'skill names + one line each (full text loads on demand)' },
+    { section: 'environment', text: environmentBlurb(), note: 'device, platform and paths' },
+  ];
+  if (ctx.agentName) parts.push({ section: 'agent profile', text: `You are running as "${ctx.agentName}"`, note: 'named-agent role line' });
+  if (extras) {
+    const intents = listIntents();
+    if (intents.length) {
+      parts.push({
+        section: 'standing orders',
+        text: intents.map((i) => `- ${i.text}`).join('\n'),
+        note: 'the user\'s always-follow instructions (outrank memory, never safety)',
+      });
+    }
+    const goals = listGoals().filter((g) => g.status === 'open').slice(0, 5);
+    if (goals.length) parts.push({ section: 'active goals', text: goals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n'), note: 'what the agent is working toward' });
+    const roster = readAgentsRoster();
+    if (roster) parts.push({ section: 'agent roster', text: roster, note: 'other named agents on this device' });
+  }
+  return parts.map((p) => ({ section: p.section, bytes: bytes(p.text), note: p.note }));
+}
+
+/** How big the skills index is (count + bytes) — used by the context report. */
+export function detectSkillsIndexBytes(skills: SkillStore): { count: number; bytes: number } {
+  const index = skills.promptIndex();
+  return { count: skills.list().length, bytes: Buffer.byteLength(index, 'utf8') };
+}
+
 export function buildSystemPrompt(ctx: PromptCtx): string {
-  const memory = ctx.memory.readHead(3000);
+  // Newest facts first (see MemoryStore.readForPrompt) — the old head-only read
+  // meant a fact written today could never reach the prompt.
+  const memory = ctx.memory.readForPrompt(ctx.memoryBudget ?? ctx.config.agent.memoryBudget ?? 3000).text;
+  const digest = ctx.sessionId ? readDigest(ctx.sessionId, 1200) : null;
+  // Never let the model mistake a summary for the turns themselves: the blurb
+  // says who wrote it, how much it covers, and where the originals are.
+  const engine = digest?.by ? `Written by ${digest.by}${digest.model ? ` ${digest.model}` : ''}.\n` : '';
+  const digestBlurb =
+    digest?.text
+      ? `\n# Earlier in this conversation (compacted)\n${engine}${digest.text}\n\n` +
+        `(the earlier ${digest.totalCoveredTurns} turns are summarised above — showing ${digest.blocks} of ${digest.totalBlocks} block(s); the full transcript is on disk)\n`
+      : '';
   const skills = ctx.skills.promptIndex();
   const { name, soul } = readSoul(ctx.agentName);
   const displayName = ctx.agentName ? name : ctx.config.agent.name || name;
 
-  const intents = listIntents();
+  const extras = ctx.includeExtras !== false;
+  const intents = extras ? listIntents() : [];
+  // 26.1: the user's standing orders, with the precedence spelled out so a
+  // small model does not have to guess between them and a memory fact.
   const intentsBlurb = intents.length
-    ? `\n# Standing intents (always follow these)\n${intents.map((i) => `- ${i.text}`).join('\n')}\n`
+    ? `\n# Standing orders (always follow these)\n${intents.map((i) => `- ${i.text}`).join('\n')}\n` +
+      `(These are the user's standing orders: they outrank long-term memory and workspace notes. ` +
+      `They never override the safety rules above.)\n`
     : '';
-  const openGoals = listGoals().filter((g) => g.status === 'open').slice(0, 5);
+  const openGoals = extras ? listGoals().filter((g) => g.status === 'open').slice(0, 5) : [];
   const goalsBlurb = openGoals.length
     ? `\n# Active goals\n${openGoals.map((g) => `- [${g.progress}%] ${g.title}`).join('\n')}\n`
     : '';
-  const roster = readAgentsRoster();
+  // 32.3: the first-run note is injected while it exists (and the agent is told
+  // to delete it), and IDENTITY.md — the owner's settings for the agent — rides
+  // with SOUL.md.
+  const firstRun = readBootstrapNote();
+  const firstRunBlurb = firstRun
+    ? `\n# First run (workspace/BOOTSTRAP.md)\nThis is a **new home**: nobody has talked to you yet.\n${firstRun}\n` +
+      `(Do the four steps above, briefly, in the owner's language — then delete workspace/BOOTSTRAP.md so the next turn is normal.)\n`
+    : '';
+  const identity = readIdentity();
+  const identityBlurb = identity ? `\n# The owner's settings for you (workspace/IDENTITY.md)\n${identity}\n` : '';
+  const roster = extras ? readAgentsRoster() : '';
   const rosterBlurb = roster
     ? `\n# Agent roster\n${roster}\n`
     : '';
@@ -163,10 +252,10 @@ export function buildSystemPrompt(ctx: PromptCtx): string {
   return `You are ${displayName}, a proactive personal AI agent running on the user's own device (TermCrab).
 You are action-oriented: use tools to actually do things, then answer concisely.
 ${agentNote}${channelGuide(ctx.channel)}# Identity
-${soul || `You are ${displayName}, friendly, practical, and concise.`}
+${soul || `You are ${displayName}, friendly, practical, and concise.`}${identityBlurb}${firstRunBlurb}
 
 # Long-term memory
-${memory || '(empty - use the remember tool to record durable facts)'}
+${memory || '(empty - use the remember tool to record durable facts)'}${digestBlurb}
 
 # Skills index (load a skill with load_skill before using it)
 ${skills}${intentsBlurb}${goalsBlurb}${rosterBlurb}

@@ -47,7 +47,7 @@ Repo: https://github.com/onelitonbd/claw
 Quick start (on your phone):
   pkg install nodejs-lts git
   git clone https://github.com/onelitonbd/claw && cd claw
-  npm install -g . && termcrab onboard
+  npm install && npm run build && npm install -g . && termcrab onboard
 
 I'd love feedback on the dreaming/tier ideas especially — is consolidating
 memory during idle windows something people would actually trust a phone
@@ -93,7 +93,7 @@ Quick start:
 
   pkg install nodejs-lts git
   git clone https://github.com/onelitonbd/claw && cd claw
-  npm install -g .
+  npm install && npm run build && npm install -g .
   termcrab onboard     # wizard; works offline with --demo/mock
   termcrab gateway     # web UI + API on 127.0.0.1:7788
   termcrab heartbeat   # one proactive tick
@@ -123,7 +123,7 @@ set -euo pipefail
 pkg install nodejs-lts git   # Debian/Ubuntu: apt install nodejs npm
 git clone https://github.com/onelitonbd/claw
 cd claw
-npm install -g .
+npm install && npm run build && npm install -g .
 
 # --- 2. First contact (offline-friendly mock provider) -------------------
 termcrab agent "what can you do?" --demo 2>/dev/null \

@@ -42,26 +42,50 @@ function scan(root: string, origin: 'builtin' | 'user'): Map<string, Skill> {
   }
   for (const e of entries) {
     if (!e.isDirectory()) continue;
+    // A `_` prefix is reserved for folders that are not live skills —
+    // `_proposals` (33.3) and `_rejected` are decisions waiting or made, and a
+    // half-written proposal must never reach the prompt.
+    if (e.name.startsWith('_') || e.name.startsWith('.')) continue;
     const skill = readSkillDir(path.join(root, e.name), origin);
     if (skill) out.set(skill.name, skill);
   }
   return out;
 }
 
-/** Skills are discovered fresh on each call (hot-reload friendly, no cache staleness). */
+/**
+ * Skills are discovered fresh on each call (hot-reload friendly, no cache staleness).
+ *
+ * Precedence (documented in docs/SKILLS.md, pinned by test/tier0.test.ts): roots
+ * are read left to right and later roots win, so a skill in the user's
+ * `~/.termcrab/skills/<name>` replaces a bundled skill of the same name — in
+ * `list()`, in `get()` and in the prompt index alike. `opts.allow` narrows what
+ * the agent may use at all (an empty array means "no skills"); without it,
+ * nothing is gated.
+ */
 export class SkillStore {
+  private readonly allow: Set<string> | null;
+
   constructor(
     private readonly roots: { dir: string; origin: 'builtin' | 'user' }[] = [
       { dir: builtinSkillsDir(), origin: 'builtin' },
       { dir: userSkillsDir(), origin: 'user' },
     ],
-  ) {}
+    opts: { allow?: string[] } = {},
+  ) {
+    this.allow = Array.isArray(opts.allow) ? new Set(opts.allow) : null;
+  }
+
+  /** May this skill be loaded and served to the model at all? */
+  private permitted(name: string): boolean {
+    return this.allow === null || this.allow.has(name);
+  }
 
   list(): SkillMeta[] {
     const merged = new Map<string, SkillMeta>();
     // Iterate in order: user skills (later roots) override built-ins.
     for (const root of this.roots) {
       for (const [name, s] of scan(root.dir, root.origin)) {
+        if (!this.permitted(name)) continue;
         merged.set(name, { name, description: s.description, path: s.path, origin: s.origin });
       }
     }
@@ -69,7 +93,7 @@ export class SkillStore {
   }
 
   get(name: string): Skill | null {
-    if (!NAME_RE.test(name)) return null;
+    if (!NAME_RE.test(name) || !this.permitted(name)) return null;
     for (const root of [...this.roots].reverse()) {
       const s = readSkillDir(path.join(root.dir, name), root.origin);
       if (s) return s;

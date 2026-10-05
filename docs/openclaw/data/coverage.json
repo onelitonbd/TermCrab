@@ -1,0 +1,89 @@
+{
+  "measuredAt": "2026-10-05",
+  "fingerprint": "8b9c58804c99fcc7",
+  "floor": 80,
+  "tests": 1129,
+  "pass": 1120,
+  "fail": 0,
+  "skipped": 7,
+  "testFiles": 112,
+  "source": {
+    "lines": 87.53,
+    "branches": 77.71,
+    "functions": 86.83
+  },
+  "all": {
+    "lines": 0,
+    "branches": 0,
+    "functions": 0
+  },
+  "worst": [
+    {
+      "dir": "mobile",
+      "file": "supervisor.ts",
+      "lines": 18.06
+    },
+    {
+      "dir": "providers",
+      "file": "types.ts",
+      "lines": 33.33
+    },
+    {
+      "dir": "channels",
+      "file": "discord.ts",
+      "lines": 41.67
+    },
+    {
+      "dir": "channels",
+      "file": "slack.ts",
+      "lines": 47.12
+    },
+    {
+      "dir": "channels",
+      "file": "matrix.ts",
+      "lines": 48.21
+    },
+    {
+      "dir": "bin",
+      "file": "termcrab.ts",
+      "lines": 50
+    },
+    {
+      "dir": "channels",
+      "file": "signal.ts",
+      "lines": 51.54
+    },
+    {
+      "dir": "mobile",
+      "file": "notify.ts",
+      "lines": 55.17
+    },
+    {
+      "dir": "mobile",
+      "file": "boot.ts",
+      "lines": 55.56
+    },
+    {
+      "dir": "core",
+      "file": "friendly.ts",
+      "lines": 58.59
+    },
+    {
+      "dir": "channels",
+      "file": "cli.ts",
+      "lines": 61.37
+    },
+    {
+      "dir": "mobile",
+      "file": "onboard.ts",
+      "lines": 61.44
+    }
+  ],
+  "best": [
+    "agent/ask.ts",
+    "agent/exec-guard.ts",
+    "agent/intents.ts",
+    "agent/rolling.ts",
+    "agent/sandbox.ts"
+  ]
+}

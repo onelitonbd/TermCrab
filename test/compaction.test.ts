@@ -12,7 +12,7 @@ function tmpHome(): string {
   return dir;
 }
 
-test('compaction: session past threshold is compacted and trimmed', () => {
+test('compaction: past the threshold a digest is written and only the hot window shrinks', () => {
   const home = tmpHome();
   const sessions = new SessionStore();
   const sessionId = 'test:compact';
@@ -31,9 +31,14 @@ test('compaction: session past threshold is compacted and trimmed', () => {
   assert.ok(digest.length > 0, 'digest should not be empty');
   assert.ok(digest.includes('User:'), 'digest should contain user messages');
 
+  // Batch 7: compaction may not delete history. The conversation total is
+  // unchanged; what shrinks is the hot window that goes to the model.
   const after = sessions.list().find((s) => s.id === sessionId);
   assert.ok(after);
-  assert.ok(after.messages <= 70, `expected <= 70 messages after compact, got ${after.messages}`);
+  assert.equal(after.messages, 100, 'no entry may be deleted by compaction');
+  assert.ok(after.hot <= 70, `expected <= 70 hot entries after compact, got ${after.hot}`);
+  assert.ok(after.archived >= 30, `expected the overflow archived, got ${after.archived}`);
+  assert.equal(sessions.read(sessionId).length, 100, 'read() still returns the whole conversation');
 
   // Digest file should exist
   const compactedDir = path.join(home, 'memory', 'compacted');

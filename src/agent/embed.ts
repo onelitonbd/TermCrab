@@ -10,13 +10,48 @@ import { log } from '../core/logger.js';
  */
 
 export interface Embedder {
+  /** `provider:model`, e.g. `local:Xenova/all-MiniLM-L6-v2` — what made the vectors. */
   name: string;
+  /** The provider half of `name` (`local`, `openai`, `gemini`). */
+  provider?: string;
+  /** The model half of `name`. */
+  model?: string;
   dim?: number;
   embed(texts: string[]): Promise<number[][]>;
 }
 
+/** Split an embedder `name` into its two halves, for recording on every row. */
+export function embedderParts(e: Embedder | null): { provider: string; model: string } {
+  const name = e?.name ?? '';
+  const at = name.indexOf(':');
+  const provider = e?.provider ?? (at > 0 ? name.slice(0, at) : '');
+  const model = e?.model ?? (at > 0 ? name.slice(at + 1) : name);
+  return { provider, model };
+}
+
+/**
+ * Refuse to compare vectors of different sizes.
+ *
+ * The old behaviour returned `0`, which reads as *"these are unrelated"* — the
+ * worst possible answer, because it is indistinguishable from a real one. Two
+ * vectors of different dimensions come from two different models, and the fix is
+ * to re-embed the index, not to score 0.
+ */
+export class DimensionMismatch extends Error {
+  constructor(
+    readonly a: number,
+    readonly b: number,
+  ) {
+    super(
+      `cannot compare vectors of different sizes (${a} vs ${b}) — they were made by different embedding models, so the index has to be re-embedded (termcrab embeddings setup) before those rows can be searched`,
+    );
+    this.name = 'DimensionMismatch';
+  }
+}
+
 export function cosine(a: number[], b: number[]): number {
-  if (a.length !== b.length || !a.length) return 0;
+  if (!a.length || !b.length) return 0;
+  if (a.length !== b.length) throw new DimensionMismatch(a.length, b.length);
   let dot = 0;
   let na = 0;
   let nb = 0;
@@ -87,7 +122,10 @@ export async function tryLoadEmbedder(cacheDir: string): Promise<Embedder | null
   };
 
   return {
-    name: modelName,
+    name: `local:${modelName}`,
+    provider: 'local',
+    model: modelName,
+    dim: 384,
     async embed(texts: string[]): Promise<number[][]> {
       const p = await ensure();
       const out: number[][] = [];
@@ -109,6 +147,24 @@ interface IndexRow {
   id: string;
   text: string;
   vec: number[];
+  /** What made this vector — `local`, `openai`, `gemini` — and which model. */
+  provider?: string;
+  model?: string;
+}
+
+/** What the index can say about itself. */
+export interface IndexInfo {
+  vectors: number;
+  /** How many rows were made by a different provider/model than the live embedder. */
+  stale: number;
+  /** How many rows cannot be compared with the live embedder at all (different size). */
+  mismatched: number;
+  dimensions: number[];
+  builtBy: string[];
+  /** Who is embedding now (empty when embeddings are off). */
+  current: string;
+  /** One sentence a person can act on, or null when there is nothing to say. */
+  note: string | null;
 }
 
 /** Append-only JSONL vector index with in-memory cache. */
@@ -168,7 +224,8 @@ export class EmbeddingIndex {
       if (!vec || !vec.length) return;
       const rows = this.load();
       const existing = rows.findIndex((r) => r.id === id);
-      const row: IndexRow = { id, text: text.slice(0, 2000), vec };
+      const { provider, model } = embedderParts(this.embedder);
+      const row: IndexRow = { id, text: text.slice(0, 2000), vec, provider, model };
       if (existing >= 0) rows[existing] = row;
       else rows.push(row);
       this.persist();
@@ -182,7 +239,14 @@ export class EmbeddingIndex {
     try {
       const [qv] = await this.embedder.embed([query]);
       if (!qv) return [];
-      return this.load()
+      const usable = this.load().filter((r) => r.vec.length === qv.length);
+      const skipped = this.load().length - usable.length;
+      if (skipped) {
+        // Not an error and not silence: the rows stay on disk, they just cannot
+        // be compared with this model, and `embeddings status` says how many.
+        log.debug(`embedding search skipped ${skipped} row(s) of a different size — re-embed with: termcrab embeddings setup`);
+      }
+      return usable
         .map((r) => ({ id: r.id, text: r.text, score: cosine(qv, r.vec) }))
         .filter((r) => r.score > 0.05)
         .sort((a, b) => b.score - a.score)
@@ -191,6 +255,28 @@ export class EmbeddingIndex {
       log.debug('embedding search failed:', err instanceof Error ? err.message : err);
       return [];
     }
+  }
+
+  /**
+   * What is in the index, who built it, and whether the model changed under it.
+   * A phone user turns smart search on, changes the model a month later, and
+   * otherwise gets quietly worse results with no way to see why.
+   */
+  info(): IndexInfo {
+    const rows = this.load();
+    const { provider, model } = embedderParts(this.embedder);
+    const current = this.embedder ? `${provider}:${model}` : '';
+    const dims = [...new Set(rows.map((r) => r.vec.length))].sort((a, b) => a - b);
+    const builtBy = [...new Set(rows.filter((r) => r.provider || r.model).map((r) => `${r.provider ?? '?'}:${r.model ?? '?'}`))].sort();
+    const stale = rows.filter((r) => (r.provider || r.model) && (r.provider !== provider || r.model !== model)).length;
+    const mismatched = this.embedder && this.embedder.dim ? rows.filter((r) => r.vec.length !== this.embedder!.dim).length : 0;
+    const bits: string[] = [];
+    if (stale) bits.push(`${stale} of ${rows.length} vector(s) were made by another model`);
+    if (mismatched) {
+      bits.push(`${mismatched} of ${rows.length} vector(s) have a different size than ${current || 'the model in use'} returns and are skipped in search, not scored 0`);
+    }
+    const note = bits.length ? `${bits.join('; ')} — re-embed: termcrab embeddings setup` : null;
+    return { vectors: rows.length, stale, mismatched, dimensions: dims, builtBy, current, note };
   }
 
   clear(): void {

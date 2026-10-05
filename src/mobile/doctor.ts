@@ -4,10 +4,16 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { runHealth } from '../agent/run-health.js';
+import { listRuns } from '../core/tracing.js';
 import { loadConfig, Config } from '../core/config.js';
+import { INSTALL_HINTS, detectSandbox, sandboxSetting } from '../agent/sandbox.js';
 import { home, configPath, pidPath, PACKAGE_ROOT } from '../core/paths.js';
 import { guardApplied, isLikelyTermux } from './bionic.js';
 import { readBattery } from './power.js';
+import { embedderPlan } from '../agent/embed-provider.js';
+import { bootstrapStatus } from '../core/bootstrap.js';
+import { securityAudit } from '../agent/security.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -46,6 +52,20 @@ async function portFree(port: number, host: string): Promise<boolean> {
 function panelHost(cfg: Config): string {
   const host = cfg.gateway.host;
   return !host || host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host;
+}
+
+/** Version the running panel reports (public /api/health), or null if unreachable. */
+async function probeTermcrab(cfg: Config): Promise<string | null> {
+  try {
+    const res = await fetch(`http://${panelHost(cfg)}:${cfg.gateway.port}/api/health`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { name?: string; version?: string };
+    return data.name === 'termcrab' ? (data.version ?? '?') : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Version the running panel reports (public /api/health), or null if unreachable. */
@@ -113,6 +133,25 @@ export async function runDoctor(): Promise<Check[]> {
   const checks: Check[] = [];
   const cfg = loadConfig();
 
+  // Policy (34.5): the Termux checks below are about this device; this one is
+  // about what the agent is allowed to do. Findings are the same objects
+  // `termcrab security` prints, reduced to the worst line.
+  {
+    const findings = securityAudit({ config: cfg, sandboxAvailable: detectSandbox().isolated });
+    const fails = findings.filter((f) => f.level === 'fail');
+    const warns = findings.filter((f) => f.level === 'warn');
+    const worst = fails[0] ?? warns[0];
+    checks.push({
+      id: 'security',
+      label: 'security policy audit',
+      status: fails.length ? 'fail' : warns.length ? 'warn' : 'ok',
+      detail: fails.length || warns.length
+        ? `${fails.length} fail, ${warns.length} warn — worst: ${worst!.title}`
+        : 'exec policy, approvals, bind address, tokens and key placement all check out',
+      fix: worst ? 'termcrab security   (every finding carries its fix)' : undefined,
+    });
+  }
+
   // Node version
   checks.push({
     id: 'node',
@@ -121,6 +160,25 @@ export async function runDoctor(): Promise<Check[]> {
     detail: `found v${process.versions.node}`,
     fix: 'pkg install nodejs-lts (Termux) or install Node 20+ from nodejs.org',
   });
+
+  // Sandbox (30.3): whether shell commands can be isolated on this device.
+  {
+    const info = detectSandbox();
+    const setting = sandboxSetting(cfg);
+    const status = info.isolated ? 'ok' : setting === 'require' ? 'fail' : setting === 'off' ? 'ok' : 'warn';
+    checks.push({
+      id: 'sandbox',
+      label: 'shell sandbox',
+      status,
+      detail:
+        setting === 'off'
+          ? 'agent.sandbox=off — commands run with full access to this device (your choice)'
+          : setting === 'require' && !info.isolated
+            ? `agent.sandbox=require, but ${info.note}`
+            : info.note,
+      fix: info.isolated ? undefined : `${INSTALL_HINTS.bwrap}, ${INSTALL_HINTS.proot} — or set agent.sandbox=off to stop asking`,
+    });
+  }
 
   // State home
   try {
@@ -290,12 +348,27 @@ export async function runDoctor(): Promise<Check[]> {
     running = false;
   }
   const free = await portFree(cfg.gateway.port, cfg.gateway.host);
+  // A busy port is not proof of a problem: another TermCrab gateway may already
+  // serve this address (a different home, or one that has not written this
+  // home's pid file). Ask it who it is before calling it a failure — telling a
+  // user to start a gateway that is already running is the worst kind of advice.
+  const serving = !running && !free ? await probeTermcrab(cfg) : null;
   checks.push({
     id: 'gateway',
     label: `gateway (${cfg.gateway.host}:${cfg.gateway.port})`,
-    status: running ? 'ok' : free ? 'warn' : 'fail',
-    detail: running ? `running (pid ${fs.readFileSync(pidPath(), 'utf8').trim()})` : free ? 'not running' : 'port busy',
-    fix: running ? undefined : 'termcrab gateway   (or: termcrab supervisor for auto-restart)',
+    status: running || serving ? 'ok' : free ? 'warn' : 'fail',
+    detail: running
+      ? `running (pid ${fs.readFileSync(pidPath(), 'utf8').trim()})`
+      : serving
+        ? `already running (termcrab ${serving} on :${cfg.gateway.port}; no pid file in this home)`
+        : free
+          ? 'not running'
+          : `port busy (something that is not a termcrab gateway holds :${cfg.gateway.port})`,
+    fix: running || serving
+      ? undefined
+      : free
+        ? 'termcrab gateway   (or: termcrab supervisor for auto-restart)'
+        : `termcrab config set gateway.port ${cfg.gateway.port + 1}   (or stop whatever holds :${cfg.gateway.port})`,
   });
 
   // Telegram
@@ -394,14 +467,9 @@ export async function runDoctor(): Promise<Check[]> {
       : 'disabled (termcrab config set dream.enabled true)',
   });
 
-  // v0.4: optional embedding index (hybrid search) - core stays zero-dep without it
-  let embeddingsPkg = false;
-  try {
-    const { transformersInstalled } = await import('../agent/embed.js');
-    embeddingsPkg = await transformersInstalled();
-  } catch {
-    embeddingsPkg = false;
-  }
+  // Hybrid search (32.1): local model, the provider's embedding endpoint, or
+  // lexical search only — the plan says which, without doing any I/O.
+  const plan = embedderPlan(cfg);
   let vectors = 0;
   try {
     const idxFile = path.join(home(), 'memory', 'index.jsonl');
@@ -414,15 +482,75 @@ export async function runDoctor(): Promise<Check[]> {
   checks.push({
     id: 'embeddings',
     label: 'embedding search (hybrid memory)',
-    status: embeddingsPkg && cfg.memory?.embeddings !== false ? 'ok' : 'info',
-    detail: embeddingsPkg
-      ? `${vectors} vector(s) indexed${cfg.memory?.embeddings === false ? ' (memory.embeddings=false)' : ''}`
-      : 'lexical only (optional)',
-    fix:
-      embeddingsPkg || cfg.memory?.embeddings === false
-        ? undefined
-        : 'npm install @huggingface/transformers  (semantic memory search)',
+    status: plan.kind && !plan.blocker ? 'ok' : plan.kind ? 'warn' : 'info',
+    detail: plan.kind
+      ? `${plan.kind} · ${plan.model} · ${vectors} vector(s) indexed`
+      : `${plan.note}${vectors ? ` · ${vectors} vector(s) indexed` : ''}`,
+    fix: plan.blocker,
   });
+
+  // 32.3: the file set a new home gets, and whether the first run is done.
+  try {
+    const st = bootstrapStatus();
+    checks.push({
+      id: 'bootstrap',
+      label: 'home file set (SOUL, IDENTITY, AGENTS, USER, MEMORY)',
+      status: st.complete ? 'ok' : 'warn',
+      detail: st.complete
+        ? `${st.present.length} file(s) present${st.stage === 'first-run' ? ' · first run not done yet' : ''}`
+        : `missing: ${st.missing.join(', ')}`,
+      fix: st.complete ? undefined : 'termcrab bootstrap --write',
+    });
+  } catch {
+    /* a home that cannot be read is reported by the other checks */
+  }
+
+  // 40.2: the performance budget, as the doctor sees it. The measurement
+  // belongs to `termcrab perf` (a doctor run must not boot a gateway and run a
+  // turn); this check reads what that command wrote and says how old it is,
+  // because a number from last month is a fact about last month.
+  try {
+    const { perfStatus } = await import('../core/perf.js');
+    const p = perfStatus();
+    if (!p.exists) {
+      checks.push({
+        id: 'perf',
+        label: 'performance budget',
+        status: 'info',
+        detail: 'not measured on this home yet',
+        fix: 'termcrab perf',
+      });
+    } else {
+      const staleDays = p.ageMs === null ? null : p.ageMs / 86_400_000;
+      const worst = p.worst ? `${p.worst.key} ${Math.round(p.worst.value)}/${p.worst.max} (${p.worst.pct}%)` : 'nothing to compare';
+      const host = p.machine ? `${p.machine.platform}/${p.machine.arch}` : 'unknown host';
+      const over = p.over.length > 0;
+      const stale = staleDays !== null && staleDays >= 30;
+      // 41.4: a snapshot taken while the machine was busy is not a clean bill of
+      // health — it is information with a caveat, and the caveat is the load.
+      const { describeSuspectLoad } = await import('../core/perf.js');
+      const busy = p.suspect && p.load ? describeSuspectLoad(p.load) : null;
+      checks.push({
+        id: 'perf',
+        label: 'performance budget',
+        status: over ? 'warn' : stale || busy ? 'info' : 'ok',
+        detail:
+          `measured ${p.age} on ${host} · worst ${worst}` +
+          (over ? ` · OVER: ${p.over.join(', ')}` : '') +
+          (busy ? ` · measured while busy: ${busy}` : '') +
+          (p.skipped.length ? ` · ${p.skipped.length} metric(s) not measured` : ''),
+        fix: over
+          ? 'see docs/PERFORMANCE.md for the metric that is over, then: termcrab perf'
+          : stale
+            ? 'this measurement is a month old: termcrab perf'
+            : busy
+              ? 'that measurement was taken on a busy machine — re-run: termcrab perf'
+              : undefined,
+      });
+    }
+  } catch {
+    /* a home without a perf snapshot is the common case, not a problem */
+  }
 
   // Voice / TTS
   try {
@@ -486,6 +614,35 @@ export async function runDoctor(): Promise<Check[]> {
           detail: 'no dictation tool (works on Termux only)',
           fix: 'pkg install termux-api  (+ the Termux:API app from F-Droid)',
         },
+  );
+
+  // Anything running right now that has stopped making progress (23.1). The
+  // doctor is consulted *because* something looks wrong, so this check may
+  // only see the queue of the process it is running in — when the gateway is
+  // the surface, the same data comes from GET /api/runs/health.
+  const health = runHealth({
+    queue: undefined,
+    traces: listRuns(),
+    stuckAfterMs: 60_000,
+  });
+  const worried = health.filter((h) => h.verdict === 'stuck' || h.verdict === 'failing');
+  checks.push(
+    health.length === 0
+      ? { id: 'runs', label: 'running turns', status: 'ok', detail: 'nothing is running — no run can be stuck' }
+      : worried.length === 0
+        ? {
+            id: 'runs',
+            label: 'running turns',
+            status: 'ok',
+            detail: `${health.length} running, all making progress`,
+          }
+        : {
+            id: 'runs',
+            label: 'running turns',
+            status: 'warn',
+            detail: worried.map((h) => `${h.sessionId}: ${h.verdict} — ${h.lastActivity}`).join('; '),
+            fix: worried[0]!.suggestion,
+          },
   );
 
   return checks;

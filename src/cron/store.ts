@@ -1,3 +1,6 @@
+/**
+ * Cron job store (crons.json): load/save/add/remove + next-run bookkeeping.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -14,7 +17,35 @@ export interface CronJob {
   critical: boolean;
   /** Fire once then auto-disable (reminders). */
   oneShot?: boolean;
+  /** Named agent this job runs as (33.2; falls back to agents.routes.cron). */
+  agent?: string;
+  /**
+   * Where the output goes when the job finishes (33.4):
+   *   telegram — the paired chat
+   *   panel    — the web panel's notifications and the daily log (default)
+   *   none     — the run is recorded, nothing is delivered
+   */
+  deliver?: 'telegram' | 'panel' | 'none';
   createdAt: number;
+  // ---- 34.4: what happened last, so a job can be judged rather than trusted ----
+  /** When it last started, epoch ms. */
+  lastRun?: number;
+  /** How the last attempt ended. */
+  lastResult?: 'ok' | 'error' | 'skipped-battery' | 'skipped-overlap';
+  /** The last error's message, trimmed. Cleared on success. */
+  lastError?: string;
+  /** Consecutive failures; reset by a success. Shown, never used to disable. */
+  failures?: number;
+  /** The last few attempts, newest last (bounded to 5). */
+  history?: CronRun[];
+}
+
+export interface CronRun {
+  at: number;
+  ms: number;
+  ok: boolean;
+  /** 'ok' | the error | 'low battery' | 'still running' | 'missed N while off' */
+  note?: string;
 }
 
 const CRON_FILE = 'crons.json';
@@ -39,7 +70,15 @@ export function saveCrons(jobs: CronJob[]): void {
   fs.writeFileSync(file(), `${JSON.stringify(jobs, null, 2)}\n`, 'utf8');
 }
 
-export function addCron(input: { name: string; schedule: string; prompt: string; critical?: boolean; oneShot?: boolean }): CronJob {
+export function addCron(input: {
+  name: string;
+  schedule: string;
+  prompt: string;
+  critical?: boolean;
+  oneShot?: boolean;
+  agent?: string;
+  deliver?: 'telegram' | 'panel' | 'none';
+}): CronJob {
   parseCron(input.schedule); // validates, throws CronParseError
   if (!input.prompt.trim()) throw new CronParseError('prompt is required');
   const jobs = loadCrons();
@@ -51,6 +90,8 @@ export function addCron(input: { name: string; schedule: string; prompt: string;
     enabled: true,
     critical: Boolean(input.critical),
     oneShot: Boolean(input.oneShot),
+    ...(input.agent ? { agent: input.agent.trim().toLowerCase() } : {}),
+    ...(input.deliver ? { deliver: input.deliver } : {}),
     createdAt: Date.now(),
   };
   jobs.push(job);
@@ -75,6 +116,31 @@ export function setCronEnabled(id: string, enabled: boolean): CronJob | null {
   return job;
 }
 
+/**
+ * Record one attempt on a job (34.4). Keeps the last five, counts consecutive
+ * failures, and never throws: bookkeeping must not cost the run.
+ */
+export function recordCronRun(id: string, entry: CronRun, outcome: {
+  result: NonNullable<CronJob['lastResult']>;
+  error?: string;
+}): void {
+  try {
+    const jobs = loadCrons();
+    const job = jobs.find((j) => j.id === id || j.name === id);
+    if (!job) return;
+    job.lastRun = entry.at;
+    job.lastResult = outcome.result;
+    const failed = outcome.result === 'error';
+    job.failures = failed ? (job.failures ?? 0) + 1 : 0;
+    if (failed && outcome.error) job.lastError = outcome.error.slice(0, 300);
+    else if (!failed) delete job.lastError;
+    job.history = [...(job.history ?? []), entry].slice(-5);
+    saveCrons(jobs);
+  } catch {
+    /* bookkeeping is best effort */
+  }
+}
+
 export function getCron(id: string): CronJob | null {
   return loadCrons().find((j) => j.id === id || j.name === id) ?? null;
 }
@@ -84,6 +150,15 @@ export function getCron(id: string): CronJob | null {
 interface CronState {
   [id: string]: number; // epoch minute start
 }
+
+/**
+ * How far back a job may be caught up after the device was off (34.4). A phone
+ * that was asleep for a day still runs a missed daily job once; a phone that
+ * was off for a month does not fire thirty of them.
+ */
+export const CATCHUP_LIMIT_MINUTES = 24 * 60;
+/** Reserved key in the state file: the previous tick's minute. */
+export const TICK_KEY = '__tick';
 
 function stateFile(): string {
   return path.join(stateDir(), 'cron-state.json');
@@ -108,9 +183,18 @@ export function findDue(
   jobs: CronJob[],
   now: Date,
   state: CronState,
-): { job: CronJob; minuteKey: number }[] {
+  opts: { catchupLimitMinutes?: number } = {},
+): { job: CronJob; minuteKey: number; missed: number }[] {
   const minuteKey = Math.floor(now.getTime() / 60_000);
-  const due: { job: CronJob; minuteKey: number }[] = [];
+  const limit = opts.catchupLimitMinutes ?? CATCHUP_LIMIT_MINUTES;
+  const previous = state[TICK_KEY];
+  // The first tick after a start has nothing to compare against, so it only
+  // fires the current minute: no history means no catch-up, never a burst.
+  const earliest =
+    typeof previous === 'number' && previous < minuteKey
+      ? Math.max(previous + 1, minuteKey - limit)
+      : minuteKey;
+  const due: { job: CronJob; minuteKey: number; missed: number }[] = [];
   for (const job of jobs) {
     if (!job.enabled) continue;
     if (state[job.id] === minuteKey) continue;
@@ -120,10 +204,22 @@ export function findDue(
     } catch {
       continue; // invalid stored schedule: skip, never crash the scheduler
     }
-    // match against minute-truncated now
-    const minute = new Date(now.getTime());
-    minute.setSeconds(0, 0);
-    if (cronMatches(expr, minute)) due.push({ job, minuteKey });
+    const lastRan = state[job.id];
+    const from = Math.max(earliest, typeof lastRan === 'number' ? lastRan + 1 : earliest);
+    let missed = 0;
+    for (let m = from; m <= minuteKey; m++) {
+      const minute = new Date(m * 60_000);
+      if (cronMatches(expr, minute)) missed++;
+    }
+    // Coalesce: a job that was due three times while the phone was off runs
+    // once now, and says how many it skipped.
+    if (missed > 0) due.push({ job, minuteKey, missed });
   }
   return due;
+}
+
+/** Mark this minute as seen, so the next tick can tell what it covers (34.4). */
+export function markTick(state: CronState, now: Date): CronState {
+  state[TICK_KEY] = Math.floor(now.getTime() / 60_000);
+  return state;
 }

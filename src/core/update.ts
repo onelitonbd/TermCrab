@@ -36,12 +36,17 @@ type FetchLike = (url: string, init?: Record<string, unknown>) => Promise<{
  */
 export async function checkForUpdate(
   current: string,
-  opts: { repo?: string; fetchImpl?: FetchLike } = {},
+  opts: { repo?: string; fetchImpl?: FetchLike; api?: string } = {},
 ): Promise<UpdateCheck> {
   const repo = opts.repo ?? 'onelitonbd/claw';
   const f: FetchLike = opts.fetchImpl ?? (fetch as unknown as FetchLike);
+  // 34.6: the API base is overridable for two real reasons — a mirror (GitHub
+  // is not reachable everywhere) and the test suite, which points this at a
+  // local server so `termcrab update` is covered end-to-end like every other
+  // command instead of being the one thing nobody dares run in CI.
+  const api = (opts.api ?? process.env.TCRAB_UPDATE_API ?? 'https://api.github.com').replace(/\/+$/, '');
   try {
-    const res = await f(`https://api.github.com/repos/${repo}/releases/latest`, {
+    const res = await f(`${api}/repos/${repo}/releases/latest`, {
       headers: { accept: 'application/vnd.github+json', 'user-agent': `termcrab/${current}` },
     });
     if (!res.ok) {

@@ -28,6 +28,19 @@ export interface ProviderMessage {
 
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
+/**
+ * One picture to look at (16.2). Attached to the request rather than embedded
+ * in a message so that `ProviderMessage.content` stays a plain string for every
+ * existing caller, transcript and compaction path: only an adapter that knows
+ * how to send an image looks at this field at all.
+ */
+export interface ChatImage {
+  /** e.g. image/jpeg. Anything else is refused before a request is made. */
+  mimeType: string;
+  /** Base64, without the `data:` prefix. */
+  dataBase64: string;
+}
+
 export interface ChatRequest {
   system: string;
   messages: ProviderMessage[];
@@ -35,6 +48,23 @@ export interface ChatRequest {
   maxTokens?: number;
   temperature?: number;
   thinkingLevel?: ThinkingLevel;
+  /** When set, the last `user` message carries this picture (vision models). */
+  image?: ChatImage;
+}
+
+/**
+ * What a provider really billed for one call.
+ *
+ * `estimated` marks a number this client computed (the offline mock provider)
+ * rather than one a server reported — every surface that shows it says so.
+ * When a server reports nothing, `ChatResult.usage` stays `undefined`: we never
+ * guess a token count from text length and present it as a measurement.
+ */
+export interface Usage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimated?: boolean;
 }
 
 export interface ChatResult {
@@ -44,6 +74,8 @@ export interface ChatResult {
   thinking?: string;
   /** Raw reasoning blocks to store and send back verbatim (Anthropic). */
   thinkingBlocks?: unknown[];
+  /** Tokens reported by the server for this call, when it reported any. */
+  usage?: Usage;
 }
 
 export interface ChatOpts {

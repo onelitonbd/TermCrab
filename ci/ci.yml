@@ -1,0 +1,86 @@
+name: CI
+
+# The workflow source is ci/ci.yml (this file is the copy installed at
+# .github/workflows/ci.yml by `npm run ci:install` — GitHub refuses to let an
+# integration without the `workflows` permission push that path, so the source
+# lives in ci/ and the copy step is one command for an account that has it).
+# Once installed it runs on every push to main or an arena branch: build and the
+# full suite on the three Node lines we support, the installer's plan, and a
+# packaged tarball that is really installed and run.
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+
+jobs:
+  test:
+    name: build + test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --no-fund --no-audit
+      - name: Build
+        run: npm run build
+      - name: Test suite
+        run: npm test
+      - name: Smoke the CLI (offline mock provider)
+        run: |
+          export TCRAB_HOME="$RUNNER_TEMP/tcrab-smoke"
+          node dist/src/bin/termcrab.js onboard --non-interactive --provider mock --name CICrab
+          node dist/src/bin/termcrab.js agent "ping"
+          node dist/src/bin/termcrab.js bootstrap --json
+          node dist/src/bin/termcrab.js doctor || true
+      - name: Work tracker must be fresh
+        run: node scripts/status.mjs
+      - name: Census must not drift
+        run: node scripts/census.mjs
+      - name: The measurements are pinned to this source
+        run: npm run check:measure
+
+  installer:
+    name: installer plan (no writes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The installed workflow matches its source
+        run: node scripts/install-ci.mjs --check
+      - name: The installer explains what it would do
+        run: bash install.sh --check
+      - name: It refuses an unsupported Node
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/fakebin"
+          printf '#!/bin/sh\necho v18.20.0\n' > "$RUNNER_TEMP/fakebin/node"
+          chmod +x "$RUNNER_TEMP/fakebin/node"
+          PATH="$RUNNER_TEMP/fakebin:$PATH" bash install.sh --check > "$RUNNER_TEMP/out.txt" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/out.txt"
+          test $code -ne 0 && grep -q 'too old' "$RUNNER_TEMP/out.txt"
+
+  package:
+    name: packaged tarball runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-fund --no-audit && npm run build
+      - name: Pack and install it somewhere else
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/installed" && cd "$RUNNER_TEMP/installed"
+          npm init -y >/dev/null
+          npm install --no-fund --no-audit "$RUNNER_TEMP"/termcrab-*.tgz
+          TCRAB_HOME="$RUNNER_TEMP/pkg-home" ./node_modules/.bin/termcrab --version
+          TCRAB_HOME="$RUNNER_TEMP/pkg-home" ./node_modules/.bin/termcrab bootstrap --json

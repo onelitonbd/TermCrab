@@ -11,8 +11,13 @@ export interface Conversation {
 }
 
 type Sender = (address: string, text: string) => Promise<void>;
+type DocumentSender = (address: string, filePath: string, caption?: string) => Promise<void>;
+/** 51.2 — a channel that can send a *voice note*, not just a file. */
+type VoiceSender = (address: string, filePath: string, caption?: string) => Promise<void>;
 
 const senders = new Map<string, Sender>();
+const documentSenders = new Map<string, DocumentSender>();
+const voiceSenders = new Map<string, VoiceSender>();
 const known = new Map<string, Conversation>();
 const waiters: { key: string; resolve: (text: string) => void; timer: NodeJS.Timeout }[] = [];
 
@@ -43,6 +48,50 @@ export function registerSender(channel: string, send: Sender): void {
   senders.set(channel, send);
 }
 
+/** Register how a channel sends a *file* (15.2). Channels without one refuse. */
+export function registerDocumentSender(channel: string, send: DocumentSender): void {
+  documentSenders.set(channel, send);
+}
+
+export function channelsWithDocuments(): string[] {
+  return [...documentSenders.keys()];
+}
+
+/**
+ * 51.2 — register how a channel sends a *voice note*. A document is a file a
+ * person has to open; a voice note plays. Only channels whose API has the
+ * concept (Telegram's sendVoice) register one, and the others keep saying so.
+ */
+export function registerVoiceSender(channel: string, send: VoiceSender): void {
+  voiceSenders.set(channel, send);
+}
+
+export function channelsWithVoice(): string[] {
+  return [...voiceSenders.keys()];
+}
+
+/** Send a spoken file. Same addressing rules as `sendDocumentTo`. */
+export async function sendVoiceTo(
+  channel: string,
+  address: string | undefined,
+  filePath: string,
+  caption?: string,
+): Promise<{ channel: string; address: string }> {
+  const send = voiceSenders.get(channel);
+  if (!send) {
+    const available = channelsWithVoice().join(', ') || '(none configured)';
+    throw new Error(`channel "${channel}" cannot send voice notes (channels that can: ${available})`);
+  }
+  let to = address;
+  if (!to) {
+    const recent = listConversations().find((c) => c.channel === channel);
+    if (!recent) throw new Error(`no known conversation on ${channel} yet — send the bot a message first`);
+    to = recent.address;
+  }
+  await send(to, filePath, caption);
+  return { channel, address: to };
+}
+
 export function listConversations(): Conversation[] {
   return [...known.values()].sort((a, b) => b.lastSeen - a.lastSeen);
 }
@@ -71,6 +120,32 @@ export async function sendTo(channel: string, address: string, text: string): Pr
     throw new Error(`channel "${channel}" is not configured (available: ${available})`);
   }
   await send(address, text);
+}
+
+/**
+ * Send a file to an external conversation. The address is optional: with none,
+ * it goes to the most recently active conversation on that channel — which is
+ * the chat the person is talking to right now.
+ */
+export async function sendDocumentTo(
+  channel: string,
+  address: string | undefined,
+  filePath: string,
+  caption?: string,
+): Promise<{ channel: string; address: string }> {
+  const send = documentSenders.get(channel);
+  if (!send) {
+    const available = channelsWithDocuments().join(', ') || '(none configured)';
+    throw new Error(`channel "${channel}" cannot send files (channels that can: ${available})`);
+  }
+  let to = address;
+  if (!to) {
+    const recent = listConversations().find((c) => c.channel === channel);
+    if (!recent) throw new Error(`no known conversation on ${channel} yet — send the bot a message first`);
+    to = recent.address;
+  }
+  await send(to, filePath, caption);
+  return { channel, address: to };
 }
 
 export function turn(

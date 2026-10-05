@@ -60,7 +60,7 @@ function makeCfg(): { cfg: Config; home: string } {
 test('provider menu: numbered list, current marked, reply hint', () => {
   const { cfg } = makeCfg();
   const out = providerMenu(cfg);
-  assert.match(out, /\*\*Provider\*\*/);
+  assert.match(out, /\*\*Provider endpoint\*\*/);
   assert.match(out, /Using: \*\*OpenAI\*\* \(https:\/\/api\.openai\.com\/v1\)/);
   assert.match(out, /1\. \*\*OpenAI\*\* - 1 key, 2 models - current/);
   assert.match(out, /2\. \*\*OpenRouter\*\* - 1 key, 1 model/);
@@ -71,8 +71,9 @@ test('provider menu: numbered list, current marked, reply hint', () => {
 test('provider menu: empty list and builtin mock read friendly', () => {
   const { cfg } = makeCfg();
   cfg.providers = [];
-  assert.match(providerMenu(cfg), /No providers saved yet/);
-  cfg.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
+  assert.match(providerMenu(cfg), /No endpoints saved yet/);
+  // The offline brain is a configured state, not a broken endpoint.
+  cfg.provider = { type: 'mock', model: 'mock-1' };
   assert.match(providerMenu(cfg), /Using: \*\*Offline demo\*\*/);
 });
 
@@ -120,12 +121,12 @@ test('provider without a key refuses and explains', () => {
 test('provider select: unknown name and out-of-range number fall back to the menu', () => {
   const { cfg } = makeCfg();
   const bad = providerSelect(cfg, 'Nope');
-  assert.match(bad, /No provider matches "Nope"/);
+  assert.match(bad, /No endpoint matches "Nope"/);
   assert.match(bad, /1\. \*\*OpenAI\*\*/, 'menu is reprinted');
   const range = providerSelect(cfg, '42');
-  assert.match(range, /no provider #42/);
+  assert.match(range, /no endpoint #42/);
   const ambiguous = providerSelect(cfg, 'o'); // matches OpenAI + OpenRouter
-  assert.match(ambiguous, /Several providers match "o"/);
+  assert.match(ambiguous, /Several endpoints match "o"/);
 });
 
 // ---- model menu ----
@@ -157,8 +158,11 @@ test('model menu: empty everything says what to do; mock says add a provider', (
   const out = modelMenu(cfg, null);
   assert.match(out, /could not be fetched/);
   assert.match(out, /`\/model <model-id>`/);
-  cfg.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-test', model: 'test-model' };
+  // The offline brain is a real setup: it says so instead of asking for a key.
+  cfg.provider = { type: 'mock', model: 'mock-1' };
   assert.match(modelMenu(cfg, null), /Offline demo runs on `mock-1`/);
+  assert.match(providerMenu(cfg), /Offline demo runs on `mock-1`/);
+  assert.match(providerMenu(cfg), /1\. \*\*OpenAI\*\*/, 'real endpoints stay listed');
 });
 
 // ---- model switching ----

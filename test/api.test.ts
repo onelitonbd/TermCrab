@@ -25,7 +25,10 @@ test('web control parity API', async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tapi-'));
   process.env.TCRAB_HOME = home;
   const config = defaults();
-  config.provider = { type: 'openai', baseUrl: 'http://127.0.0.1:1/never', apiKey: 'sk-secret-abcdef123456', model: 'test-model' };
+  // Offline brain: the API surface is what is under test, not a remote model.
+  // The apiKey is a dummy that only exists so the secret-masking tests have a
+  // real secret to mask (the mock provider never reads it).
+  config.provider = { type: 'mock', model: 'mock-1', apiKey: 'sk-secret-abcdef123456' };
   config.gateway.token = 'test-token';
   const port = await freePort();
   const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });
@@ -172,8 +175,18 @@ test('web control parity API', async (t) => {
         agent: 'brief',
         sessionId: 't',
       });
-      assert.equal(chat.status, 200);
+      // Queue-first: 202 + a turn id, then poll until the turn settles.
+      assert.equal(chat.status, 202);
       assert.equal(chat.data.sessionId, 'brief:t');
+      assert.equal(chat.data.status, 'queued');
+      const turnId = chat.data.turnId as string;
+      let turn = await req(`/api/chat/brief:t/${turnId}`);
+      for (let i = 0; i < 100 && !['done', 'error', 'cancelled'].includes(String(turn.data.status)); i++) {
+        await new Promise((r) => setTimeout(r, 50));
+        turn = await req(`/api/chat/brief:t/${turnId}`);
+      }
+      assert.equal(turn.data.status, 'done');
+      assert.match(String(turn.data.output), /You said: hello brief/);
     });
 
     await t.test('say + boot degrade gracefully', async () => {
@@ -213,17 +226,19 @@ test('web control parity API', async (t) => {
 
     // Auth removed — auto-update token test removed.
 
-    await t.test('v0.16: dark theme, markdown replies, full-width answers', async () => {
+    await t.test('v0.16: theme tokens, markdown replies, full-width answers', async () => {
       const html = await (await fetch(base + '/')).text();
-      assert.ok(html.includes('content="#000000"'), 'black theme-color');
-      assert.ok(html.includes('--bg: #000000'), 'black canvas token');
-      assert.ok(html.includes('--primary: #238636'), 'green primary buttons');
+      // Theme is a coherent set of tokens: browser chrome colour == canvas colour.
+      assert.ok(html.includes('name="theme-color" content="#fdfbff"'), 'theme-color matches the canvas');
+      assert.ok(html.includes('--bg: #fdfbff'), 'canvas token');
+      assert.ok(html.includes('--primary: #f0517d'), 'primary accent token');
       assert.ok(html.includes('function renderMarkdown'), 'markdown renderer shipped');
       assert.ok(html.includes('// ==== end markdown renderer ===='), 'renderer end marker');
       assert.ok(html.includes('class="mdCode"'), 'code block markup builder');
-      assert.ok(html.includes("if (cls === 'bot') {") && html.includes('div.innerHTML = renderMarkdown(text);'), 'AI replies rendered as markdown');
+      assert.ok(html.includes("tb.innerHTML = renderMarkdown(text)"), 'AI replies rendered as markdown');
       assert.ok(html.includes('align-self: stretch'), 'AI replies span the full width');
       assert.ok(!html.includes('#ff5c5c'), 'old coral accent removed');
+      assert.ok(!html.includes('#238636'), 'old github-green accent removed');
     });
 
     await t.test('v0.17: two-layer composer + Providers page, wizard retired', async () => {
@@ -241,14 +256,19 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes("p.inUse"), 'in-use flag rendered on saved providers');
     });
 
-    await t.test('v0.19: black theme, send doubles as stop, sidebar icons', async () => {
+    await t.test('v0.19: theme canvas, send doubles as stop, sidebar icons', async () => {
       const html = await (await fetch(base + '/')).text();
-      assert.ok(html.includes('--bg: #000000'), 'true black canvas');
-      assert.ok(html.includes('content="#000000"'), 'browser chrome matches the black theme');
+      assert.ok(html.includes('--bg: #fdfbff'), 'canvas token declared once');
+      assert.ok(html.includes('content="#fdfbff"'), 'browser chrome matches the canvas');
       assert.ok(!html.includes('#0d1117'), 'old grey-dark canvas gone');
+      assert.ok(!html.includes('#000000'), 'old black canvas gone');
       assert.ok(html.includes('setSendMode'), 'send button switches into stop mode');
       assert.ok(html.includes('stopMode'), 'stop-mode class');
-      assert.ok(html.includes('if (state.busy) { if (state.abort) state.abort.abort(); }'), 'clicking send while replying stops it');
+      assert.ok(
+        html.includes("if (txt) send();") && html.includes('else if (state.busy) stopRun();'),
+        'empty box + busy = stop; a draft + busy = queued send',
+      );
+      assert.ok(html.includes("api('/api/stop'"), 'stop asks the server, not just the browser (10.3)');
       for (const v of ['status', 'providers', 'memory', 'tools', 'settings']) {
         const m = html.match(new RegExp('<button data-goto="' + v + '">([\\s\\S]*?)</button>'));
         assert.ok(m, v + ' sidebar button present');
@@ -314,12 +334,13 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('data-go="providers"') && html.includes('data-go="status"'), 'navigation chips');
       assert.ok(html.includes('class="chipBtn"'), 'suggestion chips');
       assert.ok(html.includes('class="sideBrand"'), 'brand block in the sidebar');
-      assert.ok(html.includes("who.className = 'msgWho'"), 'AI replies get an identity line');
+      assert.ok(html.includes("who.className = 'who'"), 'AI replies get an identity line');
       assert.ok(html.includes('Crabby is thinking'), 'thinking indicator');
       assert.ok(html.includes("document.body.classList.add('busy')"), 'busy state drives the pulse');
       assert.ok(html.includes('syncHero'), 'hero hides when the conversation starts');
       assert.ok(html.includes('#composerBox:focus-within'), 'composer focus glow');
-      assert.ok(html.includes('#health::before'), 'status pill dot');
+      assert.ok(html.includes("ic.className = 'sessIc'"), 'status pill icon');
+      assert.ok(html.includes('health.append(ic, label)'), 'status pill icon + label');
       assert.ok(html.includes('nothing phones home'), 'privacy line in the hero');
       assert.ok(!html.includes('connected - your agent runs'), 'old auto sys noise removed');
       assert.ok(html.includes('<span>Chat history</span>'), 'history label kept');
@@ -438,13 +459,14 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('function toolIconHtml'), 'toolIconHtml helper');
       assert.ok(html.includes('function addToolLine'), 'shared tool line builder');
       assert.ok(html.includes('toolIc'), 'tool line icon span');
-      assert.ok(html.includes('toolSt'), 'tool status appended as span (no innerHTML wipe)');
+      assert.ok(html.includes("d.className = 'd pending'"), 'running tool status is its own element');
+      assert.ok(html.includes('row.append(ti, rt, code, a, d)'), 'tool row built once, then status swapped');
       assert.ok(html.includes('health.append(ic, label)'), 'chat header: icon + friendly label');
       assert.ok(html.includes("id.innerHTML = sessionIconSpan(sess.id)"), 'sidebar history rows');
       assert.ok(html.includes("id.innerHTML = sessionIconSpan(s.id)"), 'session panel rows');
       assert.ok(html.includes('sessionLabel(s.id)'), 'hidden session picker option text');
       assert.ok(/addToolLine\(c\.name/.test(html), 'history reload re-renders m.toolCalls');
-      assert.ok(html.includes('doneIds'), 'done status rebuilt from role:tool entries');
+      assert.ok(html.includes('results.set(m.toolCallId'), 'done status rebuilt from role:tool entries');
       // no raw web:/telegram: prefix is ever put back into visible labels as-is
       assert.ok(!html.includes("textContent = id.length > 26 ? id.slice(0, 25)"), 'old raw-id chat label gone');
     });
@@ -485,14 +507,22 @@ test('web control parity API', async (t) => {
       assert.ok(html.includes('setTglTrack'), 'switch track styles');
       assert.ok(html.includes("type: 'number'"), 'minutes/hours get number inputs');
       assert.ok(html.includes("'secret' ? 'password' : 'text'"), 'secrets are password fields');
-      assert.ok(html.includes("type: 'select'"), 'service is a dropdown');
+      // every field on the page declares a control the renderer implements
+      for (const t of ["type: 'toggle'", "type: 'number'", "type: 'list'", "type: 'text'", "type: 'secret'"]) {
+        assert.ok(html.includes(t), 'field control ' + t);
+      }
       // feedback happens on the settings page itself, not in the chat
       assert.ok(html.includes('setSaved'), 'inline saved badge');
       assert.ok(!html.includes("addMsg('sys', r.unchanged"), 'no chat-message save feedback');
       // login screen shows the server's plain-English refusal hint, not a generic error
       // Auth removed — login gate tests removed.
       // loads when the page opens
-      assert.ok(html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); }"), 'loads on open');
+      // 50.x/52.x: the settings page also loads the identity/backup/service
+      // cards, and the security scan.
+      assert.ok(
+        html.includes("if (name === 'settings') { refreshSettings(); refreshAgents(); refreshFiles(); refreshSecurity(); }"),
+        'loads on open',
+      );
       // agents card keeps its ids (create/edit flow untouched)
       for (const id of ['agList', 'agNew', 'agTemplate', 'agCreate', 'agSoul', 'agSave', 'cfgPath']) {
         assert.ok(html.includes('id="' + id + '"'), 'id ' + id);
@@ -525,12 +555,32 @@ test('config file password change hot-applies to the running gateway', async () 
   saveConfig(config);
   const handle: GatewayHandle = await startGateway({ config, host: '127.0.0.1', port });
   const base = `http://127.0.0.1:${port}`;
-  // Auth removed — token validation tests removed.
-  // All /api/* endpoints are now open without token.
+  const withToken = (token: string) => fetch(`${base}/api/config`, { headers: { authorization: `Bearer ${token}` } });
 
   try {
-    const res = await fetch(`${base}/api/config`);
-    assert.equal(res.status, 200, 'config is open without token');
+    // A configured password is enforced: no token, no config.
+    const anon = await fetch(`${base}/api/config`);
+    assert.equal(anon.status, 401, 'no token -> refused');
+    assert.match(anon.headers.get('www-authenticate') || '', /Bearer/);
+
+    const ok = await withToken('old-token-000');
+    assert.equal(ok.status, 200, 'the token it started with works');
+
+    // The password changes on disk (another terminal / an editor). The running
+    // gateway must adopt it instead of keeping the stale one — this is the
+    // "config get returns a token the panel rejects" bug.
+    const file = path.join(home, 'config.json');
+    const written = JSON.parse(fs.readFileSync(file, 'utf8')) as { gateway: { token: string } };
+    written.gateway.token = 'new-token-111';
+    fs.writeFileSync(file, `${JSON.stringify(written, null, 2)}\n`, 'utf8');
+
+    let adopted = false;
+    for (let i = 0; i < 40 && !adopted; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      adopted = (await withToken('new-token-111')).status === 200;
+    }
+    assert.ok(adopted, 'the new password is adopted without a restart');
+    assert.equal((await withToken('old-token-000')).status, 401, 'the old password stops working');
   } finally {
     await handle.stop();
   }

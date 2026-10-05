@@ -5,10 +5,11 @@
 import '../mobile/bionic.js';
 import { main } from '../cli.js';
 import { friendlyError } from '../core/friendly.js';
+import { ANSI, paint } from '../core/color.js';
 
 main(process.argv.slice(2)).catch((err) => {
   const f = friendlyError(err);
-  console.error(`\x1b[31m[termcrab] ${f.headline}\x1b[0m`);
+  console.error(paint(ANSI.red, `[termcrab] ${f.headline}`, { stream: process.stderr }));
   console.error(`  \u2192 ${f.fix}`);
   if (process.env.TCRAB_DEBUG && err instanceof Error && err.stack) {
     console.error(err.stack);

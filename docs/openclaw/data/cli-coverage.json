@@ -1,0 +1,462 @@
+{
+  "measuredAt": "2026-10-05",
+  "commands": [
+    "help",
+    "completion",
+    "version",
+    "owner",
+    "onboard",
+    "gateway",
+    "supervisor",
+    "doctor",
+    "update",
+    "say",
+    "tui",
+    "agent",
+    "heartbeat",
+    "skills",
+    "cron",
+    "import",
+    "approvals",
+    "usage",
+    "run",
+    "wait",
+    "stop",
+    "runs",
+    "presence",
+    "events",
+    "watch",
+    "inbox",
+    "extract",
+    "embeddings",
+    "image",
+    "models",
+    "auth",
+    "orders",
+    "logs",
+    "pair",
+    "devices",
+    "backup",
+    "restore",
+    "service",
+    "bootstrap",
+    "schema",
+    "perf",
+    "suite-time",
+    "work",
+    "disk",
+    "status",
+    "dream",
+    "wake",
+    "sessions",
+    "subagents",
+    "agents",
+    "docs",
+    "security",
+    "board",
+    "rooms",
+    "browser",
+    "transcribe",
+    "context",
+    "memory",
+    "tools",
+    "canvas",
+    "queue",
+    "steer",
+    "boot",
+    "config"
+  ],
+  "covered": [
+    {
+      "command": "help",
+      "line": 412,
+      "runs": 19
+    },
+    {
+      "command": "completion",
+      "line": 432,
+      "runs": 3
+    },
+    {
+      "command": "version",
+      "line": 449,
+      "runs": 15
+    },
+    {
+      "command": "owner",
+      "line": 455,
+      "runs": 2
+    },
+    {
+      "command": "gateway",
+      "line": 498,
+      "runs": 14
+    },
+    {
+      "command": "doctor",
+      "line": 539,
+      "runs": 9
+    },
+    {
+      "command": "update",
+      "line": 575,
+      "runs": 3
+    },
+    {
+      "command": "say",
+      "line": 636,
+      "runs": 1
+    },
+    {
+      "command": "agent",
+      "line": 710,
+      "runs": 1
+    },
+    {
+      "command": "heartbeat",
+      "line": 816,
+      "runs": 2
+    },
+    {
+      "command": "skills",
+      "line": 823,
+      "runs": 6
+    },
+    {
+      "command": "cron",
+      "line": 1055,
+      "runs": 13
+    },
+    {
+      "command": "approvals",
+      "line": 1334,
+      "runs": 3
+    },
+    {
+      "command": "usage",
+      "line": 1412,
+      "runs": 4
+    },
+    {
+      "command": "run",
+      "line": 1458,
+      "runs": 4
+    },
+    {
+      "command": "wait",
+      "line": 1459,
+      "runs": 1
+    },
+    {
+      "command": "stop",
+      "line": 1525,
+      "runs": 2
+    },
+    {
+      "command": "runs",
+      "line": 1558,
+      "runs": 3
+    },
+    {
+      "command": "presence",
+      "line": 1595,
+      "runs": 3
+    },
+    {
+      "command": "events",
+      "line": 1639,
+      "runs": 3
+    },
+    {
+      "command": "watch",
+      "line": 1679,
+      "runs": 7
+    },
+    {
+      "command": "inbox",
+      "line": 1728,
+      "runs": 2
+    },
+    {
+      "command": "extract",
+      "line": 1759,
+      "runs": 1
+    },
+    {
+      "command": "embeddings",
+      "line": 1784,
+      "runs": 6
+    },
+    {
+      "command": "image",
+      "line": 1812,
+      "runs": 1
+    },
+    {
+      "command": "models",
+      "line": 1856,
+      "runs": 1
+    },
+    {
+      "command": "auth",
+      "line": 1896,
+      "runs": 4
+    },
+    {
+      "command": "orders",
+      "line": 2001,
+      "runs": 5
+    },
+    {
+      "command": "logs",
+      "line": 2066,
+      "runs": 3
+    },
+    {
+      "command": "backup",
+      "line": 2176,
+      "runs": 2
+    },
+    {
+      "command": "restore",
+      "line": 2194,
+      "runs": 3
+    },
+    {
+      "command": "service",
+      "line": 2262,
+      "runs": 1
+    },
+    {
+      "command": "bootstrap",
+      "line": 2285,
+      "runs": 3
+    },
+    {
+      "command": "schema",
+      "line": 2317,
+      "runs": 3
+    },
+    {
+      "command": "perf",
+      "line": 2339,
+      "runs": 18
+    },
+    {
+      "command": "suite-time",
+      "line": 2437,
+      "runs": 2
+    },
+    {
+      "command": "work",
+      "line": 2459,
+      "runs": 3
+    },
+    {
+      "command": "disk",
+      "line": 2507,
+      "runs": 4
+    },
+    {
+      "command": "status",
+      "line": 2546,
+      "runs": 3
+    },
+    {
+      "command": "wake",
+      "line": 2586,
+      "runs": 1
+    },
+    {
+      "command": "sessions",
+      "line": 2624,
+      "runs": 13
+    },
+    {
+      "command": "subagents",
+      "line": 2829,
+      "runs": 3
+    },
+    {
+      "command": "agents",
+      "line": 2890,
+      "runs": 6
+    },
+    {
+      "command": "docs",
+      "line": 2973,
+      "runs": 17
+    },
+    {
+      "command": "security",
+      "line": 3039,
+      "runs": 4
+    },
+    {
+      "command": "board",
+      "line": 3062,
+      "runs": 2
+    },
+    {
+      "command": "rooms",
+      "line": 3077,
+      "runs": 4
+    },
+    {
+      "command": "browser",
+      "line": 3157,
+      "runs": 5
+    },
+    {
+      "command": "transcribe",
+      "line": 3224,
+      "runs": 1
+    },
+    {
+      "command": "context",
+      "line": 3318,
+      "runs": 1
+    },
+    {
+      "command": "memory",
+      "line": 3338,
+      "runs": 9
+    },
+    {
+      "command": "tools",
+      "line": 3480,
+      "runs": 4
+    },
+    {
+      "command": "canvas",
+      "line": 3535,
+      "runs": 5
+    },
+    {
+      "command": "queue",
+      "line": 3592,
+      "runs": 5
+    },
+    {
+      "command": "steer",
+      "line": 3624,
+      "runs": 1
+    },
+    {
+      "command": "config",
+      "line": 3668,
+      "runs": 4
+    }
+  ],
+  "untested": [
+    {
+      "command": "onboard",
+      "line": 465,
+      "why": "an interactive question-and-answer wizard on stdin; the prompts are asserted directly",
+      "instead": "test/tier.test.ts"
+    },
+    {
+      "command": "supervisor",
+      "line": 535,
+      "why": "supervise-and-restart is a loop with no exit condition — spawning it would hang the suite",
+      "instead": "test/tier2s.test.ts"
+    },
+    {
+      "command": "tui",
+      "line": 659,
+      "why": "needs a real TTY (alternate screen + raw keys); the suite drives it through a fake TTY instead",
+      "instead": "test/tier2r.test.ts"
+    },
+    {
+      "command": "import",
+      "line": 1265,
+      "why": "reads a Telegram desktop export; the suite builds the same files and imports them through the library",
+      "instead": "test/import.test.ts"
+    },
+    {
+      "command": "pair",
+      "line": 2099,
+      "why": "the pairing code is printed for a device that has to answer — the HTTP flow is tested live instead",
+      "instead": "test/tier2i.test.ts"
+    },
+    {
+      "command": "devices",
+      "line": 2123,
+      "why": "same flow: the paired-device list and revocation are asserted over a real socket",
+      "instead": "test/tier2i.test.ts"
+    },
+    {
+      "command": "dream",
+      "line": 2557,
+      "why": "a long background consolidation pass; the same store is exercised by the library tests",
+      "instead": "test/dream.test.ts"
+    },
+    {
+      "command": "boot",
+      "line": 3654,
+      "why": "termscrab boot writes the Termux:Boot script; the machine it runs on has no Termux prefix",
+      "instead": "test/tier2w.test.ts"
+    }
+  ],
+  "unknown": [],
+  "runCounts": {
+    "approvals": 3,
+    "memory": 9,
+    "config": 4,
+    "--version": 2,
+    "run": 4,
+    "wait": 1,
+    "stop": 2,
+    "version": 15,
+    "gateway": 14,
+    "help": 19,
+    "not-a-command": 3,
+    "completion": 3,
+    "status": 3,
+    "sessions": 13,
+    "skills": 6,
+    "cron": 13,
+    "disk": 4,
+    "doctor": 9,
+    "usage": 4,
+    "context": 1,
+    "logs": 3,
+    "runs": 3,
+    "presence": 3,
+    "events": 3,
+    "orders": 5,
+    "image": 1,
+    "models": 1,
+    "auth": 4,
+    "backup": 2,
+    "restore": 3,
+    "schema": 3,
+    "embeddings": 6,
+    "bootstrap": 3,
+    "service": 1,
+    "subagents": 3,
+    "agents": 6,
+    "say": 1,
+    "transcribe": 1,
+    "browser": 5,
+    "rooms": 4,
+    "board": 2,
+    "security": 4,
+    "update": 3,
+    "agent": 1,
+    "heartbeat": 2,
+    "wake": 1,
+    "docs": 17,
+    "perf": 18,
+    "owner": 2,
+    "suite-time": 2,
+    "work": 3,
+    "tools": 4,
+    "canvas": 5,
+    "queue": 5,
+    "steer": 1,
+    "watch": 7,
+    "inbox": 2,
+    "extract": 1
+  }
+}

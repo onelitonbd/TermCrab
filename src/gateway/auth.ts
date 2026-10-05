@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { Config } from '../core/config.js';
+import { Device, verifyDeviceToken } from './devices.js';
 
 function sha(s: string): Buffer {
   return crypto.createHash('sha256').update(s).digest();
@@ -52,6 +53,12 @@ export function authHint(
   return 'Wrong password - run: termcrab config get gateway.token and paste the whole line.';
 }
 
+/** Constant-time equality for tokens we compare directly (webhook secrets). */
+export function constantTimeEqual(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  return crypto.timingSafeEqual(sha(a), sha(b));
+}
+
 export function extractAuth(req: { headers: Record<string, string | string[] | undefined>; url?: string }): string | null {
   const header = req.headers['authorization'];
   if (typeof header === 'string' && header) return header;
@@ -65,4 +72,42 @@ export function extractAuth(req: { headers: Record<string, string | string[] | u
     }
   }
   return null;
+}
+
+export type AuthResult =
+  | { ok: true; kind: 'master' }
+  | { ok: true; kind: 'device'; device: Device }
+  | { ok: true; kind: 'open' }
+  | { ok: false; kind: 'none' };
+
+/**
+ * Who is this? The owner's master token, or a paired device's own token (20.1).
+ *
+ * Keeping both paths in one function is the point: every route that already
+ * called `checkToken` gains devices without a second branch, and "no token
+ * configured" still means loopback-only (the bind guard enforces that at start).
+ */
+export function authenticate(
+  config: Config,
+  presented: string | null | undefined,
+  opts: { now?: number; ip?: string | null } = {},
+): AuthResult {
+  const value = presented ? normalize(presented) : '';
+  if (config.gateway.token && value) {
+    if (crypto.timingSafeEqual(sha(value), sha(config.gateway.token))) return { ok: true, kind: 'master' };
+  }
+  if (value) {
+    const device = verifyDeviceToken(value, opts);
+    if (device) return { ok: true, kind: 'device', device };
+  }
+  if (!config.gateway.token) return { ok: true, kind: 'open' };
+  return { ok: false, kind: 'none' };
+}
+
+/** A stable key for rate limiting: the device, else the token, else the peer. */
+export function authKey(auth: AuthResult, presented: string | null | undefined, peer: string | null): string {
+  if (auth.ok && auth.kind === 'device') return `device:${auth.device.id}`;
+  if (auth.ok && auth.kind === 'master') return 'master';
+  if (presented) return `token:${crypto.createHash('sha256').update(normalize(presented)).digest('hex').slice(0, 12)}`;
+  return `ip:${peer || 'unknown'}`;
 }

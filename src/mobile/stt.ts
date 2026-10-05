@@ -42,7 +42,11 @@ export function listenOnce(timeoutMs = 30_000): Promise<ListenResult> {
     }
 
     timer = setTimeout(() => {
-      finish({ ok: false, error: 'nothing heard (waited 30s) — tap Listen and speak again' });
+      // 43.2 — say how long *this* call waited. The message used to claim 30s
+      // whatever the caller asked for, which is a lie a person reads at the
+      // moment they are already confused about why nothing happened.
+      const waited = timeoutMs >= 10_000 ? `${Math.round(timeoutMs / 1000)}s` : `${(timeoutMs / 1000).toFixed(1)}s`;
+      finish({ ok: false, error: `nothing heard (waited ${waited}) — tap Listen and speak again` });
     }, timeoutMs);
 
     const firstLine = (): string =>

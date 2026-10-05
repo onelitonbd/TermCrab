@@ -1,3 +1,7 @@
+/**
+ * Dream pass: replays recent sessions and distils durable facts into memory.
+ * Runs when the device is idle (scheduler + `termcrab dream`).
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { Config } from '../core/config.js';
