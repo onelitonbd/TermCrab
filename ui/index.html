@@ -165,13 +165,14 @@
   .me {
     align-self: flex-end;
     max-width: 84%;
-    background: var(--g);
-    color: #fff;
-    border-radius: 22px 22px 6px 22px;
-    padding: 12px 17px;
+    background: #E7F0EE;
+    color: #102a2e;
+    border: 1px solid #cfe0dc;
+    border-radius: 18px 18px 5px 18px;
+    padding: 11px 16px;
     font-size: 15.5px;
     line-height: 1.5;
-    box-shadow: 0 14px 26px -14px var(--sh);
+    box-shadow: 0 10px 22px -16px rgba(14,26,31,.45);
     overflow-wrap: break-word;
     animation: settle 0.18s ease-out;
   }
@@ -808,6 +809,17 @@
      Targeted by class, not `svg:last-child`, so dropping the label span from the
      markup can never turn the leading glyph into a match and hide it. */
   #composer .modOn svg.chev { display: none; }
+  /* the queue control carries inline text + a <select>, so it must not be a 40px
+     round icon button — give it a proper pill and let it size to its content */
+  #composer .qModeBtn {
+    width: auto; min-width: 0; height: var(--composerBtn);
+    border-radius: 999px; padding: 0 9px; gap: 4px;
+    background: var(--soft); border: 1px solid var(--line);
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--mut);
+  }
+  #composer .qModeBtn select { font-size: 11px; font-weight: 600; color: var(--ink); border: 0; background: transparent; }
+  /* keep every control on one even baseline */
+  #composer .composerRow { align-items: center; gap: 8px; }
   /* icon buttons (soft circle) */
   .iconBtn {
     width: 40px;
@@ -983,11 +995,15 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: safe center;
     text-align: center;
     padding: calc(env(safe-area-inset-top, 0px) + 54px) 16px calc(var(--pb, 130px) + 20px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     pointer-events: none;
+    background:
+      radial-gradient(125% 85% at 50% -12%, #173A42 0%, #0E1A1F 55%, #0A1216 100%);
+    color: #E8F1EF;
   }
   #hero > * { pointer-events: auto; }
   #hero[hidden] { display: none !important; }
@@ -999,12 +1015,12 @@
     width: 320px;
     height: 320px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(240, 81, 125, .16), transparent 65%);
+    background: radial-gradient(circle, rgba(255, 107, 74, .20), transparent 65%);
     pointer-events: none;
   }
   .heroCrab {
     position: relative;
-    margin-top: auto;
+    margin-top: 0;
     animation: crabFloat 5.2s ease-in-out infinite;
   }
   .heroCrab svg {
@@ -1052,6 +1068,21 @@
     transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
   }
   .chipBtn:hover { border-color: #f0517d; color: var(--ink); transform: translateY(-1px); }
+  /* ── Tidal Ink first-page theme (Plan A): one bold moment, rest quiet ── */
+  #hero .heroHi { font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif; font-weight: 600; color: #F2F7F5; letter-spacing: -0.01em; }
+  #hero .heroSub { color: #9FB8B4; }
+  #hero .heroStatus { background: rgba(232,241,239,.06); border-color: rgba(232,241,239,.16); color: #CFE0DC; box-shadow: 0 14px 30px -22px rgba(0,0,0,.6); }
+  #hero .heroStatus::before { background: #4FB286; }
+  #hero .chipBtn { background: rgba(232,241,239,.06); border-color: rgba(232,241,239,.16); color: #E8F1EF; }
+  #hero .chipBtn:hover { border-color: #FF6B4A; color: #fff; }
+  /* the composer becomes a live prompt line on the first page — the one bold accent */
+  body[data-view="chat"]:has(#hero:not([hidden])) #composer { border-top-color: rgba(255,107,74,.5); }
+  body[data-view="chat"]:has(#hero:not([hidden])) #composer textarea { caret-color: #FF6B4A; }
+  body[data-view="chat"]:has(#hero:not([hidden])) #composer textarea::placeholder { color: rgba(255,107,74,.72); }
+  @media (prefers-reduced-motion: no-preference) {
+    body[data-view="chat"]:has(#hero:not([hidden])) #composer { animation: heroPrompt 2.4s ease-in-out infinite; }
+    @keyframes heroPrompt { 0%, 100% { border-top-color: rgba(255,107,74,.3); } 50% { border-top-color: rgba(255,107,74,.85); } }
+  }
   #heroNote {
     position: relative;
     margin-top: 14px;
@@ -2354,19 +2385,19 @@
     <div id="hero">
       <div class="heroGlow"></div>
       <div class="heroCrab"><svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true">
-          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
-          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#3f6fe0" stroke-width="7" stroke-linecap="round" fill="none"/>
-          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#5b8dff"/>
-          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#5b8dff"/>
-          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#5b8dff"/>
-          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#9cbcff" opacity="0.4"/>
-          <circle cx="47" cy="59" r="9.5" fill="#f4f8ff"/>
-          <circle cx="73" cy="59" r="9.5" fill="#f4f8ff"/>
-          <circle cx="49" cy="60" r="4.6" fill="#101418"/>
-          <circle cx="75" cy="60" r="4.6" fill="#101418"/>
+          <path d="M28 84c-8 5-12 12-12 20M38 92c-5 6-7 12-6 18" stroke="#FF6B4A" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M92 84c8 5 12 12 12 20M82 92c5 6 7 12 6 18" stroke="#FF6B4A" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M22 54c-9-7-17-5-19 3 7 1 10 6 8 13 9-2 14-9 11-16z" fill="#2E7D7A"/>
+          <path d="M98 54c9-7 17-5 19 3-7 1-10 6-8 13-9-2-14-9-11-16z" fill="#2E7D7A"/>
+          <ellipse cx="60" cy="66" rx="40" ry="31" fill="#2E7D7A"/>
+          <ellipse cx="60" cy="76" rx="25" ry="16" fill="#7FB7B2" opacity="0.4"/>
+          <circle cx="47" cy="59" r="9.5" fill="#E8F1EF"/>
+          <circle cx="73" cy="59" r="9.5" fill="#E8F1EF"/>
+          <circle cx="49" cy="60" r="4.6" fill="#0E1A1F"/>
+          <circle cx="75" cy="60" r="4.6" fill="#0E1A1F"/>
           <circle cx="51" cy="58" r="1.6" fill="#ffffff"/>
           <circle cx="77" cy="58" r="1.6" fill="#ffffff"/>
-          <path d="M50 77c6 6 14 6 20 0" stroke="#101418" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+          <path d="M50 77c6 6 14 6 20 0" stroke="#0E1A1F" stroke-width="3.4" fill="none" stroke-linecap="round"/>
         </svg></div>
       <h2 class="heroHi">Hey — I'm Crabby.</h2>
       <p class="heroSub">Your own agent, living on this device. Conversations, memory and dreams stay private — nothing phones home.</p>
